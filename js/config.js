@@ -38,3 +38,25 @@ var EMAILJS_CONFIG = {
     serviceId: 'service_7dx51bj',
     templateId: 'template_dvs5gol'
 };
+
+
+/**
+ * Base de datos compartida (varios PCs) — Firebase Realtime Database
+ * 1) https://console.firebase.google.com → Create project → "geometrics-piloto"
+ * 2) Build → Realtime Database → Create Database → Start in TEST mode
+ * 3) Project settings → Your apps → Web → copy config
+ * 4) Pega abajo apiKey, databaseURL, etc.
+ * 5) Rules (piloto): { "rules": { ".read": true, ".write": true } }
+ *
+ * Si enabled: false, todo queda solo en este navegador (no se sincroniza).
+ */
+var FIREBASE_CONFIG = {
+    enabled: true,
+    apiKey: 'AIzaSyD4AYzzltlL46-fseJ-mMzTZpnqo3umnCw',
+    authDomain: 'geometrics-92c13.firebaseapp.com',
+    databaseURL: 'https://geometrics-92c13-default-rtdb.firebaseio.com',
+    projectId: 'geometrics-92c13',
+    storageBucket: 'geometrics-92c13.firebasestorage.app',
+    messagingSenderId: '81262129610',
+    appId: '1:81262129610:web:e52b174ea7906159ebdf33'
+};
