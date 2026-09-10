@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoMetrics - Laboratorio Virtual de Ingeniería Civil</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script src="js/config.js"></script>
+</head>
+<body>
+
+    <!-- ============================================
+         PANTALLA DE INICIO - GEOMETRICS
+    ============================================= -->
+    <main class="inicio" id="pantallaInicio">
+
+        <!-- Franja superior: Uni izquierda / Civil derecha -->
+        <header class="inicio-topbar">
+            <div class="topbar-left">
+                <img src="docs/logo_unipamplona.png" alt="Universidad de Pamplona" class="logo-top" />
+                <span class="logo-label">Universidad de Pamplona</span>
+            </div>
+            <div class="topbar-right">
+                <img src="docs/logo_ingenieria_civil.png" alt="Ingeniería Civil" class="logo-top" />
+                <span class="logo-label">Ingeniería Civil</span>
+            </div>
+        </header>
+
+        <!-- Zona central: branding + login -->
+        <section class="inicio-hero">
+            <div class="hero-text">
+                <p class="hero-etiqueta">LABORATORIO VIRTUAL</p>
+                <h1 class="inicio-titulo">
+                    <span class="geo">Geo</span><span class="metrics">Metrics</span>
+                </h1>
+                <p class="inicio-subtitulo">Universidad de Pamplona — Ingeniería Civil</p>
+
+                <div class="login-box" id="loginBox">
+                    <div class="login-tabs">
+                        <button type="button" class="login-tab active" data-login-tab="entrar">Iniciar sesión</button>
+                        <button type="button" class="login-tab" data-login-tab="registro">Estudiante</button>
+                        <button type="button" class="login-tab" data-login-tab="docente">Docente</button>
+                    </div>
+
+                    <form id="formLogin" class="login-form active" autocomplete="on">
+                        <label>Correo institucional</label>
+                        <input type="email" id="loginEmail" placeholder="nombre.apellido@unipamplona.edu.co" required>
+                        <div class="login-identidad" id="loginIdentidad" hidden>
+                            <span class="login-avatar" id="loginAvatar">?</span>
+                            <div>
+                                <strong id="loginNombreDetectado">—</strong>
+                                <p id="loginRolDetectado">Cuenta institucional</p>
+                            </div>
+                        </div>
+                        <label>Contraseña</label>
+                        <div class="password-wrap"><input type="password" id="loginPass" placeholder="Tu contraseña de GeoMetrics" required><button type="button" class="btn-toggle-pass" data-pass-target="loginPass" aria-label="Mostrar contraseña" title="Mostrar contraseña">🙈</button></div>
+                        <button type="submit" class="btn-login">ENTRAR</button>
+                        <button type="button" class="btn-link-recupero" id="btnOlvidoPass">¿Olvidaste tu contraseña?</button>
+                        <p class="login-hint">Solo correos <code>@unipamplona.edu.co</code>. El rol se asigna según la cuenta.</p>
+                        <p class="login-hint">Prueba docente: <code>docente.demo@unipamplona.edu.co</code> / <code>docente123</code> (Laura Patricia Gómez Rincón)</p>
+                        <p class="login-error" id="loginError"></p>
+                    </form>
+
+                    <div id="formRecupero" class="login-form">
+                        <button type="button" class="btn-link-recupero" id="btnVolverLogin">← Volver a iniciar sesión</button>
+                        <h4 class="recupero-titulo">Recuperar contraseña</h4>
+
+                        <div id="recuperoPaso1">
+                            <p class="login-hint">Ingresa tu correo institucional. Te enviaremos un código de verificación.</p>
+                            <label>Correo institucional</label>
+                            <input type="email" id="recEmail" placeholder="nombre.apellido@unipamplona.edu.co">
+                            <button type="button" class="btn-login" id="btnEnviarCodigo">ENVIAR CÓDIGO</button>
+                        </div>
+
+                        <div id="recuperoPaso2" hidden>
+                            <p class="login-hint">Revisa tu correo e ingresa el código de 6 dígitos.</p>
+                            <label>Código de verificación</label>
+                            <input type="text" id="recCodigo" placeholder="123456" maxlength="6" inputmode="numeric">
+                            <label>Nueva contraseña</label>
+                            <div class="password-wrap"><input type="password" id="recPass" placeholder="Mínimo 6 caracteres" minlength="6"><button type="button" class="btn-toggle-pass" data-pass-target="recPass" aria-label="Mostrar contraseña" title="Mostrar contraseña">🙈</button></div>
+                            <label>Confirmar nueva contraseña</label>
+                            <div class="password-wrap"><input type="password" id="recPass2" placeholder="Repite la contraseña" minlength="6"><button type="button" class="btn-toggle-pass" data-pass-target="recPass2" aria-label="Mostrar contraseña" title="Mostrar contraseña">🙈</button></div>
+                            <button type="button" class="btn-login" id="btnRestablecer">RESTABLECER CONTRASEÑA</button>
+                            <button type="button" class="btn-link-recupero" id="btnReenviarCodigo">Reenviar código</button>
+                        </div>
+
+                        <p class="login-error" id="recError"></p>
+                        <p class="login-ok" id="recOk"></p>
+                    </div>
+
+                    <form id="formRegistro" class="login-form" autocomplete="on">
+                        <label>Correo institucional</label>
+                        <input type="email" id="regEmail" placeholder="nombre.apellido@unipamplona.edu.co" required>
+
+                        <label>Nombres</label>
+                        <input type="text" id="regNombres" placeholder="Ej. Andrés Felipe" required>
+
+                        <label>Apellidos</label>
+                        <input type="text" id="regApellidos" placeholder="Ej. Enríquez Valbuena" required>
+
+                        <label>Crear contraseña</label>
+                        <div class="password-wrap"><input type="password" id="regPass" placeholder="Mínimo 6 caracteres" required minlength="6"><button type="button" class="btn-toggle-pass" data-pass-target="regPass" aria-label="Mostrar contraseña" title="Mostrar contraseña">🙈</button></div>
+
+                        <label>Confirmar contraseña</label>
+                        <div class="password-wrap"><input type="password" id="regPass2" placeholder="Repite la contraseña" required minlength="6"><button type="button" class="btn-toggle-pass" data-pass-target="regPass2" aria-label="Mostrar contraseña" title="Mostrar contraseña">🙈</button></div>
+
+                        <label>Materias y grupos</label>
+                        <div class="reg-materias" id="regMaterias">
+                            <label class="reg-mat-item"><input type="checkbox" name="regMat" value="Mecánica de Suelos I"> Mecánica de Suelos I
+                                <input type="text" class="reg-grupo-input" data-mat="Mecánica de Suelos I" placeholder="Grupo" disabled>
+                            </label>
+                            <label class="reg-mat-item"><input type="checkbox" name="regMat" value="Mecánica de Suelos II"> Mecánica de Suelos II
+                                <input type="text" class="reg-grupo-input" data-mat="Mecánica de Suelos II" placeholder="Grupo" disabled>
+                            </label>
+                            <label class="reg-mat-item"><input type="checkbox" name="regMat" value="Resistencia de Materiales"> Resistencia de Materiales
+                                <input type="text" class="reg-grupo-input" data-mat="Resistencia de Materiales" placeholder="Grupo" disabled>
+                            </label>
+                        </div>
+                        <p class="login-hint">Marca una o varias materias e indica el grupo de cada una.</p>
+
+                        <button type="submit" class="btn-login">CREAR CUENTA ESTUDIANTE</button>
+                        <p class="login-hint">El registro crea solo cuentas de <strong>estudiante</strong>. Cada uno define su propia contraseña.</p>
+                        <p class="login-error" id="regError"></p>
+                    </form>
+
+                    <form id="formDocente" class="login-form" autocomplete="on">
+                        <p class="login-hint" style="margin-top:0">Solo correos autorizados por un administrador. Aquí creas tu perfil y tu contraseña de GeoMetrics. </p>
+                        <label>Correo institucional de docente</label>
+                        <input type="email" id="docEmail" placeholder="profesor@unipamplona.edu.co" required>
+
+                        <label>Nombres</label>
+                        <input type="text" id="docNombres" placeholder="Nombres" required>
+
+                        <label>Apellidos</label>
+                        <input type="text" id="docApellidos" placeholder="Apellidos" required>
+
+                        <label>Crear contraseña</label>
+                        <div class="password-wrap"><input type="password" id="docPass" placeholder="Mínimo 6 caracteres" required minlength="6"><button type="button" class="btn-toggle-pass" data-pass-target="docPass" aria-label="Mostrar contraseña" title="Mostrar contraseña">🙈</button></div>
+
+                        <label>Confirmar contraseña</label>
+                        <div class="password-wrap"><input type="password" id="docPass2" placeholder="Repite la contraseña" required minlength="6"><button type="button" class="btn-toggle-pass" data-pass-target="docPass2" aria-label="Mostrar contraseña" title="Mostrar contraseña">🙈</button></div>
+
+                        <label>Materias que dicta</label>
+                        <div class="reg-materias" id="docMaterias">
+                            <label class="reg-mat-item"><input type="checkbox" name="docMat" value="Mecánica de Suelos I"> Mecánica de Suelos I
+                                <input type="text" class="doc-grupo-input" data-mat="Mecánica de Suelos I" placeholder="Grupos: A, B" disabled>
+                            </label>
+                            <label class="reg-mat-item"><input type="checkbox" name="docMat" value="Mecánica de Suelos II"> Mecánica de Suelos II
+                                <input type="text" class="doc-grupo-input" data-mat="Mecánica de Suelos II" placeholder="Grupos: A, B" disabled>
+                            </label>
+                            <label class="reg-mat-item"><input type="checkbox" name="docMat" value="Resistencia de Materiales"> Resistencia de Materiales
+                                <input type="text" class="doc-grupo-input" data-mat="Resistencia de Materiales" placeholder="Grupos: A, B, C" disabled>
+                            </label>
+                        </div>
+                        <p class="login-hint">Marca las materias e indica los grupos separados por comas (ej. A, B, C).</p>
+
+                        <button type="submit" class="btn-login">REGISTRARME COMO DOCENTE</button>
+                        <p class="login-hint">Si tu correo no está autorizado, pide a un administrador que lo agregue desde el panel Administrador.</p>
+                        <p class="login-error" id="docError"></p>
+                    </form>
+                </div>
+            </div>
+            <div class="hero-logo">
+                <img src="docs/GeoMetrics.png" alt="GeoMetrics" class="logo-geometrics-grande" />
+            </div>
+        </section>
+
+        <!-- Footer abajo -->
+        <footer class="inicio-footer">
+            <span>Universidad de Pamplona</span>
+            <span>•</span>
+            <span>Facultad de Ingenierías y Arquitectura</span>
+            <span>•</span>
+            <span>Ingeniería Civil</span>
+        </footer>
+    </main>
+
+    <!-- ============================================
+         MENÚ PRINCIPAL
+    ============================================= -->
+    <main class="menu-principal" id="pantallaMenu">
+        <header class="menu-encabezado">
+            <div class="menu-header-left">
+                <img src="docs/logo_unipamplona.png" alt="Universidad de Pamplona" class="logo-menu" />
+                <div>
+                    <p class="menu-etiqueta">GEOMETRICS</p>
+                    <h2>Centro de Aprendizaje</h2>
+                    <p id="menuUserInfo">Selecciona el área que deseas explorar.</p>
+                </div>
+                <img src="docs/logo_ingenieria_civil.png" alt="Ingeniería Civil" class="logo-menu" />
+            </div>
+            <div class="menu-header-actions">
+                <div class="menu-user-menu" id="menuUserMenu">
+                    <button type="button" class="menu-user-trigger" id="btnMenuUsuario" aria-expanded="false">
+                        <span class="menu-user-avatar" id="menuUserAvatar">?</span>
+                        <span class="menu-saludo-texto" id="menuSaludoTexto">Bienvenido</span>
+                        <span class="menu-user-caret">▾</span>
+                    </button>
+                    <div class="menu-user-dropdown" id="menuUserDropdown" hidden>
+                        <button type="button" id="btnEditarPerfil" class="menu-user-item">👤 Editar perfil</button>
+                        <button type="button" id="btnAula" class="menu-user-item">📚 Mi aula</button>
+                        <button type="button" id="btnAdminPanel" class="menu-user-item" hidden>🛡️ Administrador</button>
+                        <button type="button" id="btnCerrarSesion" class="menu-user-item menu-user-item-danger">Cerrar sesión</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <section class="menu-grid">
+            <button class="menu-card" data-seccion="mecanica-suelos" data-materia="Mecánica de Suelos I">
+                <div class="card-icono">🧱</div>
+                <h3>Mecánica de Suelos I</h3>
+                <p>Ensayos de laboratorio: humedad, granulometría, límites, compactación.</p>
+            </button>
+
+            <button class="menu-card" data-seccion="mecanica-suelos-2" data-materia="Mecánica de Suelos II">
+                <div class="card-icono">🏗️</div>
+                <h3>Mecánica de Suelos II</h3>
+                <p>Cimentaciones, capacidad de carga, muros de contención, estabilidad.</p>
+            </button>
+
+            <button class="menu-card" data-seccion="resistencia-materiales" data-materia="Resistencia de Materiales">
+                <div class="card-icono">🔬</div>
+                <h3>Resistencia de Materiales</h3>
+                <p>Tracción, compresión, flexión, torsión, pandeo y más.</p>
+            </button>
+
+            <button class="menu-card" data-seccion="recursos">
+                <div class="card-icono">📚</div>
+                <h3>Recursos</h3>
+                <p>Biblioteca, libros guía y materiales de apoyo.</p>
+            </button>
+
+            <button class="menu-card" data-seccion="resultados">
+                <div class="card-icono">📊</div>
+                <h3>Resultados</h3>
+                <p>Consulta y analiza los resultados de tus ensayos.</p>
+            </button>
+
+            <button class="menu-card card-asistente" id="btnAsistenteAI">
+                <div class="card-icono">🤖</div>
+                <h3>Civix</h3>
+                <p>Tu mascota de Ingeniería Civil. Pregúntale sobre suelos, materiales y más.</p>
+            </button>
+        </section>
+
+        <!-- Ventana del Asistente AI -->
+        <div class="asistente-modal" id="asistenteModal">
+            <div class="asistente-contenido">
+                <div class="asistente-header">
+                    <div class="asistente-info">
+                        <span class="asistente-icono">🤖</span>
+                        <div>
+                            <h3>Civix</h3>
+                            <p>Asistente GeoMetrics · Powered by Groq</p>
+                        </div>
+                    </div>
+                    <div class="asistente-acciones">
+                        <button class="btn-config" id="btnConfigAI" title="Configurar API">⚙️</button>
+                        <button class="btn-cerrar-asistente" id="btnCerrarAsistente">×</button>
+                    </div>
+                </div>
+                
+                <!-- Configuración -->
+                <div class="asistente-config" id="asistenteConfig">
+                    <h4>Civix</h4>
+                    <p>El asistente ya está listo. Todos usan la key del proyecto; no necesitas configurar nada.</p>
+                    <p class="config-hint">Solo administradores: key de respaldo opcional</p>
+                    <input type="password" id="apiKeyInput" placeholder="gsk_... (opcional)" />
+                    <button id="btnGuardarConfig" class="btn-guardar">Guardar</button>
+                </div>
+                
+                <div class="asistente-chat" id="chatMensajes">
+                    <div class="mensaje mensaje-bot">
+                        <p>¡Hola futuro ingeniero! ¿En qué te puedo ayudar el día de hoy?</p>
+                    </div>
+                </div>
+                <div class="asistente-input">
+                    <input type="text" id="inputAsistente" placeholder="Escribe tu pregunta..." />
+                    <button id="btnEnviarMensaje">Enviar</button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="menu-footer">
+            <span>Universidad de Pamplona</span>
+            <span>•</span>
+            <span>Ingeniería Civil</span>
+        </footer>
+    </main>
+
+    <!-- ============================================
+         PANTALLA MECÁNICA DE SUELOS I
+    ============================================= -->
+    <main class="pantalla-curso" id="pantallaSuelos">
+        <header class="seccion-encabezado seccion-encabezado-doc">
+            <div class="seccion-titulo">
+                <div class="seccion-icono">🧱</div>
+                <div>
+                    <h2>Mecánica de Suelos I</h2>
+                    <p>Ensayos de laboratorio para el análisis de propiedades del suelo.</p>
+                </div>
+            </div>
+            <button class="btn-volver" id="btnVolverSuelos">← VOLVER AL MENÚ</button>
+        </header>
+
+        <section class="submenu-tabs">
+            <button class="tab-btn" data-tab="ms1-teoria">Teoría</button>
+            <button class="tab-btn active" data-tab="ms1-ensayos">Ensayos</button>
+        </section>
+
+        <!-- Ensayos de Mecánica de Suelos I -->
+        <section class="tab-content active" id="ms1-ensayos">
+            <div class="ensayos-grid">
+                <button class="ensayo-card" data-ensayo="humedad">
+                    <div class="ensayo-icono">💧</div>
+                    <h3>Contenido de Humedad</h3>
+                    <p>Determina la cantidad de agua presente en una muestra de suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="granulometria">
+                    <div class="ensayo-icono">📊</div>
+                    <h3>Granulometría</h3>
+                    <p>Análisis de la distribución de tamaños de partículas del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="limites">
+                    <div class="ensayo-icono">📏</div>
+                    <h3>Límites de Atterberg</h3>
+                    <p>Determinación de los límites de consistencia del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="gravedad">
+                    <div class="ensayo-icono">⚖️</div>
+                    <h3>Gravedad Específica</h3>
+                    <p>Determinación de la gravedad específica de los sólidos del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="compactacion">
+                    <div class="ensayo-icono">🏗️</div>
+                    <h3>Compactación Proctor</h3>
+                    <p>Analiza la relación entre humedad y densidad seca del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="densidad">
+                    <div class="ensayo-icono">📦</div>
+                    <h3>Densidad de Campo</h3>
+                    <p>Determina la densidad del suelo en condiciones de campo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="clasificacion">
+                    <div class="ensayo-icono">🗂️</div>
+                    <h3>Clasificación SUCS</h3>
+                    <p>Clasificación de suelos según el Sistema Unificado de Clasificación.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="permeabilidad">
+                    <div class="ensayo-icono">💦</div>
+                    <h3>Permeabilidad</h3>
+                    <p>Estudia el flujo de agua a través del suelo (Ley de Darcy).</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+            </div>
+
+            <!-- Panel de Ensayos (oculto inicialmente) -->
+            <div class="panel-ensayo" id="panel-ensayo">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </section>
+
+        <section class="tab-content" id="ms1-teoria">
+            <div class="teoria-container">
+                <h3>Mecánica de Suelos I — Fundamentos Teóricos</h3>
+                
+                <div class="teoria-seccion">
+                    <h4>1. Introducción a la Mecánica de Suelos</h4>
+                    <p>La mecánica de suelos es la rama de la ingeniería que estudia el comportamiento del suelo como material de construcción. El suelo es un material natural formado por partículas sólidas, agua y aire.</p>
+                    <p><strong>Composición del suelo:</strong></p>
+                    <ul>
+                        <li><strong>Fase sólida:</strong> partículas minerales y orgánicas</li>
+                        <li><strong>Fase líquida:</strong> agua con sustancias disueltas</li>
+                        <li><strong>Fase gaseosa:</strong> aire y otros gases</li>
+                    </ul>
+                    <p>Las propiedades del suelo dependen de la relación entre estas tres fases, que se expresa mediante el contenido de humedad, el índice de poros y el grado de saturación.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>2. Contenido de Humedad (w)</h4>
+                    <p>El contenido de humedad es la relación entre el peso del agua y el peso de los sólidos del suelo.</p>
+                    <div class="formula-box">w = (W<sub>w</sub> / W<sub>s</sub>) × 100 %</div>
+                    <p>Se determina secando la muestra en un horno a 110±5°C hasta peso constante. Es un ensayo fundamental para todos los cálculos de mecánica de suelos.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>3. Análisis Granulométrico</h4>
+                    <p>La granulometría determina la distribución de tamaños de partículas mediante tamizado.</p>
+                    <p><strong>Clasificación por tamaño:</strong></p>
+                    <ul>
+                        <li><strong>Grava:</strong> partículas > 4.75 mm</li>
+                        <li><strong>Arena gruesa:</strong> 2.0 - 4.75 mm</li>
+                        <li><strong>Arena media:</strong> 0.425 - 2.0 mm</li>
+                        <li><strong>Arena fina:</strong> 0.075 - 0.425 mm</li>
+                        <li><strong>Finos (Limo y Arcilla):</strong> < 0.075 mm</li>
+                    </ul>
+                    <p><strong>Coeficiente de uniformidad:</strong> Cu = D60/D10. Valores > 4 (arenas) o > 6 (gravas) indican buena graduación.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>4. Límites de Atterberg</h4>
+                    <p>Definen los estados de consistencia del suelo según el contenido de humedad:</p>
+                    <ul>
+                        <li><strong>Límite Líquido (LL):</strong> paso del estado plástico al líquido. Ensayo de Casagrande a 25 golpes.</li>
+                        <li><strong>Límite Plástico (LP):</strong> paso del estado semisólido al plástico. Formación de rollitos de 3mm.</li>
+                        <li><strong>Índice de Plasticidad (IP):</strong> IP = LL - LP</li>
+                    </ul>
+                    <div class="formula-box">Línea A: IP = 0.73(LL - 20)</div>
+                    <p>La línea A separa arcillas (sobre la línea) de limos (bajo la línea) en la Carta de Plasticidad.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>5. Gravedad Específica (Gs)</h4>
+                    <p>Relación entre la densidad de los sólidos del suelo y la densidad del agua.</p>
+                    <div class="formula-box">G<sub>s</sub> = W<sub>s</sub> / (W<sub>s</sub> + W<sub>pw</sub> - W<sub>pws</sub>)</div>
+                    <p>Valores típicos: arenas 2.60-2.70, arcillas 2.70-2.90. Valores < 2.0 indican materia orgánica.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>6. Compactación Proctor</h4>
+                    <p>La compactación aumenta la densidad del suelo reduciendo vacíos. Ensayo Proctor Standard:</p>
+                    <ul>
+                        <li><strong>Masa del martillo:</strong> 2.5 kg</li>
+                        <li><strong>Altura de caída:</strong> 30.5 cm</li>
+                        <li><strong>Número de capas:</strong> 3</li>
+                        <li><strong>Golpes por capa:</strong> 25</li>
+                    </ul>
+                    <p>La curva de compactación es parabólica: a mayor humedad, mayor densidad hasta alcanzar la humedad óptima (w<sub>ópt</sub>), luego la densidad disminuye.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>7. Clasificación SUCS</h4>
+                    <p><strong>Suelos Gruesos</strong> (>50% retenido en #200):</p>
+                    <ul>
+                        <li><strong>Gravas (G):</strong> >50% del retenido es grava
+                            <ul><li>GW: bien graduada, Cu>4, Cc=1-3</li><li>GP: mal graduada</li></ul>
+                        </li>
+                        <li><strong>Arenas (S):</strong> >50% del retenido es arena
+                            <ul><li>SW: bien graduada, Cu>6, Cc=1-3</li><li>SP: mal graduada</li></ul>
+                        </li>
+                    </ul>
+                    <p><strong>Suelos Finos</strong> (>50% pasa #200):</p>
+                    <ul>
+                        <li><strong>CL:</strong> Arcilla baja plasticidad (LL<50, sobre línea A)</li>
+                        <li><strong>CH:</strong> Arcilla alta plasticidad (LL≥50, sobre línea A)</li>
+                        <li><strong>ML:</strong> Limo baja plasticidad (LL<50, bajo línea A)</li>
+                        <li><strong>MH:</strong> Limo alta plasticidad (LL≥50, bajo línea A)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ============================================
+         PANTALLA MECÁNICA DE SUELOS II
+    ============================================= -->
+    <main class="pantalla-curso" id="pantallaSuelos2">
+        <header class="seccion-encabezado seccion-encabezado-doc">
+            <div class="seccion-titulo">
+                <div class="seccion-icono">🏗️</div>
+                <div>
+                    <h2>Mecánica de Suelos II</h2>
+                    <p>Resistencia al corte, compresión inconfinada y consolidación (laboratorio).</p>
+                </div>
+            </div>
+            <button class="btn-volver" id="btnVolverSuelos2">← VOLVER AL MENÚ</button>
+        </header>
+
+        <section class="submenu-tabs">
+            <button class="tab-btn active" data-tab="ms2-teoria">Teoría</button>
+            <button class="tab-btn" data-tab="ms2-ensayos">Ensayos</button>
+            <button class="tab-btn" data-tab="ms2-simuladores">Simuladores</button>
+        </section>
+
+        <section class="tab-content active" id="ms2-teoria">
+            <div class="teoria-container">
+                <h3>Mecánica de Suelos II — Contenido Programático</h3>
+                
+                <div class="teoria-seccion">
+                    <h4>1. Resistencia al Corte de los Suelos</h4>
+                    <p>La resistencia al corte es la propiedad fundamental del suelo que determina la estabilidad de estructuras geotécnicas. En laboratorio se determina con el <strong>ensayo de corte directo</strong> y la <strong>compresión inconfinada</strong>.</p>
+                    <div class="formula-box">τ = c + σ'·tan(φ)</div>
+                    <p><strong>Corte directo:</strong> σn = Pv/A · τ = Ph/A. Con varios ensayos se obtiene la envolvente de Coulomb (c y φ).</p>
+                    <p><strong>Compresión inconfinada:</strong> cu = qu/2 (φ ≈ 0 en condición no drenada).</p>
+                    <p><strong>Consolidación:</strong> curva e–log σ', índices Cc y Cr, presión de preconsolidación σ'p y coeficiente Cv.</p>
+                    <p>Donde: τ = resistencia al corte, c = cohesión, σ' = esfuerzo efectivo, φ = ángulo de fricción interna.</p>
+                    <p><strong>Criterio de falla de Mohr-Coulomb:</strong> Define la condición de falla en términos de esfuerzos normales y cortantes.</p>
+                    <p><strong>Círculo de Mohr:</strong> Representación gráfica del estado de esfuerzos en un punto. La envolvente de falla es tangente a los círculos de Mohr en condición de falla.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>2. Cimentaciones Superficiales - Capacidad de Carga</h4>
+                    <p>Las cimentaciones superficiales transfieren cargas a capas de suelo cercanas a la superficie.</p>
+                    <p><strong>Teoría de Terzaghi:</strong></p>
+                    <div class="formula-box">q<sub>u</sub> = c·N<sub>c</sub>·s<sub>c</sub> + q·N<sub>q</sub>·s<sub>q</sub> + 0.5·γ·B·N<sub>γ</sub>·s<sub>γ</sub></div>
+                    <p><strong>Factores de capacidad de carga:</strong></p>
+                    <ul>
+                        <li>N<sub>c</sub> = 5.7 (cimentación corrida), 7.5 (cuadrada), 5.14 (circular)</li>
+                        <li>N<sub>q</sub> = tan²(45°+φ/2)·e<sup>π·tanφ</sup></li>
+                        <li>N<sub>γ</sub> ≈ 2(N<sub>q</sub>+1)·tanφ</li>
+                    </ul>
+                    <p><strong>Factor de seguridad:</strong> FS = q<sub>u</sub> / q<sub>adm</sub> ≥ 3</p>
+                    <p><strong>Efecto del nivel freático:</strong> Reduce la capacidad de carga cuando está dentro de la zona de influencia (d ≤ 0 a D<sub>f</sub> + B).</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>3. Capacidad de Carga y Asentamientos Admisibles</h4>
+                    <p><strong>Incremento de esfuerzo vertical:</strong></p>
+                    <div class="formula-box">Δσ<sub>z</sub> = q·I<sub>z</sub></div>
+                    <p>Donde I<sub>z</sub> es el factor de influencia que depende de m = z/B y n = L/B.</p>
+                    <p><strong>Método 2:1:</strong> Δσ<sub>z</sub> = q·B·L / ((B+z)(L+z))</p>
+                    <p><strong>Asentamiento elástico:</strong></p>
+                    <div class="formula-box">S<sub>e</sub> = (q·B·(1-ν²) / E) · I<sub>s</sub></div>
+                    <p><strong>Asentamiento por consolidación:</strong></p>
+                    <div class="formula-box">S<sub>c</sub> = C<sub>r</sub>·H·log(t<sub>2</sub>/t<sub>1</sub>) + C<sub>c</sub>·H·log((σ'<sub>0</sub>+Δσ)/σ'<sub>0</sub>)</div>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>4. Losas de Cimentación</h4>
+                    <p>Las losas de cimentación se usan cuando la capacidad portante es baja o las cargas son elevadas.</p>
+                    <p><strong>Tipos:</strong></p>
+                    <ul>
+                        <li>Zapatas aisladas conectadas</li>
+                        <li>Losa maciza</li>
+                        <li>Losa con vigas de borde</li>
+                        <li>Losa con pedestales</li>
+                        <li>Cajas de cimentación (compensadas)</li>
+                    </ul>
+                    <p><strong>Criterio:</strong> Cuando el área de zapatas > 50% del área total de la planta, es más económico usar losa.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>5. Presión Lateral de Tierra</h4>
+                    <p><strong>Presión en Reposo (K<sub>0</sub>):</strong></p>
+                    <div class="formula-box">K<sub>0</sub> = 1 - sin(φ) (Jaky)</div>
+                    <p><strong>Presión Activa (Rankine):</strong></p>
+                    <div class="formula-box">K<sub>a</sub> = tan²(45° - φ/2)</div>
+                    <p><strong>Presión Pasiva (Rankine):</strong></p>
+                    <div class="formula-box">K<sub>p</sub> = tan²(45° + φ/2)</div>
+                    <p>Para muros con fricción, se usa Coulomb con coeficiente de fricción δ ≈ 2φ/3.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>6. Muros de Contención</h4>
+                    <p><strong>Tipos de muros:</strong></p>
+                    <ul>
+                        <li><strong>Muros de gravedad:</strong> resisten por su peso propio (concreto masivo, piedra, gaviones)</li>
+                        <li><strong>Muros en voladizo:</strong> concreto armado, más esbeltos</li>
+                        <li><strong>Muros de contención estabilizados mecánicamente (MSE):</strong> tierra armada/geoceldas</li>
+                    </ul>
+                    <p><strong>Verificaciones de estabilidad:</strong></p>
+                    <ul>
+                        <li>Volteo: FS<sub>V</sub> = M<sub>R</sub>/M<sub>O</sub> ≥ 1.5</li>
+                        <li>Deslizamiento: FS<sub>D</sub> = ΣF<sub>R</sub>/ΣF<sub>D</sub> ≥ 1.5</li>
+                        <li>Capacidad portante: FS<sub>CP</sub> = q<sub>u</sub>/q<sub>máx</sub> ≥ 3</li>
+                    </ul>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>7. Cimentaciones Profundas - Pilotes</h4>
+                    <p><strong>Tipos de pilotes:</strong></p>
+                    <ul>
+                        <li><strong>Por función:</strong> de carga vertical, de tensión (anclajes), de retención lateral</li>
+                        <li><strong>Por forma de transmisión:</strong> de punta, de fricción, mixtos</li>
+                        <li><strong>Por material:</strong> concreto (prefabricados, colados), acero (tubulares, H), madera</li>
+                    </ul>
+                    <p><strong>Capacidad de carga de un pilote:</strong></p>
+                    <div class="formula-box">Q<sub>u</sub> = Q<sub>p</sub> + Q<sub>s</sub> = q<sub>p</sub>·A<sub>p</sub> + Σq<sub>si</sub>·A<sub>si</sub></div>
+                    <p><strong>Métodos de instalación:</strong> hinca (martillo), perforado (barrena), mezcla (jet grouting)</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>8. Estabilidad de Taludes</h4>
+                    <p><strong>Tipos de falla:</strong></p>
+                    <ul>
+                        <li><strong>Falla circular:</strong> más común en suelos cohesivos</li>
+                        <li><strong>Falla planar:</strong> en taludes rocosos o con discontinuidades</li>
+                        <li><strong>Falla por cuña:</strong> intersección de dos planos</li>
+                    </ul>
+                    <p><strong>Métodos de análisis:</strong></p>
+                    <ul>
+                        <li><strong>Fellenius (Ordinario):</strong> FS = Σ(c·Δl + W·cosα·tanφ) / Σ(W·sinα)</li>
+                        <li><strong>Bishop:</strong> considera fuerzas entre dovelas</li>
+                        <li><strong>Morgenstern-Price:</strong> más riguroso, satisfacción de equilibrio</li>
+                    </ul>
+                    <p><strong>Factor de seguridad mínimo:</strong> FS ≥ 1.5 para condiciones normales, FS ≥ 1.3 para condiciones sísmicas.</p>
+                </div>
+            </div>
+        </section>
+    
+        <section class="tab-content" id="ms2-ensayos">
+            <div class="ensayos-grid" id="ms2-ensayos-grid">
+                <button class="ensayo-card" data-ensayo-ms2="corte">
+                    <div class="ensayo-icono">✂️</div>
+                    <h3>Corte Directo</h3>
+                    <p>Resistencia al corte: cohesión c y ángulo φ (Mohr-Coulomb).</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+                <button class="ensayo-card" data-ensayo-ms2="inconfinada">
+                    <div class="ensayo-icono">🧱</div>
+                    <h3>Compresión Inconfinada</h3>
+                    <p>Resistencia qu y cohesión no drenada cu = qu/2.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+                <button class="ensayo-card" data-ensayo-ms2="consolidacion">
+                    <div class="ensayo-icono">📉</div>
+                    <h3>Consolidación</h3>
+                    <p>Cv, índice de compresión Cc y presión de preconsolidación.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+                <button class="ensayo-card" data-ensayo-ms2="triaxial">
+                    <div class="ensayo-icono">🧪</div>
+                    <h3>Ensayo Triaxial</h3>
+                    <p>σ₁, σ₃, círculos de Mohr y parámetros c, φ (UU / CU / CD).</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+            </div>
+            <div class="panel-ensayo" id="panel-ensayo-ms2" style="display:none;"></div>
+            <p class="login-hint" style="padding:0 16px 20px;">Guías oficiales (PDF):
+                <a class="btn-descarga" href="docs/Guia_Corte_Directo.pdf" download>Corte directo</a>
+                <a class="btn-descarga" href="docs/Guia_Compresion_Inconfinada.pdf" download>Compresión inconfinada</a>
+                <a class="btn-descarga" href="docs/Guia_Consolidacion.pdf" download>Consolidación</a>
+            </p>
+        </section>
+        <section class="tab-content" id="ms2-simuladores">
+            <div class="ensayos-grid simuladores-grid">
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">✂️</div>
+                    <h3>Simulador Corte Directo</h3>
+                    <p>Máquina de caja de corte: Pv, Ph y deslizamiento.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="corte">ABRIR SIMULADOR</button>
+                </div>
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">🧱</div>
+                    <h3>Simulador Compresión Inconfinada</h3>
+                    <p>Prensa uniaxial: muestra libre y curva σ–ε.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="inconfinada">ABRIR SIMULADOR</button>
+                </div>
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">📉</div>
+                    <h3>Simulador Consolidación</h3>
+                    <p>Edómetro: cargas escalonadas y asentamiento.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="consolidacion">ABRIR SIMULADOR</button>
+                </div>
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">🧪</div>
+                    <h3>Simulador Triaxial</h3>
+                    <p>Cámara triaxial: presión de celda σ₃ y carga axial.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="triaxial">ABRIR SIMULADOR</button>
+                </div>
+            </div>
+        </section>
+</main>
+
+    <!-- ============================================
+         PANTALLA RESISTENCIA DE MATERIALES
+    ============================================= -->
+    <main class="pantalla-curso" id="pantallaResistencia">
+        <header class="seccion-encabezado seccion-encabezado-doc">
+            <div class="seccion-titulo">
+                <div class="seccion-icono">🔬</div>
+                <div>
+                    <h2>Resistencia de Materiales</h2>
+                    <p>Esfuerzos, deformaciones, análisis estructural y propiedades mecánicas.</p>
+                </div>
+            </div>
+            <button class="btn-volver" id="btnVolverResistencia">← VOLVER AL MENÚ</button>
+        </header>
+
+        <section class="submenu-tabs">
+            <button class="tab-btn" data-tab="rm-teoria">Teoría</button>
+            <button class="tab-btn active" data-tab="rm-ensayos">Ensayos</button>
+            <button class="tab-btn" data-tab="rm-simuladores">Simuladores</button>
+        </section>
+
+        <!-- Teoría de Resistencia de Materiales -->
+        <section class="tab-content" id="rm-teoria">
+            <div class="teoria-container">
+                <h3>Resistencia de Materiales — Contenido Programático</h3>
+                
+                <div class="teoria-seccion">
+                    <h4>1. Propiedades de los Materiales</h4>
+                    <p>Los materiales de ingeniería exhiben comportamiento esfuerzo-deformación característico:</p>
+                    <p><strong>Zonas del diagrama σ-ε:</strong></p>
+                    <ul>
+                        <li><strong>Zona elástica:</strong> deformaciones proporcionales a esfuerzos (Ley de Hooke: σ = E·ε)</li>
+                        <li><strong>Punto de fluencia:</strong> inicio de deformación plástica permanente</li>
+                        <li><strong>Zona plástica:</strong> endurecimiento por deformación</li>
+                        <li><strong>Punto último:</strong> máximo esfuerzo resistido</li>
+                        <li><strong>Estrangulamiento:</strong> reducción de área, falla</li>
+                    </ul>
+                    <div class="formula-box">Ley de Hooke: σ = E · ε</div>
+                    <p>Donde E = módulo de Young. Valores típicos: acero 200 GPa, aluminio 70 GPa.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>2. Esfuerzos y Deformaciones por Carga Axial</h4>
+                    <p><strong>Esfuerzo normal:</strong></p>
+                    <div class="formula-box">σ = P / A</div>
+                    <p><strong>Deformación axial:</strong></p>
+                    <div class="formula-box">δ = P·L / (A·E) = σ·L / E</div>
+                    <p><strong>Efectos térmicos:</strong></p>
+                    <div class="formula-box">δ<sub>T</sub> = α·L·ΔT</div>
+                    <p>Donde α = coeficiente de dilatación térmica.</p>
+                    <p><strong>Principio de Saint-Venant:</strong> los esfuerzos se distribuyen uniformemente a suficiente distancia de la aplicación de carga.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>3. Análisis de Torsión</h4>
+                    <p>En ejes circulares subjected to torque:</p>
+                    <div class="formula-box">τ<sub>máx</sub> = T·r / J = T / (J/r) = T / W<sub>t</sub></div>
+                    <p>Donde: T = momento torsor, r = radio, J = momento polar de inercia = πd⁴/32</p>
+                    <p><strong>Ángulo de torsión:</strong></p>
+                    <div class="formula-box">φ = T·L / (G·J)</div>
+                    <p>Donde G = módulo de cortante = E / (2(1+ν))</p>
+                    <p><strong>Ejes estáticamente indeterminados:</strong> ecuaciones de compatibilidad + equilibrio.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>4. Análisis de Flexión Pura</h4>
+                    <p><strong>Distribución de esfuerzos:</strong></p>
+                    <div class="formula-box">σ = -M·y / I = -M / S</div>
+                    <p>Donde: M = momento flector, y = distancia al eje neutro, I = momento de inercia, S = módulo de sección</p>
+                    <p><strong>Hipótesis de Bernoulli-Navier:</strong> secciones planas permanecen planas después de la flexión.</p>
+                    <p><strong>Curvatura:</strong></p>
+                    <div class="formula-box">1/ρ = M / (E·I)</div>
+                    <p><strong>Flexión en materiales compuestos:</strong> usar módulo de sección transformado.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>5. Esfuerzos Cortantes en Vigas</h4>
+                    <p><strong>Esfuerzo cortante longitudinal:</strong></p>
+                    <div class="formula-box">τ = V·Q / (I·b)</div>
+                    <p>Donde: V = fuerza cortante, Q = momento estático del área, I = momento de inercia, b = ancho del elemento</p>
+                    <p><strong>Flujo de cortante:</strong></p>
+                    <div class="formula-box">q = V·Q / I = τ·t</div>
+                    <p>Importante para análisis de elementos compuestos y conexiones.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>6. Transformación de Esfuerzos</h4>
+                    <p><strong>Estado plano de esfuerzos:</strong></p>
+                    <div class="formula-box">σ<sub>x'</sub> = (σ<sub>x</sub>+σ<sub>y</sub>)/2 + (σ<sub>x</sub>-σ<sub>y</sub>)/2·cos2θ + τ<sub>xy</sub>·sin2θ</div>
+                    <div class="formula-box">τ<sub>x'y'</sub> = -(σ<sub>x</sub>-σ<sub>y</sub>)/2·sin2θ + τ<sub>xy</sub>·cos2θ</div>
+                    <p><strong>Esfuerzos principales:</strong></p>
+                    <div class="formula-box">σ<sub>1,2</sub> = (σ<sub>x</sub>+σ<sub>y</sub>)/2 ± √[((σ<sub>x</sub>-σ<sub>y</sub>)/2)² + τ<sub>xy</sub>²]</div>
+                    <p><strong>Círculo de Mohr:</strong> representación gráfica del estado de esfuerzos para cualquier orientación.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>7. Deflexiones en Vigas</h4>
+                    <p><strong>Por integración:</strong></p>
+                    <div class="formula-box">E·I·d²y/dx² = M(x)  →  E·I·dy/dx = ∫M(x)dx + C₁  →  E·I·y = ∫∫M(x)dx² + C₁x + C₂</div>
+                    <p><strong>Condiciones de frontera:</strong> y=0 en apoyos, dy/dx=0 en puntos de simetría.</p>
+                    <p><strong>Método de superposición:</strong> deflexiones por carga distribuida + puntual + momento.</p>
+                    <p><strong>Método de los tres momentos:</strong> para vigas continuas.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>8. Columnas y Pandeo</h4>
+                    <p><strong>Carga crítica de Euler:</strong></p>
+                    <div class="formula-box">P<sub>cr</sub> = π²·E·I / (K·L)²</div>
+                    <p>Donde K = factor de longitud efectiva (1 para articulado-articulado, 0.5 para empotrado-empotrado, 0.7 para empotrado-articulado, 2 para libre-articulado)</p>
+                    <p><strong>Esfuerzo crítico:</strong></p>
+                    <div class="formula-box">σ<sub>cr</sub> = P<sub>cr</sub>/A = π²·E / (K·L/r)²</div>
+                    <p>Donde r = radio de giro = √(I/A)</p>
+                    <p><strong>Relación de esbeltez:</strong> λ = K·L / r. Columnas cortas: λ < 50, Intermedias: 50 < λ < 200, Largas: λ > 200.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Ensayos de Resistencia de Materiales -->
+        <section class="tab-content active" id="rm-ensayos">
+            <div class="ensayos-grid">
+                <button class="ensayo-card" data-ensayo="traccion">
+                    <div class="ensayo-icono">🔗</div>
+                    <h3>Ensayo de Tracción</h3>
+                    <p>Determinación de propiedades mecánicas bajo carga axial.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="compresion">
+                    <div class="ensayo-icono">⬇️</div>
+                    <h3>Ensayo de Compresión</h3>
+                    <p>Resistencia a compresión de cilindros de concreto.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="flexion">
+                    <div class="ensayo-icono">📐</div>
+                    <h3>Ensayo de Flexión</h3>
+                    <p>Módulo de ruptura en vigas de concreto.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="dureza">
+                    <div class="ensayo-icono">💎</div>
+                    <h3>Ensayo de Dureza</h3>
+                    <p>Dureza Brinell y Rockwell de metales.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+            </div>
+
+            <!-- Panel de Ensayos (oculto inicialmente) -->
+            <div class="panel-ensayo" id="panel-ensayo-rm">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </section>
+    
+        <section class="tab-content" id="rm-simuladores">
+            <div class="ensayos-grid simuladores-grid">
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">📈</div>
+                    <h3>Esfuerzo–deformación</h3>
+                    <p>Curva de materiales y módulo de elasticidad.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="esfdef">ABRIR SIMULADOR</button>
+                </div>
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">⭕</div>
+                    <h3>Círculo de Mohr</h3>
+                    <p>Transformación de esfuerzos.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="mohr">ABRIR SIMULADOR</button>
+                </div>
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">🌊</div>
+                    <h3>Flujo / apoyo</h3>
+                    <p>Simuladores generales del laboratorio.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="flujo">ABRIR SIMULADOR</button>
+                </div>
+            </div>
+        </section>
+</main>
+
+    <!-- ============================================
+         PANTALLA RECURSOS / BIBLIOTECA
+    ============================================= -->
+    <main class="pantalla-curso" id="pantallaRecursos">
+        <header class="seccion-encabezado seccion-encabezado-doc">
+            <div class="seccion-titulo">
+                <div class="seccion-icono">📚</div>
+                <div>
+                    <h2>Recursos y Materiales</h2>
+                    <p>Libros guía, normativa y materiales de apoyo.</p>
+                </div>
+            </div>
+            <button class="btn-volver" id="btnVolverRecursos">← VOLVER AL MENÚ</button>
+        </header>
+
+        <section class="recursos-container">
+            <h3>Libros Guía Recomendados</h3>
+            
+            <div class="libros-grid">
+                <div class="libro-card">
+                    <div class="libro-icono">📖</div>
+                    <h4>Mecánica de Materiales</h4>
+                    <p class="libro-autor">Beer & Johnston</p>
+                    <p class="libro-desc">Referencia fundamental para Resistencia de Materiales. Cubre esfuerzos, deformaciones, torsión, flexión y análisis de columnas.</p>
+                    <a href="docs/NSR10-TOTAL.pdf" class="btn-libro" target="_blank" download>DESCARGAR PDF</a>
+                </div>
+
+                <div class="libro-card">
+                    <div class="libro-icono">📖</div>
+                    <h4>Estática - Russell C. Hibbeler</h4>
+                    <p class="libro-autor">12va Edición</p>
+                    <p class="libro-desc">Completo tratamiento de estática con más de 1600 problemas. Ideal para mecánica vectorial.</p>
+                    <a href="docs/NSR10-TOTAL.pdf" class="btn-libro" target="_blank" download>DESCARGAR PDF</a>
+                </div>
+            </div>
+
+            <h3>Contenidos Programáticos</h3>
+            
+            <div class="libros-grid">
+                <div class="libro-card">
+                    <div class="libro-icono">📋</div>
+                    <h4>Mecánica de Suelos II</h4>
+                    <p class="libro-autor">Universidad de Pamplona</p>
+                    <p class="libro-desc">Contenido programático oficial: cimentaciones, capacidad de carga, empujes de tierra, muros de contención y estabilidad de taludes.</p>
+                    <a href="docs/NSR10-TOTAL.pdf" class="btn-libro" target="_blank" download>VER CONTENIDO</a>
+                </div>
+
+                <div class="libro-card">
+                    <div class="libro-icono">📋</div>
+                    <h4>Resistencia de Materiales</h4>
+                    <p class="libro-autor">Universidad de Pamplona</p>
+                    <p class="libro-desc">Contenido programático oficial: propiedades mecánicas, carga axial, torsión, flexión, cortante, transformación de esfuerzos y columnas.</p>
+                    <a href="docs/NSR10-TOTAL.pdf" class="btn-libro" target="_blank" download>VER CONTENIDO</a>
+                </div>
+            </div>
+
+            <h3>Normativas y Referencias</h3>
+            
+            <div class="normativas-grid">
+                <div class="normativa-item">
+                    <h4>Norma Sismo Resistente NSR-10</h4>
+                    <p>Título H: Estudios geotécnicos y cimentaciones.</p>
+                    <a href="https://www.invias.gov.co/index.php/documentos-tecnicos1" class="btn-normativa" target="_blank">CONSULTAR</a>
+                </div>
+
+                <div class="normativa-item">
+                    <h4>ASTM International</h4>
+                    <p>Estándares para ensayos de suelos y materiales.</p>
+                    <a href="https://www.astm.org/TRAIN/astm-online-training.html" class="btn-normativa" target="_blank">CONSULTAR</a>
+                </div>
+
+                <div class="normativa-item">
+                    <h4>INVIAS</h4>
+                    <p>Especificaciones técnicas de carreteras.</p>
+                    <a href="https://www.invias.gov.co" class="btn-normativa" target="_blank">CONSULTAR</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ============================================
+         PANTALLA RESULTADOS
+    ============================================= -->
+    <main class="pantalla-curso" id="pantallaResultados">
+        <header class="seccion-encabezado seccion-encabezado-doc">
+            <div class="seccion-titulo">
+                <div class="seccion-icono">📊</div>
+                <div>
+                    <p class="menu-etiqueta">HISTORIAL</p>
+                    <h2>Resultados Guardados</h2>
+                    <p>Consulta tus ensayos y cálculos realizados.</p>
+                </div>
+            </div>
+            <button class="btn-volver" id="btnVolverResultados">← VOLVER AL MENÚ</button>
+        </header>
+
+        <section class="resultados-container">
+            <div id="historial-resultados">
+                <!-- Se llena dinámicamente por cuenta (estudiante o docente) -->
+            </div>
+        </section>
+    </main>
+
+
+    <!-- ============================================
+         PANTALLA AULA DOCENTE
+    ============================================= -->
+        <main class="pantalla-curso" id="pantallaDocente">
+        <header class="seccion-encabezado seccion-encabezado-doc">
+            <div class="seccion-titulo">
+                <div class="seccion-icono" id="docIconoAula">👩‍🏫</div>
+                <div>
+                    <h2>Panel del profesor</h2>
+                    <p id="docenteSubtitulo">Gestiona tareas, presentaciones y estudiantes.</p>
+                </div>
+            </div>
+            <button class="btn-volver" id="btnVolverDocente">← VOLVER AL MENÚ</button>
+        </header>
+
+        <section class="doc-resumen" id="docResumen">
+            <div class="doc-kpi"><span class="doc-kpi-num" id="kpiTareas">0</span><span class="doc-kpi-label">Tareas</span></div>
+            <div class="doc-kpi"><span class="doc-kpi-num" id="kpiEstudiantes">0</span><span class="doc-kpi-label">Estudiantes</span></div>
+            <div class="doc-kpi"><span class="doc-kpi-num" id="kpiEntregas">0</span><span class="doc-kpi-label">Entregas</span></div>
+            <div class="doc-kpi doc-kpi-alerta"><span class="doc-kpi-num" id="kpiPendientes">0</span><span class="doc-kpi-label">Sin calificar</span></div>
+        </section>
+
+        <section class="submenu-tabs aula-tabs">
+            <button class="tab-btn active" data-tab="doc-tareas">Tareas</button>
+            <button class="tab-btn" data-tab="doc-presentaciones">Presentaciones</button>
+            <button class="tab-btn" data-tab="doc-estudiantes">Estudiantes</button>
+            <button class="tab-btn" data-tab="doc-entregas">Entregas <span class="tab-badge" id="badgeEntregas" hidden>0</span></button>
+            <button class="tab-btn" data-tab="doc-chat">Chat <span class="tab-badge" id="badgeChatDoc" hidden>0</span></button>
+        </section>
+
+        <section class="tab-content active" id="doc-tareas">
+            <div class="aula-grid">
+                <div class="aula-card">
+                    <h3 id="formTareaTitulo">Publicar tarea</h3>
+                    <input type="hidden" id="tareaEditId" value="">
+                    <label>Título</label>
+                    <input type="text" id="tareaTitulo" placeholder="Ej. Informe de granulometría">
+                    <label>Descripción</label>
+                    <textarea id="tareaDesc" rows="3" placeholder="Indicaciones para el estudiante"></textarea>
+                    <label>Materia</label>
+                    <select id="tareaMateria">
+                        <option>Mecánica de Suelos I</option>
+                        <option>Mecánica de Suelos II</option>
+                        <option>Resistencia de Materiales</option>
+                    </select>
+                    <label>Grupo (vacío = todos)</label>
+                    <input type="text" id="tareaGrupo" placeholder="Ej. A">
+                    <label>Fecha límite</label>
+                    <input type="date" id="tareaFecha">
+                    <label>Hora límite</label>
+                    <input type="time" id="tareaHora">
+                    <div class="botones-calculo" style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+                        <button class="btn-calcular" id="btnCrearTarea">PUBLICAR TAREA</button>
+                        <button class="btn-limpiar" id="btnCancelarEditTarea" type="button" hidden>CANCELAR EDICIÓN</button>
+                    </div>
+                    <p class="mensaje-error" id="tareaError"></p>
+                </div>
+                <div class="aula-card">
+                    <h3>Tareas publicadas</h3>
+                    <div class="filtros-aula">
+                        <label>Materia</label>
+                        <select id="filtroMateriaTareas">
+                            <option value="">Todas</option>
+                            <option>Mecánica de Suelos I</option>
+                            <option>Mecánica de Suelos II</option>
+                            <option>Resistencia de Materiales</option>
+                        </select>
+                        <label>Grupo</label>
+                        <input type="text" id="filtroGrupoTareas" placeholder="Todos">
+                        <button class="btn-limpiar" id="btnFiltrarTareas" type="button">FILTRAR</button>
+                    </div>
+                    <div id="listaTareasDocente" class="aula-lista"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="doc-presentaciones">
+            <div class="aula-grid">
+                <div class="aula-card">
+                    <h3>Subir presentación</h3>
+                    <label>Título</label>
+                    <input type="text" id="presTitulo" placeholder="Ej. Capacidad de carga">
+                    <label>Materia</label>
+                    <select id="presMateria">
+                        <option>Mecánica de Suelos I</option>
+                        <option>Mecánica de Suelos II</option>
+                        <option>Resistencia de Materiales</option>
+                    </select>
+                    <label>Grupo (vacío = todos)</label>
+                    <input type="text" id="presGrupo" placeholder="Ej. A">
+                    <label>Archivo (PDF, PPT, PPTX — hasta 100 MB)</label>
+                    <input type="file" id="presArchivo" accept=".pdf,.ppt,.pptx,.png,.jpg">
+                    <button class="btn-calcular" id="btnSubirPres">SUBIR PRESENTACIÓN</button>
+                    <p class="mensaje-error" id="presError"></p>
+                </div>
+                <div class="aula-card">
+                    <h3>Presentaciones cargadas</h3>
+                    <div id="listaPresDocente" class="aula-lista"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="doc-estudiantes">
+            <div class="aula-card aula-card-wide">
+                <h3>Listado de estudiantes</h3>
+                <div class="filtros-aula">
+                    <label>Materia</label>
+                    <select id="filtroMateriaEst">
+                        <option value="">Todas</option>
+                        <option>Mecánica de Suelos I</option>
+                        <option>Mecánica de Suelos II</option>
+                        <option>Resistencia de Materiales</option>
+                    </select>
+                    <label>Grupo</label>
+                    <input type="text" id="filtroGrupoEst" placeholder="Todos">
+                    <button class="btn-limpiar" id="btnFiltrarEst">FILTRAR</button>
+                </div>
+                <div id="listaEstudiantes" class="aula-lista"></div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="doc-entregas">
+            <div class="aula-card aula-card-wide">
+                <h3>Entregas de estudiantes</h3>
+                <div class="filtros-aula">
+                    <label>Materia</label>
+                    <select id="filtroMateriaEnt">
+                        <option value="">Todas</option>
+                        <option>Mecánica de Suelos I</option>
+                        <option>Mecánica de Suelos II</option>
+                        <option>Resistencia de Materiales</option>
+                    </select>
+                    <label>Grupo</label>
+                    <input type="text" id="filtroGrupoEnt" placeholder="Todos">
+                    <button class="btn-limpiar" id="btnFiltrarEnt" type="button">FILTRAR</button>
+                </div>
+                <div id="listaEntregasDocente" class="aula-lista"></div>
+            </div>
+        </section>
+    
+        <section class="tab-content" id="doc-chat">
+            <div class="aula-card aula-card-wide chat-aula-wrap">
+                <h3>Chat por materia</h3>
+                <p class="login-hint">Conversaciones con estudiantes. Filtra por materia y grupo.</p>
+                <div class="filtros-aula">
+                    <label>Materia</label>
+                    <select id="docChatMateria">
+                        <option value="">Todas</option>
+                        <option>Mecánica de Suelos I</option>
+                        <option>Mecánica de Suelos II</option>
+                        <option>Resistencia de Materiales</option>
+                    </select>
+                    <label>Grupo</label>
+                    <input type="text" id="docChatGrupo" placeholder="Ej. A">
+                    <button class="btn-limpiar" type="button" id="btnDocChatFiltro">APLICAR</button>
+                </div>
+                <div class="chat-aula-layout">
+                    <div class="chat-aula-lista" id="docChatLista">
+                        <p class="login-hint">No hay conversaciones aún.</p>
+                    </div>
+                    <div class="chat-aula-panel">
+                        <div class="chat-aula-header" id="docChatHeader">Selecciona una conversación</div>
+                        <div class="chat-aula-mensajes" id="docChatMsgs"></div>
+                        <div class="chat-aula-input-row">
+                            <input type="text" id="docChatInput" placeholder="Escribe un mensaje…" disabled>
+                            <button class="btn-calcular" type="button" id="btnDocChatEnviar" disabled>Enviar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+<!-- ============================================
+         PANTALLA AULA ESTUDIANTE
+    ============================================= -->
+
+        
+
+    <main class="pantalla-curso" id="pantallaEstudiante">
+        <header class="seccion-encabezado seccion-encabezado-doc">
+            <div class="seccion-titulo">
+                <div class="seccion-icono" id="estIconoAula">🎓</div>
+                <div>
+                    <h2>Mi aula</h2>
+                    <p id="estudianteSubtitulo">Consulta tareas, entregas y material del curso.</p>
+                </div>
+            </div>
+            <button class="btn-volver" id="btnVolverEstudiante">← VOLVER AL MENÚ</button>
+        </header>
+
+        <section class="submenu-tabs aula-tabs">
+            <button class="tab-btn active" data-tab="est-tareas">Mis tareas</button>
+            <button class="tab-btn" data-tab="est-material">Presentaciones</button>
+            <button class="tab-btn" data-tab="est-entregas">Mis entregas</button>
+            <button class="tab-btn" data-tab="est-chat">Chat <span class="tab-badge" id="badgeChatEst" hidden>0</span></button>
+        </section>
+
+        <section class="tab-content active" id="est-tareas">
+            <div class="aula-card aula-card-wide">
+                <h3>Tareas asignadas</h3>
+                <div class="filtros-aula">
+                    <label>Materia</label>
+                    <select id="estFiltroMateria">
+                        <option value="">Todas mis materias</option>
+                    </select>
+                    <label>Grupo</label>
+                    <input type="text" id="estFiltroGrupo" placeholder="Ej. A">
+                    <button class="btn-limpiar" id="btnEstAplicarFiltro" type="button">APLICAR FILTRO</button>
+                </div>
+                <div id="listaTareasEstudiante" class="aula-lista"></div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="est-material">
+            <div class="aula-card aula-card-wide">
+                <h3>Presentaciones del curso</h3>
+                <div class="filtros-aula">
+                    <label>Materia</label>
+                    <select id="estFiltroMateriaPres">
+                        <option value="">Todas mis materias</option>
+                    </select>
+                    <label>Grupo</label>
+                    <input type="text" id="estFiltroGrupoPres" placeholder="Ej. A">
+                    <button class="btn-limpiar" id="btnEstAplicarFiltroPres" type="button">APLICAR FILTRO</button>
+                </div>
+                <div id="listaPresEstudiante" class="aula-lista"></div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="est-entregas">
+            <div class="aula-grid">
+                <div class="aula-card">
+                    <h3>Entregar trabajo</h3>
+                    <label>Tarea</label>
+                    <select id="entregaTarea"></select>
+                    <label>Comentario</label>
+                    <textarea id="entregaComentario" rows="2" placeholder="Opcional"></textarea>
+                    <label>Archivo (PDF, DOC, imágenes — hasta 100 MB)</label>
+                    <input type="file" id="entregaArchivo" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+                    <button class="btn-calcular" id="btnEntregar">ENTREGAR</button>
+                    <p class="mensaje-error" id="entregaError"></p>
+                </div>
+                <div class="aula-card">
+                    <h3>Historial de entregas</h3>
+                    <div id="listaMisEntregas" class="aula-lista"></div>
+                </div>
+            </div>
+        </section>
+    
+        <section class="tab-content" id="est-chat">
+            <div class="aula-card aula-card-wide chat-aula-wrap">
+                <h3>Chat con el docente</h3>
+                <p class="login-hint">Escribe al docente de cada materia en la que estás registrado.</p>
+                <div class="filtros-aula">
+                    <label>Materia</label>
+                    <select id="estChatMateria"></select>
+                    <button class="btn-limpiar" type="button" id="btnEstChatAbrir">ABRIR CHAT</button>
+                </div>
+                <div class="chat-aula-layout">
+                    <div class="chat-aula-lista" id="estChatLista">
+                        <p class="login-hint">Elige una materia para chatear.</p>
+                    </div>
+                    <div class="chat-aula-panel">
+                        <div class="chat-aula-header" id="estChatHeader">Selecciona una materia</div>
+                        <div class="chat-aula-mensajes" id="estChatMsgs"></div>
+                        <div class="chat-aula-input-row">
+                            <input type="text" id="estChatInput" placeholder="Escribe un mensaje…" disabled>
+                            <button class="btn-calcular" type="button" id="btnEstChatEnviar" disabled>Enviar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+</main>
+    <!-- Modal editar perfil (solo foto) -->
+    <div class="modal-perfil" id="modalPerfil" hidden>
+        <div class="modal-perfil-card">
+            <div class="modal-perfil-header">
+                <h3>Foto de perfil</h3>
+                <button type="button" class="btn-cerrar-asistente" id="btnCerrarPerfil">×</button>
+            </div>
+            <div class="modal-perfil-body">
+                <div class="perfil-foto-wrap">
+                    <img id="perfilFotoPreview" class="perfil-foto-preview" alt="Foto de perfil" hidden>
+                    <div class="perfil-foto-placeholder" id="perfilFotoPlaceholder">📷</div>
+                </div>
+                <label>Selecciona una imagen</label>
+                <input type="file" id="perfilFotoInput" accept="image/*">
+                <p class="login-hint">Máx. 1.5 MB. Se mostrará en tu saludo y en el listado del docente.</p>
+                <button type="button" class="btn-calcular" id="btnGuardarPerfil">GUARDAR FOTO</button>
+                <p class="mensaje-error" id="perfilError"></p>
+            </div>
+        </div>
+    </div>
+
+
+
+    <main class="pantalla-curso" id="pantallaAdmin" style="display:none;">
+        <header class="seccion-encabezado seccion-encabezado-doc">
+            <div class="seccion-titulo">
+                <div class="seccion-icono">🛡️</div>
+                <div>
+                    <h2>Panel de administración</h2>
+                    <p>Gestiona correos de docentes y permisos de administrador.</p>
+                </div>
+            </div>
+            <button class="btn-volver" id="btnVolverAdmin">← VOLVER AL MENÚ</button>
+        </header>
+
+        <section class="aula-grid" style="padding:0 20px 40px;">
+            <div class="aula-card">
+                <h3>Agregar correo de docente</h3>
+                <p class="login-hint">Solo autorizas el correo. Luego el docente se registra en la pestaña «Docente» y crea su propia contraseña.</p>
+                <label>Correo institucional</label>
+                <input type="email" id="adminDocEmail" placeholder="nombre@unipamplona.edu.co">
+                <label>Nota / nombre provisional (opcional)</label>
+                <input type="text" id="adminDocNombre" placeholder="Nombre del docente">
+                <div class="botones-calculo" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" class="btn-calcular" id="btnAdminAddDocente">AGREGAR DOCENTE</button>
+                </div>
+                <p class="mensaje-error" id="adminDocError"></p>
+                <p class="login-hint" id="adminDocOk" style="color:#9dffc0;" hidden></p>
+            </div>
+            <div class="aula-card">
+                <h3>Docentes autorizados</h3>
+                <p class="login-hint">Incluye la lista base y los agregados desde este panel.</p>
+                <div id="adminListaDocentes" class="aula-lista"></div>
+            </div>
+            <div class="aula-card aula-card-wide">
+                <h3>Permisos de administrador</h3>
+                <p class="login-hint">Solo un administrador puede otorgar este permiso a otro docente. El superadmin (Andrés) no se puede quitar.</p>
+                <label>Correo a promover como administrador</label>
+                <input type="email" id="adminPromoEmail" placeholder="docente@unipamplona.edu.co">
+                <div class="botones-calculo" style="margin-top:12px;">
+                    <button type="button" class="btn-calcular" id="btnAdminPromo">OTORGAR ADMIN</button>
+                </div>
+                <p class="mensaje-error" id="adminPromoError"></p>
+                <div id="adminListaAdmins" class="aula-lista" style="margin-top:14px;"></div>
+            </div>
+        </section>
+    </main>
+
+    <main class="pantalla-curso" id="pantallaSimuladores">
+        <header class="seccion-encabezado seccion-encabezado-doc">
+            <div class="seccion-titulo">
+                <div class="seccion-icono">🎮</div>
+                <div>
+                    <h2>Simuladores</h2>
+                    <p>Herramientas visuales del laboratorio virtual.</p>
+                </div>
+            </div>
+            <button class="btn-volver" id="btnVolverSimuladores">← VOLVER</button>
+        </header>
+        <section class="aula-grid" style="padding: 0 20px 40px;">
+            <div class="aula-card" id="card-sim-mohr">
+                <h3>Círculo de Mohr</h3>
+                <canvas id="mohrCanvas" width="400" height="300"></canvas>
+            </div>
+            <div class="aula-card" id="card-sim-esfdef">
+                <h3>Esfuerzo–deformación</h3>
+                <canvas id="canvasEsfDef" width="400" height="300"></canvas>
+            </div>
+            <div class="aula-card" id="card-sim-flujo">
+                <h3>Flujo de agua</h3>
+                <canvas id="sim-flujo" width="400" height="240"></canvas>
+            </div>
+            <div class="aula-card" id="card-sim-consolidacion">
+                <h3>Consolidación U–t</h3>
+                <canvas id="sim-consolidacion" width="400" height="240"></canvas>
+            </div>
+            <div class="aula-card sim-maquina-card" id="card-sim-corte" hidden>
+                <h3>Máquina de Corte Directo</h3>
+                <p class="grafica-hint">Simula la caja de corte: carga vertical Pv, deslizamiento horizontal y fuerza Ph. Ajusta los parámetros e inicia el ensayo.</p>
+                <div class="sim-maquina-layout">
+                    <div class="sim-maquina-controles">
+                        <label>Área A (cm²)</label>
+                        <input type="number" id="sim-cd-area" value="36" step="0.1" min="1">
+                        <label>Carga vertical Pv (kg)</label>
+                        <input type="range" id="sim-cd-pv" min="1" max="40" step="0.5" value="10">
+                        <div class="sim-val-row"><span>Pv =</span><strong id="sim-cd-pv-val">10</strong><span>kg</span></div>
+                        <label>Cohesión c (kg/cm²)</label>
+                        <input type="range" id="sim-cd-c" min="0" max="0.5" step="0.01" value="0.05">
+                        <div class="sim-val-row"><span>c =</span><strong id="sim-cd-c-val">0.05</strong></div>
+                        <label>Ángulo φ (°)</label>
+                        <input type="range" id="sim-cd-phi" min="5" max="45" step="0.5" value="28">
+                        <div class="sim-val-row"><span>φ =</span><strong id="sim-cd-phi-val">28</strong><span>°</span></div>
+                        <label>Tipo de suelo</label>
+                        <select id="sim-cd-tipo">
+                            <option value="denso">Arena densa (dilata)</option>
+                            <option value="suelto" selected>Arena suelta (se comprime)</option>
+                            <option value="arcilla">Arcilla (pico suave)</option>
+                        </select>
+                        <label>Velocidad de corte</label>
+                        <input type="range" id="sim-cd-vel" min="1" max="5" step="1" value="2">
+                        <div class="sim-val-row"><span>Velocidad</span><strong id="sim-cd-vel-val">media</strong></div>
+                        <div class="botones-calculo" style="flex-direction:column;gap:8px;margin-top:10px">
+                            <button type="button" class="btn-calcular" id="btn-sim-cd-start">▶ INICIAR ENSAYO</button>
+                            <button type="button" class="btn-limpiar" id="btn-sim-cd-reset">Reiniciar</button>
+                        </div>
+                    </div>
+                    <div class="sim-maquina-vista">
+                        <canvas id="sim-corte-canvas" class="sim-maquina-canvas" width="460" height="300"></canvas>
+                        <div class="sim-lecturas">
+                            <div><span>σn</span><strong id="sim-cd-sn">—</strong><small>kg/cm²</small></div>
+                            <div><span>Ph</span><strong id="sim-cd-ph">—</strong><small>kg</small></div>
+                            <div><span>τ</span><strong id="sim-cd-t">—</strong><small>kg/cm²</small></div>
+                            <div><span>δh</span><strong id="sim-cd-dh">—</strong><small>mm</small></div>
+                            <div><span>δv</span><strong id="sim-cd-dv">—</strong><small>mm</small></div>
+                            <div><span>Estado</span><strong id="sim-cd-estado">Listo</strong></div>
+                        </div>
+                        <canvas id="sim-corte-curva" class="sim-curva-canvas" width="360" height="300"></canvas>
+                        <p class="grafica-hint" id="hint-sim-corte">Curva Ph vs desplazamiento horizontal (pico y residual).</p>
+                    </div>
+                </div>
+            </div>
+            <div class="aula-card sim-maquina-card" id="card-sim-inconfinada" hidden>
+                <h3>Prensa de Compresión Inconfinada</h3>
+                <p class="grafica-hint">Muestra cilíndrica sin confinamiento lateral (σ₃ = 0). Ajusta qu y observa la falla.</p>
+                <div class="sim-maquina-layout">
+                    <div class="sim-maquina-controles">
+                        <label>Diámetro (mm)</label>
+                        <input type="number" id="sim-uc-d" value="38" step="1">
+                        <label>Altura L0 (mm)</label>
+                        <input type="number" id="sim-uc-l0" value="76" step="1">
+                        <label>Resistencia qu (kPa)</label>
+                        <input type="range" id="sim-uc-qu" min="20" max="400" step="5" value="120">
+                        <div class="sim-val-row"><span>qu =</span><strong id="sim-uc-qu-val">120</strong><span>kPa</span></div>
+                        <label>Velocidad</label>
+                        <input type="range" id="sim-uc-vel" min="1" max="5" step="1" value="3">
+                        <div class="sim-val-row"><span></span><strong id="sim-uc-vel-val">media (~2.5 s)</strong></div>
+                        <div class="botones-calculo" style="flex-direction:column;gap:8px;margin-top:10px">
+                            <button type="button" class="btn-calcular" id="btn-sim-uc-start">▶ INICIAR ENSAYO</button>
+                            <button type="button" class="btn-limpiar" id="btn-sim-uc-reset">Reiniciar</button>
+                        </div>
+                    </div>
+                    <div class="sim-maquina-vista">
+                        <canvas id="sim-inconf-canvas" class="sim-maquina-canvas" width="460" height="300"></canvas>
+                        <div class="sim-lecturas">
+                            <div><span>σ</span><strong id="sim-uc-sig">—</strong><small>kPa</small></div>
+                            <div><span>ε</span><strong id="sim-uc-eps">—</strong><small>%</small></div>
+                            <div><span>P</span><strong id="sim-uc-p">—</strong><small>N</small></div>
+                            <div><span>Estado</span><strong id="sim-uc-estado">Listo</strong></div>
+                        </div>
+                        <canvas id="sim-uc-curva" class="sim-curva-canvas" width="360" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="aula-card sim-maquina-card" id="card-sim-consolidacion-ms2" hidden>
+                <h3>Edómetro (Consolidación)</h3>
+                <p class="grafica-hint">Anillo de consolidación, piedra porosa y cargas escalonadas. Observa el asentamiento en el tiempo.</p>
+                <div class="sim-maquina-layout">
+                    <div class="sim-maquina-controles">
+                        <label>Carga actual σ' (kPa)</label>
+                        <input type="range" id="sim-co-sig" min="12.5" max="800" step="12.5" value="100">
+                        <div class="sim-val-row"><span>σ' =</span><strong id="sim-co-sig-val">100</strong><span>kPa</span></div>
+                        <label>Cv (mm²/min)</label>
+                        <input type="range" id="sim-co-cv" min="0.5" max="20" step="0.5" value="4">
+                        <div class="sim-val-row"><span>Cv =</span><strong id="sim-co-cv-val">4</strong></div>
+                        <label>H drenaje (mm)</label>
+                        <input type="number" id="sim-co-h" value="10" step="0.5">
+                        <label>Velocidad animación</label>
+                        <input type="range" id="sim-co-vel" min="1" max="5" step="1" value="3">
+                        <div class="botones-calculo" style="flex-direction:column;gap:8px;margin-top:10px">
+                            <button type="button" class="btn-calcular" id="btn-sim-co-start">▶ APLICAR CARGA</button>
+                            <button type="button" class="btn-limpiar" id="btn-sim-co-reset">Reiniciar</button>
+                        </div>
+                    </div>
+                    <div class="sim-maquina-vista">
+                        <canvas id="sim-co-maquina" class="sim-maquina-canvas" width="460" height="300"></canvas>
+                        <div class="sim-lecturas">
+                            <div><span>U</span><strong id="sim-co-u">—</strong><small>%</small></div>
+                            <div><span>δv</span><strong id="sim-co-dv">—</strong><small>mm</small></div>
+                            <div><span>t</span><strong id="sim-co-t">—</strong><small>min</small></div>
+                            <div><span>Estado</span><strong id="sim-co-estado">Listo</strong></div>
+                        </div>
+                        <canvas id="sim-co-curva" class="sim-curva-canvas" width="360" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="aula-card sim-maquina-card" id="card-sim-triaxial" hidden>
+                <h3>Cámara Triaxial</h3>
+                <p class="grafica-hint">Muestra en membrana dentro de la cámara con presión de celda σ₃ y carga axial hasta falla.</p>
+                <div class="sim-maquina-layout">
+                    <div class="sim-maquina-controles">
+                        <label>Tipo de ensayo</label>
+                        <select id="sim-tx-tipo">
+                            <option value="UU">UU (no consolidado no drenado)</option>
+                            <option value="CU" selected>CU (consolidado no drenado)</option>
+                            <option value="CD">CD (consolidado drenado)</option>
+                        </select>
+                        <label>Diámetro muestra (mm)</label>
+                        <input type="number" id="sim-tx-d" value="38" step="1" min="20" max="100">
+                        <label>Altura muestra (mm)</label>
+                        <input type="number" id="sim-tx-h" value="76" step="1" min="30" max="150">
+                        <label>Presión de celda σ₃ (kPa)</label>
+                        <input type="range" id="sim-tx-s3" min="50" max="400" step="10" value="100">
+                        <div class="sim-val-row"><span>σ₃ =</span><strong id="sim-tx-s3-val">100</strong><span>kPa</span></div>
+                        <label>Cohesión c (kPa)</label>
+                        <input type="range" id="sim-tx-c" min="0" max="80" step="1" value="15">
+                        <div class="sim-val-row"><span>c =</span><strong id="sim-tx-c-val">15</strong></div>
+                        <label>Ángulo φ (°)</label>
+                        <input type="range" id="sim-tx-phi" min="0" max="40" step="1" value="25">
+                        <div class="sim-val-row"><span>φ =</span><strong id="sim-tx-phi-val">25</strong><span>°</span></div>
+                        <label>Velocidad</label>
+                        <input type="range" id="sim-tx-vel" min="1" max="5" step="1" value="3">
+                        <div class="sim-val-row"><span></span><strong id="sim-tx-vel-val">media (~2.5 s)</strong></div>
+                        <div class="botones-calculo" style="flex-direction:column;gap:8px;margin-top:10px">
+                            <button type="button" class="btn-calcular" id="btn-sim-tx-start">▶ INICIAR ENSAYO</button>
+                            <button type="button" class="btn-limpiar" id="btn-sim-tx-reset">Reiniciar</button>
+                        </div>
+                    </div>
+                    <div class="sim-maquina-vista">
+                        <canvas id="sim-tx-canvas" class="sim-maquina-canvas" width="460" height="300"></canvas>
+                        <div class="sim-lecturas">
+                            <div><span>σ₁</span><strong id="sim-tx-s1">—</strong><small>kPa</small></div>
+                            <div><span>σ₃</span><strong id="sim-tx-s3r">—</strong><small>kPa</small></div>
+                            <div><span>(σ₁−σ₃)</span><strong id="sim-tx-dev">—</strong><small>kPa</small></div>
+                            <div><span>εa</span><strong id="sim-tx-eps">—</strong><small>%</small></div>
+                            <div><span>Estado</span><strong id="sim-tx-estado">Listo</strong></div>
+                        </div>
+                        <canvas id="sim-tx-curva" class="sim-curva-canvas" width="360" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="modal-perfil" id="modalResultado" hidden>
+        <div class="modal-perfil-card" style="max-width:520px">
+            <div class="modal-perfil-header">
+                <h3 id="modalResultadoTitulo">Resultado</h3>
+                <button type="button" class="btn-cerrar-asistente" id="btnCerrarResultado">×</button>
+            </div>
+            <div class="modal-perfil-body" id="modalResultadoBody"></div>
+        </div>
+    </div>
+
+    <div class="modal-perfil" id="modalVistaPrevia" hidden>
+        <div class="modal-perfil-card" style="max-width:min(920px,96vw)">
+            <div class="modal-perfil-header">
+                <h3 id="modalVistaPreviaTitulo">Vista previa</h3>
+                <button type="button" class="btn-cerrar-asistente" id="btnCerrarVistaPrevia">×</button>
+            </div>
+            <div class="modal-perfil-body" id="modalVistaPreviaBody"></div>
+        </div>
+    </div>
+    <script src="js/aula.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
