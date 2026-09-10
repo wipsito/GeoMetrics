@@ -27,6 +27,14 @@ function aulaLoad(key, fallback) {
 
 function aulaSave(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
+    // GeoCloud_SYNC_PATCH: subir a la nube claves compartidas
+    try {
+        if (window.GeoCloud && GeoCloud.isOn()) {
+            if (key === 'geometrics_users') GeoCloud.syncUpUsers();
+            else if (key === 'geometrics_docentes_extra') GeoCloud.pushDocentesExtra(value);
+            else if (key === 'geometrics_admins') GeoCloud.pushAdmins(value);
+        }
+    } catch (e) {}
 }
 
 function aulaUid() {
@@ -604,6 +612,14 @@ function aulaRestablecerPassword() {
 
 // ---------- Login / Registro local ----------
 function aulaInitLogin() {
+    try {
+        if (window.GeoCloud && GeoCloud.isOn()) {
+            GeoCloud.syncDown().then(function () {
+                try { if (typeof aulaSeed === 'function') aulaSeed(); } catch (e) {}
+            });
+        }
+    } catch (e) {}
+
     aulaSeed();
 
     function aulaBindPasswordToggles(root) {
@@ -2308,6 +2324,9 @@ function aulaChatLoad() {
 }
 function aulaChatSave(list) {
     try { localStorage.setItem(CHAT_KEY, JSON.stringify(list)); } catch (e) {}
+    try {
+        if (window.GeoCloud && GeoCloud.isOn()) GeoCloud.pushChats(list);
+    } catch (e) {}
 }
 function aulaChatId() {
     return 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
@@ -2697,6 +2716,33 @@ function aulaChatUpdateBadges() {
 }
 
 function aulaChatBind() {
+    try {
+        if (window.GeoCloud && GeoCloud.isOn() && !window.__chatCloudListening) {
+            window.__chatCloudListening = true;
+            GeoCloud.listenChats(function (list) {
+                try {
+                    localStorage.setItem(typeof CHAT_KEY !== 'undefined' ? CHAT_KEY : 'gm_chats_v1', JSON.stringify(list || []));
+                    var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+                    if (!user) return;
+                    if (user.rol === 'docente') {
+                        if (typeof aulaChatRenderListaDocente === 'function') aulaChatRenderListaDocente();
+                        if (window.__chatActivoId && typeof aulaChatRenderMsgs === 'function') {
+                            var c = (list || []).find(function (x) { return x.id === window.__chatActivoId; });
+                            if (c) aulaChatRenderMsgs('docChatMsgs', c, user.email);
+                        }
+                    } else {
+                        if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+                        if (window.__chatActivoId && typeof aulaChatRenderMsgs === 'function') {
+                            var c2 = (list || []).find(function (x) { return x.id === window.__chatActivoId; });
+                            if (c2) aulaChatRenderMsgs('estChatMsgs', c2, user.email);
+                        }
+                    }
+                    if (typeof aulaChatUpdateBadges === 'function') aulaChatUpdateBadges();
+                } catch (e) {}
+            });
+        }
+    } catch (e) {}
+
     if (window.__chatBound) return;
     window.__chatBound = true;
 
