@@ -280,17 +280,18 @@
                         <p style="margin-top:8px;">Adjunta tu archivo o pega el error y te devuelvo la corrección explicada y, si aplica, un archivo para descargar.</p>
                     </div>
                 </div>
-                <div class="asistente-adjunto" id="asistenteAdjuntoBar">
-                    <label class="btn-adjuntar" for="civixFileInput" title="Adjuntar archivo">📎 Adjuntar archivo</label>
-                    <input type="file" id="civixFileInput" hidden
-                        accept=".py,.js,.ts,.txt,.csv,.json,.md,.m,.dxf,.ifc,.xml,.dat,.in,.log,.sql,.html,.css,.ipynb,.geojson,.obj,.mtl,.step,.stp,.iges,.igs">
-                    <span class="adjunto-nombre" id="civixFileName"></span>
-                    <button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" hidden title="Quitar">×</button>
-                </div>
-                <p class="asistente-formatos">Formatos: Python, texto, CSV, DXF, IFC, JSON, logs… Para AutoCAD/Revit usa exportación DXF/IFC o pega el mensaje de error.</p>
-                <div class="asistente-input">
-                    <input type="text" id="inputAsistente" placeholder="Describe el problema o el error que te aparece..." />
-                    <button id="btnEnviarMensaje">Enviar</button>
+                <div class="asistente-input-wrap">
+                    <div class="asistente-file-chip" id="civixFileChip" hidden>
+                        <span class="adjunto-nombre" id="civixFileName"></span>
+                        <button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" title="Quitar archivo">×</button>
+                    </div>
+                    <div class="asistente-input">
+                        <input type="text" id="inputAsistente" placeholder="Describe el problema o el error que te aparece..." />
+                        <label class="btn-adjuntar-icon" for="civixFileInput" title="Adjuntar archivo (Python, DXF, IFC, TXT…)">📎</label>
+                        <input type="file" id="civixFileInput" hidden
+                            accept=".py,.js,.ts,.txt,.csv,.json,.md,.m,.dxf,.ifc,.xml,.dat,.in,.log,.sql,.html,.css,.ipynb,.geojson,.obj,.mtl,.step,.stp,.iges,.igs">
+                        <button id="btnEnviarMensaje" type="button">Enviar</button>
+                    </div>
                 </div>
             </div>
         </div>
