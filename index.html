@@ -986,6 +986,7 @@
             <button class="tab-btn" data-tab="doc-estudiantes">Estudiantes</button>
             <button class="tab-btn" data-tab="doc-entregas">Entregas <span class="tab-badge" id="badgeEntregas" hidden>0</span></button>
             <button class="tab-btn" data-tab="doc-chat">Chat <span class="tab-badge" id="badgeChatDoc" hidden>0</span></button>
+            <button class="tab-btn" data-tab="doc-integrantes">Integrantes del curso</button>
         </section>
 
         <section class="tab-content active" id="doc-tareas">
@@ -1129,6 +1130,26 @@
                 </div>
             </div>
         </section>
+        <section class="tab-content" id="doc-integrantes">
+            <div class="aula-card">
+                <h3>Integrantes del curso</h3>
+                <p class="login-hint">Tú apareces primero como docente. Solo se listan estudiantes de los grupos que dictas.</p>
+                <div class="filtros-aula">
+                    <label>Materia</label>
+                    <select id="docIntMateria">
+                        <option value="">Seleccione materia</option>
+                        <option>Mecánica de Suelos I</option>
+                        <option>Mecánica de Suelos II</option>
+                        <option>Resistencia de Materiales</option>
+                    </select>
+                    <label>Grupo</label>
+                    <input type="text" id="docIntGrupo" placeholder="Ej. A">
+                    <button class="btn-limpiar" type="button" id="btnDocIntFiltro">VER INTEGRANTES</button>
+                </div>
+                <div id="listaIntegrantesDoc" class="aula-lista" style="margin-top:14px;"></div>
+            </div>
+        </section>
+
     </main>
 
 <!-- ============================================
