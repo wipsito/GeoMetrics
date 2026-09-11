@@ -53,7 +53,14 @@ function aulaSeed() {
         rol: 'docente',
         materia: '',
         grupo: '',
-        materias: [],
+        // Solo grupos de demostración (no interfiere con A, B, C reales)
+        materias: [
+            { nombre: 'Mecánica de Suelos I', grupo: 'DEMO' },
+            { nombre: 'Mecánica de Suelos II', grupo: 'DEMO' },
+            { nombre: 'Resistencia de Materiales', grupo: 'DEMO' }
+        ],
+        materia: 'Mecánica de Suelos I',
+        grupo: 'DEMO',
         foto: ''
     };
     var users = aulaLoad(AULA_KEYS.users, null);
@@ -66,12 +73,17 @@ function aulaSeed() {
     else {
         users = users.map(function(u) {
             if (u && String(u.email || '').toLowerCase() === DEMO_EMAIL) {
-                // mantener password/nombre demo estables para la prueba
                 u.nombre = u.nombre || DEMO.nombre;
                 u.nombres = u.nombres || DEMO.nombres;
                 u.apellidos = u.apellidos || DEMO.apellidos;
                 u.password = u.password || DEMO.password;
                 u.rol = 'docente';
+                // Si no tiene materias, asignar solo DEMO
+                if (!u.materias || !u.materias.length) {
+                    u.materias = DEMO.materias;
+                    u.materia = DEMO.materia;
+                    u.grupo = DEMO.grupo;
+                }
             }
             return u;
         });
@@ -327,11 +339,20 @@ function aulaGrupoDeMateria(user, materia) {
 function aulaUsuarioCoincideMateriaGrupo(user, materia, grupo) {
     var list = aulaMateriasUsuario(user);
     if (!list.length) return false;
-    var gFiltro = aulaNormGrupo(grupo);
+    var gFiltro = String(grupo || '').trim().toUpperCase();
     return list.some(function(m) {
         var okMat = !materia || m.nombre === materia;
-        var okGrp = !gFiltro || !m.grupo || aulaNormGrupo(m.grupo) === gFiltro;
-        return okMat && okGrp;
+        if (!okMat) return false;
+        if (!gFiltro) return true;
+        var gruposUser = (m.grupos && m.grupos.length) ? m.grupos : aulaParseGrupos(m.grupo);
+        if (!gruposUser.length) {
+            // un solo grupo en campo plano
+            var g = String(m.grupo || '').trim().toUpperCase();
+            return !g || g === gFiltro || g.split(/[,;]/).map(function(x){return x.trim();}).indexOf(gFiltro) >= 0;
+        }
+        return gruposUser.some(function(g) {
+            return String(g).trim().toUpperCase() === gFiltro;
+        });
     });
 }
 
@@ -2400,36 +2421,57 @@ function aulaParseGrupos(str) {
         .map(function(g) { return g.trim(); })
         .filter(Boolean);
 }
-/** ¿El docente dicta esta materia/grupo? */
+/** ¿El docente dicta esta materia y este grupo exacto? */
 function aulaDocenteDicta(user, materia, grupo) {
     if (!user || user.rol !== 'docente') return false;
     var mats = aulaMateriasUsuario(user);
-    if (!mats.length) return true; // docentes sin materias: genérico (compat)
+    // Sin materias en el registro → no dicta ningún grupo (evita que el demo capture todo)
+    if (!mats.length) return false;
     var gWant = String(grupo || '').trim().toUpperCase();
     for (var i = 0; i < mats.length; i++) {
         if (mats[i].nombre !== materia) continue;
-        var grupos = mats[i].grupos || aulaParseGrupos(mats[i].grupo);
-        if (!grupos.length) return true; // materia sin grupos = todos
-        if (!gWant) return true;
-        if (grupos.some(function(g) { return String(g).toUpperCase() === gWant; })) return true;
+        var grupos = mats[i].grupos;
+        if (!grupos || !grupos.length) {
+            grupos = aulaParseGrupos(mats[i].grupo);
+        }
+        // Materia marcada pero sin grupos → no asignar chats de grupo concreto
+        if (!grupos.length) {
+            // Solo coincide si el estudiante tampoco tiene grupo
+            if (!gWant) return true;
+            continue;
+        }
+        if (!gWant) {
+            // sin grupo pedido: el docente sí dicta esa materia
+            return true;
+        }
+        if (grupos.some(function(g) { return String(g).trim().toUpperCase() === gWant; })) {
+            return true;
+        }
     }
     return false;
 }
-/** Busca el docente asignado a materia + grupo del estudiante */
+/**
+ * Busca el docente de esa materia + grupo.
+ * Solo coincide si el docente registró ese grupo (ej. "A, B").
+ * No usa el demo como comodín.
+ */
 function aulaBuscarDocenteMateria(materia, grupo) {
     var users = aulaLoad(AULA_KEYS.users, []);
+    var gWant = String(grupo || '').trim();
+    // 1) Coincidencia exacta materia + grupo
     var candidatos = users.filter(function(u) {
-        return u && u.rol === 'docente' && aulaDocenteDicta(u, materia, grupo);
+        if (!u || u.rol !== 'docente') return false;
+        // preferir docentes reales (con materias)
+        return aulaDocenteDicta(u, materia, gWant);
     });
-    if (candidatos.length) return candidatos[0];
-    // fallback: cualquier docente de esa materia (sin filtrar grupo)
-    candidatos = users.filter(function(u) {
-        return u && u.rol === 'docente' && aulaDocenteDicta(u, materia, '');
+    // Preferir no-demo si hay varios
+    var real = candidatos.filter(function(u) {
+        return aulaNormalizarEmail(u.email) !== 'docente.demo@unipamplona.edu.co';
     });
+    if (real.length) return real[0];
     if (candidatos.length) return candidatos[0];
-    // último recurso: demo / primer docente
-    var demo = users.find(function(u) { return u.rol === 'docente'; });
-    return demo || null;
+    // 2) Sin fallback al demo genérico: null → el chat queda sin docente hasta que exista uno
+    return null;
 }
 
 function aulaChatDocenteEmail() {
@@ -2608,19 +2650,15 @@ function aulaChatRenderListaDocente() {
         if (grp && String(c.grupo || '').trim().toUpperCase() !== grp.toUpperCase()) return false;
         // Chats dirigidos a este docente
         if (c.teacherEmail && aulaNormalizarEmail(c.teacherEmail) === myEmail) return true;
-        // O de materias/grupos que dicta
+        // Solo si dicta esa materia y grupo
         if (typeof aulaDocenteDicta === 'function' && aulaDocenteDicta(user, c.materia, c.grupo)) {
-            // auto-asignar teacherEmail si estaba vacío
-            if (!c.teacherEmail) {
+            if (!c.teacherEmail || aulaNormalizarEmail(c.teacherEmail) !== myEmail) {
                 c.teacherEmail = myEmail;
                 c.teacherName = user.nombre || myEmail;
                 aulaChatSaveOne(c);
             }
             return true;
         }
-        // Docente sin materias configuradas: ver todos
-        var mats = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(user) : [];
-        if (!mats.length) return true;
         return false;
     }).sort(function(a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
 
@@ -2762,13 +2800,15 @@ function aulaChatAbrirEstudiante(materia, grupo) {
     aulaChatMarkRead(c.id, user.email);
     var hdr = document.getElementById('estChatHeader');
     if (hdr) {
-        var tn = aulaNombreDocentePara(materia, c.grupo || g, c);
-        // persistir nombre real en el chat
-        if (tn && tn !== 'Docente') {
-            c.teacherName = tn;
-            var listUp = aulaChatLoad();
-            var cu = listUp.find(function(x) { return x.id === c.id; });
-            if (cu) { cu.teacherName = tn; aulaChatSave(listUp); }
+        var tn = 'Sin docente asignado';
+        if (c.teacherEmail) {
+            tn = aulaNombreDocentePara(materia, c.grupo || g, c);
+            if (tn && tn !== 'Docente') {
+                c.teacherName = tn;
+                aulaChatSaveOne(c);
+            }
+        } else {
+            tn = 'Sin docente para este grupo (aún no se registra)';
         }
         hdr.textContent = materia + (c.grupo ? ' · Grupo ' + c.grupo : '') + ' · ' + tn;
     }
