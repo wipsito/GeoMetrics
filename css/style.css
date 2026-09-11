@@ -3852,3 +3852,51 @@ body {
 }
 .asistente-formatos { display: none !important; }
 .asistente-adjunto { display: none !important; }
+
+/* Civix input: texto | 📎 | Enviar */
+.asistente-contenido .asistente-input-wrap {
+    padding: 12px 16px 18px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.2);
+}
+.asistente-contenido .asistente-input {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    border: none !important;
+    background: transparent !important;
+}
+.asistente-contenido .asistente-input input[type="text"] {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+.asistente-contenido .btn-adjuntar-icon {
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    background: rgba(232,184,74,0.18);
+    border: 1px solid rgba(232,184,74,0.45);
+    font-size: 20px;
+    line-height: 1;
+    user-select: none;
+}
+.asistente-contenido .asistente-input button#btnEnviarMensaje {
+    flex: 0 0 auto !important;
+}
+.asistente-formatos,
+.asistente-adjunto,
+label.btn-adjuntar:not(.btn-adjuntar-icon) {
+    display: none !important;
+}
