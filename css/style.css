@@ -3799,3 +3799,56 @@ body {
 }
 .btn-descarga-civix:hover { filter: brightness(1.08); }
 .asistente-acciones { display: flex; gap: 8px; align-items: center; }
+
+.asistente-input-wrap {
+    padding: 10px 14px 14px;
+    border-top: 1px solid rgba(232,184,74,0.15);
+}
+.asistente-file-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(232,184,74,0.12);
+    border: 1px solid rgba(232,184,74,0.35);
+    max-width: 100%;
+}
+.asistente-file-chip .adjunto-nombre {
+    flex: 1;
+    font-size: 12px;
+    color: #e8b84a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: none;
+}
+.asistente-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.asistente-input input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+.btn-adjuntar-icon {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    background: rgba(232,184,74,0.15);
+    border: 1px solid rgba(232,184,74,0.4);
+    font-size: 18px;
+    line-height: 1;
+}
+.btn-adjuntar-icon:hover {
+    background: rgba(232,184,74,0.3);
+}
+.asistente-formatos { display: none !important; }
+.asistente-adjunto { display: none !important; }
