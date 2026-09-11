@@ -111,85 +111,128 @@ function inicializarAsistenteAI() {
     var btnAsistente = document.getElementById('btnAsistenteAI');
     var modal = document.getElementById('asistenteModal');
     var btnCerrar = document.getElementById('btnCerrarAsistente');
-    var btnConfig = document.getElementById('btnConfigAI');
-    var configPanel = document.getElementById('asistenteConfig');
-    var apiKeyInput = document.getElementById('apiKeyInput');
-    var btnGuardar = document.getElementById('btnGuardarConfig');
     var input = document.getElementById('inputAsistente');
     var btnEnviar = document.getElementById('btnEnviarMensaje');
-    
-    // Key compartida del proyecto (config.js). Solo se sobrescribe si el admin guardó otra en ⚙️
-    var savedKey = localStorage.getItem('geometrics_api_key');
-    if (savedKey) {
-        AI_CONFIG.apiKey = savedKey;
-        if (apiKeyInput) apiKeyInput.value = savedKey;
-    } else if (AI_CONFIG.apiKey && apiKeyInput) {
-        apiKeyInput.value = AI_CONFIG.apiKey;
-    }
-    
-    // Abrir modal
-    btnAsistente.addEventListener('click', function() {
-        modal.classList.add('active');
-        input.focus();
-    });
-    
-    // Cerrar modal
-    btnCerrar.addEventListener('click', function() {
-        modal.classList.remove('active');
-    });
-    
-    // Toggle configuración
-    btnConfig.addEventListener('click', function() {
-        configPanel.classList.toggle('active');
-    });
-    
-    // Guardar configuración
-    btnGuardar.addEventListener('click', function() {
-        var key = apiKeyInput.value.trim();
-        if (key) {
-            AI_CONFIG.apiKey = key;
-            localStorage.setItem('geometrics_api_key', key);
-            configPanel.classList.remove('active');
-            // key guardada en silencio; el usuario ya puede chatear
-        }
-    });
-    
-    // Cerrar al hacer clic fuera
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            modal.classList.remove('active');
-        }
-    });
-    
-    // Enviar mensaje
-    function enviarMensaje() {
-        var texto = input.value.trim();
-        if (texto === '') return;
-        
-        agregarMensaje(texto, 'usuario');
-        input.value = '';
-        
-        // Mostrar estado de "escribiendo..."
-        var escribiendo = agregarMensaje('🤖 Pensando...', 'bot', true);
-        
-        // Llamar a la IA
-        llamarIA(texto).then(function(respuesta) {
-            if (escribiendo) escribiendo.remove();
-            agregarMensaje(respuesta, 'bot');
-        }).catch(function(error) {
-            if (escribiendo) escribiendo.remove();
-            var msg = (error && error.message) ? error.message : 'Error de conexión. Verifica tu API Key o intenta de nuevo.';
-            agregarMensaje(msg, 'bot');
-            console.error('Error:', error);
+    var fileInput = document.getElementById('civixFileInput');
+    var fileNameEl = document.getElementById('civixFileName');
+    var btnQuitar = document.getElementById('btnQuitarAdjunto');
+
+    // API solo desde config.js (no editable por usuarios)
+    window.__civixAdjunto = null;
+
+    if (btnAsistente) {
+        btnAsistente.addEventListener('click', function() {
+            modal.classList.add('active');
+            if (input) input.focus();
         });
     }
-    
-    btnEnviar.addEventListener('click', enviarMensaje);
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            enviarMensaje();
+    if (btnCerrar) {
+        btnCerrar.addEventListener('click', function() {
+            modal.classList.remove('active');
+        });
+    }
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) modal.classList.remove('active');
+        });
+    }
+
+    function limpiarAdjunto() {
+        window.__civixAdjunto = null;
+        if (fileInput) fileInput.value = '';
+        if (fileNameEl) fileNameEl.textContent = '';
+        if (btnQuitar) btnQuitar.hidden = true;
+    }
+    if (btnQuitar) btnQuitar.addEventListener('click', limpiarAdjunto);
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            var f = fileInput.files && fileInput.files[0];
+            if (!f) { limpiarAdjunto(); return; }
+            // límite ~400 KB de texto para no saturar la API
+            var maxBytes = 450000;
+            if (f.size > maxBytes) {
+                agregarMensaje('El archivo es muy grande (máx. ~400 KB de texto). Exporta un fragmento, DXF/IFC o pega solo el error.', 'bot');
+                limpiarAdjunto();
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function() {
+                var text = String(reader.result || '');
+                // Detectar binario (muchos caracteres nulos / no texto)
+                var sample = text.slice(0, 2000);
+                var nulls = (sample.match(/\u0000/g) || []).length;
+                if (nulls > 5 || /[\x00-\x08\x0e-\x1f]/.test(sample.slice(0, 200)) && f.name.match(/\.(dwg|rvt|rfa|pdf|docx|xlsx|zip)$/i)) {
+                    window.__civixAdjunto = {
+                        name: f.name,
+                        binary: true,
+                        size: f.size,
+                        text: ''
+                    };
+                    if (fileNameEl) fileNameEl.textContent = f.name + ' (binario — se pedirá más contexto)';
+                    if (btnQuitar) btnQuitar.hidden = false;
+                    return;
+                }
+                window.__civixAdjunto = {
+                    name: f.name,
+                    binary: false,
+                    size: f.size,
+                    text: text
+                };
+                if (fileNameEl) fileNameEl.textContent = f.name + ' (' + Math.round(f.size / 1024) + ' KB)';
+                if (btnQuitar) btnQuitar.hidden = false;
+            };
+            reader.onerror = function() {
+                agregarMensaje('No se pudo leer el archivo.', 'bot');
+                limpiarAdjunto();
+            };
+            reader.readAsText(f);
+        });
+    }
+
+    function enviarMensaje() {
+        var texto = (input && input.value || '').trim();
+        var adj = window.__civixAdjunto;
+        if (texto === '' && !adj) return;
+
+        var visible = texto || ('[Archivo] ' + (adj && adj.name));
+        if (adj && texto) visible = texto + '\n📎 ' + adj.name;
+        else if (adj) visible = '📎 Archivo: ' + adj.name;
+        agregarMensaje(visible, 'usuario');
+        if (input) input.value = '';
+
+        var payload = texto || 'Revisa el archivo adjunto y corrige los errores.';
+        if (adj) {
+            if (adj.binary) {
+                payload += '\n\n[ARCHIVO BINARIO: ' + adj.name + ', ' + adj.size + ' bytes]\n' +
+                    'No es texto legible (posible DWG/RVT/PDF). Explica qué exportación necesitas (DXF, IFC, TXT) ' +
+                    'o pide el mensaje de error de AutoCAD/Revit/Python. Si el usuario solo subió el binario, guía el diagnóstico.';
+            } else {
+                var body = adj.text;
+                if (body.length > 120000) body = body.slice(0, 120000) + '\n\n...[truncado]';
+                payload += '\n\n--- ARCHIVO: ' + adj.name + ' ---\n' + body + '\n--- FIN ARCHIVO ---';
+            }
         }
-    });
+
+        limpiarAdjunto();
+
+        var escribiendo = agregarMensaje('🤖 Analizando...', 'bot', true);
+
+        llamarIA(payload).then(function(respuesta) {
+            escribiendo.remove();
+            agregarMensajeBotConDescargas(respuesta);
+        }).catch(function(err) {
+            escribiendo.remove();
+            agregarMensaje('Error: ' + (err.message || err), 'bot');
+        });
+    }
+
+    if (btnEnviar) btnEnviar.addEventListener('click', enviarMensaje);
+    if (input) {
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); enviarMensaje(); }
+        });
+    }
 }
 
 function escapeHtml(str) {
@@ -351,32 +394,110 @@ function renderMathInElement(el) {
     });
 }
 
-function agregarMensaje(texto, tipo, isTemp) {
+function agregarMensaje(texto, tipo, temporal) {
     var chatMensajes = document.getElementById('chatMensajes');
+    if (!chatMensajes) return null;
     var div = document.createElement('div');
-    div.className = 'mensaje mensaje-' + tipo;
-    if (isTemp) {
-        div.innerHTML = '<p>' + escapeHtml(texto) + '</p>';
-    } else if (tipo === 'bot') {
-        var limpio = typeof normalizarRespuestaIA === 'function' ? normalizarRespuestaIA(texto) : texto;
-        div.innerHTML = formatearMensaje(limpio);
-        renderMathInElement(div);
-    } else {
-        div.innerHTML = '<p>' + escapeHtml(texto) + '</p>';
-    }
+    div.className = 'mensaje mensaje-' + (tipo === 'usuario' ? 'usuario' : 'bot');
+    if (temporal) div.classList.add('mensaje-temporal');
+    var p = document.createElement('p');
+    p.textContent = texto;
+    div.appendChild(p);
     chatMensajes.appendChild(div);
     chatMensajes.scrollTop = chatMensajes.scrollHeight;
     return div;
 }
 
+/** Respuesta del bot con bloques de código descargables */
+function agregarMensajeBotConDescargas(texto) {
+    var chatMensajes = document.getElementById('chatMensajes');
+    if (!chatMensajes) return;
+    var div = document.createElement('div');
+    div.className = 'mensaje mensaje-bot';
+
+    // Extraer bloques ```lang\n...\n```
+    var parts = [];
+    var re = /```([\w.+-]*)\n([\s\S]*?)```/g;
+    var last = 0;
+    var match;
+    var idx = 0;
+    while ((match = re.exec(texto)) !== null) {
+        if (match.index > last) {
+            parts.push({ type: 'text', content: texto.slice(last, match.index) });
+        }
+        parts.push({ type: 'code', lang: match[1] || 'txt', content: match[2] });
+        last = match.index + match[0].length;
+        idx++;
+    }
+    if (last < texto.length) parts.push({ type: 'text', content: texto.slice(last) });
+    if (!parts.length) parts.push({ type: 'text', content: texto });
+
+    parts.forEach(function(part, i) {
+        if (part.type === 'text') {
+            var t = part.content.trim();
+            if (!t) return;
+            var p = document.createElement('p');
+            p.style.whiteSpace = 'pre-wrap';
+            p.textContent = t;
+            div.appendChild(p);
+        } else {
+            var wrap = document.createElement('div');
+            wrap.className = 'civix-code-block';
+            var pre = document.createElement('pre');
+            var code = document.createElement('code');
+            code.textContent = part.content;
+            pre.appendChild(code);
+            wrap.appendChild(pre);
+            var bar = document.createElement('div');
+            bar.className = 'civix-code-actions';
+            var lab = document.createElement('span');
+            lab.textContent = part.lang || 'archivo';
+            bar.appendChild(lab);
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-descarga-civix';
+            btn.textContent = '⬇ Descargar corrección';
+            btn.addEventListener('click', function() {
+                var ext = civixExtDesdeLang(part.lang);
+                var blob = new Blob([part.content], { type: 'text/plain;charset=utf-8' });
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'civix_correccion_' + (i + 1) + ext;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+            });
+            bar.appendChild(btn);
+            wrap.appendChild(bar);
+            div.appendChild(wrap);
+        }
+    });
+
+    chatMensajes.appendChild(div);
+    chatMensajes.scrollTop = chatMensajes.scrollHeight;
+}
+
+function civixExtDesdeLang(lang) {
+    lang = String(lang || '').toLowerCase();
+    var map = {
+        python: '.py', py: '.py', javascript: '.js', js: '.js', typescript: '.ts',
+        dxf: '.dxf', ifc: '.ifc', json: '.json', csv: '.csv', xml: '.xml',
+        html: '.html', css: '.css', matlab: '.m', m: '.m', text: '.txt', txt: '.txt',
+        sql: '.sql', yaml: '.yml', yml: '.yml'
+    };
+    return map[lang] || '.txt';
+}
+
 async function llamarIA(mensaje) {
     chatHistory.push({ role: 'user', content: mensaje });
 
-    // Key compartida del proyecto (js/config.js) — funciona en GitHub Pages / Live Server
+    // Key fija del proyecto (js/config.js). Los usuarios no pueden cambiarla.
     if (!AI_CONFIG.apiKey) {
         chatHistory.pop();
         throw new Error('Falta la API key compartida en js/config.js');
     }
+    // Ignorar keys guardadas localmente para que nadie borre/sobrescriba la del proyecto
+    try { localStorage.removeItem('geometrics_api_key'); } catch (e) {}
     if (window.location.protocol === 'file:') {
         chatHistory.pop();
         throw new Error('No abras el HTML con doble clic. Usa el enlace de GitHub Pages o Live Server.');
@@ -397,8 +518,8 @@ async function llamarIA(mensaje) {
                     { role: 'system', content: AI_CONFIG.systemPrompt + '\n\nEscribe formulas SOLO en unicode legible (ejemplo: w = Ww/Ws x 100%). No uses LaTeX ni \\frac ni $$.' },
                     ...chatHistory
                 ],
-                temperature: 0.7,
-                max_tokens: 2000
+                temperature: 0.4,
+                max_tokens: 4096
             })
         });
     } catch (networkErr) {
