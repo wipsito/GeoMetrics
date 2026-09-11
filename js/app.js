@@ -32,8 +32,14 @@ function on(id, event, handler) {
 }
 
 function inicializarApp() {
-    // Solo la pantalla de inicio visible al cargar
-    mostrarPantalla('inicio');
+    // Si hay sesión, no forzar login (F5 mantiene la app)
+    var hasSession = false;
+    try {
+        hasSession = !!(typeof aulaGetSession === 'function' && aulaGetSession());
+    } catch (e) {}
+    if (!hasSession) {
+        mostrarPantalla('inicio');
+    }
 
     // Navegación principal (login controla el acceso; btnComenzar ya no se usa)
     on('btnComenzar', 'click', function() {
@@ -440,10 +446,11 @@ function mostrarPantalla(pantalla) {
     try {
         if (pantalla && pantalla !== 'inicio') {
             sessionStorage.setItem('geometrics_last_pantalla', pantalla);
+            localStorage.setItem('geometrics_last_pantalla', pantalla);
         }
     } catch (e) {}
 
-    var pantallas = ['pantallaInicio', 'pantallaMenu', 'pantallaSuelos', 'pantallaSuelos2', 'pantallaResistencia', 'pantallaSimuladores', 'pantallaRecursos', 'pantallaResultados', 'pantallaDocente', 'pantallaEstudiante'];
+    var pantallas = ['pantallaInicio', 'pantallaMenu', 'pantallaSuelos', 'pantallaSuelos2', 'pantallaResistencia', 'pantallaSimuladores', 'pantallaRecursos', 'pantallaResultados', 'pantallaDocente', 'pantallaEstudiante', 'pantallaAdmin'];
     
     pantallas.forEach(function(id) {
         var el = document.getElementById(id);

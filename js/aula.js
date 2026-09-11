@@ -998,20 +998,34 @@ function aulaInitLogin() {
         });
     }
 
-    // Restaurar sesión si existe (F5 no cierra sesión)
+    // Restaurar sesión si existe (F5 no cierra sesión ni saca del panel)
     try {
         var session = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
-        if (session) {
+        if (session && session.email) {
             var go = function() {
                 var full = typeof aulaUsuarioCompleto === 'function' ? (aulaUsuarioCompleto(session) || session) : session;
+                // Reafirmar sesión completa
+                if (typeof aulaSetSession === 'function') aulaSetSession(full);
                 if (typeof aulaEnterApp === 'function') aulaEnterApp(full);
-                // Restaurar última pantalla (menú, docente, suelos, etc.)
-                try {
-                    var last = sessionStorage.getItem('geometrics_last_pantalla');
-                    if (last && last !== 'inicio' && typeof mostrarPantalla === 'function') {
-                        setTimeout(function() { mostrarPantalla(last); }, 80);
+                setTimeout(function() {
+                    var last = null;
+                    try {
+                        last = sessionStorage.getItem('geometrics_last_pantalla')
+                            || localStorage.getItem('geometrics_last_pantalla');
+                    } catch (e2) {}
+                    if (!last || last === 'inicio') return;
+                    if (last === 'docente' || last === 'estudiante') {
+                        if (typeof aulaOpenPanel === 'function') aulaOpenPanel();
+                        return;
                     }
-                } catch (e2) {}
+                    if (typeof mostrarPantalla === 'function') {
+                        mostrarPantalla(last);
+                        // mostrarPantalla capitaliza; paneles especiales
+                        if (last === 'docente' || last === 'estudiante') {
+                            if (typeof aulaOpenPanel === 'function') aulaOpenPanel();
+                        }
+                    }
+                }, 120);
             };
             if (window.GeoCloud && GeoCloud.isOn()) {
                 GeoCloud.syncDown().then(go).catch(go);
@@ -1092,10 +1106,13 @@ function aulaLogout() {
 function aulaOpenPanel() {
     var user = aulaRequireSession();
     if (!user) return;
+    try {
+        localStorage.setItem('geometrics_last_pantalla', user.rol === 'docente' ? 'docente' : 'estudiante');
+        sessionStorage.setItem('geometrics_last_pantalla', user.rol === 'docente' ? 'docente' : 'estudiante');
+    } catch (e) {}
     if (user.rol === 'docente') {
         if (typeof mostrarPantalla === 'function') {
-            // mostrarPantalla uses capitalize - docente -> pantallaDocente? 
-            // Our IDs are pantallaDocente and pantallaEstudiante
+            try { mostrarPantalla('docente'); } catch (e) {}
         }
         document.querySelectorAll('main').forEach(function(m) { m.style.display = 'none'; });
         var el = document.getElementById('pantallaDocente');
@@ -2368,6 +2385,171 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
+
+// ---------- Integrantes del curso + chat entre compañeros ----------
+function aulaIntegrantesDe(materia, grupo) {
+    var users = aulaLoad(AULA_KEYS.users, []);
+    var docentes = users.filter(function(u) {
+        return u && u.rol === 'docente' && typeof aulaDocenteDicta === 'function'
+            && aulaDocenteDicta(u, materia, grupo);
+    });
+    var estudiantes = users.filter(function(u) {
+        return u && u.rol === 'estudiante' && typeof aulaUsuarioCoincideMateriaGrupo === 'function'
+            && aulaUsuarioCoincideMateriaGrupo(u, materia, grupo);
+    });
+    // Docente siempre primero (comanda el curso)
+    var lista = [];
+    docentes.forEach(function(d) { lista.push(d); });
+    estudiantes.sort(function(a, b) {
+        return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
+    });
+    estudiantes.forEach(function(s) { lista.push(s); });
+    return lista;
+}
+
+function aulaRenderIntegrantes() {
+    var box = document.getElementById('listaIntegrantes');
+    if (!box) return;
+    var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+    if (!user) return;
+    var full = typeof aulaUsuarioCompleto === 'function' ? (aulaUsuarioCompleto(user) || user) : user;
+    var sel = document.getElementById('intFiltroMateria');
+    var materia = sel ? sel.value : '';
+    var mats = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(full) : [];
+    if (sel && !sel.dataset.filled) {
+        sel.innerHTML = mats.map(function(m) {
+            return '<option value="' + escHtml(m.nombre) + '" data-grupo="' + escHtml(m.grupo || '') + '">' +
+                escHtml(m.nombre) + (m.grupo ? ' · Grupo ' + escHtml(m.grupo) : '') + '</option>';
+        }).join('') || '<option value="">Sin materias</option>';
+        sel.dataset.filled = '1';
+        if (!materia && sel.options.length) {
+            sel.selectedIndex = 0;
+            materia = sel.value;
+        }
+    }
+    if (!materia && sel) materia = sel.value;
+    var grupo = '';
+    if (sel && sel.selectedIndex >= 0 && sel.options[sel.selectedIndex]) {
+        grupo = sel.options[sel.selectedIndex].getAttribute('data-grupo') || '';
+    }
+    if (!grupo) grupo = typeof aulaGrupoDeMateria === 'function' ? aulaGrupoDeMateria(full, materia) : '';
+
+    function pintar(lista) {
+        if (!lista.length) {
+            box.innerHTML = '<p class="aula-vacio">No hay integrantes para ' + escHtml(materia || 'esta materia') +
+                (grupo ? ' · Grupo ' + escHtml(grupo) : '') + '.</p>';
+            return;
+        }
+        var me = aulaNormalizarEmail(full.email);
+        box.innerHTML = '<ul class="integrantes-lista">' + lista.map(function(u) {
+            var rol = u.rol === 'docente' ? 'docente' : 'estudiante';
+            var isMe = aulaNormalizarEmail(u.email) === me;
+            var foto = u.foto
+                ? '<img class="tabla-foto" src="' + u.foto + '" alt="">'
+                : '<span class="tabla-foto tabla-foto-ini">' + escHtml(aulaIniciales(u.nombre)) + '</span>';
+            var btn = '';
+            if (!isMe && rol === 'estudiante') {
+                btn = '<button type="button" class="btn-secundario btn-chat-comp" data-peer="' +
+                    escHtml(u.email) + '" data-mat="' + escHtml(materia) + '" data-grp="' + escHtml(grupo) +
+                    '">Chatear</button>';
+            } else if (!isMe && rol === 'docente') {
+                btn = '<button type="button" class="btn-secundario btn-chat-comp" data-peer-doc="1" data-mat="' +
+                    escHtml(materia) + '" data-grp="' + escHtml(grupo) + '">Chatear</button>';
+            }
+            return '<li class="integrante-item' + (rol === 'docente' ? ' es-docente' : '') + (isMe ? ' es-yo' : '') + '">' +
+                foto +
+                '<div class="integrante-info"><strong>' + escHtml(u.nombre || u.email) + '</strong>' +
+                '<span class="integrante-rol">' + rol + (isMe ? ' · tú' : '') + '</span></div>' +
+                btn + '</li>';
+        }).join('') + '</ul>';
+        box.querySelectorAll('.btn-chat-comp').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var mat = btn.getAttribute('data-mat');
+                var grp = btn.getAttribute('data-grp') || '';
+                if (btn.getAttribute('data-peer-doc')) {
+                    // chat con docente de la materia
+                    if (typeof aulaChatAbrirEstudiante === 'function') {
+                        // switch to chat tab
+                        var tab = document.querySelector('#pantallaEstudiante .tab-btn[data-tab="est-chat"]');
+                        if (tab) tab.click();
+                        setTimeout(function() { aulaChatAbrirEstudiante(mat, grp); }, 50);
+                    }
+                    return;
+                }
+                var peer = btn.getAttribute('data-peer');
+                aulaChatAbrirCompanero(peer, mat, grp);
+            });
+        });
+    }
+
+    if (window.GeoCloud && GeoCloud.isOn() && typeof GeoCloud.pullUsersAndApply === 'function') {
+        GeoCloud.pullUsersAndApply().then(function() {
+            pintar(aulaIntegrantesDe(materia, grupo));
+        }).catch(function() { pintar(aulaIntegrantesDe(materia, grupo)); });
+    } else {
+        pintar(aulaIntegrantesDe(materia, grupo));
+    }
+}
+
+/** Chat entre dos estudiantes del mismo grupo */
+function aulaChatPeerId(emailA, emailB, materia, grupo) {
+    var a = aulaNormalizarEmail(emailA);
+    var b = aulaNormalizarEmail(emailB);
+    var pair = [a, b].sort().join('__');
+    return 'peer_' + pair + '_' + String(materia || '').replace(/\s+/g, '_') + '_' + String(grupo || '');
+}
+
+function aulaChatFindOrCreatePeer(myEmail, peerEmail, materia, grupo) {
+    var list = aulaChatLoad();
+    var id = aulaChatPeerId(myEmail, peerEmail, materia, grupo);
+    var found = list.find(function(c) { return c.id === id; });
+    if (found) return found;
+    var users = aulaLoad(AULA_KEYS.users, []);
+    var peer = users.find(function(u) { return aulaNormalizarEmail(u.email) === aulaNormalizarEmail(peerEmail); });
+    var me = users.find(function(u) { return aulaNormalizarEmail(u.email) === aulaNormalizarEmail(myEmail); });
+    var chat = {
+        id: id,
+        type: 'peer',
+        materia: materia,
+        grupo: grupo || '',
+        studentEmail: aulaNormalizarEmail(myEmail),
+        studentName: me ? me.nombre : myEmail,
+        peerEmail: aulaNormalizarEmail(peerEmail),
+        peerName: peer ? peer.nombre : peerEmail,
+        teacherEmail: '',
+        teacherName: '',
+        members: [aulaNormalizarEmail(myEmail), aulaNormalizarEmail(peerEmail)],
+        messages: [],
+        updatedAt: Date.now()
+    };
+    list.push(chat);
+    aulaChatSaveOne(chat);
+    return chat;
+}
+
+function aulaChatAbrirCompanero(peerEmail, materia, grupo) {
+    var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+    if (!user || !peerEmail) return;
+    // Activar pestaña chat
+    var tab = document.querySelector('#pantallaEstudiante .tab-btn[data-tab="est-chat"]');
+    if (tab) tab.click();
+    var c = aulaChatFindOrCreatePeer(user.email, peerEmail, materia, grupo || '');
+    window.__chatActivoId = c.id;
+    var hdr = document.getElementById('estChatHeader');
+    if (hdr) {
+        hdr.textContent = (c.peerName || peerEmail) + ' · compañero · ' + materia +
+            (c.grupo ? ' · Grupo ' + c.grupo : '');
+    }
+    var inp = document.getElementById('estChatInput');
+    var btn = document.getElementById('btnEstChatEnviar');
+    if (inp) { inp.disabled = false; inp.focus(); }
+    if (btn) btn.disabled = false;
+    aulaChatMarkRead(c.id, user.email);
+    aulaChatRenderMsgs('estChatMsgs', c, user.email);
+    if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+}
+
+
 // =========================================
 // CHAT POR MATERIA (estudiante ↔ docente)
 // =========================================
@@ -2646,6 +2828,7 @@ function aulaChatRenderListaDocente() {
     var myEmail = aulaNormalizarEmail(user.email);
     var list = aulaChatLoad().filter(function(c) {
         if (!c || typeof c !== 'object' || !c.id) return false;
+        if (c.type === 'peer') return false; // chats entre estudiantes no van al docente
         if (mat && c.materia !== mat) return false;
         if (grp && String(c.grupo || '').trim().toUpperCase() !== grp.toUpperCase()) return false;
         // Chats dirigidos a este docente
@@ -2736,7 +2919,19 @@ function aulaChatRenderListaEstudiante() {
     });
     var items = mats.map(function(m) {
         var key = m.nombre + '||' + (m.grupo || '');
-        return { materia: m.nombre, grupo: m.grupo || '', chat: byMat[key] || null };
+        return { materia: m.nombre, grupo: m.grupo || '', chat: byMat[key] || null, peer: false };
+    });
+    // Chats con compañeros
+    list.forEach(function(c) {
+        if (c.type === 'peer' && c.members && c.members.indexOf(aulaNormalizarEmail(user.email)) >= 0) {
+            items.push({
+                materia: c.peerName || c.peerEmail || 'Compañero',
+                grupo: c.grupo || '',
+                chat: c,
+                peer: true,
+                peerEmail: c.peerEmail
+            });
+        }
     });
     // Siempre rellenar el select con TODAS las materias
     var sel = document.getElementById('estChatMateria');
@@ -2774,6 +2969,19 @@ function aulaChatRenderListaEstudiante() {
         var last = c && c.messages && c.messages.length ? c.messages[c.messages.length - 1].text : 'Toca para escribir al docente';
         var un = c ? aulaChatUnread(c, user.email) : 0;
         var act = c && window.__chatActivoId === c.id ? ' active' : '';
+        if (it.peer) {
+            var lastP = c && c.messages && c.messages.length ? c.messages[c.messages.length - 1].text : 'Toca para chatear';
+            var unP = c ? aulaChatUnread(c, user.email) : 0;
+            var actP = c && window.__chatActivoId === c.id ? ' active' : '';
+            return '<button type="button" class="chat-aula-item' + actP + '" data-peer="1" data-peer-email="' +
+                escHtml(it.peerEmail || '') + '" data-chat-mat="' + escHtml(c ? c.materia : '') +
+                '" data-chat-grp="' + escHtml(it.grupo) + '"' + (c ? ' data-chat-id="' + c.id + '"' : '') + '>' +
+                '<strong>' + escHtml(it.materia) + '</strong>' +
+                '<span>Compañero · Grupo ' + escHtml(it.grupo || '—') + '</span>' +
+                '<span class="chat-preview">' + escHtml(lastP) + '</span>' +
+                (unP ? '<span class="chat-unread">' + unP + '</span>' : '') +
+                '</button>';
+        }
         return '<button type="button" class="chat-aula-item' + act + '" data-chat-mat="' + escHtml(it.materia) + '" data-chat-grp="' + escHtml(it.grupo) + '"' +
             (c ? ' data-chat-id="' + c.id + '"' : '') + '>' +
             '<strong>' + escHtml(it.materia) + '</strong>' +
@@ -2784,6 +2992,10 @@ function aulaChatRenderListaEstudiante() {
     }).join('');
     el.querySelectorAll('.chat-aula-item').forEach(function(btn) {
         btn.addEventListener('click', function() {
+            if (btn.getAttribute('data-peer') === '1') {
+                aulaChatAbrirCompanero(btn.getAttribute('data-peer-email'), btn.getAttribute('data-chat-mat'), btn.getAttribute('data-chat-grp') || '');
+                return;
+            }
             aulaChatAbrirEstudiante(btn.getAttribute('data-chat-mat'), btn.getAttribute('data-chat-grp') || '');
         });
     });
