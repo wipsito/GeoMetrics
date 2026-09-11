@@ -3900,3 +3900,7 @@ body {
 label.btn-adjuntar:not(.btn-adjuntar-icon) {
     display: none !important;
 }
+
+.asistente-file-chip[hidden] {
+    display: none !important;
+}
