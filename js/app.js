@@ -107,6 +107,171 @@ function inicializarApp() {
 // Historial de conversación
 var chatHistory = [];
 
+
+/** Carga un script CDN una sola vez */
+function civixLoadScript(src) {
+    return new Promise(function(resolve, reject) {
+        if (document.querySelector('script[data-civix-src="' + src + '"]')) {
+            resolve();
+            return;
+        }
+        var s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.setAttribute('data-civix-src', src);
+        s.onload = function() { resolve(); };
+        s.onerror = function() { reject(new Error('No se pudo cargar ' + src)); };
+        document.head.appendChild(s);
+    });
+}
+
+function civixExt(name) {
+    var m = String(name || '').toLowerCase().match(/\.([a-z0-9]+)$/);
+    return m ? m[1] : '';
+}
+
+/** Extrae texto usable para la IA según el tipo de archivo */
+function civixLeerArchivoParaIA(file) {
+    var ext = civixExt(file.name);
+    var name = file.name;
+
+    // --- PDF ---
+    if (ext === 'pdf') {
+        return civixLoadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js').then(function() {
+            var lib = window['pdfjsLib'] || window['pdfjs-dist/build/pdf'] || null;
+            if (!lib) throw new Error('No se cargó PDF.js (revisa tu conexión)');
+            lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            return file.arrayBuffer().then(function(buf) {
+                var data = new Uint8Array(buf);
+                return lib.getDocument({ data: data }).promise;
+            }).then(function(pdf) {
+                var maxPages = Math.min(pdf.numPages || 1, 40);
+                var texts = [];
+                var i = 1;
+                function next() {
+                    if (i > maxPages) {
+                        var text = texts.join('\n\n').trim();
+                        if (!text) {
+                            return {
+                                name: name,
+                                binary: true,
+                                size: file.size,
+                                text: '',
+                                note: 'PDF sin texto extraíble (¿escaneado?)'
+                            };
+                        }
+                        if (text.length > 100000) text = text.slice(0, 100000) + '\n\n...[truncado]';
+                        return {
+                            name: name,
+                            binary: false,
+                            size: file.size,
+                            text: text,
+                            note: maxPages + ' pág.'
+                        };
+                    }
+                    var n = i++;
+                    return pdf.getPage(n).then(function(page) {
+                        return page.getTextContent().then(function(tc) {
+                            var line = (tc.items || []).map(function(it) { return it.str; }).join(' ');
+                            texts.push(line);
+                            return next();
+                        });
+                    });
+                }
+                return next();
+            });
+        }).catch(function(err) {
+            throw new Error('PDF: ' + (err && err.message ? err.message : err));
+        });
+    }
+
+    // --- Word DOCX ---
+    if (ext === 'docx') {
+        return civixLoadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js').then(function() {
+            return file.arrayBuffer().then(function(buf) {
+                return mammoth.extractRawText({ arrayBuffer: buf });
+            }).then(function(res) {
+                var text = (res && res.value) || '';
+                if (!text.trim()) throw new Error('DOCX vacío o no legible');
+                if (text.length > 100000) text = text.slice(0, 100000) + '\n\n...[truncado]';
+                return { name: name, binary: false, size: file.size, text: text, note: 'Word' };
+            });
+        });
+    }
+
+    // --- Excel XLSX / XLS ---
+    if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+        if (ext === 'csv') {
+            return new Promise(function(resolve, reject) {
+                var r = new FileReader();
+                r.onload = function() {
+                    var text = String(r.result || '');
+                    if (text.length > 100000) text = text.slice(0, 100000) + '\n\n...[truncado]';
+                    resolve({ name: name, binary: false, size: file.size, text: text, note: 'CSV' });
+                };
+                r.onerror = reject;
+                r.readAsText(file);
+            });
+        }
+        return civixLoadScript('https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js').then(function() {
+            return file.arrayBuffer().then(function(buf) {
+                var wb = XLSX.read(buf, { type: 'array' });
+                var parts = [];
+                wb.SheetNames.forEach(function(sn) {
+                    var sheet = wb.Sheets[sn];
+                    var csv = XLSX.utils.sheet_to_csv(sheet);
+                    parts.push('### Hoja: ' + sn + '\n' + csv);
+                });
+                var text = parts.join('\n\n');
+                if (!text.trim()) throw new Error('Excel vacío');
+                if (text.length > 100000) text = text.slice(0, 100000) + '\n\n...[truncado]';
+                return { name: name, binary: false, size: file.size, text: text, note: 'Excel' };
+            });
+        });
+    }
+
+    // --- DOC antiguo / PPT: limitado ---
+    if (ext === 'doc' || ext === 'ppt' || ext === 'pptx') {
+        return Promise.resolve({
+            name: name,
+            binary: true,
+            size: file.size,
+            text: '',
+            note: 'formato limitado — mejor PDF/DOCX/TXT'
+        });
+    }
+
+    // --- Imágenes: solo metadatos (la API de texto no ve la imagen aquí) ---
+    if (/^image\//.test(file.type) || /^(png|jpe?g|gif|webp|bmp)$/.test(ext)) {
+        return Promise.resolve({
+            name: name,
+            binary: true,
+            size: file.size,
+            text: '',
+            note: 'imagen — describe el error en el chat'
+        });
+    }
+
+    // --- Texto / código / DXF / IFC / etc. ---
+    return new Promise(function(resolve, reject) {
+        var r = new FileReader();
+        r.onload = function() {
+            var text = String(r.result || '');
+            var sample = text.slice(0, 2000);
+            var nulls = (sample.match(/\u0000/g) || []).length;
+            if (nulls > 5) {
+                resolve({ name: name, binary: true, size: file.size, text: '', note: 'binario' });
+                return;
+            }
+            if (text.length > 100000) text = text.slice(0, 100000) + '\n\n...[truncado]';
+            resolve({ name: name, binary: false, size: file.size, text: text, note: Math.round(file.size / 1024) + ' KB' });
+        };
+        r.onerror = function() { reject(new Error('lectura fallida')); };
+        r.readAsText(file);
+    });
+}
+
+
 function inicializarAsistenteAI() {
     var btnAsistente = document.getElementById('btnAsistenteAI');
     var modal = document.getElementById('asistenteModal');
@@ -143,7 +308,10 @@ function inicializarAsistenteAI() {
         if (fileNameEl) fileNameEl.textContent = '';
         if (btnQuitar) btnQuitar.hidden = true;
         var chip = document.getElementById('civixFileChip');
-        if (chip) chip.hidden = true;
+        if (chip) {
+            chip.hidden = true;
+            chip.style.display = 'none';
+        }
     }
     if (btnQuitar) btnQuitar.addEventListener('click', limpiarAdjunto);
 
@@ -151,48 +319,30 @@ function inicializarAsistenteAI() {
         fileInput.addEventListener('change', function() {
             var f = fileInput.files && fileInput.files[0];
             if (!f) { limpiarAdjunto(); return; }
-            // límite ~400 KB de texto para no saturar la API
-            var maxBytes = 450000;
+            var maxBytes = 8 * 1024 * 1024; // 8 MB
             if (f.size > maxBytes) {
-                agregarMensaje('El archivo es muy grande (máx. ~400 KB de texto). Exporta un fragmento, DXF/IFC o pega solo el error.', 'bot');
+                agregarMensaje('El archivo supera 8 MB. Sube un archivo más liviano o un extracto.', 'bot');
                 limpiarAdjunto();
                 return;
             }
-            var reader = new FileReader();
-            reader.onload = function() {
-                var text = String(reader.result || '');
-                // Detectar binario (muchos caracteres nulos / no texto)
-                var sample = text.slice(0, 2000);
-                var nulls = (sample.match(/\u0000/g) || []).length;
-                if (nulls > 5 || /[\x00-\x08\x0e-\x1f]/.test(sample.slice(0, 200)) && f.name.match(/\.(dwg|rvt|rfa|pdf|docx|xlsx|zip)$/i)) {
-                    window.__civixAdjunto = {
-                        name: f.name,
-                        binary: true,
-                        size: f.size,
-                        text: ''
-                    };
-                    if (fileNameEl) fileNameEl.textContent = '📎 ' + f.name + ' (binario)';
-                    if (btnQuitar) btnQuitar.hidden = false;
-                    var chipB = document.getElementById('civixFileChip');
-                    if (chipB) chipB.hidden = false;
-                    return;
-                }
-                window.__civixAdjunto = {
-                    name: f.name,
-                    binary: false,
-                    size: f.size,
-                    text: text
-                };
-                if (fileNameEl) fileNameEl.textContent = '📎 ' + f.name + ' · ' + Math.round(f.size / 1024) + ' KB';
+            var chip = document.getElementById('civixFileChip');
+            function mostrarChip(txt) {
+                if (fileNameEl) fileNameEl.textContent = txt;
                 if (btnQuitar) btnQuitar.hidden = false;
-                var chip = document.getElementById('civixFileChip');
-                if (chip) chip.hidden = false;
-            };
-            reader.onerror = function() {
-                agregarMensaje('No se pudo leer el archivo.', 'bot');
+                if (chip) {
+                    chip.hidden = false;
+                    chip.style.display = 'flex';
+                }
+            }
+            mostrarChip('⏳ Leyendo ' + f.name + '…');
+
+            civixLeerArchivoParaIA(f).then(function(info) {
+                window.__civixAdjunto = info;
+                mostrarChip('📎 ' + info.name + (info.note ? ' · ' + info.note : ''));
+            }).catch(function(err) {
+                agregarMensaje('No se pudo leer el archivo: ' + (err.message || err), 'bot');
                 limpiarAdjunto();
-            };
-            reader.readAsText(f);
+            });
         });
     }
 
