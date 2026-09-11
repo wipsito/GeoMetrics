@@ -270,11 +270,11 @@
                 
                 <div class="asistente-chat" id="chatMensajes">
                     <div class="mensaje mensaje-bot">
-                        <p>¡Hola futuro ingeniero! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o corrige errores de tus archivos con el 📎.</p>
+                        <p>¡Hola futuro ingeniero! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.</p>
                     </div>
                 </div>
                 <div class="asistente-input-wrap">
-                    <div class="asistente-file-chip" id="civixFileChip" hidden>
+                    <div class="asistente-file-chip" id="civixFileChip" hidden style="display:none">
                         <span class="adjunto-nombre" id="civixFileName"></span>
                         <button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" title="Quitar archivo">×</button>
                     </div>
@@ -282,7 +282,7 @@
                         <input type="text" id="inputAsistente" placeholder="Describe el problema o el error que te aparece..." />
                         <label class="btn-adjuntar-icon" for="civixFileInput" title="Adjuntar archivo">📎</label>
                         <input type="file" id="civixFileInput" hidden
-                            accept=".py,.js,.ts,.txt,.csv,.json,.md,.m,.dxf,.ifc,.xml,.dat,.in,.log,.sql,.html,.css,.ipynb,.geojson,.obj,.mtl,.step,.stp,.iges,.igs">
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.py,.js,.ts,.txt,.csv,.json,.md,.m,.dxf,.ifc,.xml,.dat,.in,.log,.sql,.html,.css,.ipynb,.geojson,.obj,.rtf,.odt,.ods,.odp,image/*">
                         <button id="btnEnviarMensaje" type="button">Enviar</button>
                     </div>
                 </div>
