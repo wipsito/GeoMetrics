@@ -1151,6 +1151,7 @@ function aulaRenderDocente() {
     aulaRenderPresDocente();
     aulaRenderEstudiantes();
     aulaRenderEntregasDocente();
+    try { if (typeof aulaRenderIntegrantesDocente === 'function') aulaRenderIntegrantesDocente(); } catch (e) {}
 }
 
 function aulaActualizarResumenDocente() {
@@ -2407,6 +2408,112 @@ function aulaIntegrantesDe(materia, grupo) {
     return lista;
 }
 
+
+function aulaRenderIntegrantesDocente() {
+    var box = document.getElementById('listaIntegrantesDoc');
+    if (!box) return;
+    var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+    if (!user || user.rol !== 'docente') return;
+    var full = typeof aulaUsuarioCompleto === 'function' ? (aulaUsuarioCompleto(user) || user) : user;
+    var matEl = document.getElementById('docIntMateria');
+    var grpEl = document.getElementById('docIntGrupo');
+    var materia = matEl ? matEl.value : '';
+    var grupo = grpEl ? (grpEl.value || '').trim() : '';
+
+    // Rellenar materias del docente
+    if (matEl && !matEl.dataset.filledDoc) {
+        var mats = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(full) : [];
+        if (mats.length) {
+            matEl.innerHTML = '<option value="">Seleccione materia</option>' + mats.map(function(m) {
+                return '<option value="' + escHtml(m.nombre) + '">' + escHtml(m.nombre) +
+                    (m.grupo ? ' (grupos: ' + escHtml(m.grupo) + ')' : '') + '</option>';
+            }).join('');
+        }
+        matEl.dataset.filledDoc = '1';
+        if (!materia && mats.length) {
+            matEl.value = mats[0].nombre;
+            materia = mats[0].nombre;
+            if (grpEl && mats[0].grupo) {
+                var gs = typeof aulaParseGrupos === 'function' ? aulaParseGrupos(mats[0].grupo) : [];
+                if (gs.length === 1) grpEl.value = gs[0];
+            }
+        }
+    }
+    materia = matEl ? matEl.value : materia;
+    grupo = grpEl ? (grpEl.value || '').trim() : grupo;
+
+    if (!materia) {
+        box.innerHTML = '<p class="aula-vacio">Selecciona una materia para ver el curso.</p>';
+        return;
+    }
+    if (!grupo) {
+        box.innerHTML = '<p class="aula-vacio">Indica el grupo (ej. A) para listar integrantes.</p>';
+        return;
+    }
+    // Verificar que el docente dicta ese grupo
+    if (typeof aulaDocenteDicta === 'function' && !aulaDocenteDicta(full, materia, grupo)) {
+        box.innerHTML = '<p class="aula-vacio">No dictas el grupo ' + escHtml(grupo) + ' de ' + escHtml(materia) + '.</p>';
+        return;
+    }
+
+    function pintar(lista) {
+        if (!lista.length) {
+            box.innerHTML = '<p class="aula-vacio">No hay integrantes en ' + escHtml(materia) + ' · Grupo ' + escHtml(grupo) + '.</p>';
+            return;
+        }
+        var me = aulaNormalizarEmail(full.email);
+        box.innerHTML = '<ul class="integrantes-lista">' + lista.map(function(u) {
+            var rol = u.rol === 'docente' ? 'docente' : 'estudiante';
+            var isMe = aulaNormalizarEmail(u.email) === me;
+            var foto = u.foto
+                ? '<img class="tabla-foto" src="' + u.foto + '" alt="">'
+                : '<span class="tabla-foto tabla-foto-ini">' + escHtml(aulaIniciales(u.nombre)) + '</span>';
+            var btn = '';
+            if (!isMe && rol === 'estudiante') {
+                btn = '<button type="button" class="btn-secundario btn-chat-comp" data-doc-peer="' +
+                    escHtml(u.email) + '" data-mat="' + escHtml(materia) + '" data-grp="' + escHtml(grupo) +
+                    '">Chatear</button>';
+            }
+            return '<li class="integrante-item' + (rol === 'docente' ? ' es-docente' : '') + (isMe ? ' es-yo' : '') + '">' +
+                foto +
+                '<div class="integrante-info"><strong>' + escHtml(u.nombre || u.email) + '</strong>' +
+                '<span class="integrante-rol">' + rol + (isMe ? ' · tú' : '') + '</span></div>' +
+                btn + '</li>';
+        }).join('') + '</ul>';
+        box.querySelectorAll('[data-doc-peer]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var email = btn.getAttribute('data-doc-peer');
+                var mat = btn.getAttribute('data-mat');
+                var grp = btn.getAttribute('data-grp') || '';
+                // Abrir chat docente con ese estudiante
+                var tab = document.querySelector('#pantallaDocente .tab-btn[data-tab="doc-chat"]');
+                if (tab) tab.click();
+                setTimeout(function() {
+                    // buscar o crear chat como si el estudiante hubiera escrito
+                    var chat = null;
+                    if (typeof aulaChatFindOrCreate === 'function') {
+                        chat = aulaChatFindOrCreate(email, mat, grp);
+                        if (chat) {
+                            chat.teacherEmail = aulaNormalizarEmail(full.email);
+                            chat.teacherName = full.nombre || full.email;
+                            if (typeof aulaChatSaveOne === 'function') aulaChatSaveOne(chat);
+                            if (typeof aulaChatAbrirDocente === 'function') aulaChatAbrirDocente(chat.id);
+                        }
+                    }
+                }, 80);
+            });
+        });
+    }
+
+    if (window.GeoCloud && GeoCloud.isOn() && typeof GeoCloud.pullUsersAndApply === 'function') {
+        GeoCloud.pullUsersAndApply().then(function() {
+            pintar(aulaIntegrantesDe(materia, grupo));
+        }).catch(function() { pintar(aulaIntegrantesDe(materia, grupo)); });
+    } else {
+        pintar(aulaIntegrantesDe(materia, grupo));
+    }
+}
+
 function aulaRenderIntegrantes() {
     var box = document.getElementById('listaIntegrantes');
     if (!box) return;
@@ -3156,6 +3263,17 @@ function aulaChatBind() {
         btn.addEventListener('click', function() {
             var tab = btn.getAttribute('data-tab');
             setTimeout(function() {
+                if (tab === 'doc-integrantes') {
+                    if (typeof aulaRenderIntegrantesDocente === 'function') aulaRenderIntegrantesDocente();
+                }
+                if (tab === 'doc-integrantes') {
+                    document.querySelectorAll('main').forEach(function(m) {
+                        if (m.id !== 'pantallaDocente') m.style.display = 'none';
+                    });
+                    var pdi = document.getElementById('pantallaDocente');
+                    if (pdi) pdi.style.display = 'block';
+                    if (typeof aulaRenderIntegrantesDocente === 'function') aulaRenderIntegrantesDocente();
+                }
                 if (tab === 'doc-chat') {
                     document.querySelectorAll('main').forEach(function(m) {
                         if (m.id !== 'pantallaDocente') m.style.display = 'none';
