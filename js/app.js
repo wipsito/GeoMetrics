@@ -22,11 +22,7 @@ if (typeof API_URLS === 'undefined') {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Recarga (F5): mostrar solo inicio de sesión
-    try {
-        localStorage.removeItem('geometrics_session');
-    } catch (e) {}
-
+    // Mantener sesión al refrescar (F5)
     inicializarApp();
 });
 
@@ -441,6 +437,12 @@ async function llamarIA(mensaje) {
 // =========================================
 
 function mostrarPantalla(pantalla) {
+    try {
+        if (pantalla && pantalla !== 'inicio') {
+            sessionStorage.setItem('geometrics_last_pantalla', pantalla);
+        }
+    } catch (e) {}
+
     var pantallas = ['pantallaInicio', 'pantallaMenu', 'pantallaSuelos', 'pantallaSuelos2', 'pantallaResistencia', 'pantallaSimuladores', 'pantallaRecursos', 'pantallaResultados', 'pantallaDocente', 'pantallaEstudiante'];
     
     pantallas.forEach(function(id) {

@@ -123,7 +123,9 @@ function aulaSetSession(user) {
         email: user.email,
         rol: user.rol,
         materia: user.materia || '',
-        grupo: user.grupo || ''
+        grupo: user.grupo || '',
+        materias: user.materias || [],
+        foto: user.foto || ''
     }));
 }
 
@@ -975,16 +977,26 @@ function aulaInitLogin() {
         });
     }
 
-    // F5 / recarga: siempre volver al inicio de sesión (evita pantallas a medias)
+    // Restaurar sesión si existe (F5 no cierra sesión)
     try {
-        localStorage.removeItem(AULA_KEYS.session);
-    } catch (e) {}
-    try {
-        if (typeof mostrarPantalla === 'function') mostrarPantalla('inicio');
-        else {
-            document.querySelectorAll('main').forEach(function(m) { m.style.display = 'none'; });
-            var ini = document.getElementById('pantallaInicio');
-            if (ini) ini.style.display = 'block';
+        var session = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+        if (session) {
+            var go = function() {
+                var full = typeof aulaUsuarioCompleto === 'function' ? (aulaUsuarioCompleto(session) || session) : session;
+                if (typeof aulaEnterApp === 'function') aulaEnterApp(full);
+                // Restaurar última pantalla (menú, docente, suelos, etc.)
+                try {
+                    var last = sessionStorage.getItem('geometrics_last_pantalla');
+                    if (last && last !== 'inicio' && typeof mostrarPantalla === 'function') {
+                        setTimeout(function() { mostrarPantalla(last); }, 80);
+                    }
+                } catch (e2) {}
+            };
+            if (window.GeoCloud && GeoCloud.isOn()) {
+                GeoCloud.syncDown().then(go).catch(go);
+            } else {
+                go();
+            }
         }
     } catch (e) {}
 }
@@ -1335,9 +1347,28 @@ function aulaSubirPres() {
 function aulaRenderEstudiantes() {
     var box = document.getElementById('listaEstudiantes');
     if (!box) return;
+    box.innerHTML = '<p class="aula-vacio">Cargando estudiantes…</p>';
+
+    function pintar() {
     var materia = (document.getElementById('filtroMateriaEst') || {}).value || '';
     var grupo = ((document.getElementById('filtroGrupoEst') || {}).value || '').trim();
-    var students = aulaLoad(AULA_KEYS.users, []).filter(function(u) { return u.rol === 'estudiante'; });
+    var docUser = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+    var students = aulaLoad(AULA_KEYS.users, []).filter(function(u) {
+        return u && u.rol === 'estudiante' && u.email;
+    });
+    // Si el docente tiene materias, por defecto mostrar alumnos de esas materias
+    if (!materia && docUser && docUser.rol === 'docente') {
+        var docMats = typeof aulaNombresMaterias === 'function' ? aulaNombresMaterias(docUser) : [];
+        if (docMats.length) {
+            students = students.filter(function(u) {
+                return docMats.some(function(nm) {
+                    return typeof aulaUsuarioCoincideMateriaGrupo === 'function'
+                        ? aulaUsuarioCoincideMateriaGrupo(u, nm, '')
+                        : true;
+                });
+            });
+        }
+    }
     if (materia || grupo) {
         students = students.filter(function(u) {
             return aulaUsuarioCoincideMateriaGrupo(u, materia, grupo);
@@ -1369,6 +1400,13 @@ function aulaRenderEstudiantes() {
             return '<tr><td>' + foto + '</td><td>' + aulaEsc(s.nombre) + '</td><td>' + aulaEsc(s.email) + '</td><td>' +
                 aulaEsc(matStr) + '</td><td>' + aulaEsc(grpStr) + '</td></tr>';
         }).join('') + '</tbody></table>';
+
+    }
+    if (window.GeoCloud && GeoCloud.isOn() && typeof GeoCloud.pullUsersAndApply === 'function') {
+        GeoCloud.pullUsersAndApply().then(pintar).catch(pintar);
+    } else {
+        pintar();
+    }
 }
 
 function aulaGuardarCalificacion(id, box) {

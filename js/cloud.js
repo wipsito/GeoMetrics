@@ -170,7 +170,19 @@
                 var users = res[0], docs = res[1], chats = res[2], admins = res[3];
                 try {
                     if (users && users.length) {
-                        localStorage.setItem('geometrics_users', JSON.stringify(users));
+                        // Fusionar con local (no perder usuarios de este PC)
+                        var localU = [];
+                        try { localU = JSON.parse(localStorage.getItem('geometrics_users') || '[]') || []; } catch (e2) { localU = []; }
+                        if (!Array.isArray(localU)) localU = [];
+                        var byE = {};
+                        localU.forEach(function (u) {
+                            if (u && u.email) byE[String(u.email).toLowerCase()] = u;
+                        });
+                        users.forEach(function (u) {
+                            if (u && u.email) byE[String(u.email).toLowerCase()] = u;
+                        });
+                        var mergedU = Object.keys(byE).map(function (k) { return byE[k]; });
+                        localStorage.setItem('geometrics_users', JSON.stringify(mergedU));
                     }
                     if (docs) {
                         localStorage.setItem('geometrics_docentes_extra', JSON.stringify(docs));
@@ -191,11 +203,9 @@
         if (!isOn()) return Promise.resolve(false);
         try {
             var users = JSON.parse(localStorage.getItem('geometrics_users') || '[]');
-            var map = {};
-            (users || []).forEach(function (u) {
-                if (u && u.email) map[emailKey(u.email)] = u;
-            });
-            return cloudSet('users', map);
+            return Promise.all((users || []).filter(function (u) { return u && u.email; }).map(function (u) {
+                return pushUser(u);
+            })).then(function () { return true; });
         } catch (e) { return Promise.resolve(false); }
     }
 
@@ -211,12 +221,31 @@
                 if (u && u.email) umap[emailKey(u.email)] = u;
             });
             return Promise.all([
-                cloudSet('users', umap),
+                Promise.all(Object.keys(umap).map(function (k) { return cloudSet('users/' + k, umap[k]); })),
                 cloudSet('docentesExtra', docs || []),
                 pushChats(chats || []),
                 cloudSet('admins', admins || [])
             ]).then(function () { return true; });
         } catch (e) { return Promise.resolve(false); }
+    }
+
+        function pullUsersAndApply() {
+        return pullUsers().then(function (users) {
+            if (!users || !users.length) return [];
+            var localU = [];
+            try { localU = JSON.parse(localStorage.getItem('geometrics_users') || '[]') || []; } catch (e) { localU = []; }
+            if (!Array.isArray(localU)) localU = [];
+            var byE = {};
+            localU.forEach(function (u) {
+                if (u && u.email) byE[String(u.email).toLowerCase()] = u;
+            });
+            users.forEach(function (u) {
+                if (u && u.email) byE[String(u.email).toLowerCase()] = u;
+            });
+            var merged = Object.keys(byE).map(function (k) { return byE[k]; });
+            localStorage.setItem('geometrics_users', JSON.stringify(merged));
+            return merged;
+        });
     }
 
     global.GeoCloud = {
@@ -231,6 +260,7 @@
         pushChats: pushChats,
         pushAdmins: pushAdmins,
         listenChats: listenChats,
-        pullChats: pullChats
+        pullChats: pullChats,
+        pullUsersAndApply: pullUsersAndApply
     };
 })(window);
