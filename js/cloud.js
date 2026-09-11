@@ -122,13 +122,17 @@
         });
     }
 
+    /** Sube UN chat (no borra los demás en la nube) */
+    function pushChat(chat) {
+        if (!chat || !chat.id) return Promise.resolve(false);
+        return cloudSet('chats/' + chat.id, chat);
+    }
+    /** Sube varios chats uno a uno (merge, no reemplazo total) */
     function pushChats(list) {
-        // guardar como mapa por id
-        var map = {};
-        (list || []).forEach(function (c) {
-            if (c && c.id) map[c.id] = c;
-        });
-        return cloudSet('chats', map);
+        var arr = (list || []).filter(function (c) { return c && c.id; });
+        if (!arr.length) return Promise.resolve(true);
+        return Promise.all(arr.map(function (c) { return pushChat(c); }))
+            .then(function () { return true; });
     }
 
     function listenChats(cb) {
@@ -171,7 +175,7 @@
                     if (docs) {
                         localStorage.setItem('geometrics_docentes_extra', JSON.stringify(docs));
                     }
-                    if (chats) {
+                    if (chats && Array.isArray(chats)) {
                         localStorage.setItem('gm_chats_v1', JSON.stringify(chats));
                     }
                     if (admins && admins.length) {
@@ -206,14 +210,10 @@
             (users || []).forEach(function (u) {
                 if (u && u.email) umap[emailKey(u.email)] = u;
             });
-            var cmap = {};
-            (chats || []).forEach(function (c) {
-                if (c && c.id) cmap[c.id] = c;
-            });
             return Promise.all([
                 cloudSet('users', umap),
                 cloudSet('docentesExtra', docs || []),
-                cloudSet('chats', cmap),
+                pushChats(chats || []),
                 cloudSet('admins', admins || [])
             ]).then(function () { return true; });
         } catch (e) { return Promise.resolve(false); }
@@ -227,6 +227,7 @@
         syncUpUsers: syncUpUsers,
         pushUser: pushUser,
         pushDocentesExtra: pushDocentesExtra,
+        pushChat: pushChat,
         pushChats: pushChats,
         pushAdmins: pushAdmins,
         listenChats: listenChats,

@@ -181,7 +181,7 @@ function aulaDocentesBase() {
 }
 function aulaDocentesExtraLoad() {
     var list = aulaLoad(AULA_KEYS.docentesExtra, []);
-    return Array.isArray(list) ? list : ['docente.demo@unipamplona.edu.co'];
+    return Array.isArray(list) ? list : [];
 }
 function aulaDocentesExtraSave(list) {
     aulaSave(AULA_KEYS.docentesExtra, list);
@@ -2318,14 +2318,37 @@ window.__chatActivoId = null;
 function aulaChatLoad() {
     try {
         var raw = localStorage.getItem(CHAT_KEY);
-        var list = raw ? JSON.parse(raw) : ['docente.demo@unipamplona.edu.co'];
-        return Array.isArray(list) ? list : ['docente.demo@unipamplona.edu.co'];
+        if (!raw) return [];
+        var list = JSON.parse(raw);
+        if (!Array.isArray(list)) return [];
+        // solo objetos de chat válidos
+        return list.filter(function(c) {
+            return c && typeof c === 'object' && c.id && c.studentEmail;
+        });
     } catch (e) { return []; }
 }
 function aulaChatSave(list) {
+    try { localStorage.setItem(CHAT_KEY, JSON.stringify(list || [])); } catch (e) {}
+    try {
+        if (window.GeoCloud && GeoCloud.isOn()) {
+            if (typeof GeoCloud.pushChats === 'function') GeoCloud.pushChats(list || []);
+        }
+    } catch (e) {}
+}
+/** Guarda y sube un solo chat a la nube (merge seguro) */
+function aulaChatSaveOne(chat) {
+    if (!chat || !chat.id) return;
+    var list = aulaChatLoad();
+    var idx = list.findIndex(function(x) { return x.id === chat.id; });
+    if (idx >= 0) list[idx] = chat;
+    else list.push(chat);
     try { localStorage.setItem(CHAT_KEY, JSON.stringify(list)); } catch (e) {}
     try {
-        if (window.GeoCloud && GeoCloud.isOn()) GeoCloud.pushChats(list);
+        if (window.GeoCloud && GeoCloud.isOn() && typeof GeoCloud.pushChat === 'function') {
+            GeoCloud.pushChat(chat);
+        } else if (window.GeoCloud && GeoCloud.isOn()) {
+            GeoCloud.pushChats([chat]);
+        }
     } catch (e) {}
 }
 function aulaChatId() {
@@ -2425,39 +2448,49 @@ function aulaNombreDocentePara(materia, grupo, chat) {
 
 function aulaChatFindOrCreate(studentEmail, materia, grupo) {
     var list = aulaChatLoad();
-    var g = (grupo || '').trim();
+    var se = aulaNormalizarEmail(studentEmail);
+    var g = String(grupo || '').trim();
+    var gNorm = g.toUpperCase();
     var found = list.find(function(c) {
-        return c.studentEmail === studentEmail && c.materia === materia && (c.grupo || '') === g;
+        if (!c || typeof c !== 'object') return false;
+        var sameStudent = aulaNormalizarEmail(c.studentEmail) === se;
+        var sameMat = (c.materia || '') === materia;
+        var sameGrp = String(c.grupo || '').trim().toUpperCase() === gNorm;
+        return sameStudent && sameMat && sameGrp;
     });
+    // Asegurar usuarios frescos desde nube si es posible (sync ya corrió al iniciar)
     var doc = typeof aulaBuscarDocenteMateria === 'function' ? aulaBuscarDocenteMateria(materia, g) : null;
-    var tEmail = doc ? aulaNormalizarEmail(doc.email) : aulaChatDocenteEmail();
+    var tEmail = doc ? aulaNormalizarEmail(doc.email) : aulaNormalizarEmail(aulaChatDocenteEmail());
     var tName = doc
-        ? (doc.nombre && doc.nombre !== 'Docente' ? doc.nombre : (((doc.nombres || '') + ' ' + (doc.apellidos || '')).trim() || doc.email.split('@')[0]))
+        ? (doc.nombre && doc.nombre !== 'Docente' ? doc.nombre : (((doc.nombres || '') + ' ' + (doc.apellidos || '')).trim() || (doc.email || '').split('@')[0]))
         : aulaChatDocenteNombre();
+    if (!tEmail) tEmail = '';
     if (found) {
-        if (doc && aulaNormalizarEmail(found.teacherEmail || '') !== tEmail) {
+        var changed = false;
+        if (tEmail && aulaNormalizarEmail(found.teacherEmail || '') !== tEmail) {
             found.teacherEmail = tEmail;
             found.teacherName = tName;
-            aulaChatSave(list);
+            changed = true;
         }
+        if (changed) aulaChatSaveOne(found);
         return found;
     }
     var user = (aulaLoad(AULA_KEYS.users, [])).find(function(u) {
-        return aulaNormalizarEmail(u.email) === aulaNormalizarEmail(studentEmail);
+        return aulaNormalizarEmail(u.email) === se;
     });
     var chat = {
         id: aulaChatId(),
         materia: materia,
         grupo: g,
-        studentEmail: studentEmail,
-        studentName: user ? (user.nombre || studentEmail) : studentEmail,
+        studentEmail: se,
+        studentName: user ? (user.nombre || se) : se,
         teacherEmail: tEmail,
-        teacherName: tName,
+        teacherName: tName || 'Docente',
         messages: [],
         updatedAt: Date.now()
     };
     list.push(chat);
-    aulaChatSave(list);
+    aulaChatSaveOne(chat);
     return chat;
 }
 function aulaChatUnread(chat, forEmail) {
@@ -2486,15 +2519,24 @@ function aulaChatSend(chatId, fromEmail, text) {
     var list = aulaChatLoad();
     var c = list.find(function(x) { return x.id === chatId; });
     if (!c) return false;
+    if (!c.messages) c.messages = [];
     c.messages.push({
         id: 'm_' + Date.now().toString(36),
-        from: fromEmail,
+        from: aulaNormalizarEmail(fromEmail),
         text: text,
         ts: Date.now(),
-        readBy: [fromEmail]
+        readBy: [aulaNormalizarEmail(fromEmail)]
     });
     c.updatedAt = Date.now();
-    aulaChatSave(list);
+    // re-asignar docente si faltaba
+    if (!c.teacherEmail) {
+        var doc = typeof aulaBuscarDocenteMateria === 'function' ? aulaBuscarDocenteMateria(c.materia, c.grupo) : null;
+        if (doc) {
+            c.teacherEmail = aulaNormalizarEmail(doc.email);
+            c.teacherName = doc.nombre || doc.email;
+        }
+    }
+    aulaChatSaveOne(c);
     return true;
 }
 function aulaChatRenderMsgs(containerId, chat, meEmail) {
@@ -2521,15 +2563,25 @@ function aulaChatRenderListaDocente() {
     if (!user) return;
     var mat = (document.getElementById('docChatMateria') || {}).value || '';
     var grp = ((document.getElementById('docChatGrupo') || {}).value || '').trim();
+    var myEmail = aulaNormalizarEmail(user.email);
     var list = aulaChatLoad().filter(function(c) {
+        if (!c || typeof c !== 'object' || !c.id) return false;
         if (mat && c.materia !== mat) return false;
-        if (grp && (c.grupo || '') !== grp) return false;
-        // Solo chats de este docente o de sus materias/grupos
-        var myEmail = aulaNormalizarEmail(user.email);
+        if (grp && String(c.grupo || '').trim().toUpperCase() !== grp.toUpperCase()) return false;
+        // Chats dirigidos a este docente
         if (c.teacherEmail && aulaNormalizarEmail(c.teacherEmail) === myEmail) return true;
-        if (typeof aulaDocenteDicta === 'function' && aulaDocenteDicta(user, c.materia, c.grupo)) return true;
-        // Superadmin / demo sin materias ve todo
-        var mats = aulaMateriasUsuario(user);
+        // O de materias/grupos que dicta
+        if (typeof aulaDocenteDicta === 'function' && aulaDocenteDicta(user, c.materia, c.grupo)) {
+            // auto-asignar teacherEmail si estaba vacío
+            if (!c.teacherEmail) {
+                c.teacherEmail = myEmail;
+                c.teacherName = user.nombre || myEmail;
+                aulaChatSaveOne(c);
+            }
+            return true;
+        }
+        // Docente sin materias configuradas: ver todos
+        var mats = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(user) : [];
         if (!mats.length) return true;
         return false;
     }).sort(function(a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
@@ -2587,7 +2639,7 @@ function aulaChatRenderListaEstudiante() {
     if (!session) return;
     // Usuario completo desde storage (todas las materias del registro)
     var user = typeof aulaUsuarioCompleto === 'function' ? aulaUsuarioCompleto(session) : session;
-    var mats = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(user) : ['docente.demo@unipamplona.edu.co'];
+    var mats = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(user) : [];
     // Si por alguna razón no hay materias en el objeto, intentar desde users storage
     if (!mats.length) {
         var all = aulaLoad(AULA_KEYS.users, []);
@@ -2721,19 +2773,38 @@ function aulaChatBind() {
             window.__chatCloudListening = true;
             GeoCloud.listenChats(function (list) {
                 try {
-                    localStorage.setItem(typeof CHAT_KEY !== 'undefined' ? CHAT_KEY : 'gm_chats_v1', JSON.stringify(list || []));
+                    var incoming = (list || []).filter(function(c) {
+                        return c && typeof c === 'object' && c.id;
+                    });
+                    // Fusionar con local: si hay mismo id, quedar el de más mensajes / updatedAt mayor
+                    var local = [];
+                    try { local = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]') || []; } catch (e2) { local = []; }
+                    if (!Array.isArray(local)) local = [];
+                    var byId = {};
+                    local.forEach(function(c) {
+                        if (c && c.id) byId[c.id] = c;
+                    });
+                    incoming.forEach(function(c) {
+                        var prev = byId[c.id];
+                        if (!prev) { byId[c.id] = c; return; }
+                        var pm = (prev.messages && prev.messages.length) || 0;
+                        var cm = (c.messages && c.messages.length) || 0;
+                        if (cm > pm || (c.updatedAt || 0) >= (prev.updatedAt || 0)) byId[c.id] = c;
+                    });
+                    var merged = Object.keys(byId).map(function(k) { return byId[k]; });
+                    localStorage.setItem(CHAT_KEY, JSON.stringify(merged));
                     var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
                     if (!user) return;
                     if (user.rol === 'docente') {
                         if (typeof aulaChatRenderListaDocente === 'function') aulaChatRenderListaDocente();
                         if (window.__chatActivoId && typeof aulaChatRenderMsgs === 'function') {
-                            var c = (list || []).find(function (x) { return x.id === window.__chatActivoId; });
+                            var c = merged.find(function (x) { return x.id === window.__chatActivoId; });
                             if (c) aulaChatRenderMsgs('docChatMsgs', c, user.email);
                         }
                     } else {
                         if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
                         if (window.__chatActivoId && typeof aulaChatRenderMsgs === 'function') {
-                            var c2 = (list || []).find(function (x) { return x.id === window.__chatActivoId; });
+                            var c2 = merged.find(function (x) { return x.id === window.__chatActivoId; });
                             if (c2) aulaChatRenderMsgs('estChatMsgs', c2, user.email);
                         }
                     }
