@@ -1154,6 +1154,7 @@
             <button class="tab-btn" data-tab="est-material">Presentaciones</button>
             <button class="tab-btn" data-tab="est-entregas">Mis entregas</button>
             <button class="tab-btn" data-tab="est-chat">Chat <span class="tab-badge" id="badgeChatEst" hidden>0</span></button>
+            <button class="tab-btn" data-tab="est-integrantes">Integrantes del curso</button>
         </section>
 
         <section class="tab-content active" id="est-tareas">
@@ -1232,6 +1233,16 @@
                 </div>
             </div>
         </section>
+        <section class="tab-content" id="est-integrantes">
+            <div class="aula-card">
+                <h3>Integrantes del curso</h3>
+                <p class="login-hint">El docente aparece primero y comanda el grupo. Puedes chatear con tus compañeros del mismo grupo.</p>
+                <label>Materia / grupo</label>
+                <select id="intFiltroMateria"></select>
+                <div id="listaIntegrantes" class="aula-lista" style="margin-top:14px;"></div>
+            </div>
+        </section>
+
 
 </main>
     <!-- Modal editar perfil (solo foto) -->
