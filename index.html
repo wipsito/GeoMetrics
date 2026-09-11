@@ -248,7 +248,7 @@
             <button class="menu-card card-asistente" id="btnAsistenteAI">
                 <div class="card-icono">🤖</div>
                 <h3>Civix</h3>
-                <p>Tu mascota de Ingeniería Civil. Pregúntale sobre suelos, materiales y más.</p>
+                <p>Diseño estructural, suelos, materiales y corrección de archivos / errores de modelado.</p>
             </button>
         </section>
 
@@ -260,31 +260,36 @@
                         <span class="asistente-icono">🤖</span>
                         <div>
                             <h3>Civix</h3>
-                            <p>Asistente GeoMetrics · Powered by Groq</p>
+                            <p>Tutor de diseño · Suelos · Materiales · Corrección de errores</p>
                         </div>
                     </div>
                     <div class="asistente-acciones">
-                        <button class="btn-config" id="btnConfigAI" title="Configurar API">⚙️</button>
                         <button class="btn-cerrar-asistente" id="btnCerrarAsistente">×</button>
                     </div>
                 </div>
                 
-                <!-- Configuración -->
-                <div class="asistente-config" id="asistenteConfig">
-                    <h4>Civix</h4>
-                    <p>El asistente ya está listo. Todos usan la key del proyecto; no necesitas configurar nada.</p>
-                    <p class="config-hint">Solo administradores: key de respaldo opcional</p>
-                    <input type="password" id="apiKeyInput" placeholder="gsk_... (opcional)" />
-                    <button id="btnGuardarConfig" class="btn-guardar">Guardar</button>
-                </div>
-                
                 <div class="asistente-chat" id="chatMensajes">
                     <div class="mensaje mensaje-bot">
-                        <p>¡Hola futuro ingeniero! ¿En qué te puedo ayudar el día de hoy?</p>
+                        <p>¡Hola futuro ingeniero! Soy <strong>Civix</strong>. Puedo ayudarte con:</p>
+                        <ul style="margin:8px 0 0 18px;padding:0;">
+                            <li>Diseño estructural y resistencia de materiales</li>
+                            <li>Mecánica de suelos I y II (ensayos, interpretación)</li>
+                            <li>Revisar código (Python, etc.) y señalar el error</li>
+                            <li>Archivos de ingeniería exportados (DXF, IFC, TXT, CSV…)</li>
+                        </ul>
+                        <p style="margin-top:8px;">Adjunta tu archivo o pega el error y te devuelvo la corrección explicada y, si aplica, un archivo para descargar.</p>
                     </div>
                 </div>
+                <div class="asistente-adjunto" id="asistenteAdjuntoBar">
+                    <label class="btn-adjuntar" for="civixFileInput" title="Adjuntar archivo">📎 Adjuntar archivo</label>
+                    <input type="file" id="civixFileInput" hidden
+                        accept=".py,.js,.ts,.txt,.csv,.json,.md,.m,.dxf,.ifc,.xml,.dat,.in,.log,.sql,.html,.css,.ipynb,.geojson,.obj,.mtl,.step,.stp,.iges,.igs">
+                    <span class="adjunto-nombre" id="civixFileName"></span>
+                    <button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" hidden title="Quitar">×</button>
+                </div>
+                <p class="asistente-formatos">Formatos: Python, texto, CSV, DXF, IFC, JSON, logs… Para AutoCAD/Revit usa exportación DXF/IFC o pega el mensaje de error.</p>
                 <div class="asistente-input">
-                    <input type="text" id="inputAsistente" placeholder="Escribe tu pregunta..." />
+                    <input type="text" id="inputAsistente" placeholder="Describe el problema o el error que te aparece..." />
                     <button id="btnEnviarMensaje">Enviar</button>
                 </div>
             </div>
