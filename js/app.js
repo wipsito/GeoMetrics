@@ -142,6 +142,8 @@ function inicializarAsistenteAI() {
         if (fileInput) fileInput.value = '';
         if (fileNameEl) fileNameEl.textContent = '';
         if (btnQuitar) btnQuitar.hidden = true;
+        var chip = document.getElementById('civixFileChip');
+        if (chip) chip.hidden = true;
     }
     if (btnQuitar) btnQuitar.addEventListener('click', limpiarAdjunto);
 
@@ -169,8 +171,10 @@ function inicializarAsistenteAI() {
                         size: f.size,
                         text: ''
                     };
-                    if (fileNameEl) fileNameEl.textContent = f.name + ' (binario — se pedirá más contexto)';
+                    if (fileNameEl) fileNameEl.textContent = '📎 ' + f.name + ' (binario)';
                     if (btnQuitar) btnQuitar.hidden = false;
+                    var chipB = document.getElementById('civixFileChip');
+                    if (chipB) chipB.hidden = false;
                     return;
                 }
                 window.__civixAdjunto = {
@@ -179,8 +183,10 @@ function inicializarAsistenteAI() {
                     size: f.size,
                     text: text
                 };
-                if (fileNameEl) fileNameEl.textContent = f.name + ' (' + Math.round(f.size / 1024) + ' KB)';
+                if (fileNameEl) fileNameEl.textContent = '📎 ' + f.name + ' · ' + Math.round(f.size / 1024) + ' KB';
                 if (btnQuitar) btnQuitar.hidden = false;
+                var chip = document.getElementById('civixFileChip');
+                if (chip) chip.hidden = false;
             };
             reader.onerror = function() {
                 agregarMensaje('No se pudo leer el archivo.', 'bot');
