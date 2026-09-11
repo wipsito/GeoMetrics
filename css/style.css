@@ -3747,3 +3747,19 @@ body {
     font-size: 12px;
 }
 .admin-row .btn-admin-del:hover { background: rgba(255,100,100,0.15); }
+
+.integrantes-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.integrante-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px;
+    background: rgba(0,0,0,0.2); border: 1px solid rgba(232,184,74,0.2);
+}
+.integrante-item.es-docente {
+    border-color: rgba(232,184,74,0.55);
+    background: rgba(232,184,74,0.12);
+}
+.integrante-item.es-yo { opacity: 0.95; }
+.integrante-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.integrante-info strong { color: #f5e6c8; }
+.integrante-rol { font-size: 12px; color: #e8b84a; text-transform: capitalize; }
+.integrante-item .btn-chat-comp { flex-shrink: 0; padding: 6px 12px; font-size: 12px; }
