@@ -2583,25 +2583,25 @@ function abrirEnsayoSuelos2(nombre) {
 function crearFormularioCorteDirecto() {
     return `
     <h3>Ensayo de Corte Directo</h3>
-    <p class="login-hint">Guía FLA-23 · σn = Pv/A · τ = Ph/A · τ = c + σn·tan(φ)</p>
+    <p class="login-hint">Guía FLA-23 · σn (kPa) = N(kN) / A(m²) · τ en kPa · despeje: c = τ − σn·tan(φ)</p>
     <div class="laboratorio-panel">
       <div class="datos-panel">
         <h4>Datos de la caja</h4>
-        <label>Área de la muestra A (cm²)</label>
-        <input type="number" id="cd-area" value="36" step="0.01">
+        <label>Área de la muestra A (m²)</label>
+        <input type="number" id="cd-area" value="0.0036" step="0.0001" min="0.0001">
         <h4>Puntos de falla (mín. 2, ideal 3)</h4>
-        <label>Ensayo 1 — Pv (kg)</label>
-        <input type="number" id="cd-pv1" placeholder="Ej. 5" step="0.01">
-        <label>Ensayo 1 — Ph última (kg)</label>
-        <input type="number" id="cd-ph1" placeholder="Ej. 3.2" step="0.01">
-        <label>Ensayo 2 — Pv (kg)</label>
-        <input type="number" id="cd-pv2" placeholder="Ej. 10" step="0.01">
-        <label>Ensayo 2 — Ph última (kg)</label>
-        <input type="number" id="cd-ph2" placeholder="Ej. 5.5" step="0.01">
-        <label>Ensayo 3 — Pv (kg) (opcional)</label>
-        <input type="number" id="cd-pv3" placeholder="Ej. 20" step="0.01">
-        <label>Ensayo 3 — Ph última (kg)</label>
-        <input type="number" id="cd-ph3" placeholder="Ej. 9.8" step="0.01">
+        <label>Ensayo 1 — σn fuerza vertical N (kN)</label>
+        <input type="number" id="cd-pv1" placeholder="Ej. 0.5" step="0.001">
+        <label>Ensayo 1 — τ última (kPa)</label>
+        <input type="number" id="cd-ph1" placeholder="Ej. 25" step="0.01">
+        <label>Ensayo 2 — σn fuerza vertical N (kN)</label>
+        <input type="number" id="cd-pv2" placeholder="Ej. 1.0" step="0.001">
+        <label>Ensayo 2 — τ última (kPa)</label>
+        <input type="number" id="cd-ph2" placeholder="Ej. 40" step="0.01">
+        <label>Ensayo 3 — σn fuerza vertical N (kN) (opcional)</label>
+        <input type="number" id="cd-pv3" placeholder="Ej. 2.0" step="0.001">
+        <label>Ensayo 3 — τ última (kPa)</label>
+        <input type="number" id="cd-ph3" placeholder="Ej. 65" step="0.01">
         <div class="botones-calculo">
           <button class="btn-calcular" onclick="calcularCorteDirecto()">CALCULAR</button>
           <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayoMS2('corte')">GUARDAR DATOS</button>
@@ -2612,10 +2612,10 @@ function crearFormularioCorteDirecto() {
         <h4>Resultados</h4>
         <div class="resultado-principal"><span>ÁNGULO φ</span><strong id="cd-phi">—</strong></div>
         <div class="resultados-secundarios">
-          <div><span>Cohesión c</span><strong id="cd-c">—</strong><small>kg/cm²</small></div>
+          <div><span>Cohesión c</span><strong id="cd-c">—</strong><small>kPa</small></div>
           <div><span>Puntos usados</span><strong id="cd-n">—</strong></div>
-          <div><span>σ₁ medio</span><strong id="cd-s1">—</strong><small>kg/cm²</small></div>
-          <div><span>σ₃ medio</span><strong id="cd-s3">—</strong><small>kg/cm²</small></div>
+          <div><span>σ₁ medio</span><strong id="cd-s1">—</strong><small>kPa</small></div>
+          <div><span>σ₃ medio</span><strong id="cd-s3">—</strong><small>kPa</small></div>
         </div>
         <div class="interpretacion">
           <span>ECUACIÓN DE COULOMB</span>
@@ -2636,26 +2636,41 @@ function crearFormularioCorteDirecto() {
 function calcularCorteDirecto() {
     setError('cd-error', '');
     var A = parse('cd-area');
-    if (!A || A <= 0) { setError('cd-error', 'Área inválida'); return; }
+    if (!A || A <= 0) { setError('cd-error', 'Área inválida (m²)'); return; }
     var pts = [];
     for (var i = 1; i <= 3; i++) {
-        var pv = parse('cd-pv' + i), ph = parse('cd-ph' + i);
-        if (pv != null && ph != null && pv > 0 && ph > 0) {
-            pts.push({ sn: pv / A, t: ph / A, pv: pv, ph: ph });
+        // cd-pv = fuerza normal N en kN → σn (kPa) = N(kN)/A(m²)
+        // cd-ph = τ última en kPa (esfuerzo cortante de falla)
+        var NkN = parse('cd-pv' + i), tauKPa = parse('cd-ph' + i);
+        if (NkN != null && tauKPa != null && NkN > 0 && tauKPa > 0) {
+            var sn = NkN / A; // kN/m² = kPa
+            pts.push({ sn: sn, t: tauKPa, N: NkN, tau: tauKPa });
         }
     }
-    if (pts.length < 2) { setError('cd-error', 'Se requieren al menos 2 ensayos con Pv y Ph'); return; }
+    if (pts.length < 2) { setError('cd-error', 'Se requieren al menos 2 ensayos con σn (kN) y τ (kPa)'); return; }
     var n = pts.length, sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
     pts.forEach(function(p) {
         sumX += p.sn; sumY += p.t; sumXY += p.sn * p.t; sumX2 += p.sn * p.sn;
     });
-    var b = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-    var a = (sumY - b * sumX) / n;
+    // Regresión lineal: τ = c + σn · tan(φ)  →  pendiente b = tan(φ), intercepto a = c
+    var den = (n * sumX2 - sumX * sumX);
+    if (Math.abs(den) < 1e-12) { setError('cd-error', 'Los σn deben ser distintos entre ensayos'); return; }
+    var b = (n * sumXY - sumX * sumY) / den; // tan(φ)
+    var cInt = (sumY - b * sumX) / n; // cohesión c
     var phi = Math.atan(b) * 180 / Math.PI;
-    var c = Math.max(0, a);
+    // Cohesión despejada: c = τ − σn·tan(φ) (promedio de los puntos, o intercepto)
+    var cFromEq = 0;
+    pts.forEach(function(p) {
+        p.c_i = p.t - p.sn * b; // c_i = τ − σn·tan(φ)
+        cFromEq += p.c_i;
+    });
+    cFromEq = cFromEq / n;
+    // Usar intercepto de la recta (equivalente al promedio de c_i en regresión)
+    var c = Math.max(0, cInt);
     var phiRad = phi * Math.PI / 180;
+    var tanPhi = Math.tan(phiRad);
 
-    // Círculos de Mohr en falla: centro y principales a partir del plano de corte
+    // Círculos de Mohr en falla
     pts.forEach(function(p) {
         var R = p.t / Math.cos(phiRad);
         var sc = p.sn + p.t * Math.tan(phiRad);
@@ -2663,19 +2678,21 @@ function calcularCorteDirecto() {
         p.sc = sc;
         p.s1 = sc + R;
         p.s3 = sc - R;
+        // verificar despeje: c = τ − σn·tan(φ)
+        p.c_check = p.t - p.sn * tanPhi;
     });
 
     var avgS1 = pts.reduce(function(s, p) { return s + p.s1; }, 0) / n;
     var avgS3 = pts.reduce(function(s, p) { return s + p.s3; }, 0) / n;
     document.getElementById('cd-phi').textContent = phi.toFixed(1) + '°';
-    document.getElementById('cd-c').textContent = c.toFixed(4);
+    document.getElementById('cd-c').textContent = c.toFixed(3);
     document.getElementById('cd-n').textContent = String(n);
-    var elS1 = document.getElementById('cd-s1'); if (elS1) elS1.textContent = avgS1.toFixed(3);
-    var elS3 = document.getElementById('cd-s3'); if (elS3) elS3.textContent = avgS3.toFixed(3);
+    var elS1 = document.getElementById('cd-s1'); if (elS1) elS1.textContent = avgS1.toFixed(2);
+    var elS3 = document.getElementById('cd-s3'); if (elS3) elS3.textContent = avgS3.toFixed(2);
     document.getElementById('cd-eq').textContent =
-        'τ = ' + c.toFixed(4) + ' + σn·tan(' + phi.toFixed(1) + '°)  ·  σ₁ medio ≈ ' + avgS1.toFixed(3) +
-        '  ·  σ₃ medio ≈ ' + avgS3.toFixed(3) + ' kg/cm²';
-    window.__datosEnsayoMS2.corte = { pts: pts, c: c, phi: phi, A: A, avgS1: avgS1, avgS3: avgS3 };
+        'τ = c + σn·tan(φ)  →  c = τ − σn·tan(φ) = ' + c.toFixed(3) + ' kPa  ·  φ = ' + phi.toFixed(1) +
+        '°  ·  σ₁ ≈ ' + avgS1.toFixed(2) + ' kPa  ·  σ₃ ≈ ' + avgS3.toFixed(2) + ' kPa';
+    window.__datosEnsayoMS2.corte = { pts: pts, c: c, phi: phi, A: A, avgS1: avgS1, avgS3: avgS3, unidades: 'kPa' };
 }
 
 function graficaCorteDirecto() {
@@ -2781,11 +2798,11 @@ function graficaCorteDirecto() {
 
     ctx.fillStyle = '#aaa';
     ctx.font = '12px sans-serif';
-    ctx.fillText('σ (kg/cm²)', gx - 70, oy + 40);
+    ctx.fillText('σ (kPa)', gx - 50, oy + 40);
     ctx.save();
     ctx.translate(18, (gy + oy) / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillText('τ (kg/cm²)', 0, 0);
+    ctx.fillText('τ (kPa)', 0, 0);
     ctx.restore();
 
     if (hint) {
@@ -3029,7 +3046,7 @@ function guardarDatosEnsayoMS2(tipo) {
     var nombre = '', resultado = '';
     if (tipo === 'corte') {
         nombre = 'Corte Directo (Suelos II)';
-        resultado = 'c = ' + d.c.toFixed(4) + ' kg/cm² · φ = ' + d.phi.toFixed(1) + '° · τ = c + σn·tan(φ)';
+        resultado = 'c = ' + d.c.toFixed(3) + ' kPa · φ = ' + d.phi.toFixed(1) + '° · c = τ − σn·tan(φ)';
     } else if (tipo === 'inconfinada') {
         nombre = 'Compresión Inconfinada (Suelos II)';
         resultado = 'qu = ' + d.qu.toFixed(1) + ' kPa · cu = ' + d.cu.toFixed(1) + ' kPa';
@@ -3060,24 +3077,25 @@ window.__simCD = window.__simCD || {
 };
 
 function simCDLeerParams() {
-    var A = parseFloat(document.getElementById('sim-cd-area').value) || 36;
-    var Pv = parseFloat(document.getElementById('sim-cd-pv').value) || 10;
-    var c = parseFloat(document.getElementById('sim-cd-c').value) || 0;
+    // A en m², N (σn fuerza) en kN → σn (kPa) = N/A
+    // c y τ en kPa
+    var A = parseFloat(document.getElementById('sim-cd-area').value) || 0.0036;
+    var NkN = parseFloat(document.getElementById('sim-cd-pv').value) || 1.0;
+    var c = parseFloat(document.getElementById('sim-cd-c').value) || 5;
     var phi = parseFloat(document.getElementById('sim-cd-phi').value) || 28;
     var tipo = (document.getElementById('sim-cd-tipo') || {}).value || 'suelto';
     var vel = parseFloat(document.getElementById('sim-cd-vel').value) || 2;
-    // Preferir datos del ensayo si existen
     if (window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
         var d = window.__datosEnsayoMS2.corte;
         if (d.c != null) c = d.c;
         if (d.phi != null) phi = d.phi;
         if (d.A != null) A = d.A;
     }
-    var sn = Pv / A;
-    var tauPeak = c + sn * Math.tan(phi * Math.PI / 180);
-    var PhPeak = tauPeak * A;
+    var sn = NkN / A; // kPa
+    var tauPeak = c + sn * Math.tan(phi * Math.PI / 180); // kPa
+    var PhPeak = tauPeak; // se muestra como esfuerzo (kPa), no fuerza
     var PhRes = PhPeak * (tipo === 'denso' ? 0.72 : (tipo === 'arcilla' ? 0.85 : 0.78));
-    return { A: A, Pv: Pv, c: c, phi: phi, tipo: tipo, vel: vel, sn: sn, tauPeak: tauPeak, PhPeak: PhPeak, PhRes: PhRes };
+    return { A: A, Pv: NkN, NkN: NkN, c: c, phi: phi, tipo: tipo, vel: vel, sn: sn, tauPeak: tauPeak, PhPeak: PhPeak, PhRes: PhRes };
 }
 
 function simCDActualizarLabels() {
@@ -3220,7 +3238,7 @@ function dibujarMaquinaCorte(dh, dv, Ph) {
     ctx.fillRect(pistX, pistY - 28, 36, 10);
     ctx.fillStyle = '#e8b84a';
     ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('Pv = ' + p.Pv.toFixed(1) + ' kg', pistX - 20, pistY - 36);
+    ctx.fillText('σn·A = ' + p.Pv.toFixed(2) + ' kN', pistX - 28, pistY - 36);
     // flecha Pv
     ctx.strokeStyle = '#e8b84a';
     ctx.lineWidth = 2;
@@ -3250,7 +3268,7 @@ function dibujarMaquinaCorte(dh, dv, Ph) {
     ctx.stroke();
     ctx.fillStyle = '#5ec8ff';
     ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('Ph = ' + (Ph || 0).toFixed(2) + ' kg', ax0, arrowY - 12);
+    ctx.fillText('τ = ' + (Ph || 0).toFixed(2) + ' kPa', ax0, arrowY - 12);
 
     // Marco / deformímetro horizontal
     ctx.strokeStyle = '#888';
@@ -3266,7 +3284,7 @@ function dibujarMaquinaCorte(dh, dv, Ph) {
     ctx.fillText('Equipo de corte directo (vista esquemática)', 16, 22);
     ctx.fillStyle = '#a09070';
     ctx.font = '11px sans-serif';
-    ctx.fillText('σn = Pv/A = ' + p.sn.toFixed(3) + ' kg/cm²   ·   τpico = c + σn·tanφ = ' + p.tauPeak.toFixed(3) + ' kg/cm²', 16, 40);
+    ctx.fillText('σn = N/A = ' + p.sn.toFixed(2) + ' kPa   ·   τpico = c + σn·tanφ = ' + p.tauPeak.toFixed(2) + ' kPa', 16, 40);
 }
 
 function dibujarCurvaSimCD() {
@@ -3288,7 +3306,7 @@ function dibujarCurvaSimCD() {
     ctx.fillStyle = '#aaa';
     ctx.font = '10px sans-serif';
     ctx.fillText('δh (mm)', gx - 45, oy + 16);
-    ctx.fillText('Ph (kg)', 6, gy + 10);
+    ctx.fillText('τ (kPa)', 6, gy + 10);
     // theoretical curve
     ctx.strokeStyle = 'rgba(232,184,74,0.35)';
     ctx.beginPath();
@@ -3313,7 +3331,7 @@ function dibujarCurvaSimCD() {
     }
     ctx.fillStyle = '#e8b84a';
     ctx.font = '11px sans-serif';
-    ctx.fillText('Pico ≈ ' + p.PhPeak.toFixed(2) + ' kg', ox + 8, gy + 14);
+    ctx.fillText('Pico ≈ ' + p.PhPeak.toFixed(2) + ' kPa', ox + 8, gy + 14);
 }
 
 function simCDDuracionSeg(vel) {
@@ -3341,7 +3359,7 @@ function simCDTick(ts) {
 
     var el;
     el = document.getElementById('sim-cd-ph'); if (el) el.textContent = Ph.toFixed(2);
-    el = document.getElementById('sim-cd-t'); if (el) el.textContent = (Ph / p.A).toFixed(3);
+    el = document.getElementById('sim-cd-t'); if (el) el.textContent = Ph.toFixed(2);
     el = document.getElementById('sim-cd-dh'); if (el) el.textContent = dh.toFixed(1);
     el = document.getElementById('sim-cd-dv'); if (el) el.textContent = dv.toFixed(2);
     el = document.getElementById('sim-cd-estado');
