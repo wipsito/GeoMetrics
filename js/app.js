@@ -2581,9 +2581,18 @@ function abrirEnsayoSuelos2(nombre) {
 }
 
 function crearFormularioCorteDirecto() {
+    // Ejemplos aleatorios realistas (σn, τ en kPa) con φ ~ 25–35°
+    function rnd(a, b) { return a + Math.random() * (b - a); }
+    var phiEj = rnd(25, 35) * Math.PI / 180;
+    var cEj = rnd(5, 15);
+    var sn1 = rnd(40, 70), sn2 = rnd(90, 130), sn3 = rnd(180, 240);
+    var t1 = cEj + sn1 * Math.tan(phiEj) + rnd(-2, 2);
+    var t2 = cEj + sn2 * Math.tan(phiEj) + rnd(-2, 2);
+    var t3 = cEj + sn3 * Math.tan(phiEj) + rnd(-2, 2);
+    function f2(x) { return (Math.round(x * 100) / 100).toFixed(2); }
     return `
     <h3>Ensayo de Corte Directo</h3>
-    <p class="login-hint">Ingresa σn y τ en kPa. Envolvente: τ = c + σn·tan(φ) → c = τ − σn·tan(φ) · φ = arctan(pendiente)</p>
+    <p class="login-hint">Ingresa σn y τ en kPa. Envolvente: τ = c + σn·tan(φ) → c = τ − σn·tan(φ)</p>
     <div class="laboratorio-panel">
       <div class="datos-panel">
         <h4>Datos de la caja</h4>
@@ -2592,17 +2601,17 @@ function crearFormularioCorteDirecto() {
         <p class="login-hint" style="margin:4px 0 8px;">Si tienes la fuerza N en kN: σn (kPa) = N / A. Aquí introduces ya el esfuerzo σn.</p>
         <h4>Puntos de falla (mín. 2, ideal 3)</h4>
         <label>Ensayo 1 — σn (kPa)</label>
-        <input type="number" id="cd-pv1" placeholder="Ej. 52.63" step="0.01">
+        <input type="number" id="cd-pv1" placeholder="Ej. ` + f2(sn1) + `" step="0.01">
         <label>Ensayo 1 — τ última (kPa)</label>
-        <input type="number" id="cd-ph1" placeholder="Ej. 39.76" step="0.01">
+        <input type="number" id="cd-ph1" placeholder="Ej. ` + f2(t1) + `" step="0.01">
         <label>Ensayo 2 — σn (kPa)</label>
-        <input type="number" id="cd-pv2" placeholder="Ej. 106.19" step="0.01">
+        <input type="number" id="cd-pv2" placeholder="Ej. ` + f2(sn2) + `" step="0.01">
         <label>Ensayo 2 — τ última (kPa)</label>
-        <input type="number" id="cd-ph2" placeholder="Ej. 71.97" step="0.01">
+        <input type="number" id="cd-ph2" placeholder="Ej. ` + f2(t2) + `" step="0.01">
         <label>Ensayo 3 — σn (kPa) (opcional)</label>
-        <input type="number" id="cd-pv3" placeholder="Ej. 214.28" step="0.01">
+        <input type="number" id="cd-pv3" placeholder="Ej. ` + f2(sn3) + `" step="0.01">
         <label>Ensayo 3 — τ última (kPa)</label>
-        <input type="number" id="cd-ph3" placeholder="Ej. 136.90" step="0.01">
+        <input type="number" id="cd-ph3" placeholder="Ej. ` + f2(t3) + `" step="0.01">
         <div class="botones-calculo">
           <button class="btn-calcular" onclick="calcularCorteDirecto()">CALCULAR</button>
           <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayoMS2('corte')">GUARDAR DATOS</button>
@@ -2627,10 +2636,10 @@ function crearFormularioCorteDirecto() {
     <div class="grafica-panel">
       <div class="grafica-header">
         <h4>Envolvente τ – σn</h4>
-        <button type="button" class="btn-grafica" onclick="graficaCorteDirecto()">GENERAR GRÁFICA</button>
+        <button class="btn-grafica" onclick="graficaCorteDirecto()">GENERAR GRÁFICA</button>
       </div>
-      <canvas id="canvas-corte" width="640" height="360"></canvas>
-      <p class="grafica-hint" id="hint-corte">Calcula primero y luego genera la gráfica.</p>
+      <canvas id="canvas-corte" width="720" height="420"></canvas>
+      <p class="grafica-hint" id="hint-corte">Pulsa CALCULAR y luego GENERAR GRÁFICA.</p>
     </div>`;
 }
 
@@ -2805,40 +2814,48 @@ function graficaCorteDirecto() {
         ctx.beginPath(); ctx.arc(sx(p.sn), sy(p.t), 6, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
 
-        // Marcas σ1 y σ3
+        // Marcas σ1 y σ3 (solo puntos; textos van en leyenda para no solapar)
         ctx.fillStyle = col;
-        ctx.beginPath(); ctx.arc(sx(p.s1), oy, 5, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(sx(p.s3), oy, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx(p.s1), oy, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx(p.s3), oy, 4, 0, Math.PI * 2); ctx.fill();
 
-        ctx.fillStyle = '#fff';
+        // Etiqueta del ensayo junto al punto de falla, con offset vertical por índice
         ctx.font = 'bold 11px sans-serif';
-        ctx.fillText('σ₁=' + p.s1.toFixed(2), sx(p.s1) - 22, oy + 18);
-        ctx.fillText('σ₃=' + p.s3.toFixed(2), sx(p.s3) - 22, oy + 32);
-        ctx.font = '10px sans-serif';
         ctx.fillStyle = col;
-        ctx.fillText('E' + (i + 1), sx(p.sn) + 8, sy(p.t) - 8);
+        var labY = sy(p.t) - 10 - (i * 14);
+        if (labY < gy + 8) labY = sy(p.t) + 16 + (i * 12);
+        ctx.fillText('E' + (i + 1), sx(p.sn) + 8, labY);
     });
 
-    // Legend
+    // Leyenda superior (sin solapes)
     ctx.font = '12px sans-serif';
     ctx.fillStyle = '#e8b84a';
-    ctx.fillText('Envolvente τ = c + σn·tanφ', ox + 8, gy + 16);
+    ctx.fillText('Envolvente τ = c + σn·tanφ', ox + 8, gy + 14);
     ctx.fillStyle = '#c8d0d8';
-    ctx.fillText('c=' + d.c.toFixed(3) + '  φ=' + d.phi.toFixed(1) + '°', ox + 8, gy + 32);
-    ctx.fillStyle = '#9dffc0';
-    ctx.fillText('Círculos de Mohr en falla · puntos = (σn, τ)', ox + 8, gy + 48);
+    ctx.fillText('c = ' + d.c.toFixed(3) + ' kPa   φ = ' + d.phi.toFixed(1) + '°', ox + 8, gy + 30);
 
+    // Tabla de σ₁ / σ₃ a la derecha para no pisar el eje
+    var colors = ['#5ec8ff', '#9dffc0', '#ff9f7a'];
+    ctx.font = '11px sans-serif';
+    var legX = gx - 150;
+    var legY = gy + 50;
+    d.pts.forEach(function(p, i) {
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillText('E' + (i + 1) + '  σ₃=' + p.s3.toFixed(1) + '  σ₁=' + p.s1.toFixed(1) + ' kPa', legX, legY + i * 16);
+    });
+
+    // Ejes: esfuerzo en kPa (Mohr siempre en unidades de esfuerzo)
     ctx.fillStyle = '#aaa';
     ctx.font = '12px sans-serif';
-    ctx.fillText('σ (kPa)', gx - 50, oy + 40);
+    ctx.fillText('σ (kPa)', gx - 55, oy + 28);
     ctx.save();
-    ctx.translate(18, (gy + oy) / 2);
+    ctx.translate(16, (gy + oy) / 2 + 20);
     ctx.rotate(-Math.PI / 2);
     ctx.fillText('τ (kPa)', 0, 0);
     ctx.restore();
 
     if (hint) {
-        hint.textContent = 'Círculos de Mohr en falla: cada color es un ensayo. Se marcan σ₁ y σ₃ sobre el eje σ.';
+        hint.textContent = 'Círculos de Mohr: cada color es un ensayo. σ₁ y σ₃ están en la leyenda derecha (kPa).';
     }
 }
 
