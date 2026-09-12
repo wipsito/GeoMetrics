@@ -3923,3 +3923,33 @@ label.btn-adjuntar:not(.btn-adjuntar-icon) {
     color: #e8e0d0;
 }
 .mohr-rc-item strong { color: #e8b84a; }
+
+.mohr-rc-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+.mohr-rc-wrap .mohr-rc-grid {
+    flex: 1 1 280px;
+}
+.btn-informe-pdf {
+    flex: 0 0 auto;
+    align-self: flex-end;
+    margin-left: auto;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    background: #e8b84a;
+    color: #1a1408;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.btn-informe-pdf:hover { filter: brightness(1.08); }
+.btn-informe-pdf:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
