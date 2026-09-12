@@ -2639,7 +2639,9 @@ function crearFormularioCorteDirecto() {
         <button class="btn-grafica" onclick="graficaCorteDirecto()">GENERAR GRÁFICA</button>
       </div>
       <canvas id="canvas-corte" width="720" height="460"></canvas>
-      <p class="grafica-hint" id="hint-corte">Pulsa CALCULAR y luego GENERAR GRÁFICA.</p>
+      <div id="hint-corte" class="mohr-resultados">
+        <p class="grafica-hint">Pulsa CALCULAR y luego GENERAR GRÁFICA.</p>
+      </div>
     </div>`;
 }
 
@@ -2752,24 +2754,32 @@ function graficaCorteDirecto() {
     ctx.fillStyle = '#1a120c';
     ctx.fillRect(0, 0, w, h);
 
-    // Convertir esfuerzos (kPa) → fuerzas (kN): F = σ · A  (1 kPa·m² = 1 kN)
+    // Eje X: σ en kN (F = σ·A). Eje Y: τ en kPa (esfuerzo cortante).
     var A = (d.A && d.A > 0) ? d.A : 0.0036;
     function toKN(kPa) { return kPa * A; }
     var ptsN = d.pts.map(function(p) {
         return {
-            sn: toKN(p.sn), t: toKN(p.t),
-            s1: toKN(p.s1), s3: toKN(p.s3),
-            R: toKN(p.R), sc: toKN(p.sc)
+            sn: toKN(p.sn), t: p.t,           // τ en kPa
+            s1: toKN(p.s1), s3: toKN(p.s3), // σ en kN (etiquetas)
+            Rx: toKN(p.R), Ry: p.R,           // radio según eje
+            sc: toKN(p.sc),
+            // R y centro en kN (misma base que σ del eje X)
+            R_kN: toKN(p.R),
+            centro_kN: toKN(p.sc),
+            // también en kPa por si se necesita
+            R_kPa: p.R,
+            centro_kPa: p.sc,
+            s1kPa: p.s1, s3kPa: p.s3
         };
     });
-    var cN = toKN(d.c);
+    var cY = d.c; // cohesión en kPa para envolvente en eje Y
 
     var maxS = Math.max.apply(null, ptsN.map(function(p) { return Math.max(p.s1, p.sn); }));
     maxS = Math.max(maxS * 1.25, 0.001);
     var maxT = Math.max(
-        cN + maxS * Math.tan(d.phi * Math.PI / 180),
-        Math.max.apply(null, ptsN.map(function(p) { return p.R; })),
-        0.001
+        cY + (maxS / A) * Math.tan(d.phi * Math.PI / 180), // envolvente: τ(kPa) vs σ(kN)=σkPa*A
+        Math.max.apply(null, ptsN.map(function(p) { return p.Ry; })),
+        1
     ) * 1.25;
 
     var ox = 70, oy = h - 70, gx = w - 30, gy = 30; // más espacio abajo para etiquetas
@@ -2791,12 +2801,12 @@ function graficaCorteDirecto() {
     ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(sx(0), oy); ctx.stroke();
 
-    // Coulomb envelope (en kN)
+    // Envolvente: τ(kPa) = c + (σ_kN/A)·tanφ
     ctx.strokeStyle = '#e8b84a';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(sx(0), sy(cN));
-    ctx.lineTo(sx(maxS), sy(cN + maxS * Math.tan(d.phi * Math.PI / 180)));
+    ctx.moveTo(sx(0), sy(cY));
+    ctx.lineTo(sx(maxS), sy(cY + (maxS / A) * Math.tan(d.phi * Math.PI / 180)));
     ctx.stroke();
 
     // Mohr circles for each test (semicírculo superior + σ1/σ3) — ejes en kN
@@ -2810,8 +2820,8 @@ function graficaCorteDirecto() {
         var steps = 72;
         for (var k = 0; k <= steps; k++) {
             var ang = Math.PI * k / steps; // 0..π semicírculo superior
-            var px = p.sc + p.R * Math.cos(ang);
-            var py = p.R * Math.sin(ang);
+            var px = p.sc + p.Rx * Math.cos(ang);
+            var py = p.Ry * Math.sin(ang);
             var X = sx(px), Y = sy(py);
             if (k === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
         }
@@ -2899,11 +2909,23 @@ function graficaCorteDirecto() {
     ctx.save();
     ctx.translate(16, (gy + oy) / 2 + 20);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillText('τ (kN)', 0, 0);
+    ctx.fillText('τ (kPa)', 0, 0);
     ctx.restore();
 
+    // Apartado R y Centro debajo de la gráfica
+    // R = (σ1 − σ3)/2   Centro = (σ1 + σ3)/2   (con σ en kN del eje X)
     if (hint) {
-        hint.textContent = 'Círculos de Mohr en kN (F = σ·A). Etiquetas σ₁ y σ₃ debajo del eje, sin solaparse.';
+        var html = '<div class="mohr-rc-grid">';
+        ptsN.forEach(function(p, i) {
+            var R = (p.s1 - p.s3) / 2;
+            var centro = (p.s1 + p.s3) / 2;
+            html += '<div class="mohr-rc-item">' +
+                '<span>R' + (i + 1) + ' = <strong>' + R.toFixed(3) + '</strong> kN</span>' +
+                '<span>Centro' + (i + 1) + ' = <strong>' + centro.toFixed(3) + '</strong> kN</span>' +
+                '</div>';
+        });
+        html += '</div>';
+        hint.innerHTML = html;
     }
 }
 
