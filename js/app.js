@@ -31,6 +31,42 @@ function on(id, event, handler) {
     if (el) el.addEventListener(event, handler);
 }
 
+
+(function bindEnterLabGlobal() {
+    if (window.__labEnterBound) return;
+    window.__labEnterBound = true;
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter') return;
+        var t = e.target;
+        if (!t || !t.tagName) return;
+        var tag = t.tagName.toUpperCase();
+        if (tag !== 'INPUT' && tag !== 'SELECT') return;
+        if (t.type === 'button' || t.type === 'submit' || t.type === 'file' || t.type === 'checkbox' || t.type === 'radio') return;
+        // Solo dentro de paneles de laboratorio / ensayos / simuladores de datos
+        var root = t.closest('.laboratorio-panel, .datos-panel, .ensayo-panel, #panelEnsayo, .sim-controles, .aula-card');
+        if (!root) return;
+        // No interferir con chat
+        if (t.closest('#asistenteModal, .chat-aula-wrap, .asistente-input')) return;
+        e.preventDefault();
+        var campos = root.querySelectorAll('input:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"]), select');
+        campos = Array.prototype.filter.call(campos, function(el) {
+            return !el.disabled && el.offsetParent !== null;
+        });
+        var idx = campos.indexOf(t);
+        if (idx < 0) return;
+        var next = campos[idx + 1];
+        if (next) {
+            next.focus();
+            if (typeof next.select === 'function' && next.tagName === 'INPUT') {
+                try { next.select(); } catch (err) {}
+            }
+        } else {
+            var btn = root.querySelector('.btn-calcular, button.btn-calcular');
+            if (btn) btn.focus();
+        }
+    }, true);
+})();
+
 function inicializarApp() {
     // Si hay sesión, no forzar login (F5 mantiene la app)
     var hasSession = false;
@@ -895,6 +931,37 @@ function volverAListaEnsayos() {
 // =========================================
 // FORMULARIOS DE ENSAYOS
 // =========================================
+
+
+/** Enter en inputs de laboratorio: pasar al siguiente campo */
+function activarEnterSiguienteCampo(root) {
+    if (!root) return;
+    var campos = root.querySelectorAll('input:not([type="hidden"]):not([type="file"]):not([type="button"]):not([type="submit"]), select, textarea');
+    campos = Array.prototype.slice.call(campos).filter(function(el) {
+        return !el.disabled && el.offsetParent !== null;
+    });
+    campos.forEach(function(el, idx) {
+        if (el.dataset.enterNav === '1') return;
+        el.dataset.enterNav = '1';
+        el.addEventListener('keydown', function(e) {
+            if (e.key !== 'Enter') return;
+            // En textarea, Ctrl+Enter o Shift+Enter no navega
+            if (el.tagName === 'TEXTAREA' && !e.ctrlKey) return;
+            e.preventDefault();
+            var next = campos[idx + 1];
+            if (next) {
+                next.focus();
+                if (typeof next.select === 'function' && next.tagName === 'INPUT') {
+                    try { next.select(); } catch (err) {}
+                }
+            } else {
+                // último campo: intentar botón calcular
+                var btn = root.querySelector('.btn-calcular, button.btn-calcular, button[onclick*="calcular"], button[onclick*="Calcular"]');
+                if (btn) btn.focus();
+            }
+        });
+    });
+}
 
 function crearFormularioHumedad() {
     return `
@@ -3112,33 +3179,34 @@ function generarInformeCorteDirectoPDF() {
                 doc.setGState && doc.setGState(new doc.GState({ opacity: 0.12 }));
                 doc.addImage(logoGeo, 'PNG', wx, wy, ww, hh);
                 doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }));
-                setF(true, 22);
-                doc.setTextColor(180, 180, 180);
+                setF(true, 14);
+                doc.setTextColor(190, 190, 190);
                 var t = 'GeoMetrics';
                 var tw = doc.getTextWidth(t);
-                doc.text(t, (pageW - tw) / 2, wy + hh + 10);
+                doc.text(t, (pageW - tw) / 2, wy + hh + 8);
                 doc.setTextColor(0, 0, 0);
             } catch (e) {}
         }
 
         function addParagraph(text, opts) {
             opts = opts || {};
-            setF(!!opts.bold, opts.size || 12);
-            var lines = doc.splitTextToSize(sym(text), maxW);
+            setF(!!opts.bold, opts.size || 11);
+            var lines = doc.splitTextToSize(sym(String(text)), maxW);
             ensureSpace(lines.length * lineH + 2);
             doc.text(lines, margin, y);
-            y += lines.length * lineH + (opts.after || 4);
+            y += lines.length * lineH + (opts.after || 3);
         }
         function addHeading(text) {
-            ensureSpace(14);
-            y += 4;
-            setF(true, 12);
-            doc.text(sym(text), margin, y);
-            y += 8;
+            ensureSpace(12);
+            y += 3;
+            setF(true, 11);
+            var lines = doc.splitTextToSize(sym(String(text)), maxW);
+            doc.text(lines, margin, y);
+            y += lines.length * lineH + 3;
         }
         function addCentered(text, size, bold) {
-            setF(!!bold, size || 12);
-            var lines = doc.splitTextToSize(sym(text), maxW);
+            setF(!!bold, size || 11);
+            var lines = doc.splitTextToSize(sym(String(text)), maxW);
             ensureSpace(lines.length * lineH + 2);
             lines.forEach(function(ln) {
                 var tw = doc.getTextWidth(ln);
@@ -3171,7 +3239,7 @@ function generarInformeCorteDirectoPDF() {
         addCentered('Facultad de Ingenierías', 12, false);
         addCentered('Programa de Ingeniería Civil', 12, false);
         y += 14;
-        addCentered('Informe de laboratorio: ensayo de corte directo', 14, true);
+        addCentered('Informe de laboratorio: ensayo de corte directo', 13, true);
         y += 6;
         addCentered('Asignatura: Mecánica de Suelos II', 12, false);
         addCentered('Guía de referencia: FLA-23', 12, false);
@@ -3211,13 +3279,13 @@ function generarInformeCorteDirectoPDF() {
         addParagraph('Tabla 1', { bold: true, after: 2 });
         addParagraph('Puntos de falla del ensayo de corte directo', { after: 3 });
 
-        setF(true, 11);
+        setF(true, 10);
         ensureSpace(28);
         doc.text('Ensayo', margin, y);
-        doc.text(sym('σn (kPa)'), margin + 30, y);
-        doc.text(sym('τ (kPa)'), margin + 80, y);
+        doc.text(sym('σn (kPa)'), margin + 28, y);
+        doc.text(sym('τ (kPa)'), margin + 75, y);
         y += 6;
-        setF(false, 11);
+        setF(false, 10);
         d.pts.forEach(function(p, i) {
             ensureSpace(8);
             doc.text(String(i + 1), margin, y);
@@ -3238,15 +3306,15 @@ function generarInformeCorteDirectoPDF() {
         addParagraph('En la Tabla 2 se presentan el radio y el centro de cada círculo de Mohr (valores de σ en kN).');
         addParagraph('Tabla 2', { bold: true, after: 2 });
         addParagraph('Parámetros de los círculos de Mohr por ensayo', { after: 3 });
-        setF(true, 10);
+        setF(true, 9);
         ensureSpace(10);
         doc.text('Ensayo', margin, y);
-        doc.text(sym('σ₁ (kN)'), margin + 22, y);
-        doc.text(sym('σ₃ (kN)'), margin + 55, y);
-        doc.text('R (kN)', margin + 90, y);
-        doc.text('Centro (kN)', margin + 120, y);
+        doc.text(sym('σ₁ (kN)'), margin + 20, y);
+        doc.text(sym('σ₃ (kN)'), margin + 50, y);
+        doc.text('R (kN)', margin + 82, y);
+        doc.text('Centro (kN)', margin + 110, y);
         y += 6;
-        setF(false, 10);
+        setF(false, 9);
         d.pts.forEach(function(p, i) {
             var s1kN = p.s1 * A;
             var s3kN = p.s3 * A;
