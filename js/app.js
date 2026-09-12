@@ -2638,7 +2638,7 @@ function crearFormularioCorteDirecto() {
         <h4>Envolvente τ – σn</h4>
         <button class="btn-grafica" onclick="graficaCorteDirecto()">GENERAR GRÁFICA</button>
       </div>
-      <canvas id="canvas-corte" width="720" height="420"></canvas>
+      <canvas id="canvas-corte" width="720" height="460"></canvas>
       <p class="grafica-hint" id="hint-corte">Pulsa CALCULAR y luego GENERAR GRÁFICA.</p>
     </div>`;
 }
@@ -2688,9 +2688,16 @@ function calcularCorteDirecto() {
         p.c_i = p.t - p.sn * b;
         cSum += p.c_i;
     });
-    var c = Math.max(0, cInt);
-    var phiRad = phi * Math.PI / 180;
-    var tanPhi = Math.tan(phiRad);
+    // φ con 1 decimal (como en calculadora de lab)
+    var phiShow = Math.round(phi * 10) / 10;
+    var tanPhiShow = Math.tan(phiShow * Math.PI / 180);
+    // Cohesión: intercepto de la regresión τ = c + σn·tan(φ), redondeado a 2 decimales
+    // (equivalente a despejar c = τ − σn·tan(φ) sobre la recta ajustada)
+    var c = Math.max(0, Math.round(cInt * 100) / 100);
+    var cReg = Math.max(0, cInt);
+
+    var phiRad = phiShow * Math.PI / 180;
+    var tanPhi = tanPhiShow;
     var cosPhi = Math.cos(phiRad);
     if (Math.abs(cosPhi) < 1e-9) cosPhi = 1e-9;
 
@@ -2707,11 +2714,9 @@ function calcularCorteDirecto() {
     var avgS1 = pts.reduce(function(s, p) { return s + p.s1; }, 0) / n;
     var avgS3 = pts.reduce(function(s, p) { return s + p.s3; }, 0) / n;
 
-    // Detalle de σn calculados
     var detSn = pts.map(function(p, idx) {
         return 'E' + (idx + 1) + ': σn=' + p.sn.toFixed(2) + ' kPa, τ=' + p.t.toFixed(2) + ' kPa';
     }).join(' · ');
-    var notaArea = '';
 
     var elPhi = document.getElementById('cd-phi');
     var elC = document.getElementById('cd-c');
@@ -2719,20 +2724,20 @@ function calcularCorteDirecto() {
     var elS1 = document.getElementById('cd-s1');
     var elS3 = document.getElementById('cd-s3');
     var elEq = document.getElementById('cd-eq');
-    if (elPhi) elPhi.textContent = phi.toFixed(1) + '°';
-    if (elC) elC.textContent = c.toFixed(3);
+    if (elPhi) elPhi.textContent = phiShow.toFixed(1) + '°';
+    // Mostrar c con 2 decimales (ej. 8.14) alineado a calculadora
+    if (elC) elC.textContent = c.toFixed(2);
     if (elN) elN.textContent = String(n);
     if (elS1) elS1.textContent = avgS1.toFixed(2);
     if (elS3) elS3.textContent = avgS3.toFixed(2);
     if (elEq) {
         elEq.textContent =
-            'τ = c + σn·tan(φ)  →  c = τ − σn·tan(φ) = ' + c.toFixed(3) + ' kPa · φ = ' + phi.toFixed(1) +
-            '° · σ₁ ≈ ' + avgS1.toFixed(2) + ' kPa · σ₃ ≈ ' + avgS3.toFixed(2) + ' kPa' +
-            notaArea + ' · ' + detSn;
+            'τ = c + σn·tan(φ)  →  c = τ − σn·tan(φ) = ' + c.toFixed(2) + ' kPa · φ = ' + phiShow.toFixed(1) +
+            '° · σ₁ ≈ ' + avgS1.toFixed(2) + ' kPa · σ₃ ≈ ' + avgS3.toFixed(2) + ' kPa · ' + detSn;
     }
     window.__datosEnsayoMS2 = window.__datosEnsayoMS2 || {};
     window.__datosEnsayoMS2.corte = {
-        pts: pts, c: c, phi: phi, A: A_m2, avgS1: avgS1, avgS3: avgS3, unidades: 'kPa'
+        pts: pts, c: c, cReg: cReg, phi: phiShow, A: A_m2, avgS1: avgS1, avgS3: avgS3, unidades: 'kPa'
     };
 }
 
@@ -2747,15 +2752,27 @@ function graficaCorteDirecto() {
     ctx.fillStyle = '#1a120c';
     ctx.fillRect(0, 0, w, h);
 
-    var maxS = Math.max.apply(null, d.pts.map(function(p) { return Math.max(p.s1, p.sn); }));
-    maxS = Math.max(maxS * 1.25, 0.1);
+    // Convertir esfuerzos (kPa) → fuerzas (kN): F = σ · A  (1 kPa·m² = 1 kN)
+    var A = (d.A && d.A > 0) ? d.A : 0.0036;
+    function toKN(kPa) { return kPa * A; }
+    var ptsN = d.pts.map(function(p) {
+        return {
+            sn: toKN(p.sn), t: toKN(p.t),
+            s1: toKN(p.s1), s3: toKN(p.s3),
+            R: toKN(p.R), sc: toKN(p.sc)
+        };
+    });
+    var cN = toKN(d.c);
+
+    var maxS = Math.max.apply(null, ptsN.map(function(p) { return Math.max(p.s1, p.sn); }));
+    maxS = Math.max(maxS * 1.25, 0.001);
     var maxT = Math.max(
-        d.c + maxS * Math.tan(d.phi * Math.PI / 180),
-        Math.max.apply(null, d.pts.map(function(p) { return p.R; })),
-        0.05
+        cN + maxS * Math.tan(d.phi * Math.PI / 180),
+        Math.max.apply(null, ptsN.map(function(p) { return p.R; })),
+        0.001
     ) * 1.25;
 
-    var ox = 70, oy = h - 50, gx = w - 30, gy = 30;
+    var ox = 70, oy = h - 70, gx = w - 30, gy = 30; // más espacio abajo para etiquetas
     function sx(x) { return ox + (x / maxS) * (gx - ox); }
     function sy(y) { return oy - (y / maxT) * (oy - gy); }
 
@@ -2772,20 +2789,20 @@ function graficaCorteDirecto() {
     ctx.strokeStyle = '#8a7a60';
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
-    // σ axis continues a bit left for σ3
     ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(sx(0), oy); ctx.stroke();
 
-    // Coulomb envelope
+    // Coulomb envelope (en kN)
     ctx.strokeStyle = '#e8b84a';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(sx(0), sy(d.c));
-    ctx.lineTo(sx(maxS), sy(d.c + maxS * Math.tan(d.phi * Math.PI / 180)));
+    ctx.moveTo(sx(0), sy(cN));
+    ctx.lineTo(sx(maxS), sy(cN + maxS * Math.tan(d.phi * Math.PI / 180)));
     ctx.stroke();
 
-    // Mohr circles for each test (semicírculo superior + σ1/σ3)
+    // Mohr circles for each test (semicírculo superior + σ1/σ3) — ejes en kN
     var colors = ['#5ec8ff', '#9dffc0', '#ff9f7a'];
-    d.pts.forEach(function(p, i) {
+    var labelBottom = [];
+    ptsN.forEach(function(p, i) {
         var col = colors[i % colors.length];
         ctx.strokeStyle = col;
         ctx.lineWidth = 2.2;
@@ -2814,48 +2831,79 @@ function graficaCorteDirecto() {
         ctx.beginPath(); ctx.arc(sx(p.sn), sy(p.t), 6, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
 
-        // Marcas σ1 y σ3 (solo puntos; textos van en leyenda para no solapar)
+        // Marcas σ1 y σ3 en el eje
         ctx.fillStyle = col;
         ctx.beginPath(); ctx.arc(sx(p.s1), oy, 4, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(sx(p.s3), oy, 4, 0, Math.PI * 2); ctx.fill();
 
-        // Etiqueta del ensayo junto al punto de falla, con offset vertical por índice
+        // Etiqueta del ensayo junto al punto de falla
         ctx.font = 'bold 11px sans-serif';
         ctx.fillStyle = col;
-        var labY = sy(p.t) - 10 - (i * 14);
-        if (labY < gy + 8) labY = sy(p.t) + 16 + (i * 12);
+        var labY = sy(p.t) - 10 - (i * 12);
+        if (labY < gy + 8) labY = sy(p.t) + 14 + (i * 12);
         ctx.fillText('E' + (i + 1), sx(p.sn) + 8, labY);
+
+        // Guardar posiciones de etiquetas inferiores para anti-solape
+        labelBottom.push({
+            x: sx(p.s3), text: 'σ₃=' + p.s3.toFixed(3), col: col, row: 0
+        });
+        labelBottom.push({
+            x: sx(p.s1), text: 'σ₁=' + p.s1.toFixed(3), col: col, row: 0
+        });
     });
 
-    // Leyenda superior (sin solapes)
+    // Colocar etiquetas abajo sin solaparse (varias filas si hace falta)
+    labelBottom.sort(function(a, b) { return a.x - b.x; });
+    var placed = [];
+    var minGap = 58; // px mínimos entre centros de texto
+    labelBottom.forEach(function(lb) {
+        var row = 0;
+        var ok = false;
+        while (!ok && row < 4) {
+            ok = true;
+            for (var pi = 0; pi < placed.length; pi++) {
+                if (placed[pi].row === row && Math.abs(placed[pi].x - lb.x) < minGap) {
+                    ok = false;
+                    break;
+                }
+            }
+            if (!ok) row++;
+        }
+        lb.row = row;
+        placed.push(lb);
+    });
+
+    ctx.font = '10px sans-serif';
+    placed.forEach(function(lb) {
+        ctx.fillStyle = lb.col;
+        var ty = oy + 14 + lb.row * 13;
+        var tx = lb.x - 24;
+        if (tx < ox) tx = ox;
+        if (tx > gx - 50) tx = gx - 50;
+        ctx.fillText(lb.text, tx, ty);
+    });
+
+    // Leyenda superior
     ctx.font = '12px sans-serif';
     ctx.fillStyle = '#e8b84a';
     ctx.fillText('Envolvente τ = c + σn·tanφ', ox + 8, gy + 14);
     ctx.fillStyle = '#c8d0d8';
-    ctx.fillText('c = ' + d.c.toFixed(3) + ' kPa   φ = ' + d.phi.toFixed(1) + '°', ox + 8, gy + 30);
+    ctx.fillText('c = ' + d.c.toFixed(2) + ' kPa   φ = ' + d.phi.toFixed(1) + '°', ox + 8, gy + 30);
 
-    // Tabla de σ₁ / σ₃ a la derecha para no pisar el eje
-    var colors = ['#5ec8ff', '#9dffc0', '#ff9f7a'];
-    ctx.font = '11px sans-serif';
-    var legX = gx - 150;
-    var legY = gy + 50;
-    d.pts.forEach(function(p, i) {
-        ctx.fillStyle = colors[i % colors.length];
-        ctx.fillText('E' + (i + 1) + '  σ₃=' + p.s3.toFixed(1) + '  σ₁=' + p.s1.toFixed(1) + ' kPa', legX, legY + i * 16);
-    });
-
-    // Ejes: esfuerzo en kPa (Mohr siempre en unidades de esfuerzo)
+    // Ejes en kN
     ctx.fillStyle = '#aaa';
     ctx.font = '12px sans-serif';
-    ctx.fillText('σ (kPa)', gx - 55, oy + 28);
+    var maxRow = 0;
+    placed.forEach(function(lb) { if (lb.row > maxRow) maxRow = lb.row; });
+    ctx.fillText('σ (kN)', gx - 50, oy + 16 + (maxRow + 1) * 13);
     ctx.save();
     ctx.translate(16, (gy + oy) / 2 + 20);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillText('τ (kPa)', 0, 0);
+    ctx.fillText('τ (kN)', 0, 0);
     ctx.restore();
 
     if (hint) {
-        hint.textContent = 'Círculos de Mohr: cada color es un ensayo. σ₁ y σ₃ están en la leyenda derecha (kPa).';
+        hint.textContent = 'Círculos de Mohr en kN (F = σ·A). Etiquetas σ₁ y σ₃ debajo del eje, sin solaparse.';
     }
 }
 
