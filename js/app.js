@@ -3123,7 +3123,7 @@ function generarInformeCorteDirectoPDF() {
         var fontBold = results[5];
 
         var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        // Plantilla GeoMetrics: márgenes tipo informe de lab (compacto, legible)
+        // Plantilla cargada por el usuario (GeoMetrics) — sin formato APA forzado
         var marginL = 22;
         var marginR = 16;
         var marginT = 16;
@@ -3346,22 +3346,20 @@ function generarInformeCorteDirectoPDF() {
             try { doc.addImage(logoCiv, 'PNG', pageW - marginR - logoH, 12, logoH, logoH); } catch (e) {}
         }
 
-        y = 48;
-        addCentered('Universidad de Pamplona', 12, false);
+        y = 50;
+        addCentered('Universidad de Pamplona', 13, false);
         addCentered('Facultad de Ingenierías', 12, false);
         addCentered('Programa de Ingeniería Civil', 12, false);
-        y += 12;
+        y += 14;
         addCentered('Informe de laboratorio: ensayo de corte directo', 14, true);
-        y += 10;
+        y += 12;
         addCentered('Asignatura: Mecánica de Suelos II', 12, false);
         addCentered('Guía de referencia: FLA-23', 12, false);
-        y += 10;
+        y += 12;
         addCentered('Generado con la plataforma GeoMetrics', 12, false);
         addCentered(fechaStr, 12, false);
-        y += 10;
-        addCentered('Formato de presentación según el Manual de publicaciones de la APA (7.ª edición)', 11, false);
 
-        // ===== CUERPO (plantilla) =====
+        // ===== CUERPO (plantilla GeoMetrics) =====
         doc.addPage();
         drawWatermark();
         y = marginT + 4;
@@ -3474,24 +3472,24 @@ function generarInformeCorteDirectoPDF() {
         addParagraph('Envolvente τ–σn y círculos de Mohr del ensayo de corte directo (GeoMetrics).', { noIndent: true });
 
         addHeading('Referencias');
-        addParagraph('American Psychological Association. (2020). Publication manual of the American Psychological Association (7th ed.). https://doi.org/10.1037/0000165-000', { noIndent: true });
-        addParagraph('Das, B. M., & Sobhan, K. (2018). Principles of geotechnical engineering (9th ed.). Cengage Learning.', { noIndent: true });
-        addParagraph('Universidad de Pamplona. (s. f.). Guía unificada de laboratorio FLA-23: ensayo de corte directo. Facultad de Ingenierías.', { noIndent: true });
-        addParagraph('GeoMetrics. (2026). Laboratorio virtual de mecánica de suelos [Software educativo]. Universidad de Pamplona.', { noIndent: true });
+        addParagraph('Das, B. M., & Sobhan, K. (2018). Principles of geotechnical engineering (9th ed.). Cengage Learning.');
+        addParagraph('Universidad de Pamplona. Guía unificada de laboratorio FLA-23: ensayo de corte directo. Facultad de Ingenierías.');
+        addParagraph('GeoMetrics. (2026). Laboratorio virtual de mecánica de suelos. Universidad de Pamplona.');
 
         setF(false, 10);
         doc.setTextColor(100, 100, 100);
         doc.text('GeoMetrics — Informe académico', marginL, pageH - 10);
         doc.setTextColor(0, 0, 0);
 
-                // Numeración APA: esquina superior derecha
+                // Número de página simple (plantilla)
         var total = doc.internal.getNumberOfPages();
         for (var p = 1; p <= total; p++) {
             doc.setPage(p);
-            setF(false, 12);
+            setF(false, 10);
+            doc.setTextColor(120, 120, 120);
+            var pn = String(p) + ' / ' + String(total);
+            doc.text(pn, pageW - marginR - doc.getTextWidth(pn), pageH - 8);
             doc.setTextColor(0, 0, 0);
-            var pn = String(p);
-            doc.text(pn, pageW - marginR - doc.getTextWidth(pn), 10);
         }
         doc.save('Informe_Corte_Directo_GeoMetrics.pdf');
         fin();
