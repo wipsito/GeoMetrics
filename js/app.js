@@ -3039,6 +3039,95 @@ function clasificarSueloCorte(c, phi) {
     return { tipo: tipo, detalle: detalle };
 }
 
+
+/** Datos del informe según sesión (estudiante / materia / grupo / docente) */
+function aulaDatosInformeEnsayo(materiaPreferida) {
+    var vacio = {
+        estudiante: '—',
+        codigo: '—',
+        docente: '—',
+        grupo: '—',
+        asignatura: materiaPreferida || 'Mecánica de Suelos II'
+    };
+    try {
+        if (typeof aulaGetSession !== 'function') return vacio;
+        var session = aulaGetSession();
+        if (!session) return vacio;
+        var user = (typeof aulaUsuarioCompleto === 'function') ? aulaUsuarioCompleto(session) : session;
+        if (!user) return vacio;
+
+        var asignatura = materiaPreferida || 'Mecánica de Suelos II';
+        // Preferir materia del estudiante que coincida con el ensayo
+        var mats = (typeof aulaMateriasUsuario === 'function') ? aulaMateriasUsuario(user) : (user.materias || []);
+        var match = null;
+        for (var i = 0; i < mats.length; i++) {
+            var n = String(mats[i].nombre || '').toLowerCase();
+            if (n.indexOf('suelos ii') >= 0 || n.indexOf('suelos 2') >= 0 || n === asignatura.toLowerCase()) {
+                match = mats[i];
+                break;
+            }
+        }
+        if (!match && mats.length) match = mats[0];
+        if (match) {
+            asignatura = match.nombre || asignatura;
+        }
+        var grupo = match ? (match.grupo || '') : (user.grupo || '');
+        if (typeof aulaGrupoDeMateria === 'function') {
+            var g2 = aulaGrupoDeMateria(user, asignatura);
+            if (g2) grupo = g2;
+        }
+
+        // Código: campo codigo, o dígitos del correo, o id corto
+        var codigo = user.codigo || user.codigoEstudiante || '';
+        if (!codigo && user.email) {
+            var m = String(user.email).split('@')[0].match(/(\d{5,})/);
+            if (m) codigo = m[1];
+        }
+        if (!codigo && user.id) codigo = String(user.id).slice(0, 8).toUpperCase();
+
+        // Docente del grupo/materia
+        var docenteNombre = '—';
+        if (user.rol === 'docente') {
+            docenteNombre = user.nombre || '—';
+        } else {
+            var users = (typeof aulaLoad === 'function' && typeof AULA_KEYS !== 'undefined')
+                ? aulaLoad(AULA_KEYS.users, [])
+                : [];
+            var gNorm = String(grupo || '').trim().toUpperCase();
+            for (var j = 0; j < users.length; j++) {
+                var du = users[j];
+                if (!du || du.rol !== 'docente') continue;
+                var dMats = du.materias || [];
+                for (var k = 0; k < dMats.length; k++) {
+                    var dm = dMats[k];
+                    if (!dm || dm.nombre !== asignatura) continue;
+                    var gruposDoc = (dm.grupos && dm.grupos.length)
+                        ? dm.grupos
+                        : String(dm.grupo || '').split(/[,;]/).map(function(x) { return x.trim(); }).filter(Boolean);
+                    var okG = !gNorm || gruposDoc.some(function(g) {
+                        return String(g).trim().toUpperCase() === gNorm;
+                    });
+                    if (okG) {
+                        docenteNombre = du.nombre || du.email || '—';
+                        break;
+                    }
+                }
+                if (docenteNombre !== '—') break;
+            }
+        }
+
+        return {
+            estudiante: user.rol === 'docente' ? (user.nombre || '—') : (user.nombre || '—'),
+            codigo: codigo || '—',
+            docente: docenteNombre,
+            grupo: grupo || '—',
+            asignatura: asignatura || '—'
+        };
+    } catch (e) {
+        return vacio;
+    }
+}
+
 function generarInformeCorteDirectoPDF() {
     var d = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
     if (!d || !d.pts || !d.pts.length) {
@@ -3166,19 +3255,26 @@ function generarInformeCorteDirectoPDF() {
                 .replace(/²/g, '2').replace(/°/g, '°');
         }
 
+        function dibujarMarcoPagina() {
+            doc.setDrawColor(40, 70, 140);
+            doc.setLineWidth(0.6);
+            doc.rect(8, 8, pageW - 16, pageH - 16);
+        }
         function ensureSpace(h) {
             if (y + h > pageH - marginB) {
                 doc.addPage();
+                dibujarMarcoPagina();
                 drawWatermark();
-                y = marginT + 6;
+                y = marginT + 8;
                 setF(false, 11);
             }
         }
         function ensureBlock(h) {
             if (y + h > pageH - marginB) {
                 doc.addPage();
+                dibujarMarcoPagina();
                 drawWatermark();
-                y = marginT + 6;
+                y = marginT + 8;
                 setF(false, 11);
             }
         }
@@ -3335,34 +3431,87 @@ function generarInformeCorteDirectoPDF() {
         var cls = clasificarSueloCorte(c, phi);
         var fechaStr = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
 
-        // ===== PORTADA (plantilla GeoMetrics) =====
-        drawWatermark();
+        // ===== PORTADA (plantilla PDF GeoMetrics) =====
+        var datosInf = aulaDatosInformeEnsayo('Mecánica de Suelos II');
 
-        var logoH = 24;
+        // Marco decorativo azul
+        doc.setDrawColor(40, 70, 140);
+        doc.setLineWidth(1.2);
+        doc.rect(8, 8, pageW - 16, pageH - 16);
+        doc.setLineWidth(0.4);
+        doc.rect(10, 10, pageW - 20, pageH - 20);
+
+        // Logos
+        var logoH = 26;
         if (logoUni) {
-            try { doc.addImage(logoUni, 'PNG', marginL, 12, logoH, logoH); } catch (e) {}
+            try { doc.addImage(logoUni, 'PNG', 16, 14, logoH, logoH); } catch (e) {}
         }
         if (logoCiv) {
-            try { doc.addImage(logoCiv, 'PNG', pageW - marginR - logoH, 12, logoH, logoH); } catch (e) {}
+            try { doc.addImage(logoCiv, 'PNG', pageW - 16 - logoH, 14, logoH, logoH); } catch (e) {}
         }
 
-        y = 50;
-        addCentered('Universidad de Pamplona', 13, false);
-        addCentered('Facultad de Ingenierías', 12, false);
-        addCentered('Programa de Ingeniería Civil', 12, false);
-        y += 14;
-        addCentered('Informe de laboratorio: ensayo de corte directo', 14, true);
-        y += 12;
-        addCentered('Asignatura: Mecánica de Suelos II', 12, false);
-        addCentered('Guía de referencia: FLA-23', 12, false);
-        y += 12;
-        addCentered('Generado con la plataforma GeoMetrics', 12, false);
-        addCentered(fechaStr, 12, false);
+        // Marca de agua grande (logo GeoMetrics)
+        if (logoGeo) {
+            try {
+                var ww = 120, hh = 120;
+                doc.setGState && doc.setGState(new doc.GState({ opacity: 0.1 }));
+                doc.addImage(logoGeo, 'PNG', (pageW - ww) / 2, 70, ww, hh);
+                doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }));
+            } catch (e) {}
+        }
 
-        // ===== CUERPO (plantilla GeoMetrics) =====
+        // Título
+        y = 48;
+        setF(true, 16);
+        var tit1 = 'INFORME DE LABORATORIO: ENSAYO DE';
+        var tit2 = 'CORTE DIRECTO';
+        doc.text(tit1, (pageW - doc.getTextWidth(tit1)) / 2, y);
+        y += 8;
+        doc.text(tit2, (pageW - doc.getTextWidth(tit2)) / 2, y);
+
+        // Campos de datos personales (rellenados desde la sesión)
+        y = 100;
+        setF(false, 12);
+        function lineaDato(etiqueta, valor) {
+            var txt = etiqueta + '  ' + (valor || '—');
+            setF(false, 12);
+            doc.setTextColor(40, 40, 40);
+            doc.text(txt, (pageW - doc.getTextWidth(txt)) / 2, y);
+            y += 9;
+        }
+        lineaDato('ESTUDIANTE:', datosInf.estudiante);
+        lineaDato('CÓDIGO:', datosInf.codigo);
+        lineaDato('DOCENTE:', datosInf.docente);
+        lineaDato('GRUPO:', datosInf.grupo);
+        lineaDato('ASIGNATURA:', datosInf.asignatura);
+
+        // Pie de portada institucional
+        y = pageH - 48;
+        setF(false, 11);
+        doc.setTextColor(30, 30, 30);
+        var pie = [
+            'UNIVERSIDAD DE PAMPLONA',
+            'FACULTAD DE INGENIERÍAS Y ARQUITECTURA',
+            'PROGRAMA DE INGENIERÍA CIVIL'
+        ];
+        pie.forEach(function(ln) {
+            doc.text(ln, (pageW - doc.getTextWidth(ln)) / 2, y);
+            y += 6;
+        });
+        y += 2;
+        setF(false, 9);
+        doc.setTextColor(90, 90, 90);
+        var gen = 'Generado con la plataforma GeoMetrics  ' + fechaStr;
+        doc.text(gen, (pageW - doc.getTextWidth(gen)) / 2, y);
+        doc.setTextColor(0, 0, 0);
+
+        // ===== CUERPO =====
         doc.addPage();
-        drawWatermark();
-        y = marginT + 4;
+        // marco en páginas de cuerpo también
+        doc.setDrawColor(40, 70, 140);
+        doc.setLineWidth(0.6);
+        doc.rect(8, 8, pageW - 16, pageH - 16);
+        y = marginT + 6;
 
         addHeading('Introducción');
         addParagraph(
