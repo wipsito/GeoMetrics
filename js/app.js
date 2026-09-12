@@ -3123,12 +3123,13 @@ function generarInformeCorteDirectoPDF() {
         var fontBold = results[5];
 
         var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        // APA 7: márgenes 1 pulgada (25.4 mm), cuerpo 12 pt, interlineado doble
         var margin = 25.4;
         var pageW = doc.internal.pageSize.getWidth();
         var pageH = doc.internal.pageSize.getHeight();
         var y = margin;
-        var maxW = pageW - margin * 2 - 18; // ancho seguro (evita corte en visores PDF)
-        var lineH = 6;
+        var maxW = pageW - margin * 2; // ancho completo útil APA
+        var lineH = 8.5; // ~ doble espacio a 12 pt
         var hasUnicodeFont = false;
 
         if (fontReg) {
@@ -3145,7 +3146,7 @@ function generarInformeCorteDirectoPDF() {
             if (hasUnicodeFont) {
                 doc.setFont('DejaVu', bold ? 'bold' : 'normal');
             } else {
-                doc.setFont('times', bold ? 'bold' : 'normal');
+                doc.setFont('times', bold ? 'bold' : (bold === false ? 'normal' : 'normal'));
             }
             doc.setFontSize(size || 12);
             doc.setTextColor(0, 0, 0);
@@ -3193,7 +3194,7 @@ function generarInformeCorteDirectoPDF() {
         function drawNiceTable(cols, rows, pal) {
             // cols: [{title, w}], rows: array of string arrays, pal: palette
             pal = pal || palette;
-            var rowH = 8;
+            var rowH = 9;
             var tableW = 0;
             cols.forEach(function(col) { tableW += col.w; });
             var nRows = 1 + rows.length;
@@ -3263,80 +3264,87 @@ function generarInformeCorteDirectoPDF() {
 
         function wrapText(text, width, fontSize, bold) {
             text = sym(String(text || ''));
-            fontSize = fontSize || 11;
+            fontSize = fontSize || 12;
             setF(!!bold, fontSize);
-            // Ancho medio por carácter (fuente activa)
-            var probe = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZáéíóúñ 0123456789';
-            var avg = doc.getTextWidth(probe) / probe.length;
-            if (!isFinite(avg) || avg < 0.8) avg = 2.1;
-            // Límite conservador de caracteres por línea
-            var maxChars = Math.max(28, Math.floor(width / avg) - 2);
-
-            var words = text.split(/\s+/);
-            var lines = [];
-            var cur = '';
-            words.forEach(function(w) {
-                if (!w) return;
-                // palabra más larga que el máximo: partir en trozos
-                while (w.length > maxChars) {
-                    if (cur) { lines.push(cur); cur = ''; }
-                    lines.push(w.slice(0, maxChars));
-                    w = w.slice(maxChars);
-                }
-                var test = cur ? (cur + ' ' + w) : w;
-                if (test.length <= maxChars) {
-                    cur = test;
-                } else {
-                    if (cur) lines.push(cur);
-                    cur = w;
-                }
-            });
-            if (cur) lines.push(cur);
-            return lines.length ? lines : [''];
+            // Usar splitTextToSize de jsPDF con fuente activa (más fiel al ancho real)
+            var lines = doc.splitTextToSize(text, width);
+            // Seguridad: no perder palabras si alguna línea queda vacía
+            if (!lines || !lines.length) return [''];
+            return lines;
         }
-                function addParagraph(text, opts) {
+        function addParagraph(text, opts) {
             opts = opts || {};
-            var size = opts.size || 11;
-            // Cuerpo del informe: NUNCA negrita (solo títulos usan addHeading)
-            var bold = false;
-            var lines = wrapText(text, maxW, size, false);
-            lines.forEach(function(ln) {
-                ensureSpace(lineH + 2);
-                setF(false, size); // forzar normal en cada línea (también tras salto de página)
-                doc.text(ln, margin, y);
+            var size = opts.size || 12;
+            // APA: cuerpo normal, sin negrita
+            var lines = wrapText(text, maxW - (opts.indent ? 12.7 : 0), size, false);
+            lines.forEach(function(ln, idx) {
+                ensureSpace(lineH + 1);
+                setF(false, size);
+                var x = margin;
+                // Primera línea con sangría de 0.5" (APA), salvo opts.noIndent
+                if (idx === 0 && !opts.noIndent && !opts.bold) {
+                    x = margin + 12.7;
+                }
+                doc.text(ln, x, y);
                 y += lineH;
             });
-            y += (opts.after || 3);
-            setF(false, 11);
+            // APA: sin espacio extra entre párrafos (solo el doble espacio de línea)
+            setF(false, 12);
         }
         function addHeading(text) {
-            // ÚNICAMENTE los títulos van en negrita
-            var lines = wrapText(text, maxW, 11, true);
-            ensureSpace(lines.length * lineH + 10);
-            y += 3;
+            // APA Nivel 1: centrado, negrita, Title Case, mismo interlineado
+            var lines = wrapText(text, maxW, 12, true);
+            ensureSpace(lines.length * lineH + lineH);
+            y += lineH * 0.5;
             lines.forEach(function(ln) {
-                ensureSpace(lineH + 2);
-                setF(true, 11);
+                ensureSpace(lineH + 1);
+                setF(true, 12);
+                var tw = doc.getTextWidth(ln);
+                doc.text(ln, (pageW - tw) / 2, y);
+                y += lineH;
+            });
+            setF(false, 12);
+        }
+        function addTableTitle(num, caption) {
+            // APA: Table X (negrita) + título en cursiva en la línea siguiente
+            ensureSpace(lineH * 3);
+            setF(true, 12);
+            doc.text('Tabla ' + num, margin, y);
+            y += lineH;
+            setF(false, 12);
+            // Simular cursiva con el estilo italic si existe
+            try {
+                if (hasUnicodeFont) {
+                    doc.setFont('DejaVu', 'normal');
+                } else {
+                    doc.setFont('times', 'italic');
+                }
+            } catch (e) {
+                setF(false, 12);
+            }
+            doc.setFontSize(12);
+            var capLines = doc.splitTextToSize(sym(String(caption)), maxW);
+            capLines.forEach(function(ln) {
+                ensureSpace(lineH + 1);
                 doc.text(ln, margin, y);
                 y += lineH;
             });
-            y += 3;
-            setF(false, 11); // volver a normal para el texto siguiente
+            setF(false, 12);
+            y += 2;
         }
         function addCentered(text, size, bold) {
-            size = size || 11;
-            // Solo negrita si se pide explícitamente (título principal de portada)
+            size = size || 12;
             setF(!!bold, size);
             var lines = wrapText(text, maxW, size, !!bold);
             lines.forEach(function(ln) {
-                ensureSpace(lineH + 2);
+                ensureSpace(lineH + 1);
                 setF(!!bold, size);
                 var tw = doc.getTextWidth(ln);
                 doc.text(ln, (pageW - tw) / 2, y);
                 y += lineH;
             });
             y += 2;
-            setF(false, 11);
+            setF(false, 12);
         }
 
         var A = d.A || 0.0036;
@@ -3370,7 +3378,7 @@ function generarInformeCorteDirectoPDF() {
         addCentered('Generado con la plataforma GeoMetrics', 12, false);
         addCentered(fechaStr, 12, false);
         y += 8;
-        addCentered('Formato de presentación: normas APA (7.ª edición)', 11, false);
+        addCentered('Formato de presentación según el Manual de publicaciones de la APA (7.ª edición)', 12, false);
 
         // ===== CUERPO =====
         doc.addPage();
@@ -3401,8 +3409,7 @@ function generarInformeCorteDirectoPDF() {
         addParagraph('En la Tabla 1 se resumen los puntos de falla registrados en el ensayo.');
         // Título + tabla juntos (sin saltar a mitad)
         ensureBlock(18 + (1 + d.pts.length) * 8);
-        addParagraph('Tabla 1', { bold: true, after: 2 });
-        addParagraph('Puntos de falla del ensayo de corte directo', { after: 3 });
+        addTableTitle(1, 'Puntos de falla del ensayo de corte directo');
         // Tabla 1: paleta A
         var pal1 = tablePalettes[Math.floor(Math.random() * tablePalettes.length)];
         var pal2 = tablePalettes[(tablePalettes.indexOf(pal1) + 1 + Math.floor(Math.random() * (tablePalettes.length - 1))) % tablePalettes.length];
@@ -3429,8 +3436,7 @@ function generarInformeCorteDirectoPDF() {
         addParagraph('En la Tabla 2 se presentan el radio y el centro de cada círculo de Mohr (valores de σ en kN).');
         // Reservar espacio: intro ya escrita; título + subtítulo + tabla en la misma página
         ensureBlock(22 + (1 + d.pts.length) * 8);
-        addParagraph('Tabla 2', { bold: true, after: 2 });
-        addParagraph('Parámetros de los círculos de Mohr por ensayo', { after: 3 });
+        addTableTitle(2, 'Parámetros de los círculos de Mohr por ensayo');
         // Tabla 2: paleta B distinta
         drawNiceTable(
             [
@@ -3508,7 +3514,8 @@ function generarInformeCorteDirectoPDF() {
         addHeading('Figura: envolvente de falla y círculos de Mohr');
         doc.addImage(img, 'PNG', margin, y, imgW, imgH);
         y += imgH + 6;
-        addParagraph('Figura 1. Envolvente τ–σn y círculos de Mohr del ensayo de corte directo (GeoMetrics).');
+        addParagraph('Figura 1', { noIndent: true });
+        addParagraph('Envolvente τ–σn y círculos de Mohr del ensayo de corte directo (GeoMetrics).', { noIndent: true });
 
         addHeading('Referencias');
         addParagraph(
@@ -3528,6 +3535,15 @@ function generarInformeCorteDirectoPDF() {
         doc.setTextColor(100, 100, 100);
         doc.text('GeoMetrics — Informe académico', margin, pageH - 12);
 
+        // Numeración APA: esquina superior derecha
+        var total = doc.internal.getNumberOfPages();
+        for (var p = 1; p <= total; p++) {
+            doc.setPage(p);
+            setF(false, 12);
+            doc.setTextColor(0, 0, 0);
+            var pn = String(p);
+            doc.text(pn, pageW - margin - doc.getTextWidth(pn), margin - 8);
+        }
         doc.save('Informe_Corte_Directo_GeoMetrics.pdf');
         fin();
     }).catch(function(err) {
