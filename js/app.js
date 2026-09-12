@@ -3127,7 +3127,7 @@ function generarInformeCorteDirectoPDF() {
         var pageW = doc.internal.pageSize.getWidth();
         var pageH = doc.internal.pageSize.getHeight();
         var y = margin;
-        var maxW = pageW - margin * 2 - 12; // ancho seguro (evita corte en visores PDF)
+        var maxW = pageW - margin * 2 - 18; // ancho seguro (evita corte en visores PDF)
         var lineH = 6;
         var hasUnicodeFont = false;
 
@@ -3198,16 +3198,11 @@ function generarInformeCorteDirectoPDF() {
             ensureBlock(blockH);
             var x0 = margin;
             var y0 = y;
-            // cabecera (color 1)
+            // cabecera = color título; datos = color distinto (todos iguales)
             doc.setFillColor(pal.head[0], pal.head[1], pal.head[2]);
             doc.rect(x0, y0, tableW, rowH, 'F');
-            // filas de datos: color 2 y blanco alternados (siempre se ven 2 colores)
             for (var i = 0; i < rows.length; i++) {
-                if (i % 2 === 0) {
-                    doc.setFillColor(pal.alt[0], pal.alt[1], pal.alt[2]);
-                } else {
-                    doc.setFillColor(255, 255, 255);
-                }
+                doc.setFillColor(pal.alt[0], pal.alt[1], pal.alt[2]);
                 doc.rect(x0, y0 + (i + 1) * rowH, tableW, rowH, 'F');
             }
             doc.setDrawColor(pal.border[0], pal.border[1], pal.border[2]);
@@ -3259,48 +3254,64 @@ function generarInformeCorteDirectoPDF() {
             } catch (e) {}
         }
 
-        function wrapText(text, width) {
-            text = sym(String(text));
-            setF(false, 11); // métrica de fuente activa
-            var lines = doc.splitTextToSize(text, width);
-            // Seguridad: si alguna línea sigue demasiado ancha, partir por palabras
-            var out = [];
-            lines.forEach(function(ln) {
-                if (doc.getTextWidth(ln) <= width + 0.5) {
-                    out.push(ln);
-                    return;
+        function wrapText(text, width, fontSize, bold) {
+            text = sym(String(text || ''));
+            fontSize = fontSize || 11;
+            setF(!!bold, fontSize);
+            // Ancho medio por carácter (fuente activa)
+            var probe = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZáéíóúñ 0123456789';
+            var avg = doc.getTextWidth(probe) / probe.length;
+            if (!isFinite(avg) || avg < 0.8) avg = 2.1;
+            // Límite conservador de caracteres por línea
+            var maxChars = Math.max(28, Math.floor(width / avg) - 2);
+
+            var words = text.split(/\s+/);
+            var lines = [];
+            var cur = '';
+            words.forEach(function(w) {
+                if (!w) return;
+                // palabra más larga que el máximo: partir en trozos
+                while (w.length > maxChars) {
+                    if (cur) { lines.push(cur); cur = ''; }
+                    lines.push(w.slice(0, maxChars));
+                    w = w.slice(maxChars);
                 }
-                var words = ln.split(' ');
-                var cur = '';
-                words.forEach(function(w) {
-                    var test = cur ? (cur + ' ' + w) : w;
-                    if (doc.getTextWidth(test) <= width) {
-                        cur = test;
-                    } else {
-                        if (cur) out.push(cur);
-                        cur = w;
-                    }
-                });
-                if (cur) out.push(cur);
+                var test = cur ? (cur + ' ' + w) : w;
+                if (test.length <= maxChars) {
+                    cur = test;
+                } else {
+                    if (cur) lines.push(cur);
+                    cur = w;
+                }
             });
-            return out;
+            if (cur) lines.push(cur);
+            return lines.length ? lines : [''];
         }
         function addParagraph(text, opts) {
             opts = opts || {};
-            setF(!!opts.bold, opts.size || 11);
-            var lines = wrapText(text, maxW);
+            var size = opts.size || 11;
+            var bold = !!opts.bold;
+            setF(bold, size);
+            var lines = wrapText(text, maxW, size, bold);
             ensureSpace(lines.length * lineH + 2);
-            doc.text(lines, margin, y);
-            y += lines.length * lineH + (opts.after || 3);
+            // dibujar línea a línea (más fiable que array)
+            lines.forEach(function(ln) {
+                doc.text(ln, margin, y);
+                y += lineH;
+            });
+            y += (opts.after || 3);
         }
         function addHeading(text) {
             ensureSpace(12);
             y += 3;
             setF(true, 11);
-            var lines = wrapText(text, maxW);
+            var lines = wrapText(text, maxW, 11, true);
             setF(true, 11);
-            doc.text(lines, margin, y);
-            y += lines.length * lineH + 3;
+            lines.forEach(function(ln) {
+                doc.text(ln, margin, y);
+                y += lineH;
+            });
+            y += 3;
         }
         function addCentered(text, size, bold) {
             setF(!!bold, size || 11);
@@ -3469,12 +3480,8 @@ function generarInformeCorteDirectoPDF() {
             ' puntos de falla. Se recomienda un mínimo de tres ensayos a distintos niveles de esfuerzo normal.'
         );
         addParagraph('3. El material se interpreta, de forma orientativa, como: ' + cls.tipo + '.');
-        addParagraph(
-            '4. Los círculos de Mohr resultan coherentes con la envolvente tangente en los puntos de falla de cada ensayo.'
-        );
-        addParagraph(
-            '5. Se sugiere contrastar los resultados con la guía FLA-23 y repetir el ensayo si se observa dispersión elevada entre puntos.'
-        );
+        addParagraph('4. Los círculos de Mohr resultan coherentes con la envolvente tangente en los puntos de falla de cada ensayo.');
+        addParagraph('5. Se sugiere contrastar los resultados con la guía FLA-23 y repetir el ensayo si se observa dispersión elevada entre puntos.');
 
         var img = canvas.toDataURL('image/png');
         var imgW = maxW;
