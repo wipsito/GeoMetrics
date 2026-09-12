@@ -3123,13 +3123,17 @@ function generarInformeCorteDirectoPDF() {
         var fontBold = results[5];
 
         var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        // APA 7: márgenes 1 pulgada (25.4 mm), cuerpo 12 pt, interlineado doble
-        var margin = 25.4;
+        // Plantilla GeoMetrics: márgenes tipo informe de lab (compacto, legible)
+        var marginL = 22;
+        var marginR = 16;
+        var marginT = 16;
+        var marginB = 16;
+        var margin = marginL; // compatibilidad con helpers
         var pageW = doc.internal.pageSize.getWidth();
         var pageH = doc.internal.pageSize.getHeight();
-        var y = margin;
-        var maxW = pageW - margin * 2; // ancho completo útil APA
-        var lineH = 8.5; // ~ doble espacio a 12 pt
+        var y = marginT;
+        var maxW = pageW - marginL - marginR;
+        var lineH = 6.2; // interlineado cómodo (no doble APA extremo)
         var hasUnicodeFont = false;
 
         if (fontReg) {
@@ -3163,20 +3167,18 @@ function generarInformeCorteDirectoPDF() {
         }
 
         function ensureSpace(h) {
-            if (y + h > pageH - margin) {
+            if (y + h > pageH - marginB) {
                 doc.addPage();
                 drawWatermark();
-                y = margin + 8;
-                // Tras salto de página el cuerpo sigue en normal (nunca negrita)
+                y = marginT + 6;
                 setF(false, 11);
             }
         }
-        /** Si no cabe el bloque completo, salta de página antes del título */
         function ensureBlock(h) {
-            if (y + h > pageH - margin) {
+            if (y + h > pageH - marginB) {
                 doc.addPage();
                 drawWatermark();
-                y = margin + 8;
+                y = marginT + 6;
                 setF(false, 11);
             }
         }
@@ -3200,7 +3202,7 @@ function generarInformeCorteDirectoPDF() {
             var nRows = 1 + rows.length;
             var blockH = nRows * rowH + 4;
             ensureBlock(blockH);
-            var x0 = margin;
+            var x0 = marginL;
             var y0 = y;
             // cabecera = color título; datos = color distinto (todos iguales)
             doc.setFillColor(pal.head[0], pal.head[1], pal.head[2]);
@@ -3250,13 +3252,13 @@ function generarInformeCorteDirectoPDF() {
                 doc.setGState && doc.setGState(new doc.GState({ opacity: 0.12 }));
                 doc.addImage(logoGeo, 'PNG', wx, wy, ww, hh);
                 doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }));
-                setF(false, 14); // marca de agua NO en negrita
-                doc.setTextColor(190, 190, 190);
+                setF(false, 12);
+                doc.setTextColor(200, 200, 200);
                 var t = 'GeoMetrics';
                 var tw = doc.getTextWidth(t);
                 doc.text(t, (pageW - tw) / 2, wy + hh + 8);
                 doc.setTextColor(0, 0, 0);
-                setF(false, 11); // restaurar cuerpo normal
+                setF(false, 11);
             } catch (e) {
                 setF(false, 11);
             }
@@ -3264,73 +3266,53 @@ function generarInformeCorteDirectoPDF() {
 
         function wrapText(text, width, fontSize, bold) {
             text = sym(String(text || ''));
-            fontSize = fontSize || 12;
+            fontSize = fontSize || 11;
             setF(!!bold, fontSize);
-            // Usar splitTextToSize de jsPDF con fuente activa (más fiel al ancho real)
             var lines = doc.splitTextToSize(text, width);
-            // Seguridad: no perder palabras si alguna línea queda vacía
             if (!lines || !lines.length) return [''];
             return lines;
         }
         function addParagraph(text, opts) {
             opts = opts || {};
-            var size = opts.size || 12;
-            // APA: cuerpo normal, sin negrita
-            var lines = wrapText(text, maxW - (opts.indent ? 12.7 : 0), size, false);
-            lines.forEach(function(ln, idx) {
+            var size = opts.size || 11;
+            var lines = wrapText(text, maxW, size, false);
+            lines.forEach(function(ln) {
                 ensureSpace(lineH + 1);
                 setF(false, size);
-                var x = margin;
-                // Primera línea con sangría de 0.5" (APA), salvo opts.noIndent
-                if (idx === 0 && !opts.noIndent && !opts.bold) {
-                    x = margin + 12.7;
-                }
-                doc.text(ln, x, y);
+                doc.text(ln, marginL, y);
                 y += lineH;
             });
-            // APA: sin espacio extra entre párrafos (solo el doble espacio de línea)
-            setF(false, 12);
+            y += (opts.after != null ? opts.after : 2);
+            setF(false, 11);
         }
         function addHeading(text) {
-            // APA Nivel 1: centrado, negrita, Title Case, mismo interlineado
+            // Plantilla: título de sección a la izquierda, negrita (como Heading 3)
             var lines = wrapText(text, maxW, 12, true);
-            ensureSpace(lines.length * lineH + lineH);
-            y += lineH * 0.5;
+            ensureSpace(lines.length * lineH + 8);
+            y += 4;
             lines.forEach(function(ln) {
                 ensureSpace(lineH + 1);
                 setF(true, 12);
-                var tw = doc.getTextWidth(ln);
-                doc.text(ln, (pageW - tw) / 2, y);
+                doc.text(ln, marginL, y);
                 y += lineH;
             });
-            setF(false, 12);
+            y += 2;
+            setF(false, 11);
         }
         function addTableTitle(num, caption) {
-            // APA: Table X (negrita) + título en cursiva en la línea siguiente
             ensureSpace(lineH * 3);
-            setF(true, 12);
-            doc.text('Tabla ' + num, margin, y);
+            setF(true, 11);
+            doc.text('Tabla ' + num, marginL, y);
             y += lineH;
-            setF(false, 12);
-            // Simular cursiva con el estilo italic si existe
-            try {
-                if (hasUnicodeFont) {
-                    doc.setFont('DejaVu', 'normal');
-                } else {
-                    doc.setFont('times', 'italic');
-                }
-            } catch (e) {
-                setF(false, 12);
-            }
-            doc.setFontSize(12);
+            setF(false, 11);
             var capLines = doc.splitTextToSize(sym(String(caption)), maxW);
             capLines.forEach(function(ln) {
                 ensureSpace(lineH + 1);
-                doc.text(ln, margin, y);
+                doc.text(ln, marginL, y);
                 y += lineH;
             });
-            setF(false, 12);
             y += 2;
+            setF(false, 11);
         }
         function addCentered(text, size, bold) {
             size = size || 12;
@@ -3344,7 +3326,7 @@ function generarInformeCorteDirectoPDF() {
                 y += lineH;
             });
             y += 2;
-            setF(false, 12);
+            setF(false, 11);
         }
 
         var A = d.A || 0.0036;
@@ -3356,33 +3338,33 @@ function generarInformeCorteDirectoPDF() {
         // ===== PORTADA (plantilla GeoMetrics) =====
         drawWatermark();
 
-        var logoH = 22;
+        var logoH = 24;
         if (logoUni) {
-            try { doc.addImage(logoUni, 'PNG', margin, 12, logoH, logoH); } catch (e) {}
+            try { doc.addImage(logoUni, 'PNG', marginL, 12, logoH, logoH); } catch (e) {}
         }
         if (logoCiv) {
-            try { doc.addImage(logoCiv, 'PNG', pageW - margin - logoH, 12, logoH, logoH); } catch (e) {}
+            try { doc.addImage(logoCiv, 'PNG', pageW - marginR - logoH, 12, logoH, logoH); } catch (e) {}
         }
 
-        y = 55;
+        y = 48;
         addCentered('Universidad de Pamplona', 12, false);
         addCentered('Facultad de Ingenierías', 12, false);
         addCentered('Programa de Ingeniería Civil', 12, false);
-        y += 10;
+        y += 12;
         addCentered('Informe de laboratorio: ensayo de corte directo', 14, true);
-        y += 8;
+        y += 10;
         addCentered('Asignatura: Mecánica de Suelos II', 12, false);
         addCentered('Guía de referencia: FLA-23', 12, false);
-        y += 8;
+        y += 10;
         addCentered('Generado con la plataforma GeoMetrics', 12, false);
         addCentered(fechaStr, 12, false);
-        y += 8;
-        addCentered('Formato de presentación según el Manual de publicaciones de la APA (7.ª edición)', 12, false);
+        y += 10;
+        addCentered('Formato de presentación según el Manual de publicaciones de la APA (7.ª edición)', 11, false);
 
         // ===== CUERPO (plantilla) =====
         doc.addPage();
         drawWatermark();
-        y = margin + 4;
+        y = marginT + 4;
 
         addHeading('Introducción');
         addParagraph(
@@ -3486,7 +3468,7 @@ function generarInformeCorteDirectoPDF() {
         }
         ensureBlock(imgH + 30);
         addHeading('Figura: envolvente de falla y círculos de Mohr');
-        doc.addImage(img, 'PNG', margin, y, imgW, imgH);
+        doc.addImage(img, 'PNG', marginL, y, imgW, imgH);
         y += imgH + 4;
         addParagraph('Figura 1', { noIndent: true });
         addParagraph('Envolvente τ–σn y círculos de Mohr del ensayo de corte directo (GeoMetrics).', { noIndent: true });
@@ -3499,7 +3481,7 @@ function generarInformeCorteDirectoPDF() {
 
         setF(false, 10);
         doc.setTextColor(100, 100, 100);
-        doc.text('GeoMetrics — Informe académico', margin, pageH - 12);
+        doc.text('GeoMetrics — Informe académico', marginL, pageH - 10);
         doc.setTextColor(0, 0, 0);
 
                 // Numeración APA: esquina superior derecha
@@ -3509,7 +3491,7 @@ function generarInformeCorteDirectoPDF() {
             setF(false, 12);
             doc.setTextColor(0, 0, 0);
             var pn = String(p);
-            doc.text(pn, pageW - margin - doc.getTextWidth(pn), margin - 8);
+            doc.text(pn, pageW - marginR - doc.getTextWidth(pn), 10);
         }
         doc.save('Informe_Corte_Directo_GeoMetrics.pdf');
         fin();
