@@ -2975,12 +2975,12 @@ function clasificarSueloCorte(c, phi) {
 function generarInformeCorteDirectoPDF() {
     var d = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
     if (!d || !d.pts || !d.pts.length) {
-        alert('Primero calcula y genera la gráfica del ensayo de corte directo.');
+        alert('Primero calcula y genera la grafica del ensayo de corte directo.');
         return;
     }
     var canvas = document.getElementById('canvas-corte');
     if (!canvas) {
-        alert('No se encontró la gráfica. Pulsa GENERAR GRÁFICA.');
+        alert('No se encontro la grafica. Pulse GENERAR GRAFICA.');
         return;
     }
 
@@ -2997,144 +2997,259 @@ function generarInformeCorteDirectoPDF() {
         }
     }
 
+    // Evitar simbolos griegos: jsPDF/Helvetica no los embebe bien
+    function txt(s) {
+        return String(s)
+            .replace(/σ₁/g, 'sigma_1').replace(/σ₃/g, 'sigma_3').replace(/σn/g, 'sigma_n')
+            .replace(/σ/g, 'sigma').replace(/τ/g, 'tau').replace(/φ/g, 'phi')
+            .replace(/·/g, '·').replace(/–/g, '-').replace(/—/g, '-')
+            .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/≈/g, 'aprox.')
+            .replace(/²/g, '2').replace(/³/g, '3').replace(/°/g, ' grados');
+    }
+
     civixLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js').then(function() {
         var JsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
         if (!JsPDF) throw new Error('jsPDF no disponible');
 
         var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        var margin = 16;
+        var margin = 25.4; // 1 inch APA
         var pageW = doc.internal.pageSize.getWidth();
         var pageH = doc.internal.pageSize.getHeight();
         var y = margin;
         var maxW = pageW - margin * 2;
+        var lineH = 6;
 
         function ensureSpace(h) {
-            if (y + h > pageH - 16) {
+            if (y + h > pageH - margin) {
                 doc.addPage();
                 y = margin;
             }
         }
-        function titulo(t) {
-            ensureSpace(12);
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(13);
-            doc.setTextColor(40, 40, 40);
-            doc.text(t, margin, y);
-            y += 7;
-        }
-        function cuerpo(t) {
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.setTextColor(50, 50, 50);
-            var lines = doc.splitTextToSize(t, maxW);
-            ensureSpace(lines.length * 5 + 2);
+        function addParagraph(text, opts) {
+            opts = opts || {};
+            doc.setFont('times', opts.bold ? 'bold' : 'normal');
+            doc.setFontSize(opts.size || 12);
+            doc.setTextColor(0, 0, 0);
+            var lines = doc.splitTextToSize(txt(text), maxW);
+            ensureSpace(lines.length * lineH + 2);
             doc.text(lines, margin, y);
-            y += lines.length * 5 + 3;
+            y += lines.length * lineH + (opts.after || 4);
         }
-        function bullet(t) {
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            var lines = doc.splitTextToSize('•  ' + t, maxW);
-            ensureSpace(lines.length * 5 + 1);
-            doc.text(lines, margin, y);
-            y += lines.length * 5 + 2;
+        function addHeading(text) {
+            ensureSpace(14);
+            y += 4;
+            doc.setFont('times', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(txt(text), margin, y);
+            y += 8;
         }
-
-        // Encabezado
-        doc.setFillColor(26, 18, 12);
-        doc.rect(0, 0, pageW, 28, 'F');
-        doc.setTextColor(232, 184, 74);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(16);
-        doc.text('GeoMetrics — Informe de laboratorio', margin, 12);
-        doc.setFontSize(11);
-        doc.setTextColor(220, 210, 190);
-        doc.text('Ensayo de Corte Directo (FLA-23)', margin, 20);
-        y = 36;
-
-        doc.setTextColor(80, 80, 80);
-        doc.setFontSize(9);
-        var fecha = new Date().toLocaleString('es-CO');
-        doc.text('Fecha: ' + fecha + '  ·  Universidad de Pamplona — Ingeniería Civil', margin, y);
-        y += 10;
+        function addCentered(text, size, bold) {
+            doc.setFont('times', bold ? 'bold' : 'normal');
+            doc.setFontSize(size || 12);
+            doc.setTextColor(0, 0, 0);
+            var lines = doc.splitTextToSize(txt(text), maxW);
+            ensureSpace(lines.length * lineH + 2);
+            lines.forEach(function(ln) {
+                var tw = doc.getTextWidth(ln);
+                doc.text(ln, (pageW - tw) / 2, y);
+                y += lineH;
+            });
+            y += 2;
+        }
 
         var A = d.A || 0.0036;
-        var cls = clasificarSueloCorte(d.c, d.phi);
+        var phi = Number(d.phi);
+        var c = Number(d.c);
+        var cls = clasificarSueloCorte(c, phi);
+        var fecha = new Date();
+        var fechaStr = fecha.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
 
-        titulo('1. Datos de entrada');
-        cuerpo('Área de la muestra A = ' + Number(A).toFixed(6) + ' m².');
+        // ===== Portada estilo APA =====
+        y = 60;
+        addCentered('Universidad de Pamplona', 12, false);
+        addCentered('Facultad de Ingenierias', 12, false);
+        addCentered('Programa de Ingenieria Civil', 12, false);
+        y += 16;
+        addCentered('Informe de laboratorio: ensayo de corte directo', 14, true);
+        y += 6;
+        addCentered('Asignatura: Mecanica de Suelos II', 12, false);
+        addCentered('Guia de referencia: FLA-23', 12, false);
+        y += 16;
+        addCentered('Generado con la plataforma GeoMetrics', 12, false);
+        addCentered(fechaStr, 12, false);
+        y += 10;
+        addCentered('Formato de presentacion: APA (7.a ed.)', 11, false);
+
+        // ===== Cuerpo =====
+        doc.addPage();
+        y = margin;
+
+        addHeading('Introduccion');
+        addParagraph(
+            'El ensayo de corte directo permite estimar los parametros de resistencia al corte del suelo en ' +
+            'condiciones controladas de laboratorio. A partir de la envolvente de falla de Coulomb se obtienen ' +
+            'la cohesion (c) y el angulo de friccion interna (phi). Este informe presenta los datos de entrada, ' +
+            'los resultados numericos, el analisis de los circulos de Mohr, la interpretacion del tipo de suelo ' +
+            'y las conclusiones derivadas del ensayo.'
+        );
+
+        addHeading('Metodo');
+        addParagraph(
+            'Se aplico el criterio de Coulomb, expresado como tau = c + sigma_n * tan(phi), donde tau es el ' +
+            'esfuerzo cortante de falla, sigma_n el esfuerzo normal efectivo sobre el plano de corte, c la cohesion ' +
+            'y phi el angulo de friccion interna. Los parametros se estimaron mediante regresion lineal de los ' +
+            'puntos de falla (sigma_n, tau). El radio y el centro de cada circulo de Mohr se calcularon con ' +
+            'R = (sigma_1 - sigma_3) / 2 y Centro = (sigma_1 + sigma_3) / 2. Para la representacion grafica, ' +
+            'los valores de esfuerzo normal se expresaron tambien en kN mediante F = sigma * A, con A = area ' +
+            'de la muestra.'
+        );
+        addParagraph('Area de la muestra empleada: A = ' + Number(A).toFixed(6) + ' m2.');
+
+        addHeading('Resultados');
+        addParagraph('En la Tabla 1 se resumen los puntos de falla registrados en el ensayo.');
+        addParagraph('Tabla 1', { bold: true, size: 12, after: 2 });
+        addParagraph('Puntos de falla del ensayo de corte directo', { after: 3 });
+
+        // Tabla simple
+        doc.setFont('times', 'bold');
+        doc.setFontSize(11);
+        ensureSpace(28);
+        doc.text('Ensayo', margin, y);
+        doc.text('sigma_n (kPa)', margin + 30, y);
+        doc.text('tau (kPa)', margin + 80, y);
+        y += 6;
+        doc.setFont('times', 'normal');
         d.pts.forEach(function(p, i) {
-            bullet('Ensayo ' + (i + 1) + ': σn = ' + p.sn.toFixed(2) + ' kPa,  τ = ' + p.t.toFixed(2) + ' kPa');
+            ensureSpace(8);
+            doc.text(String(i + 1), margin, y);
+            doc.text(p.sn.toFixed(2), margin + 30, y);
+            doc.text(p.t.toFixed(2), margin + 80, y);
+            y += 6;
         });
-        y += 2;
+        y += 4;
 
-        titulo('2. Resultados del análisis');
-        bullet('Ángulo de fricción interna φ = ' + Number(d.phi).toFixed(1) + '°');
-        bullet('Cohesión c = ' + Number(d.c).toFixed(2) + ' kPa');
-        bullet('Ecuación de Coulomb: τ = ' + Number(d.c).toFixed(2) + ' + σn · tan(' + Number(d.phi).toFixed(1) + '°)');
-        bullet('σ₁ medio ≈ ' + Number(d.avgS1).toFixed(2) + ' kPa');
-        bullet('σ₃ medio ≈ ' + Number(d.avgS3).toFixed(2) + ' kPa');
-        y += 2;
+        addParagraph(
+            'A partir de la regresion se obtuvo phi = ' + phi.toFixed(1) +
+            ' grados y c = ' + c.toFixed(2) + ' kPa. La ecuacion de la envolvente es: tau = ' +
+            c.toFixed(2) + ' + sigma_n * tan(' + phi.toFixed(1) + ' grados). Los esfuerzos principales medios ' +
+            'resultaron sigma_1 aproximadamente ' + Number(d.avgS1).toFixed(2) +
+            ' kPa y sigma_3 aproximadamente ' + Number(d.avgS3).toFixed(2) + ' kPa.'
+        );
 
-        titulo('3. Círculos de Mohr (por ensayo)');
-        cuerpo('R = (σ₁ − σ₃)/2    ·    Centro = (σ₁ + σ₃)/2    (valores de σ convertidos a kN con F = σ·A)');
+        addParagraph('En la Tabla 2 se presentan el radio y el centro de cada circulo de Mohr (valores de sigma en kN).');
+        addParagraph('Tabla 2', { bold: true, after: 2 });
+        addParagraph('Parametros de los circulos de Mohr por ensayo', { after: 3 });
+        doc.setFont('times', 'bold');
+        doc.setFontSize(11);
+        ensureSpace(10);
+        doc.text('Ensayo', margin, y);
+        doc.text('sigma_1 (kN)', margin + 25, y);
+        doc.text('sigma_3 (kN)', margin + 60, y);
+        doc.text('R (kN)', margin + 95, y);
+        doc.text('Centro (kN)', margin + 125, y);
+        y += 6;
+        doc.setFont('times', 'normal');
         d.pts.forEach(function(p, i) {
             var s1kN = p.s1 * A;
             var s3kN = p.s3 * A;
             var R = (s1kN - s3kN) / 2;
             var centro = (s1kN + s3kN) / 2;
-            bullet('E' + (i + 1) + ': σ₁ = ' + s1kN.toFixed(3) + ' kN, σ₃ = ' + s3kN.toFixed(3) +
-                ' kN, R' + (i + 1) + ' = ' + R.toFixed(3) + ' kN, Centro' + (i + 1) + ' = ' + centro.toFixed(3) + ' kN');
+            ensureSpace(8);
+            doc.text(String(i + 1), margin, y);
+            doc.text(s1kN.toFixed(3), margin + 25, y);
+            doc.text(s3kN.toFixed(3), margin + 60, y);
+            doc.text(R.toFixed(3), margin + 95, y);
+            doc.text(centro.toFixed(3), margin + 125, y);
+            y += 6;
         });
-        y += 2;
+        y += 6;
 
-        titulo('4. Análisis del ángulo de fricción φ');
-        cuerpo('El valor φ = ' + Number(d.phi).toFixed(1) +
-            '° se obtuvo por regresión lineal de los puntos de falla (σn, τ) sobre la envolvente de Coulomb. ' +
-            'La pendiente de la recta es tan(φ); la cohesión es el intercepto (o el promedio de c = τ − σn·tan(φ)).');
-        if (d.phi >= 30) {
-            cuerpo('Un φ ≥ 30° indica buena capacidad de movilizar resistencia por fricción, típica de suelos granulares densos o medianamente densos.');
-        } else if (d.phi >= 20) {
-            cuerpo('Un φ entre 20° y 30° es frecuente en suelos mixtos o arenas sueltas/limosas; la resistencia combina fricción y algo de cohesión.');
+        addHeading('Analisis del angulo de friccion interna');
+        addParagraph(
+            'El angulo de friccion interna phi = ' + phi.toFixed(1) +
+            ' grados se obtuvo como la pendiente de la recta de falla en el plano tau-sigma_n. ' +
+            'La cohesion se despejo de la relacion tau = c + sigma_n * tan(phi), es decir, c = tau - sigma_n * tan(phi), ' +
+            'tomando el intercepto de la regresion redondeado a dos decimales.'
+        );
+        if (phi >= 30) {
+            addParagraph(
+                'Un valor de phi mayor o igual a 30 grados indica una contribucion importante de la friccion a la ' +
+                'resistencia al corte, comportamiento frecuente en suelos granulares densos o medianamente densos.'
+            );
+        } else if (phi >= 20) {
+            addParagraph(
+                'Un valor de phi entre 20 y 30 grados es habitual en suelos mixtos o en arenas sueltas a limosas, ' +
+                'donde la resistencia combina friccion y una cohesion aparente moderada.'
+            );
         } else {
-            cuerpo('Un φ < 20° sugiere predominio cohesivo o condiciones desfavorables (humedad alta, estructura alterada). Conviene verificar el procedimiento de corte.');
+            addParagraph(
+                'Un valor de phi inferior a 20 grados sugiere predominio del comportamiento cohesivo o condiciones ' +
+                'desfavorables (humedad elevada o alteracion de la muestra). Se recomienda revisar el procedimiento experimental.'
+            );
         }
-        y += 1;
 
-        titulo('5. Tipo de suelo (interpretación de laboratorio)');
-        cuerpo('Clasificación orientativa según c y φ obtenidos:');
-        doc.setFont('helvetica', 'bold');
-        cuerpo(cls.tipo);
-        cuerpo(cls.detalle);
-        cuerpo('Nota: esta interpretación es didáctica. Para diseño geotécnico debe complementarse con granulometría, límites de Atterberg, densidad relativa y normas vigentes.');
-        y += 1;
+        addHeading('Interpretacion del tipo de suelo');
+        addParagraph(
+            'Segun los parametros c = ' + c.toFixed(2) + ' kPa y phi = ' + phi.toFixed(1) +
+            ' grados, la interpretacion orientativa del material es la siguiente: ' + cls.tipo + '. ' + cls.detalle
+        );
+        addParagraph(
+            'Esta clasificacion tiene caracter didactico. Para decisiones de diseno geotecnico debe contrastarse ' +
+            'con granulometria, limites de Atterberg, densidad relativa y la normativa aplicable.'
+        );
 
-        titulo('6. Conclusiones');
-        bullet('La envolvente de falla queda definida por c = ' + Number(d.c).toFixed(2) + ' kPa y φ = ' + Number(d.phi).toFixed(1) + '°.');
-        bullet('Se utilizaron ' + d.pts.length + ' punto(s) de falla; se recomienda un mínimo de 3 ensayos a distintas σn.');
-        bullet('El material se interpreta como: ' + cls.tipo + '.');
-        bullet('Los círculos de Mohr confirman la envolvente tangente en los puntos de falla de cada ensayo.');
-        bullet('Se recomienda contrastar resultados con la guía FLA-23 y repetir ensayos si hay dispersión alta entre puntos.');
-        y += 2;
+        addHeading('Conclusiones');
+        addParagraph(
+            '1. La envolvente de falla del suelo ensayado queda definida por c = ' + c.toFixed(2) +
+            ' kPa y phi = ' + phi.toFixed(1) + ' grados, de acuerdo con el criterio de Coulomb.'
+        );
+        addParagraph(
+            '2. Se emplearon ' + d.pts.length +
+            ' puntos de falla. Se recomienda un minimo de tres ensayos a distintos niveles de esfuerzo normal.'
+        );
+        addParagraph('3. El material se interpreta, de forma orientativa, como: ' + cls.tipo + '.');
+        addParagraph(
+            '4. Los circulos de Mohr resultan coherentes con la envolvente tangente en los puntos de falla de cada ensayo.'
+        );
+        addParagraph(
+            '5. Se sugiere contrastar los resultados con la guia FLA-23 y repetir el ensayo si se observa dispersion elevada entre puntos.'
+        );
 
-        // Gráfica
-        titulo('7. Gráfica generada (envolvente τ–σn y círculos de Mohr)');
+        addHeading('Figura: envolvente de falla y circulos de Mohr');
         var img = canvas.toDataURL('image/png');
         var imgW = maxW;
         var imgH = (canvas.height / canvas.width) * imgW;
-        if (imgH > 90) {
-            imgH = 90;
+        if (imgH > 95) {
+            imgH = 95;
             imgW = (canvas.width / canvas.height) * imgH;
         }
-        ensureSpace(imgH + 8);
+        ensureSpace(imgH + 16);
         doc.addImage(img, 'PNG', margin, y, imgW, imgH);
-        y += imgH + 8;
+        y += imgH + 6;
+        addParagraph(
+            'Figura 1. Envolvente tau-sigma_n y circulos de Mohr del ensayo de corte directo (GeoMetrics).'
+        );
 
-        // Pie
-        ensureSpace(12);
-        doc.setFontSize(8);
-        doc.setTextColor(120, 120, 120);
-        doc.text('Generado por GeoMetrics · Civix · Uso académico — Universidad de Pamplona', margin, pageH - 10);
+        addHeading('Referencias');
+        addParagraph(
+            'American Psychological Association. (2020). Publication manual of the American Psychological Association (7th ed.). https://doi.org/10.1037/0000165-000'
+        );
+        addParagraph(
+            'Das, B. M., & Sobhan, K. (2018). Principles of geotechnical engineering (9th ed.). Cengage Learning.'
+        );
+        addParagraph(
+            'Universidad de Pamplona. (s. f.). Guia unificada de laboratorio FLA-23: ensayo de corte directo. Facultad de Ingenierias.'
+        );
+        addParagraph(
+            'GeoMetrics. (2026). Laboratorio virtual de mecanica de suelos [Software educativo]. Universidad de Pamplona.'
+        );
+
+        // Pie de pagina simple en ultima pagina
+        doc.setFont('times', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text('GeoMetrics - Informe academico', margin, pageH - 12);
 
         doc.save('Informe_Corte_Directo_GeoMetrics.pdf');
         fin();
@@ -3143,7 +3258,6 @@ function generarInformeCorteDirectoPDF() {
         fin();
     });
 }
-
 
 function crearFormularioInconfinada() {
     return `
