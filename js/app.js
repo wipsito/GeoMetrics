@@ -3279,21 +3279,48 @@ function generarInformeCorteDirectoPDF() {
         addParagraph('Tabla 1', { bold: true, after: 2 });
         addParagraph('Puntos de falla del ensayo de corte directo', { after: 3 });
 
-        setF(true, 10);
-        ensureSpace(28);
-        doc.text('Ensayo', margin, y);
-        doc.text(sym('σn (kPa)'), margin + 28, y);
-        doc.text(sym('τ (kPa)'), margin + 75, y);
-        y += 6;
-        setF(false, 10);
-        d.pts.forEach(function(p, i) {
-            ensureSpace(8);
-            doc.text(String(i + 1), margin, y);
-            doc.text(p.sn.toFixed(2), margin + 30, y);
-            doc.text(p.t.toFixed(2), margin + 80, y);
-            y += 6;
-        });
-        y += 4;
+        // Tabla 1 con bordes
+        (function() {
+            var cols = [
+                { title: 'Ensayo', w: 28 },
+                { title: sym('σn (kPa)'), w: 45 },
+                { title: sym('τ (kPa)'), w: 45 }
+            ];
+            var rowH = 8;
+            var tableW = cols[0].w + cols[1].w + cols[2].w;
+            var nRows = 1 + d.pts.length;
+            ensureSpace(nRows * rowH + 6);
+            var x0 = margin;
+            var y0 = y;
+            doc.setFillColor(245, 240, 230);
+            doc.rect(x0, y0, tableW, rowH, 'F');
+            doc.setDrawColor(60, 60, 60);
+            doc.setLineWidth(0.3);
+            var r, c, x;
+            for (r = 0; r <= nRows; r++) {
+                doc.line(x0, y0 + r * rowH, x0 + tableW, y0 + r * rowH);
+            }
+            x = x0;
+            for (c = 0; c < cols.length; c++) {
+                doc.line(x, y0, x, y0 + nRows * rowH);
+                x += cols[c].w;
+            }
+            doc.line(x0 + tableW, y0, x0 + tableW, y0 + nRows * rowH);
+            setF(true, 10);
+            x = x0;
+            for (c = 0; c < cols.length; c++) {
+                doc.text(cols[c].title, x + 2, y0 + 5.5);
+                x += cols[c].w;
+            }
+            setF(false, 10);
+            d.pts.forEach(function(p, i) {
+                var yy = y0 + (i + 1) * rowH + 5.5;
+                doc.text(String(i + 1), x0 + 2, yy);
+                doc.text(p.sn.toFixed(2), x0 + cols[0].w + 2, yy);
+                doc.text(p.t.toFixed(2), x0 + cols[0].w + cols[1].w + 2, yy);
+            });
+            y = y0 + nRows * rowH + 6;
+        })();
 
         addParagraph(
             'A partir de la regresión se obtuvo φ = ' + phi.toFixed(1) +
@@ -3306,29 +3333,58 @@ function generarInformeCorteDirectoPDF() {
         addParagraph('En la Tabla 2 se presentan el radio y el centro de cada círculo de Mohr (valores de σ en kN).');
         addParagraph('Tabla 2', { bold: true, after: 2 });
         addParagraph('Parámetros de los círculos de Mohr por ensayo', { after: 3 });
-        setF(true, 9);
-        ensureSpace(10);
-        doc.text('Ensayo', margin, y);
-        doc.text(sym('σ₁ (kN)'), margin + 20, y);
-        doc.text(sym('σ₃ (kN)'), margin + 50, y);
-        doc.text('R (kN)', margin + 82, y);
-        doc.text('Centro (kN)', margin + 110, y);
-        y += 6;
-        setF(false, 9);
-        d.pts.forEach(function(p, i) {
-            var s1kN = p.s1 * A;
-            var s3kN = p.s3 * A;
-            var R = (s1kN - s3kN) / 2;
-            var centro = (s1kN + s3kN) / 2;
-            ensureSpace(8);
-            doc.text(String(i + 1), margin, y);
-            doc.text(s1kN.toFixed(3), margin + 22, y);
-            doc.text(s3kN.toFixed(3), margin + 55, y);
-            doc.text(R.toFixed(3), margin + 90, y);
-            doc.text(centro.toFixed(3), margin + 120, y);
-            y += 6;
-        });
-        y += 6;
+        // Tabla 2 con bordes
+        (function() {
+            var cols = [
+                { title: 'Ensayo', w: 22 },
+                { title: sym('σ₁ (kN)'), w: 32 },
+                { title: sym('σ₃ (kN)'), w: 32 },
+                { title: 'R (kN)', w: 28 },
+                { title: 'Centro (kN)', w: 34 }
+            ];
+            var rowH = 8;
+            var tableW = 0;
+            cols.forEach(function(col) { tableW += col.w; });
+            var nRows = 1 + d.pts.length;
+            ensureSpace(nRows * rowH + 6);
+            var x0 = margin;
+            var y0 = y;
+            doc.setFillColor(245, 240, 230);
+            doc.rect(x0, y0, tableW, rowH, 'F');
+            doc.setDrawColor(60, 60, 60);
+            doc.setLineWidth(0.3);
+            var r, c, x;
+            for (r = 0; r <= nRows; r++) {
+                doc.line(x0, y0 + r * rowH, x0 + tableW, y0 + r * rowH);
+            }
+            x = x0;
+            for (c = 0; c < cols.length; c++) {
+                doc.line(x, y0, x, y0 + nRows * rowH);
+                x += cols[c].w;
+            }
+            doc.line(x0 + tableW, y0, x0 + tableW, y0 + nRows * rowH);
+            setF(true, 9);
+            x = x0;
+            for (c = 0; c < cols.length; c++) {
+                doc.text(cols[c].title, x + 1.5, y0 + 5.5);
+                x += cols[c].w;
+            }
+            setF(false, 9);
+            d.pts.forEach(function(p, i) {
+                var s1kN = p.s1 * A;
+                var s3kN = p.s3 * A;
+                var R = (s1kN - s3kN) / 2;
+                var centro = (s1kN + s3kN) / 2;
+                var yy = y0 + (i + 1) * rowH + 5.5;
+                var vals = [String(i + 1), s1kN.toFixed(3), s3kN.toFixed(3), R.toFixed(3), centro.toFixed(3)];
+                var xx = x0;
+                for (c = 0; c < cols.length; c++) {
+                    doc.text(vals[c], xx + 1.5, yy);
+                    xx += cols[c].w;
+                }
+            });
+            y = y0 + nRows * rowH + 8;
+        })();
 
         addHeading('Análisis del ángulo de fricción interna (φ)');
         addParagraph(
