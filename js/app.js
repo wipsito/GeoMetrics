@@ -2989,7 +2989,6 @@ function generarInformeCorteDirectoPDF() {
         btn.disabled = true;
         btn.textContent = 'Generando…';
     }
-
     function fin() {
         if (btn) {
             btn.disabled = false;
@@ -2997,40 +2996,135 @@ function generarInformeCorteDirectoPDF() {
         }
     }
 
-    // Evitar simbolos griegos: jsPDF/Helvetica no los embebe bien
-    function txt(s) {
-        return String(s)
-            .replace(/σ₁/g, 'sigma_1').replace(/σ₃/g, 'sigma_3').replace(/σn/g, 'sigma_n')
-            .replace(/σ/g, 'sigma').replace(/τ/g, 'tau').replace(/φ/g, 'phi')
-            .replace(/·/g, '·').replace(/–/g, '-').replace(/—/g, '-')
-            .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/≈/g, 'aprox.')
-            .replace(/²/g, '2').replace(/³/g, '3').replace(/°/g, ' grados');
+    function loadImageDataURL(src) {
+        return new Promise(function(resolve) {
+            var img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                try {
+                    var c = document.createElement('canvas');
+                    var max = 500;
+                    var w = img.width, h = img.height;
+                    if (w > max || h > max) {
+                        var r = Math.min(max / w, max / h);
+                        w = Math.round(w * r);
+                        h = Math.round(h * r);
+                    }
+                    c.width = w;
+                    c.height = h;
+                    c.getContext('2d').drawImage(img, 0, 0, w, h);
+                    resolve(c.toDataURL('image/png'));
+                } catch (e) {
+                    resolve(null);
+                }
+            };
+            img.onerror = function() { resolve(null); };
+            img.src = src;
+        });
     }
 
-    civixLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js').then(function() {
+    function loadFontBase64(url) {
+        return fetch(url).then(function(r) {
+            if (!r.ok) throw new Error('Fuente no disponible');
+            return r.arrayBuffer();
+        }).then(function(buf) {
+            var bytes = new Uint8Array(buf);
+            var chunk = 0x8000;
+            var binary = '';
+            for (var i = 0; i < bytes.length; i += chunk) {
+                binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+            }
+            return btoa(binary);
+        });
+    }
+
+    Promise.all([
+        civixLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+        loadImageDataURL('docs/logo_unipamplona.png'),
+        loadImageDataURL('docs/logo_ingenieria_civil.png'),
+        loadImageDataURL('docs/GeoMetrics.png'),
+        loadFontBase64('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf').catch(function() { return null; }),
+        loadFontBase64('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans-Bold.ttf').catch(function() { return null; })
+    ]).then(function(results) {
         var JsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
         if (!JsPDF) throw new Error('jsPDF no disponible');
 
+        var logoUni = results[1];
+        var logoCiv = results[2];
+        var logoGeo = results[3];
+        var fontReg = results[4];
+        var fontBold = results[5];
+
         var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        var margin = 25.4; // 1 inch APA
+        var margin = 25.4;
         var pageW = doc.internal.pageSize.getWidth();
         var pageH = doc.internal.pageSize.getHeight();
         var y = margin;
         var maxW = pageW - margin * 2;
         var lineH = 6;
+        var hasUnicodeFont = false;
+
+        if (fontReg) {
+            doc.addFileToVFS('DejaVuSans.ttf', fontReg);
+            doc.addFont('DejaVuSans.ttf', 'DejaVu', 'normal');
+            hasUnicodeFont = true;
+        }
+        if (fontBold) {
+            doc.addFileToVFS('DejaVuSans-Bold.ttf', fontBold);
+            doc.addFont('DejaVuSans-Bold.ttf', 'DejaVu', 'bold');
+        }
+
+        function setF(bold, size) {
+            if (hasUnicodeFont) {
+                doc.setFont('DejaVu', bold ? 'bold' : 'normal');
+            } else {
+                doc.setFont('times', bold ? 'bold' : 'normal');
+            }
+            doc.setFontSize(size || 12);
+            doc.setTextColor(0, 0, 0);
+        }
+
+        // Si no hay fuente Unicode, degradar simbolos a texto legible
+        function sym(s) {
+            if (hasUnicodeFont) return s;
+            return String(s)
+                .replace(/σ₁/g, 'sigma_1').replace(/σ₃/g, 'sigma_3').replace(/σn/g, 'sigma_n')
+                .replace(/σ/g, 'sigma').replace(/τ/g, 'tau').replace(/φ/g, 'phi')
+                .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/≈/g, 'aprox.')
+                .replace(/²/g, '2').replace(/°/g, '°');
+        }
 
         function ensureSpace(h) {
             if (y + h > pageH - margin) {
                 doc.addPage();
-                y = margin;
+                drawWatermark();
+                y = margin + 8;
             }
         }
+
+        function drawWatermark() {
+            if (!logoGeo) return;
+            try {
+                var ww = 90, hh = 90;
+                var wx = (pageW - ww) / 2;
+                var wy = (pageH - hh) / 2;
+                // opacidad simulada: jsPDF no tiene alpha global fiable en todas las versiones
+                doc.setGState && doc.setGState(new doc.GState({ opacity: 0.12 }));
+                doc.addImage(logoGeo, 'PNG', wx, wy, ww, hh);
+                doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }));
+                setF(true, 22);
+                doc.setTextColor(180, 180, 180);
+                var t = 'GeoMetrics';
+                var tw = doc.getTextWidth(t);
+                doc.text(t, (pageW - tw) / 2, wy + hh + 10);
+                doc.setTextColor(0, 0, 0);
+            } catch (e) {}
+        }
+
         function addParagraph(text, opts) {
             opts = opts || {};
-            doc.setFont('times', opts.bold ? 'bold' : 'normal');
-            doc.setFontSize(opts.size || 12);
-            doc.setTextColor(0, 0, 0);
-            var lines = doc.splitTextToSize(txt(text), maxW);
+            setF(!!opts.bold, opts.size || 12);
+            var lines = doc.splitTextToSize(sym(text), maxW);
             ensureSpace(lines.length * lineH + 2);
             doc.text(lines, margin, y);
             y += lines.length * lineH + (opts.after || 4);
@@ -3038,17 +3132,13 @@ function generarInformeCorteDirectoPDF() {
         function addHeading(text) {
             ensureSpace(14);
             y += 4;
-            doc.setFont('times', 'bold');
-            doc.setFontSize(12);
-            doc.setTextColor(0, 0, 0);
-            doc.text(txt(text), margin, y);
+            setF(true, 12);
+            doc.text(sym(text), margin, y);
             y += 8;
         }
         function addCentered(text, size, bold) {
-            doc.setFont('times', bold ? 'bold' : 'normal');
-            doc.setFontSize(size || 12);
-            doc.setTextColor(0, 0, 0);
-            var lines = doc.splitTextToSize(txt(text), maxW);
+            setF(!!bold, size || 12);
+            var lines = doc.splitTextToSize(sym(text), maxW);
             ensureSpace(lines.length * lineH + 2);
             lines.forEach(function(ln) {
                 var tw = doc.getTextWidth(ln);
@@ -3062,64 +3152,72 @@ function generarInformeCorteDirectoPDF() {
         var phi = Number(d.phi);
         var c = Number(d.c);
         var cls = clasificarSueloCorte(c, phi);
-        var fecha = new Date();
-        var fechaStr = fecha.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+        var fechaStr = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
 
-        // ===== Portada estilo APA =====
-        y = 60;
+        // ===== PORTADA =====
+        drawWatermark();
+
+        // Logos superiores
+        var logoH = 22;
+        if (logoUni) {
+            try { doc.addImage(logoUni, 'PNG', margin, 12, logoH, logoH); } catch (e) {}
+        }
+        if (logoCiv) {
+            try { doc.addImage(logoCiv, 'PNG', pageW - margin - logoH, 12, logoH, logoH); } catch (e) {}
+        }
+
+        y = 50;
         addCentered('Universidad de Pamplona', 12, false);
-        addCentered('Facultad de Ingenierias', 12, false);
-        addCentered('Programa de Ingenieria Civil', 12, false);
-        y += 16;
+        addCentered('Facultad de Ingenierías', 12, false);
+        addCentered('Programa de Ingeniería Civil', 12, false);
+        y += 14;
         addCentered('Informe de laboratorio: ensayo de corte directo', 14, true);
         y += 6;
-        addCentered('Asignatura: Mecanica de Suelos II', 12, false);
-        addCentered('Guia de referencia: FLA-23', 12, false);
-        y += 16;
+        addCentered('Asignatura: Mecánica de Suelos II', 12, false);
+        addCentered('Guía de referencia: FLA-23', 12, false);
+        y += 14;
         addCentered('Generado con la plataforma GeoMetrics', 12, false);
         addCentered(fechaStr, 12, false);
-        y += 10;
-        addCentered('Formato de presentacion: APA (7.a ed.)', 11, false);
+        y += 8;
+        addCentered('Formato de presentación: APA (7.ª ed.)', 11, false);
 
-        // ===== Cuerpo =====
+        // ===== CUERPO =====
         doc.addPage();
-        y = margin;
+        drawWatermark();
+        y = margin + 4;
 
-        addHeading('Introduccion');
+        addHeading('Introducción');
         addParagraph(
-            'El ensayo de corte directo permite estimar los parametros de resistencia al corte del suelo en ' +
+            'El ensayo de corte directo permite estimar los parámetros de resistencia al corte del suelo en ' +
             'condiciones controladas de laboratorio. A partir de la envolvente de falla de Coulomb se obtienen ' +
-            'la cohesion (c) y el angulo de friccion interna (phi). Este informe presenta los datos de entrada, ' +
-            'los resultados numericos, el analisis de los circulos de Mohr, la interpretacion del tipo de suelo ' +
+            'la cohesión (c) y el ángulo de fricción interna (φ). Este informe presenta los datos de entrada, ' +
+            'los resultados numéricos, el análisis de los círculos de Mohr, la interpretación del tipo de suelo ' +
             'y las conclusiones derivadas del ensayo.'
         );
 
-        addHeading('Metodo');
+        addHeading('Método');
         addParagraph(
-            'Se aplico el criterio de Coulomb, expresado como tau = c + sigma_n * tan(phi), donde tau es el ' +
-            'esfuerzo cortante de falla, sigma_n el esfuerzo normal efectivo sobre el plano de corte, c la cohesion ' +
-            'y phi el angulo de friccion interna. Los parametros se estimaron mediante regresion lineal de los ' +
-            'puntos de falla (sigma_n, tau). El radio y el centro de cada circulo de Mohr se calcularon con ' +
-            'R = (sigma_1 - sigma_3) / 2 y Centro = (sigma_1 + sigma_3) / 2. Para la representacion grafica, ' +
-            'los valores de esfuerzo normal se expresaron tambien en kN mediante F = sigma * A, con A = area ' +
-            'de la muestra.'
+            'Se aplicó el criterio de Coulomb, expresado como τ = c + σn · tan(φ), donde τ es el ' +
+            'esfuerzo cortante de falla, σn el esfuerzo normal sobre el plano de corte, c la cohesión ' +
+            'y φ el ángulo de fricción interna. Los parámetros se estimaron mediante regresión lineal de los ' +
+            'puntos de falla (σn, τ). El radio y el centro de cada círculo de Mohr se calcularon con ' +
+            'R = (σ₁ − σ₃) / 2 y Centro = (σ₁ + σ₃) / 2. Para la representación gráfica, ' +
+            'los valores de esfuerzo normal se expresaron también en kN mediante F = σ · A, con A = área de la muestra.'
         );
-        addParagraph('Area de la muestra empleada: A = ' + Number(A).toFixed(6) + ' m2.');
+        addParagraph('Área de la muestra empleada: A = ' + Number(A).toFixed(6) + ' m².');
 
         addHeading('Resultados');
         addParagraph('En la Tabla 1 se resumen los puntos de falla registrados en el ensayo.');
-        addParagraph('Tabla 1', { bold: true, size: 12, after: 2 });
+        addParagraph('Tabla 1', { bold: true, after: 2 });
         addParagraph('Puntos de falla del ensayo de corte directo', { after: 3 });
 
-        // Tabla simple
-        doc.setFont('times', 'bold');
-        doc.setFontSize(11);
+        setF(true, 11);
         ensureSpace(28);
         doc.text('Ensayo', margin, y);
-        doc.text('sigma_n (kPa)', margin + 30, y);
-        doc.text('tau (kPa)', margin + 80, y);
+        doc.text(sym('σn (kPa)'), margin + 30, y);
+        doc.text(sym('τ (kPa)'), margin + 80, y);
         y += 6;
-        doc.setFont('times', 'normal');
+        setF(false, 11);
         d.pts.forEach(function(p, i) {
             ensureSpace(8);
             doc.text(String(i + 1), margin, y);
@@ -3130,26 +3228,25 @@ function generarInformeCorteDirectoPDF() {
         y += 4;
 
         addParagraph(
-            'A partir de la regresion se obtuvo phi = ' + phi.toFixed(1) +
-            ' grados y c = ' + c.toFixed(2) + ' kPa. La ecuacion de la envolvente es: tau = ' +
-            c.toFixed(2) + ' + sigma_n * tan(' + phi.toFixed(1) + ' grados). Los esfuerzos principales medios ' +
-            'resultaron sigma_1 aproximadamente ' + Number(d.avgS1).toFixed(2) +
-            ' kPa y sigma_3 aproximadamente ' + Number(d.avgS3).toFixed(2) + ' kPa.'
+            'A partir de la regresión se obtuvo φ = ' + phi.toFixed(1) +
+            '° y c = ' + c.toFixed(2) + ' kPa. La ecuación de la envolvente es: τ = ' +
+            c.toFixed(2) + ' + σn · tan(' + phi.toFixed(1) + '°). Los esfuerzos principales medios ' +
+            'resultaron σ₁ ≈ ' + Number(d.avgS1).toFixed(2) +
+            ' kPa y σ₃ ≈ ' + Number(d.avgS3).toFixed(2) + ' kPa.'
         );
 
-        addParagraph('En la Tabla 2 se presentan el radio y el centro de cada circulo de Mohr (valores de sigma en kN).');
+        addParagraph('En la Tabla 2 se presentan el radio y el centro de cada círculo de Mohr (valores de σ en kN).');
         addParagraph('Tabla 2', { bold: true, after: 2 });
-        addParagraph('Parametros de los circulos de Mohr por ensayo', { after: 3 });
-        doc.setFont('times', 'bold');
-        doc.setFontSize(11);
+        addParagraph('Parámetros de los círculos de Mohr por ensayo', { after: 3 });
+        setF(true, 10);
         ensureSpace(10);
         doc.text('Ensayo', margin, y);
-        doc.text('sigma_1 (kN)', margin + 25, y);
-        doc.text('sigma_3 (kN)', margin + 60, y);
-        doc.text('R (kN)', margin + 95, y);
-        doc.text('Centro (kN)', margin + 125, y);
+        doc.text(sym('σ₁ (kN)'), margin + 22, y);
+        doc.text(sym('σ₃ (kN)'), margin + 55, y);
+        doc.text('R (kN)', margin + 90, y);
+        doc.text('Centro (kN)', margin + 120, y);
         y += 6;
-        doc.setFont('times', 'normal');
+        setF(false, 10);
         d.pts.forEach(function(p, i) {
             var s1kN = p.s1 * A;
             var s3kN = p.s3 * A;
@@ -3157,66 +3254,66 @@ function generarInformeCorteDirectoPDF() {
             var centro = (s1kN + s3kN) / 2;
             ensureSpace(8);
             doc.text(String(i + 1), margin, y);
-            doc.text(s1kN.toFixed(3), margin + 25, y);
-            doc.text(s3kN.toFixed(3), margin + 60, y);
-            doc.text(R.toFixed(3), margin + 95, y);
-            doc.text(centro.toFixed(3), margin + 125, y);
+            doc.text(s1kN.toFixed(3), margin + 22, y);
+            doc.text(s3kN.toFixed(3), margin + 55, y);
+            doc.text(R.toFixed(3), margin + 90, y);
+            doc.text(centro.toFixed(3), margin + 120, y);
             y += 6;
         });
         y += 6;
 
-        addHeading('Analisis del angulo de friccion interna');
+        addHeading('Análisis del ángulo de fricción interna (φ)');
         addParagraph(
-            'El angulo de friccion interna phi = ' + phi.toFixed(1) +
-            ' grados se obtuvo como la pendiente de la recta de falla en el plano tau-sigma_n. ' +
-            'La cohesion se despejo de la relacion tau = c + sigma_n * tan(phi), es decir, c = tau - sigma_n * tan(phi), ' +
-            'tomando el intercepto de la regresion redondeado a dos decimales.'
+            'El ángulo de fricción interna φ = ' + phi.toFixed(1) +
+            '° se obtuvo como la pendiente de la recta de falla en el plano τ–σn. ' +
+            'La cohesión se despejó de la relación τ = c + σn · tan(φ), es decir, c = τ − σn · tan(φ), ' +
+            'tomando el intercepto de la regresión redondeado a dos decimales.'
         );
         if (phi >= 30) {
             addParagraph(
-                'Un valor de phi mayor o igual a 30 grados indica una contribucion importante de la friccion a la ' +
+                'Un valor de φ ≥ 30° indica una contribución importante de la fricción a la ' +
                 'resistencia al corte, comportamiento frecuente en suelos granulares densos o medianamente densos.'
             );
         } else if (phi >= 20) {
             addParagraph(
-                'Un valor de phi entre 20 y 30 grados es habitual en suelos mixtos o en arenas sueltas a limosas, ' +
-                'donde la resistencia combina friccion y una cohesion aparente moderada.'
+                'Un valor de φ entre 20° y 30° es habitual en suelos mixtos o en arenas sueltas a limosas, ' +
+                'donde la resistencia combina fricción y una cohesión aparente moderada.'
             );
         } else {
             addParagraph(
-                'Un valor de phi inferior a 20 grados sugiere predominio del comportamiento cohesivo o condiciones ' +
-                'desfavorables (humedad elevada o alteracion de la muestra). Se recomienda revisar el procedimiento experimental.'
+                'Un valor de φ inferior a 20° sugiere predominio del comportamiento cohesivo o condiciones ' +
+                'desfavorables (humedad elevada o alteración de la muestra). Se recomienda revisar el procedimiento experimental.'
             );
         }
 
-        addHeading('Interpretacion del tipo de suelo');
+        addHeading('Interpretación del tipo de suelo');
         addParagraph(
-            'Segun los parametros c = ' + c.toFixed(2) + ' kPa y phi = ' + phi.toFixed(1) +
-            ' grados, la interpretacion orientativa del material es la siguiente: ' + cls.tipo + '. ' + cls.detalle
+            'Según los parámetros c = ' + c.toFixed(2) + ' kPa y φ = ' + phi.toFixed(1) +
+            '°, la interpretación orientativa del material es la siguiente: ' + cls.tipo + '. ' + cls.detalle
         );
         addParagraph(
-            'Esta clasificacion tiene caracter didactico. Para decisiones de diseno geotecnico debe contrastarse ' +
-            'con granulometria, limites de Atterberg, densidad relativa y la normativa aplicable.'
+            'Esta clasificación tiene carácter didáctico. Para decisiones de diseño geotécnico debe contrastarse ' +
+            'con granulometría, límites de Atterberg, densidad relativa y la normativa aplicable.'
         );
 
         addHeading('Conclusiones');
         addParagraph(
             '1. La envolvente de falla del suelo ensayado queda definida por c = ' + c.toFixed(2) +
-            ' kPa y phi = ' + phi.toFixed(1) + ' grados, de acuerdo con el criterio de Coulomb.'
+            ' kPa y φ = ' + phi.toFixed(1) + '°, de acuerdo con el criterio de Coulomb.'
         );
         addParagraph(
             '2. Se emplearon ' + d.pts.length +
-            ' puntos de falla. Se recomienda un minimo de tres ensayos a distintos niveles de esfuerzo normal.'
+            ' puntos de falla. Se recomienda un mínimo de tres ensayos a distintos niveles de esfuerzo normal.'
         );
         addParagraph('3. El material se interpreta, de forma orientativa, como: ' + cls.tipo + '.');
         addParagraph(
-            '4. Los circulos de Mohr resultan coherentes con la envolvente tangente en los puntos de falla de cada ensayo.'
+            '4. Los círculos de Mohr resultan coherentes con la envolvente tangente en los puntos de falla de cada ensayo.'
         );
         addParagraph(
-            '5. Se sugiere contrastar los resultados con la guia FLA-23 y repetir el ensayo si se observa dispersion elevada entre puntos.'
+            '5. Se sugiere contrastar los resultados con la guía FLA-23 y repetir el ensayo si se observa dispersión elevada entre puntos.'
         );
 
-        addHeading('Figura: envolvente de falla y circulos de Mohr');
+        addHeading('Figura: envolvente de falla y círculos de Mohr');
         var img = canvas.toDataURL('image/png');
         var imgW = maxW;
         var imgH = (canvas.height / canvas.width) * imgW;
@@ -3227,9 +3324,7 @@ function generarInformeCorteDirectoPDF() {
         ensureSpace(imgH + 16);
         doc.addImage(img, 'PNG', margin, y, imgW, imgH);
         y += imgH + 6;
-        addParagraph(
-            'Figura 1. Envolvente tau-sigma_n y circulos de Mohr del ensayo de corte directo (GeoMetrics).'
-        );
+        addParagraph('Figura 1. Envolvente τ–σn y círculos de Mohr del ensayo de corte directo (GeoMetrics).');
 
         addHeading('Referencias');
         addParagraph(
@@ -3239,17 +3334,15 @@ function generarInformeCorteDirectoPDF() {
             'Das, B. M., & Sobhan, K. (2018). Principles of geotechnical engineering (9th ed.). Cengage Learning.'
         );
         addParagraph(
-            'Universidad de Pamplona. (s. f.). Guia unificada de laboratorio FLA-23: ensayo de corte directo. Facultad de Ingenierias.'
+            'Universidad de Pamplona. (s. f.). Guía unificada de laboratorio FLA-23: ensayo de corte directo. Facultad de Ingenierías.'
         );
         addParagraph(
-            'GeoMetrics. (2026). Laboratorio virtual de mecanica de suelos [Software educativo]. Universidad de Pamplona.'
+            'GeoMetrics. (2026). Laboratorio virtual de mecánica de suelos [Software educativo]. Universidad de Pamplona.'
         );
 
-        // Pie de pagina simple en ultima pagina
-        doc.setFont('times', 'normal');
-        doc.setFontSize(10);
+        setF(false, 10);
         doc.setTextColor(100, 100, 100);
-        doc.text('GeoMetrics - Informe academico', margin, pageH - 12);
+        doc.text('GeoMetrics — Informe académico', margin, pageH - 12);
 
         doc.save('Informe_Corte_Directo_GeoMetrics.pdf');
         fin();
