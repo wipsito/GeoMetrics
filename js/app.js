@@ -3127,7 +3127,7 @@ function generarInformeCorteDirectoPDF() {
         var pageW = doc.internal.pageSize.getWidth();
         var pageH = doc.internal.pageSize.getHeight();
         var y = margin;
-        var maxW = pageW - margin * 2 - 4; // margen extra para que no se corten títulos
+        var maxW = pageW - margin * 2 - 12; // ancho seguro (evita corte en visores PDF)
         var lineH = 6;
         var hasUnicodeFont = false;
 
@@ -3178,17 +3178,18 @@ function generarInformeCorteDirectoPDF() {
         }
         // Paleta suave aleatoria por informe
         var tablePalettes = [
-            { head: [232, 220, 200], alt: [250, 246, 238], border: [160, 140, 110] },
-            { head: [210, 228, 235], alt: [240, 248, 250], border: [100, 130, 145] },
-            { head: [220, 232, 215], alt: [244, 250, 240], border: [110, 140, 100] },
-            { head: [235, 220, 230], alt: [250, 244, 248], border: [140, 110, 130] },
-            { head: [235, 228, 210], alt: [250, 247, 240], border: [150, 135, 100] },
-            { head: [215, 225, 240], alt: [242, 246, 252], border: [100, 120, 150] }
+            { head: [230, 200, 150], alt: [248, 236, 214], border: [150, 120, 70] },   // ámbar
+            { head: [160, 200, 220], alt: [220, 238, 246], border: [70, 120, 145] },   // azul
+            { head: [170, 210, 170], alt: [226, 242, 226], border: [70, 130, 80] },    // verde
+            { head: [210, 175, 200], alt: [242, 228, 238], border: [130, 90, 120] },   // lila
+            { head: [220, 185, 160], alt: [246, 232, 220], border: [140, 100, 70] },   // terracota
+            { head: [150, 185, 210], alt: [224, 236, 246], border: [60, 110, 145] }    // celeste
         ];
         var palette = tablePalettes[Math.floor(Math.random() * tablePalettes.length)];
 
-        function drawNiceTable(cols, rows) {
-            // cols: [{title, w}], rows: array of string arrays
+        function drawNiceTable(cols, rows, pal) {
+            // cols: [{title, w}], rows: array of string arrays, pal: palette
+            pal = pal || palette;
             var rowH = 8;
             var tableW = 0;
             cols.forEach(function(col) { tableW += col.w; });
@@ -3197,18 +3198,20 @@ function generarInformeCorteDirectoPDF() {
             ensureBlock(blockH);
             var x0 = margin;
             var y0 = y;
-            // cabecera
-            doc.setFillColor(palette.head[0], palette.head[1], palette.head[2]);
+            // cabecera (color 1)
+            doc.setFillColor(pal.head[0], pal.head[1], pal.head[2]);
             doc.rect(x0, y0, tableW, rowH, 'F');
-            // filas alternas
+            // filas de datos: color 2 y blanco alternados (siempre se ven 2 colores)
             for (var i = 0; i < rows.length; i++) {
-                if (i % 2 === 1) {
-                    doc.setFillColor(palette.alt[0], palette.alt[1], palette.alt[2]);
-                    doc.rect(x0, y0 + (i + 1) * rowH, tableW, rowH, 'F');
+                if (i % 2 === 0) {
+                    doc.setFillColor(pal.alt[0], pal.alt[1], pal.alt[2]);
+                } else {
+                    doc.setFillColor(255, 255, 255);
                 }
+                doc.rect(x0, y0 + (i + 1) * rowH, tableW, rowH, 'F');
             }
-            doc.setDrawColor(palette.border[0], palette.border[1], palette.border[2]);
-            doc.setLineWidth(0.35);
+            doc.setDrawColor(pal.border[0], pal.border[1], pal.border[2]);
+            doc.setLineWidth(0.4);
             var r, c, x;
             for (r = 0; r <= nRows; r++) {
                 doc.line(x0, y0 + r * rowH, x0 + tableW, y0 + r * rowH);
@@ -3256,10 +3259,36 @@ function generarInformeCorteDirectoPDF() {
             } catch (e) {}
         }
 
+        function wrapText(text, width) {
+            text = sym(String(text));
+            setF(false, 11); // métrica de fuente activa
+            var lines = doc.splitTextToSize(text, width);
+            // Seguridad: si alguna línea sigue demasiado ancha, partir por palabras
+            var out = [];
+            lines.forEach(function(ln) {
+                if (doc.getTextWidth(ln) <= width + 0.5) {
+                    out.push(ln);
+                    return;
+                }
+                var words = ln.split(' ');
+                var cur = '';
+                words.forEach(function(w) {
+                    var test = cur ? (cur + ' ' + w) : w;
+                    if (doc.getTextWidth(test) <= width) {
+                        cur = test;
+                    } else {
+                        if (cur) out.push(cur);
+                        cur = w;
+                    }
+                });
+                if (cur) out.push(cur);
+            });
+            return out;
+        }
         function addParagraph(text, opts) {
             opts = opts || {};
             setF(!!opts.bold, opts.size || 11);
-            var lines = doc.splitTextToSize(sym(String(text)), maxW);
+            var lines = wrapText(text, maxW);
             ensureSpace(lines.length * lineH + 2);
             doc.text(lines, margin, y);
             y += lines.length * lineH + (opts.after || 3);
@@ -3268,7 +3297,8 @@ function generarInformeCorteDirectoPDF() {
             ensureSpace(12);
             y += 3;
             setF(true, 11);
-            var lines = doc.splitTextToSize(sym(String(text)), maxW);
+            var lines = wrapText(text, maxW);
+            setF(true, 11);
             doc.text(lines, margin, y);
             y += lines.length * lineH + 3;
         }
@@ -3348,6 +3378,9 @@ function generarInformeCorteDirectoPDF() {
         ensureBlock(18 + (1 + d.pts.length) * 8);
         addParagraph('Tabla 1', { bold: true, after: 2 });
         addParagraph('Puntos de falla del ensayo de corte directo', { after: 3 });
+        // Tabla 1: paleta A
+        var pal1 = tablePalettes[Math.floor(Math.random() * tablePalettes.length)];
+        var pal2 = tablePalettes[(tablePalettes.indexOf(pal1) + 1 + Math.floor(Math.random() * (tablePalettes.length - 1))) % tablePalettes.length];
         drawNiceTable(
             [
                 { title: 'Ensayo', w: 28 },
@@ -3356,7 +3389,8 @@ function generarInformeCorteDirectoPDF() {
             ],
             d.pts.map(function(p, i) {
                 return [String(i + 1), p.sn.toFixed(2), p.t.toFixed(2)];
-            })
+            }),
+            pal1
         );
 
         addParagraph(
@@ -3372,6 +3406,7 @@ function generarInformeCorteDirectoPDF() {
         ensureBlock(22 + (1 + d.pts.length) * 8);
         addParagraph('Tabla 2', { bold: true, after: 2 });
         addParagraph('Parámetros de los círculos de Mohr por ensayo', { after: 3 });
+        // Tabla 2: paleta B distinta
         drawNiceTable(
             [
                 { title: 'Ensayo', w: 22 },
@@ -3386,7 +3421,8 @@ function generarInformeCorteDirectoPDF() {
                 var R = (s1kN - s3kN) / 2;
                 var centro = (s1kN + s3kN) / 2;
                 return [String(i + 1), s1kN.toFixed(3), s3kN.toFixed(3), R.toFixed(3), centro.toFixed(3)];
-            })
+            }),
+            pal2
         );
 
         addHeading('Análisis del ángulo de fricción interna (φ)');
