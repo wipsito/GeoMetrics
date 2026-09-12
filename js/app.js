@@ -2583,26 +2583,26 @@ function abrirEnsayoSuelos2(nombre) {
 function crearFormularioCorteDirecto() {
     return `
     <h3>Ensayo de Corte Directo</h3>
-    <p class="login-hint">σn (kPa) = N (kN) / A (m²) · τ en kPa · c = τ − σn·tan(φ) · φ = arctan(pendiente)</p>
+    <p class="login-hint">Ingresa σn y τ en kPa. Envolvente: τ = c + σn·tan(φ) → c = τ − σn·tan(φ) · φ = arctan(pendiente)</p>
     <div class="laboratorio-panel">
       <div class="datos-panel">
         <h4>Datos de la caja</h4>
-        <label>Área de la muestra A (m²)</label>
+        <label>Área de la muestra A (m²) — opcional / referencia</label>
         <input type="number" id="cd-area" value="0.0036" step="0.0001" min="0.0001">
-        <p class="login-hint" style="margin:4px 0 8px;">Ej. 6 cm × 6 cm = 0.0036 m². Si escribes 36 se asume cm² y se convierte.</p>
+        <p class="login-hint" style="margin:4px 0 8px;">Si tienes la fuerza N en kN: σn (kPa) = N / A. Aquí introduces ya el esfuerzo σn.</p>
         <h4>Puntos de falla (mín. 2, ideal 3)</h4>
-        <label>Ensayo 1 — σn · fuerza vertical N (kN)</label>
-        <input type="number" id="cd-pv1" placeholder="Ej. 0.36" step="0.001">
+        <label>Ensayo 1 — σn (kPa)</label>
+        <input type="number" id="cd-pv1" placeholder="Ej. 52.63" step="0.01">
         <label>Ensayo 1 — τ última (kPa)</label>
-        <input type="number" id="cd-ph1" placeholder="Ej. 28" step="0.01">
-        <label>Ensayo 2 — σn · fuerza vertical N (kN)</label>
-        <input type="number" id="cd-pv2" placeholder="Ej. 0.72" step="0.001">
+        <input type="number" id="cd-ph1" placeholder="Ej. 39.76" step="0.01">
+        <label>Ensayo 2 — σn (kPa)</label>
+        <input type="number" id="cd-pv2" placeholder="Ej. 106.19" step="0.01">
         <label>Ensayo 2 — τ última (kPa)</label>
-        <input type="number" id="cd-ph2" placeholder="Ej. 45" step="0.01">
-        <label>Ensayo 3 — σn · fuerza vertical N (kN) (opcional)</label>
-        <input type="number" id="cd-pv3" placeholder="Ej. 1.08" step="0.001">
+        <input type="number" id="cd-ph2" placeholder="Ej. 71.97" step="0.01">
+        <label>Ensayo 3 — σn (kPa) (opcional)</label>
+        <input type="number" id="cd-pv3" placeholder="Ej. 214.28" step="0.01">
         <label>Ensayo 3 — τ última (kPa)</label>
-        <input type="number" id="cd-ph3" placeholder="Ej. 62" step="0.01">
+        <input type="number" id="cd-ph3" placeholder="Ej. 136.90" step="0.01">
         <div class="botones-calculo">
           <button class="btn-calcular" onclick="calcularCorteDirecto()">CALCULAR</button>
           <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayoMS2('corte')">GUARDAR DATOS</button>
@@ -2637,25 +2637,20 @@ function crearFormularioCorteDirecto() {
 function calcularCorteDirecto() {
     setError('cd-error', '');
     var A = parse('cd-area');
-    if (!A || A <= 0) { setError('cd-error', 'Área inválida'); return; }
-    // Si el usuario deja el valor antiguo en cm² (ej. 36), convertir a m²
-    var A_m2 = A;
-    var notaArea = '';
-    if (A >= 0.1) {
-        A_m2 = A / 10000; // cm² → m²
-        notaArea = ' (A convertida de ' + A + ' cm² a ' + A_m2.toFixed(6) + ' m²)';
-    }
+    var A_m2 = (A && A > 0) ? A : 0.0036;
+    if (A_m2 >= 0.1) A_m2 = A_m2 / 10000; // cm² → m² si aplica
     var pts = [];
     for (var i = 1; i <= 3; i++) {
-        var NkN = parse('cd-pv' + i);
+        // cd-pv = σn en kPa (esfuerzo normal de falla)
+        // cd-ph = τ en kPa (esfuerzo cortante de falla)
+        var snKPa = parse('cd-pv' + i);
         var tauKPa = parse('cd-ph' + i);
-        if (NkN != null && tauKPa != null && NkN > 0 && tauKPa > 0) {
-            var sn = NkN / A_m2; // kN / m² = kPa
-            pts.push({ sn: sn, t: tauKPa, N: NkN, tau: tauKPa });
+        if (snKPa != null && tauKPa != null && snKPa > 0 && tauKPa > 0) {
+            pts.push({ sn: snKPa, t: tauKPa, tau: tauKPa });
         }
     }
     if (pts.length < 2) {
-        setError('cd-error', 'Se requieren al menos 2 ensayos con N (kN) y τ (kPa)');
+        setError('cd-error', 'Se requieren al menos 2 ensayos con σn (kPa) y τ (kPa)');
         return;
     }
     var n = pts.length, sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
@@ -2707,6 +2702,7 @@ function calcularCorteDirecto() {
     var detSn = pts.map(function(p, idx) {
         return 'E' + (idx + 1) + ': σn=' + p.sn.toFixed(2) + ' kPa, τ=' + p.t.toFixed(2) + ' kPa';
     }).join(' · ');
+    var notaArea = '';
 
     var elPhi = document.getElementById('cd-phi');
     var elC = document.getElementById('cd-c');
