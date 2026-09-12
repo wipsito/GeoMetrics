@@ -3904,3 +3904,22 @@ label.btn-adjuntar:not(.btn-adjuntar-icon) {
 .asistente-file-chip[hidden] {
     display: none !important;
 }
+
+.mohr-resultados { margin-top: 10px; }
+.mohr-rc-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(232,184,74,0.25);
+}
+.mohr-rc-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 28px;
+    font-size: 13px;
+    color: #e8e0d0;
+}
+.mohr-rc-item strong { color: #e8b84a; }
