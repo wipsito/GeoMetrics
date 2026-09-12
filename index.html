@@ -1363,17 +1363,17 @@
             </div>
             <div class="aula-card sim-maquina-card" id="card-sim-corte" hidden>
                 <h3>Máquina de Corte Directo</h3>
-                <p class="grafica-hint">Simula la caja de corte: carga vertical Pv, deslizamiento horizontal y fuerza Ph. Ajusta los parámetros e inicia el ensayo.</p>
+                <p class="grafica-hint">Simula la caja de corte: σn (kN), área (m²), τ (kPa) y deslizamiento. Ajusta e inicia el ensayo.</p>
                 <div class="sim-maquina-layout">
                     <div class="sim-maquina-controles">
                         <label>Área A (cm²)</label>
-                        <input type="number" id="sim-cd-area" value="36" step="0.1" min="1">
-                        <label>Carga vertical Pv (kg)</label>
+                        <input type="number" id="sim-cd-area" value="0.0036" step="0.1" min="1">
+                        <label>Fuerza normal N (kN)</label>
                         <input type="range" id="sim-cd-pv" min="1" max="40" step="0.5" value="10">
-                        <div class="sim-val-row"><span>Pv =</span><strong id="sim-cd-pv-val">10</strong><span>kg</span></div>
+                        <div class="sim-val-row"><span>N =</span><strong id="sim-cd-pv-val">1.0</strong><span>kN</span></div>
                         <label>Cohesión c (kg/cm²)</label>
-                        <input type="range" id="sim-cd-c" min="0" max="0.5" step="0.01" value="0.05">
-                        <div class="sim-val-row"><span>c =</span><strong id="sim-cd-c-val">0.05</strong></div>
+                        <input type="range" id="sim-cd-c" min="0" max="50" step="0.5" value="5">
+                        <div class="sim-val-row"><span>c =</span><strong id="sim-cd-c-val">5.00</strong></div>
                         <label>Ángulo φ (°)</label>
                         <input type="range" id="sim-cd-phi" min="5" max="45" step="0.5" value="28">
                         <div class="sim-val-row"><span>φ =</span><strong id="sim-cd-phi-val">28</strong><span>°</span></div>
@@ -1394,15 +1394,15 @@
                     <div class="sim-maquina-vista">
                         <canvas id="sim-corte-canvas" class="sim-maquina-canvas" width="460" height="300"></canvas>
                         <div class="sim-lecturas">
-                            <div><span>σn</span><strong id="sim-cd-sn">—</strong><small>kg/cm²</small></div>
-                            <div><span>Ph</span><strong id="sim-cd-ph">—</strong><small>kg</small></div>
-                            <div><span>τ</span><strong id="sim-cd-t">—</strong><small>kg/cm²</small></div>
+                            <div><span>σn</span><strong id="sim-cd-sn">—</strong><small>kPa</small></div>
+                            <div><span>τ</span><strong id="sim-cd-ph">—</strong><small>kPa</small></div>
+                            <div><span>τ pico</span><strong id="sim-cd-t">—</strong><small>kPa</small></div>
                             <div><span>δh</span><strong id="sim-cd-dh">—</strong><small>mm</small></div>
                             <div><span>δv</span><strong id="sim-cd-dv">—</strong><small>mm</small></div>
                             <div><span>Estado</span><strong id="sim-cd-estado">Listo</strong></div>
                         </div>
                         <canvas id="sim-corte-curva" class="sim-curva-canvas" width="360" height="300"></canvas>
-                        <p class="grafica-hint" id="hint-sim-corte">Curva Ph vs desplazamiento horizontal (pico y residual).</p>
+                        <p class="grafica-hint" id="hint-sim-corte">Curva τ (kPa) vs desplazamiento horizontal (pico y residual).</p>
                     </div>
                 </div>
             </div>
