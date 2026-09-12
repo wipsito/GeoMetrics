@@ -3353,10 +3353,9 @@ function generarInformeCorteDirectoPDF() {
         var cls = clasificarSueloCorte(c, phi);
         var fechaStr = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
 
-        // ===== PORTADA =====
+        // ===== PORTADA (plantilla GeoMetrics) =====
         drawWatermark();
 
-        // Logos superiores
         var logoH = 22;
         if (logoUni) {
             try { doc.addImage(logoUni, 'PNG', margin, 12, logoH, logoH); } catch (e) {}
@@ -3365,59 +3364,48 @@ function generarInformeCorteDirectoPDF() {
             try { doc.addImage(logoCiv, 'PNG', pageW - margin - logoH, 12, logoH, logoH); } catch (e) {}
         }
 
-        y = 50;
+        y = 55;
         addCentered('Universidad de Pamplona', 12, false);
         addCentered('Facultad de Ingenierías', 12, false);
         addCentered('Programa de Ingeniería Civil', 12, false);
-        y += 14;
-        addCentered('Informe de laboratorio: ensayo de corte directo', 13, true);
-        y += 6;
+        y += 10;
+        addCentered('Informe de laboratorio: ensayo de corte directo', 14, true);
+        y += 8;
         addCentered('Asignatura: Mecánica de Suelos II', 12, false);
         addCentered('Guía de referencia: FLA-23', 12, false);
-        y += 14;
+        y += 8;
         addCentered('Generado con la plataforma GeoMetrics', 12, false);
         addCentered(fechaStr, 12, false);
         y += 8;
         addCentered('Formato de presentación según el Manual de publicaciones de la APA (7.ª edición)', 12, false);
 
-        // ===== CUERPO =====
+        // ===== CUERPO (plantilla) =====
         doc.addPage();
         drawWatermark();
         y = margin + 4;
 
         addHeading('Introducción');
         addParagraph(
-            'El ensayo de corte directo permite estimar los parámetros de resistencia al corte del suelo en ' +
-            'condiciones controladas de laboratorio. A partir de la envolvente de falla de Coulomb se obtienen ' +
-            'la cohesión (c) y el ángulo de fricción interna (φ). Este informe presenta los datos de entrada, ' +
-            'los resultados numéricos, el análisis de los círculos de Mohr, la interpretación del tipo de suelo ' +
-            'y las conclusiones derivadas del ensayo.'
+            'El ensayo de corte directo permite estimar los parámetros de resistencia al corte del suelo en condiciones controladas de laboratorio. A partir de la envolvente de falla de Coulomb se obtienen la cohesión (c) y el ángulo de fricción interna (φ). Este informe presenta los datos de entrada, los resultados numéricos, el análisis de los círculos de Mohr, la interpretación del tipo de suelo y las conclusiones derivadas del ensayo.'
         );
 
         addHeading('Método');
         addParagraph(
-            'Se aplicó el criterio de Coulomb, expresado como τ = c + σn · tan(φ), donde τ es el ' +
-            'esfuerzo cortante de falla, σn el esfuerzo normal sobre el plano de corte, c la cohesión ' +
-            'y φ el ángulo de fricción interna. Los parámetros se estimaron mediante regresión lineal de los ' +
-            'puntos de falla (σn, τ). El radio y el centro de cada círculo de Mohr se calcularon con ' +
-            'R = (σ₁ − σ₃) / 2 y Centro = (σ₁ + σ₃) / 2. Para la representación gráfica, ' +
-            'los valores de esfuerzo normal se expresaron también en kN mediante F = σ · A, con A = área de la muestra.'
+            'Se aplicó el criterio de Coulomb, expresado como τ = c + σn · tan(φ), donde τ es el esfuerzo cortante de falla, σn el esfuerzo normal sobre el plano de corte, c la cohesión y φ el ángulo de fricción interna. Los parámetros se estimaron mediante regresión lineal de los puntos de falla (σn, τ). El radio y el centro de cada círculo de Mohr se calcularon con R = (σ₁ − σ₃) / 2 y Centro = (σ₁ + σ₃) / 2. Para la representación gráfica, los valores de esfuerzo normal se expresaron también en kN mediante F = σ · A, con A = área de la muestra.'
         );
         addParagraph('Área de la muestra empleada: A = ' + Number(A).toFixed(6) + ' m².');
 
         addHeading('Resultados');
         addParagraph('En la Tabla 1 se resumen los puntos de falla registrados en el ensayo.');
-        // Título + tabla juntos (sin saltar a mitad)
-        ensureBlock(18 + (1 + d.pts.length) * 8);
+        ensureBlock(20 + (1 + d.pts.length) * 9);
         addTableTitle(1, 'Puntos de falla del ensayo de corte directo');
-        // Tabla 1: paleta A
         var pal1 = tablePalettes[Math.floor(Math.random() * tablePalettes.length)];
         var pal2 = tablePalettes[(tablePalettes.indexOf(pal1) + 1 + Math.floor(Math.random() * (tablePalettes.length - 1))) % tablePalettes.length];
         drawNiceTable(
             [
-                { title: 'Ensayo', w: 28 },
-                { title: sym('σn (kPa)'), w: 45 },
-                { title: sym('τ (kPa)'), w: 45 }
+                { title: 'Ensayo', w: 30 },
+                { title: sym('σn (kPa)'), w: 50 },
+                { title: sym('τ (kPa)'), w: 50 }
             ],
             d.pts.map(function(p, i) {
                 return [String(i + 1), p.sn.toFixed(2), p.t.toFixed(2)];
@@ -3428,19 +3416,17 @@ function generarInformeCorteDirectoPDF() {
         addParagraph(
             'A partir de la regresión se obtuvo φ = ' + phi.toFixed(1) +
             '° y c = ' + c.toFixed(2) + ' kPa. La ecuación de la envolvente es: τ = ' +
-            c.toFixed(2) + ' + σn · tan(' + phi.toFixed(1) + '°). Los esfuerzos principales medios ' +
-            'resultaron σ₁ ≈ ' + Number(d.avgS1).toFixed(2) +
+            c.toFixed(2) + ' + σn · tan(' + phi.toFixed(1) +
+            '°). Los esfuerzos principales medios resultaron σ₁ ≈ ' + Number(d.avgS1).toFixed(2) +
             ' kPa y σ₃ ≈ ' + Number(d.avgS3).toFixed(2) + ' kPa.'
         );
 
         addParagraph('En la Tabla 2 se presentan el radio y el centro de cada círculo de Mohr (valores de σ en kN).');
-        // Reservar espacio: intro ya escrita; título + subtítulo + tabla en la misma página
-        ensureBlock(22 + (1 + d.pts.length) * 8);
+        ensureBlock(22 + (1 + d.pts.length) * 9);
         addTableTitle(2, 'Parámetros de los círculos de Mohr por ensayo');
-        // Tabla 2: paleta B distinta
         drawNiceTable(
             [
-                { title: 'Ensayo', w: 22 },
+                { title: 'Ensayo', w: 24 },
                 { title: sym('σ₁ (kN)'), w: 32 },
                 { title: sym('σ₃ (kN)'), w: 32 },
                 { title: 'R (kN)', w: 28 },
@@ -3459,24 +3445,19 @@ function generarInformeCorteDirectoPDF() {
         addHeading('Análisis del ángulo de fricción interna (φ)');
         addParagraph(
             'El ángulo de fricción interna φ = ' + phi.toFixed(1) +
-            '° se obtuvo como la pendiente de la recta de falla en el plano τ–σn. ' +
-            'La cohesión se despejó de la relación τ = c + σn · tan(φ), es decir, c = τ − σn · tan(φ), ' +
-            'tomando el intercepto de la regresión redondeado a dos decimales.'
+            '° se obtuvo como la pendiente de la recta de falla en el plano τ–σn. La cohesión se despejó de la relación τ = c + σn · tan(φ), es decir, c = τ − σn · tan(φ), tomando el intercepto de la regresión redondeado a dos decimales.'
         );
         if (phi >= 30) {
             addParagraph(
-                'Un valor de φ ≥ 30° indica una contribución importante de la fricción a la ' +
-                'resistencia al corte, comportamiento frecuente en suelos granulares densos o medianamente densos.'
+                'Un valor de φ ≥ 30° indica una contribución importante de la fricción a la resistencia al corte, comportamiento frecuente en suelos granulares densos o medianamente densos.'
             );
         } else if (phi >= 20) {
             addParagraph(
-                'Un valor de φ entre 20° y 30° es habitual en suelos mixtos o en arenas sueltas a limosas, ' +
-                'donde la resistencia combina fricción y una cohesión aparente moderada.'
+                'Un valor de φ entre 20° y 30° es habitual en suelos mixtos o en arenas sueltas a limosas, donde la resistencia combina fricción y una cohesión aparente moderada.'
             );
         } else {
             addParagraph(
-                'Un valor de φ inferior a 20° sugiere predominio del comportamiento cohesivo o condiciones ' +
-                'desfavorables (humedad elevada o alteración de la muestra). Se recomienda revisar el procedimiento experimental.'
+                'Un valor de φ inferior a 20° sugiere predominio del comportamiento cohesivo o condiciones desfavorables (humedad elevada o alteración de la muestra). Se recomienda revisar el procedimiento experimental.'
             );
         }
 
@@ -3486,19 +3467,12 @@ function generarInformeCorteDirectoPDF() {
             '°, la interpretación orientativa del material es la siguiente: ' + cls.tipo + '. ' + cls.detalle
         );
         addParagraph(
-            'Esta clasificación tiene carácter didáctico. Para decisiones de diseño geotécnico debe contrastarse ' +
-            'con granulometría, límites de Atterberg, densidad relativa y la normativa aplicable.'
+            'Esta clasificación tiene carácter didáctico. Para decisiones de diseño geotécnico debe contrastarse con granulometría, límites de Atterberg, densidad relativa y la normativa aplicable.'
         );
 
         addHeading('Conclusiones');
-        addParagraph(
-            '1. La envolvente de falla del suelo ensayado queda definida por c = ' + c.toFixed(2) +
-            ' kPa y φ = ' + phi.toFixed(1) + '°, de acuerdo con el criterio de Coulomb.'
-        );
-        addParagraph(
-            '2. Se emplearon ' + d.pts.length +
-            ' puntos de falla. Se recomienda un mínimo de tres ensayos a distintos niveles de esfuerzo normal.'
-        );
+        addParagraph('1. La envolvente de falla del suelo ensayado queda definida por c = ' + c.toFixed(2) + ' kPa y φ = ' + phi.toFixed(1) + '°, de acuerdo con el criterio de Coulomb.');
+        addParagraph('2. Se emplearon ' + d.pts.length + ' puntos de falla. Se recomienda un mínimo de tres ensayos a distintos niveles de esfuerzo normal.');
         addParagraph('3. El material se interpreta, de forma orientativa, como: ' + cls.tipo + '.');
         addParagraph('4. Los círculos de Mohr resultan coherentes con la envolvente tangente en los puntos de falla de cada ensayo.');
         addParagraph('5. Se sugiere contrastar los resultados con la guía FLA-23 y repetir el ensayo si se observa dispersión elevada entre puntos.');
@@ -3506,36 +3480,29 @@ function generarInformeCorteDirectoPDF() {
         var img = canvas.toDataURL('image/png');
         var imgW = maxW;
         var imgH = (canvas.height / canvas.width) * imgW;
-        if (imgH > 95) {
-            imgH = 95;
+        if (imgH > 100) {
+            imgH = 100;
             imgW = (canvas.width / canvas.height) * imgH;
         }
-        ensureBlock(imgH + 28);
+        ensureBlock(imgH + 30);
         addHeading('Figura: envolvente de falla y círculos de Mohr');
         doc.addImage(img, 'PNG', margin, y, imgW, imgH);
-        y += imgH + 6;
+        y += imgH + 4;
         addParagraph('Figura 1', { noIndent: true });
         addParagraph('Envolvente τ–σn y círculos de Mohr del ensayo de corte directo (GeoMetrics).', { noIndent: true });
 
         addHeading('Referencias');
-        addParagraph(
-            'American Psychological Association. (2020). Publication manual of the American Psychological Association (7th ed.). https://doi.org/10.1037/0000165-000'
-        );
-        addParagraph(
-            'Das, B. M., & Sobhan, K. (2018). Principles of geotechnical engineering (9th ed.). Cengage Learning.'
-        );
-        addParagraph(
-            'Universidad de Pamplona. (s. f.). Guía unificada de laboratorio FLA-23: ensayo de corte directo. Facultad de Ingenierías.'
-        );
-        addParagraph(
-            'GeoMetrics. (2026). Laboratorio virtual de mecánica de suelos [Software educativo]. Universidad de Pamplona.'
-        );
+        addParagraph('American Psychological Association. (2020). Publication manual of the American Psychological Association (7th ed.). https://doi.org/10.1037/0000165-000', { noIndent: true });
+        addParagraph('Das, B. M., & Sobhan, K. (2018). Principles of geotechnical engineering (9th ed.). Cengage Learning.', { noIndent: true });
+        addParagraph('Universidad de Pamplona. (s. f.). Guía unificada de laboratorio FLA-23: ensayo de corte directo. Facultad de Ingenierías.', { noIndent: true });
+        addParagraph('GeoMetrics. (2026). Laboratorio virtual de mecánica de suelos [Software educativo]. Universidad de Pamplona.', { noIndent: true });
 
         setF(false, 10);
         doc.setTextColor(100, 100, 100);
         doc.text('GeoMetrics — Informe académico', margin, pageH - 12);
+        doc.setTextColor(0, 0, 0);
 
-        // Numeración APA: esquina superior derecha
+                // Numeración APA: esquina superior derecha
         var total = doc.internal.getNumberOfPages();
         for (var p = 1; p <= total; p++) {
             doc.setPage(p);
