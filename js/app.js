@@ -3369,7 +3369,7 @@ function generarInformeCorteDirectoPDF() {
             'El ensayo de corte directo permite estimar los parámetros de resistencia al corte del suelo en condiciones controladas de laboratorio. A partir de la envolvente de falla de Coulomb se obtienen la cohesión (c) y el ángulo de fricción interna (φ). Este informe presenta los datos de entrada, los resultados numéricos, el análisis de los círculos de Mohr, la interpretación del tipo de suelo y las conclusiones derivadas del ensayo.'
         );
 
-        addHeading('Método');
+        addHeading('Metodología');
         addParagraph(
             'Se aplicó el criterio de Coulomb, expresado como τ = c + σn · tan(φ), donde τ es el esfuerzo cortante de falla, σn el esfuerzo normal sobre el plano de corte, c la cohesión y φ el ángulo de fricción interna. Los parámetros se estimaron mediante regresión lineal de los puntos de falla (σn, τ). El radio y el centro de cada círculo de Mohr se calcularon con R = (σ₁ − σ₃) / 2 y Centro = (σ₁ + σ₃) / 2. Para la representación gráfica, los valores de esfuerzo normal se expresaron también en kN mediante F = σ · A, con A = área de la muestra.'
         );
