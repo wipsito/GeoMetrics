@@ -3166,6 +3166,8 @@ function generarInformeCorteDirectoPDF() {
                 doc.addPage();
                 drawWatermark();
                 y = margin + 8;
+                // Tras salto de página el cuerpo sigue en normal (nunca negrita)
+                setF(false, 11);
             }
         }
         /** Si no cabe el bloque completo, salta de página antes del título */
@@ -3174,6 +3176,7 @@ function generarInformeCorteDirectoPDF() {
                 doc.addPage();
                 drawWatermark();
                 y = margin + 8;
+                setF(false, 11);
             }
         }
         // Paleta suave aleatoria por informe
@@ -3228,11 +3231,13 @@ function generarInformeCorteDirectoPDF() {
                 var yy = y0 + (i + 1) * rowH + 5.4;
                 x = x0;
                 for (c = 0; c < cols.length; c++) {
+                    setF(false, 9);
                     doc.text(String(rows[i][c]), x + 1.8, yy);
                     x += cols[c].w;
                 }
             }
             y = y0 + nRows * rowH + 7;
+            setF(false, 11);
         }
 
         function drawWatermark() {
@@ -3241,17 +3246,19 @@ function generarInformeCorteDirectoPDF() {
                 var ww = 90, hh = 90;
                 var wx = (pageW - ww) / 2;
                 var wy = (pageH - hh) / 2;
-                // opacidad simulada: jsPDF no tiene alpha global fiable en todas las versiones
                 doc.setGState && doc.setGState(new doc.GState({ opacity: 0.12 }));
                 doc.addImage(logoGeo, 'PNG', wx, wy, ww, hh);
                 doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }));
-                setF(true, 14);
+                setF(false, 14); // marca de agua NO en negrita
                 doc.setTextColor(190, 190, 190);
                 var t = 'GeoMetrics';
                 var tw = doc.getTextWidth(t);
                 doc.text(t, (pageW - tw) / 2, wy + hh + 8);
                 doc.setTextColor(0, 0, 0);
-            } catch (e) {}
+                setF(false, 11); // restaurar cuerpo normal
+            } catch (e) {
+                setF(false, 11);
+            }
         }
 
         function wrapText(text, width, fontSize, bold) {
@@ -3287,42 +3294,49 @@ function generarInformeCorteDirectoPDF() {
             if (cur) lines.push(cur);
             return lines.length ? lines : [''];
         }
-        function addParagraph(text, opts) {
+                function addParagraph(text, opts) {
             opts = opts || {};
             var size = opts.size || 11;
-            var bold = !!opts.bold;
-            setF(bold, size);
-            var lines = wrapText(text, maxW, size, bold);
-            ensureSpace(lines.length * lineH + 2);
-            // dibujar línea a línea (más fiable que array)
+            // Cuerpo del informe: NUNCA negrita (solo títulos usan addHeading)
+            var bold = false;
+            var lines = wrapText(text, maxW, size, false);
             lines.forEach(function(ln) {
+                ensureSpace(lineH + 2);
+                setF(false, size); // forzar normal en cada línea (también tras salto de página)
                 doc.text(ln, margin, y);
                 y += lineH;
             });
             y += (opts.after || 3);
+            setF(false, 11);
         }
         function addHeading(text) {
-            ensureSpace(12);
-            y += 3;
-            setF(true, 11);
+            // ÚNICAMENTE los títulos van en negrita
             var lines = wrapText(text, maxW, 11, true);
-            setF(true, 11);
+            ensureSpace(lines.length * lineH + 10);
+            y += 3;
             lines.forEach(function(ln) {
+                ensureSpace(lineH + 2);
+                setF(true, 11);
                 doc.text(ln, margin, y);
                 y += lineH;
             });
             y += 3;
+            setF(false, 11); // volver a normal para el texto siguiente
         }
         function addCentered(text, size, bold) {
-            setF(!!bold, size || 11);
-            var lines = doc.splitTextToSize(sym(String(text)), maxW);
-            ensureSpace(lines.length * lineH + 2);
+            size = size || 11;
+            // Solo negrita si se pide explícitamente (título principal de portada)
+            setF(!!bold, size);
+            var lines = wrapText(text, maxW, size, !!bold);
             lines.forEach(function(ln) {
+                ensureSpace(lineH + 2);
+                setF(!!bold, size);
                 var tw = doc.getTextWidth(ln);
                 doc.text(ln, (pageW - tw) / 2, y);
                 y += lineH;
             });
             y += 2;
+            setF(false, 11);
         }
 
         var A = d.A || 0.0036;
@@ -3356,7 +3370,7 @@ function generarInformeCorteDirectoPDF() {
         addCentered('Generado con la plataforma GeoMetrics', 12, false);
         addCentered(fechaStr, 12, false);
         y += 8;
-        addCentered('Formato de presentación: APA (7.ª ed.)', 11, false);
+        addCentered('Formato de presentación: normas APA (7.ª edición)', 11, false);
 
         // ===== CUERPO =====
         doc.addPage();
