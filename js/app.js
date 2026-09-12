@@ -2915,7 +2915,8 @@ function graficaCorteDirecto() {
     // Apartado R y Centro debajo de la gráfica
     // R = (σ1 − σ3)/2   Centro = (σ1 + σ3)/2   (con σ en kN del eje X)
     if (hint) {
-        var html = '<div class="mohr-rc-grid">';
+        var html = '<div class="mohr-rc-wrap">';
+        html += '<div class="mohr-rc-grid">';
         ptsN.forEach(function(p, i) {
             var R = (p.s1 - p.s3) / 2;
             var centro = (p.s1 + p.s3) / 2;
@@ -2925,9 +2926,224 @@ function graficaCorteDirecto() {
                 '</div>';
         });
         html += '</div>';
+        html += '<button type="button" class="btn-informe-pdf" id="btnInformeCorte">Descargar informe</button>';
+        html += '</div>';
         hint.innerHTML = html;
+        var btnInf = document.getElementById('btnInformeCorte');
+        if (btnInf) {
+            btnInf.onclick = function() {
+                generarInformeCorteDirectoPDF();
+            };
+        }
     }
 }
+
+/** Clasificación orientativa del suelo según c (kPa) y φ (°) — uso didáctico */
+function clasificarSueloCorte(c, phi) {
+    c = Number(c) || 0;
+    phi = Number(phi) || 0;
+    var tipo = '';
+    var detalle = '';
+    if (c < 5 && phi >= 35) {
+        tipo = 'Arena densa / grava arenosa';
+        detalle = 'Baja cohesión y alto ángulo de fricción, típico de arenas densas o materiales granulares.';
+    } else if (c < 5 && phi >= 30) {
+        tipo = 'Arena media a densa';
+        detalle = 'Cohesión casi nula y φ moderado-alto: comportamiento predominantemente friccionante.';
+    } else if (c < 10 && phi >= 28 && phi < 35) {
+        tipo = 'Arena limosa / suelo granular con algo de finos';
+        detalle = 'Ligera cohesión aparente y φ intermedio; posible presencia de finos o humedad.';
+    } else if (c >= 10 && c < 25 && phi >= 20 && phi < 32) {
+        tipo = 'Limo arcilloso / arcilla arenosa';
+        detalle = 'Cohesión moderada y fricción intermedia: mezcla de finos con fracción granular.';
+    } else if (c >= 25 && phi < 25) {
+        tipo = 'Arcilla (comportamiento cohesivo)';
+        detalle = 'Alta cohesión y φ relativamente bajo: resistencia controlada por la cohesión.';
+    } else if (c >= 15 && phi >= 25) {
+        tipo = 'Arcilla limosa / suelo cohesivo-friccionante';
+        detalle = 'Combinación relevante de c y φ: suelo con contribución de cohesión y fricción.';
+    } else if (phi < 20) {
+        tipo = 'Suelo de baja resistencia al corte (posible arcilla blanda o relleno)';
+        detalle = 'Ángulo de fricción bajo: revisar humedad, estructura y condiciones de drenaje del ensayo.';
+    } else {
+        tipo = 'Suelo intermedio (cohesivo-friccionante)';
+        detalle = 'Los parámetros se sitúan en un rango mixto; conviene contrastar con granulometría e índice de plasticidad.';
+    }
+    return { tipo: tipo, detalle: detalle };
+}
+
+function generarInformeCorteDirectoPDF() {
+    var d = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
+    if (!d || !d.pts || !d.pts.length) {
+        alert('Primero calcula y genera la gráfica del ensayo de corte directo.');
+        return;
+    }
+    var canvas = document.getElementById('canvas-corte');
+    if (!canvas) {
+        alert('No se encontró la gráfica. Pulsa GENERAR GRÁFICA.');
+        return;
+    }
+
+    var btn = document.getElementById('btnInformeCorte');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Generando…';
+    }
+
+    function fin() {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Descargar informe';
+        }
+    }
+
+    civixLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js').then(function() {
+        var JsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
+        if (!JsPDF) throw new Error('jsPDF no disponible');
+
+        var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        var margin = 16;
+        var pageW = doc.internal.pageSize.getWidth();
+        var pageH = doc.internal.pageSize.getHeight();
+        var y = margin;
+        var maxW = pageW - margin * 2;
+
+        function ensureSpace(h) {
+            if (y + h > pageH - 16) {
+                doc.addPage();
+                y = margin;
+            }
+        }
+        function titulo(t) {
+            ensureSpace(12);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.setTextColor(40, 40, 40);
+            doc.text(t, margin, y);
+            y += 7;
+        }
+        function cuerpo(t) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(50, 50, 50);
+            var lines = doc.splitTextToSize(t, maxW);
+            ensureSpace(lines.length * 5 + 2);
+            doc.text(lines, margin, y);
+            y += lines.length * 5 + 3;
+        }
+        function bullet(t) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            var lines = doc.splitTextToSize('•  ' + t, maxW);
+            ensureSpace(lines.length * 5 + 1);
+            doc.text(lines, margin, y);
+            y += lines.length * 5 + 2;
+        }
+
+        // Encabezado
+        doc.setFillColor(26, 18, 12);
+        doc.rect(0, 0, pageW, 28, 'F');
+        doc.setTextColor(232, 184, 74);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text('GeoMetrics — Informe de laboratorio', margin, 12);
+        doc.setFontSize(11);
+        doc.setTextColor(220, 210, 190);
+        doc.text('Ensayo de Corte Directo (FLA-23)', margin, 20);
+        y = 36;
+
+        doc.setTextColor(80, 80, 80);
+        doc.setFontSize(9);
+        var fecha = new Date().toLocaleString('es-CO');
+        doc.text('Fecha: ' + fecha + '  ·  Universidad de Pamplona — Ingeniería Civil', margin, y);
+        y += 10;
+
+        var A = d.A || 0.0036;
+        var cls = clasificarSueloCorte(d.c, d.phi);
+
+        titulo('1. Datos de entrada');
+        cuerpo('Área de la muestra A = ' + Number(A).toFixed(6) + ' m².');
+        d.pts.forEach(function(p, i) {
+            bullet('Ensayo ' + (i + 1) + ': σn = ' + p.sn.toFixed(2) + ' kPa,  τ = ' + p.t.toFixed(2) + ' kPa');
+        });
+        y += 2;
+
+        titulo('2. Resultados del análisis');
+        bullet('Ángulo de fricción interna φ = ' + Number(d.phi).toFixed(1) + '°');
+        bullet('Cohesión c = ' + Number(d.c).toFixed(2) + ' kPa');
+        bullet('Ecuación de Coulomb: τ = ' + Number(d.c).toFixed(2) + ' + σn · tan(' + Number(d.phi).toFixed(1) + '°)');
+        bullet('σ₁ medio ≈ ' + Number(d.avgS1).toFixed(2) + ' kPa');
+        bullet('σ₃ medio ≈ ' + Number(d.avgS3).toFixed(2) + ' kPa');
+        y += 2;
+
+        titulo('3. Círculos de Mohr (por ensayo)');
+        cuerpo('R = (σ₁ − σ₃)/2    ·    Centro = (σ₁ + σ₃)/2    (valores de σ convertidos a kN con F = σ·A)');
+        d.pts.forEach(function(p, i) {
+            var s1kN = p.s1 * A;
+            var s3kN = p.s3 * A;
+            var R = (s1kN - s3kN) / 2;
+            var centro = (s1kN + s3kN) / 2;
+            bullet('E' + (i + 1) + ': σ₁ = ' + s1kN.toFixed(3) + ' kN, σ₃ = ' + s3kN.toFixed(3) +
+                ' kN, R' + (i + 1) + ' = ' + R.toFixed(3) + ' kN, Centro' + (i + 1) + ' = ' + centro.toFixed(3) + ' kN');
+        });
+        y += 2;
+
+        titulo('4. Análisis del ángulo de fricción φ');
+        cuerpo('El valor φ = ' + Number(d.phi).toFixed(1) +
+            '° se obtuvo por regresión lineal de los puntos de falla (σn, τ) sobre la envolvente de Coulomb. ' +
+            'La pendiente de la recta es tan(φ); la cohesión es el intercepto (o el promedio de c = τ − σn·tan(φ)).');
+        if (d.phi >= 30) {
+            cuerpo('Un φ ≥ 30° indica buena capacidad de movilizar resistencia por fricción, típica de suelos granulares densos o medianamente densos.');
+        } else if (d.phi >= 20) {
+            cuerpo('Un φ entre 20° y 30° es frecuente en suelos mixtos o arenas sueltas/limosas; la resistencia combina fricción y algo de cohesión.');
+        } else {
+            cuerpo('Un φ < 20° sugiere predominio cohesivo o condiciones desfavorables (humedad alta, estructura alterada). Conviene verificar el procedimiento de corte.');
+        }
+        y += 1;
+
+        titulo('5. Tipo de suelo (interpretación de laboratorio)');
+        cuerpo('Clasificación orientativa según c y φ obtenidos:');
+        doc.setFont('helvetica', 'bold');
+        cuerpo(cls.tipo);
+        cuerpo(cls.detalle);
+        cuerpo('Nota: esta interpretación es didáctica. Para diseño geotécnico debe complementarse con granulometría, límites de Atterberg, densidad relativa y normas vigentes.');
+        y += 1;
+
+        titulo('6. Conclusiones');
+        bullet('La envolvente de falla queda definida por c = ' + Number(d.c).toFixed(2) + ' kPa y φ = ' + Number(d.phi).toFixed(1) + '°.');
+        bullet('Se utilizaron ' + d.pts.length + ' punto(s) de falla; se recomienda un mínimo de 3 ensayos a distintas σn.');
+        bullet('El material se interpreta como: ' + cls.tipo + '.');
+        bullet('Los círculos de Mohr confirman la envolvente tangente en los puntos de falla de cada ensayo.');
+        bullet('Se recomienda contrastar resultados con la guía FLA-23 y repetir ensayos si hay dispersión alta entre puntos.');
+        y += 2;
+
+        // Gráfica
+        titulo('7. Gráfica generada (envolvente τ–σn y círculos de Mohr)');
+        var img = canvas.toDataURL('image/png');
+        var imgW = maxW;
+        var imgH = (canvas.height / canvas.width) * imgW;
+        if (imgH > 90) {
+            imgH = 90;
+            imgW = (canvas.width / canvas.height) * imgH;
+        }
+        ensureSpace(imgH + 8);
+        doc.addImage(img, 'PNG', margin, y, imgW, imgH);
+        y += imgH + 8;
+
+        // Pie
+        ensureSpace(12);
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text('Generado por GeoMetrics · Civix · Uso académico — Universidad de Pamplona', margin, pageH - 10);
+
+        doc.save('Informe_Corte_Directo_GeoMetrics.pdf');
+        fin();
+    }).catch(function(err) {
+        alert('No se pudo generar el PDF: ' + (err.message || err));
+        fin();
+    });
+}
+
 
 function crearFormularioInconfinada() {
     return `
