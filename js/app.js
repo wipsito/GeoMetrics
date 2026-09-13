@@ -978,6 +978,9 @@ function crearFormularioHumedad() {
                 <div class="botones-calculo">
                     <button class="btn-calcular" onclick="calcularHumedad()">CALCULAR</button>
                     <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('humedad')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-humedad" onclick="generarInformeEnsayoPDF('humedad')">Descargar informe</button>
+        </div>
                     <button class="btn-limpiar" onclick="limpiarCampo('h')">LIMPIAR</button>
                 </div>
                 <div class="mensaje-error" id="h-error"></div>
@@ -1029,6 +1032,9 @@ function crearFormularioGranulometria() {
                 <div class="botones-calculo">
                     <button class="btn-calcular" onclick="calcularGranulometria()">CALCULAR</button>
                     <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('granulometria')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-granulometria" onclick="generarInformeEnsayoPDF('granulometria')">Descargar informe</button>
+        </div>
                     <button class="btn-limpiar" onclick="limpiarCampo('g')">LIMPIAR</button>
                 </div>
                 <div class="mensaje-error" id="g-error"></div>
@@ -1075,6 +1081,9 @@ function crearFormularioLimites() {
                 <div class="botones-calculo">
                     <button class="btn-calcular" onclick="calcularLimites()">CALCULAR</button>
                     <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('limites')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-limites" onclick="generarInformeEnsayoPDF('limites')">Descargar informe</button>
+        </div>
                     <button class="btn-limpiar" onclick="limpiarCampo('l')">LIMPIAR</button>
                 </div>
                 <div class="mensaje-error" id="l-error"></div>
@@ -1120,6 +1129,9 @@ function crearFormularioGravedad() {
                 <div class="botones-calculo">
                     <button class="btn-calcular" onclick="calcularGravedad()">CALCULAR</button>
                     <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('gravedad')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-gravedad" onclick="generarInformeEnsayoPDF('gravedad')">Descargar informe</button>
+        </div>
                     <button class="btn-limpiar" onclick="limpiarCampo('ge')">LIMPIAR</button>
                 </div>
                 <div class="mensaje-error" id="ge-error"></div>
@@ -1169,6 +1181,9 @@ function crearFormularioCompactacion() {
                 <div class="botones-calculo">
                     <button class="btn-calcular" onclick="calcularCompactacion()">CALCULAR</button>
                     <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('compactacion')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-compactacion" onclick="generarInformeEnsayoPDF('compactacion')">Descargar informe</button>
+        </div>
                     <button class="btn-limpiar" onclick="limpiarCampo('cp')">LIMPIAR</button>
                 </div>
                 <div class="mensaje-error" id="cp-error"></div>
@@ -1218,6 +1233,9 @@ function crearFormularioDensidad() {
                 <div class="botones-calculo">
                     <button class="btn-calcular" onclick="calcularDensidad()">CALCULAR</button>
                     <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('densidad')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-densidad" onclick="generarInformeEnsayoPDF('densidad')">Descargar informe</button>
+        </div>
                     <button class="btn-limpiar" onclick="limpiarCampo('d')">LIMPIAR</button>
                 </div>
                 <div class="mensaje-error" id="d-error"></div>
@@ -1263,6 +1281,9 @@ function crearFormularioClasificacion() {
                 <div class="botones-calculo">
                     <button class="btn-calcular" onclick="clasificarSUCS()">CLASIFICAR</button>
                     <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('clasificacion')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-clasificacion" onclick="generarInformeEnsayoPDF('clasificacion')">Descargar informe</button>
+        </div>
                     <button class="btn-limpiar" onclick="limpiarCampo('c')">LIMPIAR</button>
                 </div>
                 <div class="mensaje-error" id="c-error"></div>
@@ -1310,6 +1331,9 @@ function crearFormularioPermeabilidad() {
                 <div class="botones-calculo">
                     <button class="btn-calcular" onclick="calcularPermeabilidad()">CALCULAR</button>
                     <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('permeabilidad')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-permeabilidad" onclick="generarInformeEnsayoPDF('permeabilidad')">Descargar informe</button>
+        </div>
                     <button class="btn-limpiar" onclick="limpiarCampo('p')">LIMPIAR</button>
                 </div>
                 <div class="mensaje-error" id="p-error"></div>
@@ -2999,7 +3023,7 @@ function graficaCorteDirecto() {
         var btnInf = document.getElementById('btnInformeCorte');
         if (btnInf) {
             btnInf.onclick = function() {
-                generarInformeCorteDirectoPDF();
+                generarInformeEnsayoPDF('corte');
             };
         }
     }
@@ -3041,6 +3065,122 @@ function clasificarSueloCorte(c, phi) {
 
 
 /** Datos del informe según sesión (estudiante / materia / grupo / docente) */
+
+/** Catálogo de ensayos para informes PDF */
+var ENSAYOS_INFORME = {
+    humedad: {
+        titulo: 'ENSAYO DE CONTENIDO DE HUMEDAD',
+        tituloCorto: 'Contenido de humedad',
+        materia: 'Mecánica de Suelos I',
+        dataKey: 'h'
+    },
+    granulometria: {
+        titulo: 'ENSAYO DE GRANULOMETRÍA',
+        tituloCorto: 'Granulometría',
+        materia: 'Mecánica de Suelos I',
+        dataKey: 'g'
+    },
+    limites: {
+        titulo: 'ENSAYO DE LÍMITES DE ATTERBERG',
+        tituloCorto: 'Límites de Atterberg',
+        materia: 'Mecánica de Suelos I',
+        dataKey: 'l'
+    },
+    gravedad: {
+        titulo: 'ENSAYO DE GRAVEDAD ESPECÍFICA',
+        tituloCorto: 'Gravedad específica',
+        materia: 'Mecánica de Suelos I',
+        dataKey: 'ge'
+    },
+    compactacion: {
+        titulo: 'ENSAYO DE COMPACTACIÓN PROCTOR',
+        tituloCorto: 'Compactación Proctor',
+        materia: 'Mecánica de Suelos I',
+        dataKey: 'cp'
+    },
+    densidad: {
+        titulo: 'ENSAYO DE DENSIDAD IN SITU',
+        tituloCorto: 'Densidad in situ',
+        materia: 'Mecánica de Suelos I',
+        dataKey: 'd'
+    },
+    clasificacion: {
+        titulo: 'ENSAYO DE CLASIFICACIÓN DE SUELOS',
+        tituloCorto: 'Clasificación de suelos',
+        materia: 'Mecánica de Suelos I',
+        dataKey: 'c'
+    },
+    permeabilidad: {
+        titulo: 'ENSAYO DE PERMEABILIDAD',
+        tituloCorto: 'Permeabilidad',
+        materia: 'Mecánica de Suelos I',
+        dataKey: 'p'
+    },
+    corte: {
+        titulo: 'ENSAYO DE CORTE DIRECTO',
+        tituloCorto: 'Corte directo',
+        materia: 'Mecánica de Suelos II',
+        dataKey: 'corte'
+    },
+    inconfinada: {
+        titulo: 'ENSAYO DE COMPRESIÓN INCONFINADA',
+        tituloCorto: 'Compresión inconfinada',
+        materia: 'Mecánica de Suelos II',
+        dataKey: 'inconfinada'
+    },
+    consolidacion: {
+        titulo: 'ENSAYO DE CONSOLIDACIÓN',
+        tituloCorto: 'Consolidación',
+        materia: 'Mecánica de Suelos II',
+        dataKey: 'consolidacion'
+    },
+    triaxial: {
+        titulo: 'ENSAYO TRIAXIAL',
+        tituloCorto: 'Triaxial',
+        materia: 'Mecánica de Suelos II',
+        dataKey: 'triaxial'
+    }
+};
+
+function resumenDatosEnsayo(tipo) {
+    var meta = ENSAYOS_INFORME[tipo];
+    if (!meta) return ['No hay datos del ensayo.'];
+    var lines = [];
+    if (tipo === 'corte') {
+        var d = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
+        if (!d) return ['Primero calcula el ensayo de corte directo.'];
+        lines.push('Ángulo de fricción φ = ' + Number(d.phi).toFixed(1) + '°');
+        lines.push('Cohesión c = ' + Number(d.c).toFixed(2) + ' kPa');
+        lines.push('σ₁ medio ≈ ' + Number(d.avgS1).toFixed(2) + ' kPa');
+        lines.push('σ₃ medio ≈ ' + Number(d.avgS3).toFixed(2) + ' kPa');
+        if (d.pts) {
+            d.pts.forEach(function(p, i) {
+                lines.push('Punto ' + (i + 1) + ': σn = ' + p.sn.toFixed(2) + ' kPa, τ = ' + p.t.toFixed(2) + ' kPa');
+            });
+        }
+        return lines;
+    }
+    var bag = window.__datosEnsayo || {};
+    var bag2 = window.__datosEnsayoMS2 || {};
+    var data = bag[meta.dataKey] || bag[tipo] || bag2[meta.dataKey] || bag2[tipo] || null;
+    if (!data) return ['Primero calcula y/o guarda los datos del ensayo.'];
+    if (data.texto) lines.push(String(data.texto));
+    if (data.w != null) lines.push('Contenido de humedad w = ' + Number(data.w).toFixed(2) + ' %');
+    if (data.gs != null) lines.push('Gravedad específica Gs = ' + Number(data.gs).toFixed(3));
+    if (data.k != null) lines.push('Coeficiente de permeabilidad k = ' + Number(data.k).toExponential(3) + ' cm/s');
+    if (data.simbolo) lines.push('Clasificación: ' + data.simbolo);
+    if (data.ll != null) lines.push('LL = ' + data.ll + ', IP = ' + (data.ip != null ? data.ip : '—'));
+    if (data.gPct != null) lines.push('Grava ' + data.gPct + ' %, Arena ' + data.aPct + ' %, Finos ' + data.fPct + ' %');
+    if (data.gd != null) lines.push('γd = ' + Number(data.gd).toFixed(3) + ' g/cm³, w = ' + Number(data.w).toFixed(2) + ' %');
+    if (data.max && data.max.gamma) lines.push('γd máx ≈ ' + Number(data.max.gamma).toFixed(3));
+    if (data.cu != null) lines.push('cu = ' + Number(data.cu).toFixed(2) + ' kPa');
+    if (data.qu != null) lines.push('qu = ' + Number(data.qu).toFixed(2) + ' kPa');
+    if (!lines.length) {
+        try { lines.push(JSON.stringify(data).slice(0, 400)); } catch (e) { lines.push('Datos calculados disponibles.'); }
+    }
+    return lines;
+}
+
 function aulaDatosInformeEnsayo(materiaPreferida) {
     var vacio = {
         estudiante: '—',
@@ -3077,13 +3217,12 @@ function aulaDatosInformeEnsayo(materiaPreferida) {
             if (g2) grupo = g2;
         }
 
-        // Código: campo codigo, o dígitos del correo, o id corto
+        // Código estudiantil del registro
         var codigo = user.codigo || user.codigoEstudiante || '';
         if (!codigo && user.email) {
             var m = String(user.email).split('@')[0].match(/(\d{5,})/);
             if (m) codigo = m[1];
         }
-        if (!codigo && user.id) codigo = String(user.id).slice(0, 8).toUpperCase();
 
         // Docente del grupo/materia
         var docenteNombre = '—';
@@ -3129,18 +3268,22 @@ function aulaDatosInformeEnsayo(materiaPreferida) {
 }
 
 function generarInformeCorteDirectoPDF() {
-    var d = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
-    if (!d || !d.pts || !d.pts.length) {
-        alert('Primero calcula y genera la grafica del ensayo de corte directo.');
-        return;
-    }
-    var canvas = document.getElementById('canvas-corte');
-    if (!canvas) {
-        alert('No se encontro la grafica. Pulse GENERAR GRAFICA.');
+    generarInformeEnsayoPDF('corte');
+}
+
+function generarInformeEnsayoPDF(tipoEnsayo) {
+    tipoEnsayo = tipoEnsayo || 'corte';
+    var metaInf = (typeof ENSAYOS_INFORME !== 'undefined' && ENSAYOS_INFORME[tipoEnsayo])
+        ? ENSAYOS_INFORME[tipoEnsayo]
+        : { titulo: 'ENSAYO DE LABORATORIO', tituloCorto: 'Ensayo', materia: 'Mecánica de Suelos I' };
+
+    var resumen = (typeof resumenDatosEnsayo === 'function') ? resumenDatosEnsayo(tipoEnsayo) : [];
+    if (resumen.length === 1 && (resumen[0].indexOf('Primero') === 0 || resumen[0].indexOf('No hay') === 0)) {
+        alert(resumen[0]);
         return;
     }
 
-    var btn = document.getElementById('btnInformeCorte');
+    var btn = document.getElementById('btnInformeCorte') || document.getElementById('btnInforme-' + tipoEnsayo);
     if (btn) {
         btn.disabled = true;
         btn.textContent = 'Generando…';
@@ -3170,23 +3313,19 @@ function generarInformeCorteDirectoPDF() {
                     c.height = h;
                     c.getContext('2d').drawImage(img, 0, 0, w, h);
                     resolve(c.toDataURL('image/png'));
-                } catch (e) {
-                    resolve(null);
-                }
+                } catch (e) { resolve(null); }
             };
             img.onerror = function() { resolve(null); };
             img.src = src;
         });
     }
-
     function loadFontBase64(url) {
         return fetch(url).then(function(r) {
             if (!r.ok) throw new Error('Fuente no disponible');
             return r.arrayBuffer();
         }).then(function(buf) {
             var bytes = new Uint8Array(buf);
-            var chunk = 0x8000;
-            var binary = '';
+            var chunk = 0x8000, binary = '';
             for (var i = 0; i < bytes.length; i += chunk) {
                 binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
             }
@@ -3205,24 +3344,16 @@ function generarInformeCorteDirectoPDF() {
         var JsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
         if (!JsPDF) throw new Error('jsPDF no disponible');
 
-        var logoUni = results[1];
-        var logoCiv = results[2];
-        var logoGeo = results[3];
-        var fontReg = results[4];
-        var fontBold = results[5];
+        var logoUni = results[1], logoCiv = results[2], logoGeo = results[3];
+        var fontReg = results[4], fontBold = results[5];
 
         var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        // Plantilla cargada por el usuario (GeoMetrics) — sin formato APA forzado
-        var marginL = 22;
-        var marginR = 16;
-        var marginT = 16;
-        var marginB = 16;
-        var margin = marginL; // compatibilidad con helpers
+        var marginL = 22, marginR = 16, marginT = 16, marginB = 16;
         var pageW = doc.internal.pageSize.getWidth();
         var pageH = doc.internal.pageSize.getHeight();
         var y = marginT;
         var maxW = pageW - marginL - marginR;
-        var lineH = 6.2; // interlineado cómodo (no doble APA extremo)
+        var lineH = 6.2;
         var hasUnicodeFont = false;
 
         if (fontReg) {
@@ -3236,25 +3367,18 @@ function generarInformeCorteDirectoPDF() {
         }
 
         function setF(bold, size) {
-            if (hasUnicodeFont) {
-                doc.setFont('DejaVu', bold ? 'bold' : 'normal');
-            } else {
-                doc.setFont('times', bold ? 'bold' : (bold === false ? 'normal' : 'normal'));
-            }
+            if (hasUnicodeFont) doc.setFont('DejaVu', bold ? 'bold' : 'normal');
+            else doc.setFont('times', bold ? 'bold' : 'normal');
             doc.setFontSize(size || 12);
             doc.setTextColor(0, 0, 0);
         }
-
-        // Si no hay fuente Unicode, degradar simbolos a texto legible
         function sym(s) {
             if (hasUnicodeFont) return s;
             return String(s)
                 .replace(/σ₁/g, 'sigma_1').replace(/σ₃/g, 'sigma_3').replace(/σn/g, 'sigma_n')
                 .replace(/σ/g, 'sigma').replace(/τ/g, 'tau').replace(/φ/g, 'phi')
-                .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/≈/g, 'aprox.')
-                .replace(/²/g, '2').replace(/°/g, '°');
+                .replace(/≥/g, '>=').replace(/≈/g, 'aprox.').replace(/²/g, '2');
         }
-
         function dibujarMarcoPagina() {
             doc.setDrawColor(40, 70, 140);
             doc.setLineWidth(0.6);
@@ -3264,126 +3388,28 @@ function generarInformeCorteDirectoPDF() {
             if (y + h > pageH - marginB) {
                 doc.addPage();
                 dibujarMarcoPagina();
-                drawWatermark();
                 y = marginT + 8;
                 setF(false, 11);
             }
         }
-        function ensureBlock(h) {
-            if (y + h > pageH - marginB) {
-                doc.addPage();
-                dibujarMarcoPagina();
-                drawWatermark();
-                y = marginT + 8;
-                setF(false, 11);
-            }
-        }
-        // Paleta suave aleatoria por informe
-        var tablePalettes = [
-            { head: [230, 200, 150], alt: [248, 236, 214], border: [150, 120, 70] },   // ámbar
-            { head: [160, 200, 220], alt: [220, 238, 246], border: [70, 120, 145] },   // azul
-            { head: [170, 210, 170], alt: [226, 242, 226], border: [70, 130, 80] },    // verde
-            { head: [210, 175, 200], alt: [242, 228, 238], border: [130, 90, 120] },   // lila
-            { head: [220, 185, 160], alt: [246, 232, 220], border: [140, 100, 70] },   // terracota
-            { head: [150, 185, 210], alt: [224, 236, 246], border: [60, 110, 145] }    // celeste
-        ];
-        var palette = tablePalettes[Math.floor(Math.random() * tablePalettes.length)];
-
-        function drawNiceTable(cols, rows, pal) {
-            // cols: [{title, w}], rows: array of string arrays, pal: palette
-            pal = pal || palette;
-            var rowH = 9;
-            var tableW = 0;
-            cols.forEach(function(col) { tableW += col.w; });
-            var nRows = 1 + rows.length;
-            var blockH = nRows * rowH + 4;
-            ensureBlock(blockH);
-            var x0 = marginL;
-            var y0 = y;
-            // cabecera = color título; datos = color distinto (todos iguales)
-            doc.setFillColor(pal.head[0], pal.head[1], pal.head[2]);
-            doc.rect(x0, y0, tableW, rowH, 'F');
-            for (var i = 0; i < rows.length; i++) {
-                doc.setFillColor(pal.alt[0], pal.alt[1], pal.alt[2]);
-                doc.rect(x0, y0 + (i + 1) * rowH, tableW, rowH, 'F');
-            }
-            doc.setDrawColor(pal.border[0], pal.border[1], pal.border[2]);
-            doc.setLineWidth(0.4);
-            var r, c, x;
-            for (r = 0; r <= nRows; r++) {
-                doc.line(x0, y0 + r * rowH, x0 + tableW, y0 + r * rowH);
-            }
-            x = x0;
-            for (c = 0; c < cols.length; c++) {
-                doc.line(x, y0, x, y0 + nRows * rowH);
-                x += cols[c].w;
-            }
-            doc.line(x0 + tableW, y0, x0 + tableW, y0 + nRows * rowH);
-            setF(true, 9);
-            x = x0;
-            for (c = 0; c < cols.length; c++) {
-                doc.text(String(cols[c].title), x + 1.8, y0 + 5.4);
-                x += cols[c].w;
-            }
-            setF(false, 9);
-            for (i = 0; i < rows.length; i++) {
-                var yy = y0 + (i + 1) * rowH + 5.4;
-                x = x0;
-                for (c = 0; c < cols.length; c++) {
-                    setF(false, 9);
-                    doc.text(String(rows[i][c]), x + 1.8, yy);
-                    x += cols[c].w;
-                }
-            }
-            y = y0 + nRows * rowH + 7;
-            setF(false, 11);
-        }
-
-        function drawWatermark() {
-            if (!logoGeo) return;
-            try {
-                var ww = 90, hh = 90;
-                var wx = (pageW - ww) / 2;
-                var wy = (pageH - hh) / 2;
-                doc.setGState && doc.setGState(new doc.GState({ opacity: 0.12 }));
-                doc.addImage(logoGeo, 'PNG', wx, wy, ww, hh);
-                doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }));
-                setF(false, 12);
-                doc.setTextColor(200, 200, 200);
-                var t = 'GeoMetrics';
-                var tw = doc.getTextWidth(t);
-                doc.text(t, (pageW - tw) / 2, wy + hh + 8);
-                doc.setTextColor(0, 0, 0);
-                setF(false, 11);
-            } catch (e) {
-                setF(false, 11);
-            }
-        }
-
-        function wrapText(text, width, fontSize, bold) {
+        function wrapText(text, width, fontSize) {
             text = sym(String(text || ''));
-            fontSize = fontSize || 11;
-            setF(!!bold, fontSize);
+            setF(false, fontSize || 11);
             var lines = doc.splitTextToSize(text, width);
-            if (!lines || !lines.length) return [''];
-            return lines;
+            return (lines && lines.length) ? lines : [''];
         }
-        function addParagraph(text, opts) {
-            opts = opts || {};
-            var size = opts.size || 11;
-            var lines = wrapText(text, maxW, size, false);
+        function addParagraph(text) {
+            var lines = wrapText(text, maxW, 11);
             lines.forEach(function(ln) {
                 ensureSpace(lineH + 1);
-                setF(false, size);
+                setF(false, 11);
                 doc.text(ln, marginL, y);
                 y += lineH;
             });
-            y += (opts.after != null ? opts.after : 2);
-            setF(false, 11);
+            y += 2;
         }
         function addHeading(text) {
-            // Plantilla: título de sección a la izquierda, negrita (como Heading 3)
-            var lines = wrapText(text, maxW, 12, true);
+            var lines = wrapText(text, maxW, 12);
             ensureSpace(lines.length * lineH + 8);
             y += 4;
             lines.forEach(function(ln) {
@@ -3395,87 +3421,41 @@ function generarInformeCorteDirectoPDF() {
             y += 2;
             setF(false, 11);
         }
-        function addTableTitle(num, caption) {
-            ensureSpace(lineH * 3);
-            setF(true, 11);
-            doc.text('Tabla ' + num, marginL, y);
-            y += lineH;
-            setF(false, 11);
-            var capLines = doc.splitTextToSize(sym(String(caption)), maxW);
-            capLines.forEach(function(ln) {
-                ensureSpace(lineH + 1);
-                doc.text(ln, marginL, y);
-                y += lineH;
-            });
-            y += 2;
-            setF(false, 11);
-        }
-        function addCentered(text, size, bold) {
-            size = size || 12;
-            setF(!!bold, size);
-            var lines = wrapText(text, maxW, size, !!bold);
-            lines.forEach(function(ln) {
-                ensureSpace(lineH + 1);
-                setF(!!bold, size);
-                var tw = doc.getTextWidth(ln);
-                doc.text(ln, (pageW - tw) / 2, y);
-                y += lineH;
-            });
-            y += 2;
-            setF(false, 11);
-        }
 
-        var A = d.A || 0.0036;
-        var phi = Number(d.phi);
-        var c = Number(d.c);
-        var cls = clasificarSueloCorte(c, phi);
         var fechaStr = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+        var datosInf = aulaDatosInformeEnsayo(metaInf.materia);
 
-        // ===== PORTADA (plantilla PDF GeoMetrics) =====
-        var datosInf = aulaDatosInformeEnsayo('Mecánica de Suelos II');
-
-        // Marco decorativo azul
+        // ===== PORTADA (plantilla) =====
         doc.setDrawColor(40, 70, 140);
         doc.setLineWidth(1.2);
         doc.rect(8, 8, pageW - 16, pageH - 16);
         doc.setLineWidth(0.4);
         doc.rect(10, 10, pageW - 20, pageH - 20);
 
-        // Logos
         var logoH = 26;
-        if (logoUni) {
-            try { doc.addImage(logoUni, 'PNG', 16, 14, logoH, logoH); } catch (e) {}
-        }
-        if (logoCiv) {
-            try { doc.addImage(logoCiv, 'PNG', pageW - 16 - logoH, 14, logoH, logoH); } catch (e) {}
-        }
-
-        // Marca de agua grande (logo GeoMetrics)
+        if (logoUni) { try { doc.addImage(logoUni, 'PNG', 16, 14, logoH, logoH); } catch (e) {} }
+        if (logoCiv) { try { doc.addImage(logoCiv, 'PNG', pageW - 16 - logoH, 14, logoH, logoH); } catch (e) {} }
         if (logoGeo) {
             try {
-                var ww = 120, hh = 120;
                 doc.setGState && doc.setGState(new doc.GState({ opacity: 0.1 }));
-                doc.addImage(logoGeo, 'PNG', (pageW - ww) / 2, 70, ww, hh);
+                doc.addImage(logoGeo, 'PNG', (pageW - 120) / 2, 70, 120, 120);
                 doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }));
             } catch (e) {}
         }
 
-        // Título
         y = 48;
-        setF(true, 16);
-        var tit1 = 'INFORME DE LABORATORIO: ENSAYO DE';
-        var tit2 = 'CORTE DIRECTO';
-        doc.text(tit1, (pageW - doc.getTextWidth(tit1)) / 2, y);
-        y += 8;
-        doc.text(tit2, (pageW - doc.getTextWidth(tit2)) / 2, y);
+        setF(true, 15);
+        var tituloFull = String(metaInf.titulo || 'INFORME DE LABORATORIO');
+        var titLines = doc.splitTextToSize(tituloFull, maxW - 10);
+        titLines.forEach(function(ln) {
+            doc.text(ln, (pageW - doc.getTextWidth(ln)) / 2, y);
+            y += 8;
+        });
 
-        // Campos de datos personales (rellenados desde la sesión)
         y = 100;
         setF(false, 12);
-        function lineaDato(etiqueta, valor) {
-            var txt = etiqueta + '  ' + (valor || '—');
-            setF(false, 12);
-            doc.setTextColor(40, 40, 40);
+        function lineaDato(et, val) {
+            var txt = et + '  ' + (val || '—');
             doc.text(txt, (pageW - doc.getTextWidth(txt)) / 2, y);
             y += 9;
         }
@@ -3485,162 +3465,80 @@ function generarInformeCorteDirectoPDF() {
         lineaDato('GRUPO:', datosInf.grupo);
         lineaDato('ASIGNATURA:', datosInf.asignatura);
 
-        // Pie de portada institucional
         y = pageH - 48;
         setF(false, 11);
-        doc.setTextColor(30, 30, 30);
-        var pie = [
-            'UNIVERSIDAD DE PAMPLONA',
-            'FACULTAD DE INGENIERÍAS Y ARQUITECTURA',
-            'PROGRAMA DE INGENIERÍA CIVIL'
-        ];
-        pie.forEach(function(ln) {
+        ['UNIVERSIDAD DE PAMPLONA', 'FACULTAD DE INGENIERÍAS Y ARQUITECTURA', 'PROGRAMA DE INGENIERÍA CIVIL'].forEach(function(ln) {
             doc.text(ln, (pageW - doc.getTextWidth(ln)) / 2, y);
             y += 6;
         });
-        y += 2;
         setF(false, 9);
         doc.setTextColor(90, 90, 90);
         var gen = 'Generado con la plataforma GeoMetrics  ' + fechaStr;
-        doc.text(gen, (pageW - doc.getTextWidth(gen)) / 2, y);
+        doc.text(gen, (pageW - doc.getTextWidth(gen)) / 2, y + 2);
         doc.setTextColor(0, 0, 0);
 
         // ===== CUERPO =====
         doc.addPage();
-        // marco en páginas de cuerpo también
-        doc.setDrawColor(40, 70, 140);
-        doc.setLineWidth(0.6);
-        doc.rect(8, 8, pageW - 16, pageH - 16);
+        dibujarMarcoPagina();
         y = marginT + 6;
 
         addHeading('Introducción');
         addParagraph(
-            'El ensayo de corte directo permite estimar los parámetros de resistencia al corte del suelo en condiciones controladas de laboratorio. A partir de la envolvente de falla de Coulomb se obtienen la cohesión (c) y el ángulo de fricción interna (φ). Este informe presenta los datos de entrada, los resultados numéricos, el análisis de los círculos de Mohr, la interpretación del tipo de suelo y las conclusiones derivadas del ensayo.'
+            'El presente informe corresponde al ensayo de laboratorio «' + metaInf.tituloCorto +
+            '», desarrollado en el marco de la asignatura ' + (datosInf.asignatura || metaInf.materia) +
+            ' mediante la plataforma GeoMetrics de la Universidad de Pamplona.'
         );
 
         addHeading('Metodología');
         addParagraph(
-            'Se aplicó el criterio de Coulomb, expresado como τ = c + σn · tan(φ), donde τ es el esfuerzo cortante de falla, σn el esfuerzo normal sobre el plano de corte, c la cohesión y φ el ángulo de fricción interna. Los parámetros se estimaron mediante regresión lineal de los puntos de falla (σn, τ). El radio y el centro de cada círculo de Mohr se calcularon con R = (σ₁ − σ₃) / 2 y Centro = (σ₁ + σ₃) / 2. Para la representación gráfica, los valores de esfuerzo normal se expresaron también en kN mediante F = σ · A, con A = área de la muestra.'
+            'Los datos se obtuvieron a partir del procedimiento del ensayo y del cálculo automático en GeoMetrics. ' +
+            'Los resultados se presentan a continuación de forma resumida para su análisis e interpretación.'
         );
-        addParagraph('Área de la muestra empleada: A = ' + Number(A).toFixed(6) + ' m².');
 
         addHeading('Resultados');
-        addParagraph('En la Tabla 1 se resumen los puntos de falla registrados en el ensayo.');
-        ensureBlock(20 + (1 + d.pts.length) * 9);
-        addTableTitle(1, 'Puntos de falla del ensayo de corte directo');
-        var pal1 = tablePalettes[Math.floor(Math.random() * tablePalettes.length)];
-        var pal2 = tablePalettes[(tablePalettes.indexOf(pal1) + 1 + Math.floor(Math.random() * (tablePalettes.length - 1))) % tablePalettes.length];
-        drawNiceTable(
-            [
-                { title: 'Ensayo', w: 30 },
-                { title: sym('σn (kPa)'), w: 50 },
-                { title: sym('τ (kPa)'), w: 50 }
-            ],
-            d.pts.map(function(p, i) {
-                return [String(i + 1), p.sn.toFixed(2), p.t.toFixed(2)];
-            }),
-            pal1
-        );
+        resumen.forEach(function(ln) { addParagraph('• ' + ln); });
 
-        addParagraph(
-            'A partir de la regresión se obtuvo φ = ' + phi.toFixed(1) +
-            '° y c = ' + c.toFixed(2) + ' kPa. La ecuación de la envolvente es: τ = ' +
-            c.toFixed(2) + ' + σn · tan(' + phi.toFixed(1) +
-            '°). Los esfuerzos principales medios resultaron σ₁ ≈ ' + Number(d.avgS1).toFixed(2) +
-            ' kPa y σ₃ ≈ ' + Number(d.avgS3).toFixed(2) + ' kPa.'
-        );
-
-        addParagraph('En la Tabla 2 se presentan el radio y el centro de cada círculo de Mohr (valores de σ en kN).');
-        ensureBlock(22 + (1 + d.pts.length) * 9);
-        addTableTitle(2, 'Parámetros de los círculos de Mohr por ensayo');
-        drawNiceTable(
-            [
-                { title: 'Ensayo', w: 24 },
-                { title: sym('σ₁ (kN)'), w: 32 },
-                { title: sym('σ₃ (kN)'), w: 32 },
-                { title: 'R (kN)', w: 28 },
-                { title: 'Centro (kN)', w: 34 }
-            ],
-            d.pts.map(function(p, i) {
-                var s1kN = p.s1 * A;
-                var s3kN = p.s3 * A;
-                var R = (s1kN - s3kN) / 2;
-                var centro = (s1kN + s3kN) / 2;
-                return [String(i + 1), s1kN.toFixed(3), s3kN.toFixed(3), R.toFixed(3), centro.toFixed(3)];
-            }),
-            pal2
-        );
-
-        addHeading('Análisis del ángulo de fricción interna (φ)');
-        addParagraph(
-            'El ángulo de fricción interna φ = ' + phi.toFixed(1) +
-            '° se obtuvo como la pendiente de la recta de falla en el plano τ–σn. La cohesión se despejó de la relación τ = c + σn · tan(φ), es decir, c = τ − σn · tan(φ), tomando el intercepto de la regresión redondeado a dos decimales.'
-        );
-        if (phi >= 30) {
-            addParagraph(
-                'Un valor de φ ≥ 30° indica una contribución importante de la fricción a la resistencia al corte, comportamiento frecuente en suelos granulares densos o medianamente densos.'
-            );
-        } else if (phi >= 20) {
-            addParagraph(
-                'Un valor de φ entre 20° y 30° es habitual en suelos mixtos o en arenas sueltas a limosas, donde la resistencia combina fricción y una cohesión aparente moderada.'
-            );
-        } else {
-            addParagraph(
-                'Un valor de φ inferior a 20° sugiere predominio del comportamiento cohesivo o condiciones desfavorables (humedad elevada o alteración de la muestra). Se recomienda revisar el procedimiento experimental.'
-            );
+        // Gráfica solo para corte directo si existe canvas
+        if (tipoEnsayo === 'corte') {
+            var canvas = document.getElementById('canvas-corte');
+            if (canvas) {
+                try {
+                    var img = canvas.toDataURL('image/png');
+                    var imgW = maxW;
+                    var imgH = (canvas.height / canvas.width) * imgW;
+                    if (imgH > 95) { imgH = 95; imgW = (canvas.width / canvas.height) * imgH; }
+                    ensureSpace(imgH + 20);
+                    addHeading('Figura');
+                    doc.addImage(img, 'PNG', marginL, y, imgW, imgH);
+                    y += imgH + 4;
+                    addParagraph('Figura 1. Envolvente y círculos de Mohr del ensayo de corte directo.');
+                } catch (e) {}
+            }
         }
-
-        addHeading('Interpretación del tipo de suelo');
-        addParagraph(
-            'Según los parámetros c = ' + c.toFixed(2) + ' kPa y φ = ' + phi.toFixed(1) +
-            '°, la interpretación orientativa del material es la siguiente: ' + cls.tipo + '. ' + cls.detalle
-        );
-        addParagraph(
-            'Esta clasificación tiene carácter didáctico. Para decisiones de diseño geotécnico debe contrastarse con granulometría, límites de Atterberg, densidad relativa y la normativa aplicable.'
-        );
 
         addHeading('Conclusiones');
-        addParagraph('1. La envolvente de falla del suelo ensayado queda definida por c = ' + c.toFixed(2) + ' kPa y φ = ' + phi.toFixed(1) + '°, de acuerdo con el criterio de Coulomb.');
-        addParagraph('2. Se emplearon ' + d.pts.length + ' puntos de falla. Se recomienda un mínimo de tres ensayos a distintos niveles de esfuerzo normal.');
-        addParagraph('3. El material se interpreta, de forma orientativa, como: ' + cls.tipo + '.');
-        addParagraph('4. Los círculos de Mohr resultan coherentes con la envolvente tangente en los puntos de falla de cada ensayo.');
-        addParagraph('5. Se sugiere contrastar los resultados con la guía FLA-23 y repetir el ensayo si se observa dispersión elevada entre puntos.');
-
-        var img = canvas.toDataURL('image/png');
-        var imgW = maxW;
-        var imgH = (canvas.height / canvas.width) * imgW;
-        if (imgH > 100) {
-            imgH = 100;
-            imgW = (canvas.width / canvas.height) * imgH;
-        }
-        ensureBlock(imgH + 30);
-        addHeading('Figura: envolvente de falla y círculos de Mohr');
-        doc.addImage(img, 'PNG', marginL, y, imgW, imgH);
-        y += imgH + 4;
-        addParagraph('Figura 1', { noIndent: true });
-        addParagraph('Envolvente τ–σn y círculos de Mohr del ensayo de corte directo (GeoMetrics).', { noIndent: true });
+        addParagraph('1. Se registraron los resultados del ensayo ' + metaInf.tituloCorto + ' según el procedimiento de laboratorio.');
+        addParagraph('2. Los valores obtenidos deben contrastarse con la guía oficial y el criterio del docente.');
+        addParagraph('3. Informe generado automáticamente por GeoMetrics para el estudiante ' + (datosInf.estudiante || '') + '.');
 
         addHeading('Referencias');
-        addParagraph('Das, B. M., & Sobhan, K. (2018). Principles of geotechnical engineering (9th ed.). Cengage Learning.');
-        addParagraph('Universidad de Pamplona. Guía unificada de laboratorio FLA-23: ensayo de corte directo. Facultad de Ingenierías.');
+        addParagraph('Universidad de Pamplona. Guías unificadas de laboratorio de suelos. Facultad de Ingenierías.');
         addParagraph('GeoMetrics. (2026). Laboratorio virtual de mecánica de suelos. Universidad de Pamplona.');
 
-        setF(false, 10);
-        doc.setTextColor(100, 100, 100);
-        doc.text('GeoMetrics — Informe académico', marginL, pageH - 10);
-        doc.setTextColor(0, 0, 0);
-
-                // Número de página simple (plantilla)
+        // Números de página: solo 1, 2, 3...
         var total = doc.internal.getNumberOfPages();
         for (var p = 1; p <= total; p++) {
             doc.setPage(p);
             setF(false, 10);
-            doc.setTextColor(120, 120, 120);
-            var pn = String(p) + ' / ' + String(total);
+            doc.setTextColor(100, 100, 100);
+            var pn = String(p);
             doc.text(pn, pageW - marginR - doc.getTextWidth(pn), pageH - 8);
+            doc.text('GeoMetrics — Informe académico', marginL, pageH - 8);
             doc.setTextColor(0, 0, 0);
         }
-        doc.save('Informe_Corte_Directo_GeoMetrics.pdf');
+
+        var safeName = String(metaInf.tituloCorto || 'ensayo').replace(/\s+/g, '_');
+        doc.save('Informe_' + safeName + '_GeoMetrics.pdf');
         fin();
     }).catch(function(err) {
         alert('No se pudo generar el PDF: ' + (err.message || err));
@@ -3676,6 +3574,9 @@ function crearFormularioInconfinada() {
         <div class="botones-calculo">
           <button class="btn-calcular" onclick="calcularInconfinada()">CALCULAR</button>
           <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayoMS2('inconfinada')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-inconfinada" onclick="generarInformeEnsayoPDF('inconfinada')">Descargar informe</button>
+        </div>
         </div>
         <div class="mensaje-error" id="uc-error"></div>
       </div>
@@ -3790,6 +3691,9 @@ function crearFormularioConsolidacionMS2() {
         <div class="botones-calculo">
           <button class="btn-calcular" onclick="calcularConsolidacionMS2()">CALCULAR</button>
           <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayoMS2('consolidacion')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-consolidacion" onclick="generarInformeEnsayoPDF('consolidacion')">Descargar informe</button>
+        </div>
         </div>
         <div class="mensaje-error" id="co-error"></div>
       </div>
@@ -4376,6 +4280,9 @@ function crearFormularioTriaxial() {
         <div class="botones-calculo">
           <button class="btn-calcular" onclick="calcularTriaxial()">CALCULAR</button>
           <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayoMS2('triaxial')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-triaxial" onclick="generarInformeEnsayoPDF('triaxial')">Descargar informe</button>
+        </div>
         </div>
         <div class="mensaje-error" id="tx-error"></div>
       </div>

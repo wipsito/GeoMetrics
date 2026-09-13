@@ -13,6 +13,23 @@ var AULA_KEYS = {
     admins: 'geometrics_admins'
 };
 
+/** Versión de esquema: al cambiar, limpia usuarios para forzar re-registro con nuevos campos */
+var GEOMETRICS_DB_VERSION = 3;
+(function migrarBaseDatosGeoMetrics() {
+    try {
+        var v = parseInt(localStorage.getItem('geometrics_db_version') || '0', 10);
+        if (v < GEOMETRICS_DB_VERSION) {
+            // Reiniciar usuarios y sesión (nuevos campos: codigo, etc.)
+            localStorage.removeItem('geometrics_users');
+            localStorage.removeItem('geometrics_session');
+            localStorage.removeItem('geometrics_perfiles');
+            localStorage.setItem('geometrics_db_version', String(GEOMETRICS_DB_VERSION));
+            console.info('[GeoMetrics] Base de usuarios reiniciada (v' + GEOMETRICS_DB_VERSION + ').');
+        }
+    } catch (e) {}
+})();
+
+
 /** Superadministrador fijo de la aplicación */
 var AULA_SUPER_ADMIN = 'andres.enriquezval@unipamplona.edu.co';
 
@@ -134,6 +151,7 @@ function aulaSetSession(user) {
         nombre: user.nombre,
         email: user.email,
         rol: user.rol,
+        codigo: user.codigo || '',
         materia: user.materia || '',
         grupo: user.grupo || '',
         materias: user.materias || [],
@@ -860,11 +878,17 @@ function aulaInitLogin() {
                 return;
             }
 
+            var codigo = (document.getElementById('regCodigo') && document.getElementById('regCodigo').value || '').trim();
+            if (!codigo || codigo.length < 4) {
+                err.textContent = 'Ingresa tu código estudiantil (mínimo 4 caracteres).';
+                return;
+            }
             var user = {
                 id: aulaUid(),
                 nombre: nombres + ' ' + apellidos,
                 nombres: nombres,
                 apellidos: apellidos,
+                codigo: codigo,
                 email: email,
                 password: pass,
                 rol: 'estudiante',
