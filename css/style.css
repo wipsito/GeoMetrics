@@ -248,6 +248,12 @@ body {
     object-fit: contain;
 }
 
+.logo-menu-civil {
+    height: 72px;
+    width: auto;
+    object-fit: contain;
+}
+
 .menu-encabezado {
     display: flex;
     justify-content: space-between;
@@ -1958,6 +1964,10 @@ body {
     
     .logo-menu {
         height: 35px;
+    }
+
+    .logo-menu-civil {
+        height: 56px;
     }
     
     .menu-encabezado {
