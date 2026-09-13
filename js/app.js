@@ -3069,73 +3069,73 @@ function clasificarSueloCorte(c, phi) {
 /** Catálogo de ensayos para informes PDF */
 var ENSAYOS_INFORME = {
     humedad: {
-        titulo: 'ENSAYO DE CONTENIDO DE HUMEDAD',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE CONTENIDO DE HUMEDAD',
         tituloCorto: 'Contenido de humedad',
         materia: 'Mecánica de Suelos I',
         dataKey: 'h'
     },
     granulometria: {
-        titulo: 'ENSAYO DE GRANULOMETRÍA',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE GRANULOMETRÍA',
         tituloCorto: 'Granulometría',
         materia: 'Mecánica de Suelos I',
         dataKey: 'g'
     },
     limites: {
-        titulo: 'ENSAYO DE LÍMITES DE ATTERBERG',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE LÍMITES DE ATTERBERG',
         tituloCorto: 'Límites de Atterberg',
         materia: 'Mecánica de Suelos I',
         dataKey: 'l'
     },
     gravedad: {
-        titulo: 'ENSAYO DE GRAVEDAD ESPECÍFICA',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE GRAVEDAD ESPECÍFICA',
         tituloCorto: 'Gravedad específica',
         materia: 'Mecánica de Suelos I',
         dataKey: 'ge'
     },
     compactacion: {
-        titulo: 'ENSAYO DE COMPACTACIÓN PROCTOR',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE COMPACTACIÓN PROCTOR',
         tituloCorto: 'Compactación Proctor',
         materia: 'Mecánica de Suelos I',
         dataKey: 'cp'
     },
     densidad: {
-        titulo: 'ENSAYO DE DENSIDAD IN SITU',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE DENSIDAD IN SITU',
         tituloCorto: 'Densidad in situ',
         materia: 'Mecánica de Suelos I',
         dataKey: 'd'
     },
     clasificacion: {
-        titulo: 'ENSAYO DE CLASIFICACIÓN DE SUELOS',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE CLASIFICACIÓN DE SUELOS',
         tituloCorto: 'Clasificación de suelos',
         materia: 'Mecánica de Suelos I',
         dataKey: 'c'
     },
     permeabilidad: {
-        titulo: 'ENSAYO DE PERMEABILIDAD',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE PERMEABILIDAD',
         tituloCorto: 'Permeabilidad',
         materia: 'Mecánica de Suelos I',
         dataKey: 'p'
     },
     corte: {
-        titulo: 'ENSAYO DE CORTE DIRECTO',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE CORTE DIRECTO',
         tituloCorto: 'Corte directo',
         materia: 'Mecánica de Suelos II',
         dataKey: 'corte'
     },
     inconfinada: {
-        titulo: 'ENSAYO DE COMPRESIÓN INCONFINADA',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE COMPRESIÓN INCONFINADA',
         tituloCorto: 'Compresión inconfinada',
         materia: 'Mecánica de Suelos II',
         dataKey: 'inconfinada'
     },
     consolidacion: {
-        titulo: 'ENSAYO DE CONSOLIDACIÓN',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE CONSOLIDACIÓN',
         tituloCorto: 'Consolidación',
         materia: 'Mecánica de Suelos II',
         dataKey: 'consolidacion'
     },
     triaxial: {
-        titulo: 'ENSAYO TRIAXIAL',
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE TRIAXIAL',
         tituloCorto: 'Triaxial',
         materia: 'Mecánica de Suelos II',
         dataKey: 'triaxial'
@@ -3275,7 +3275,7 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
     tipoEnsayo = tipoEnsayo || 'corte';
     var metaInf = (typeof ENSAYOS_INFORME !== 'undefined' && ENSAYOS_INFORME[tipoEnsayo])
         ? ENSAYOS_INFORME[tipoEnsayo]
-        : { titulo: 'ENSAYO DE LABORATORIO', tituloCorto: 'Ensayo', materia: 'Mecánica de Suelos I' };
+        : { titulo: 'INFORME DE LABORATORIO: ENSAYO DE LABORATORIO', tituloCorto: 'Ensayo', materia: 'Mecánica de Suelos I' };
 
     var resumen = (typeof resumenDatosEnsayo === 'function') ? resumenDatosEnsayo(tipoEnsayo) : [];
     if (resumen.length === 1 && (resumen[0].indexOf('Primero') === 0 || resumen[0].indexOf('No hay') === 0)) {
@@ -3432,9 +3432,10 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
         doc.setLineWidth(0.4);
         doc.rect(10, 10, pageW - 20, pageH - 20);
 
-        var logoH = 26;
-        if (logoUni) { try { doc.addImage(logoUni, 'PNG', 16, 14, logoH, logoH); } catch (e) {} }
-        if (logoCiv) { try { doc.addImage(logoCiv, 'PNG', pageW - 16 - logoH, 14, logoH, logoH); } catch (e) {} }
+        var logoHUni = 28;
+        var logoHCiv = 34; // Ingeniería Civil un poco más grande
+        if (logoUni) { try { doc.addImage(logoUni, 'PNG', 16, 14, logoHUni, logoHUni); } catch (e) {} }
+        if (logoCiv) { try { doc.addImage(logoCiv, 'PNG', pageW - 16 - logoHCiv, 12, logoHCiv, logoHCiv); } catch (e) {} }
         if (logoGeo) {
             try {
                 doc.setGState && doc.setGState(new doc.GState({ opacity: 0.1 }));
@@ -3443,13 +3444,16 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             } catch (e) {}
         }
 
-        y = 48;
-        setF(true, 15);
-        var tituloFull = String(metaInf.titulo || 'INFORME DE LABORATORIO');
-        var titLines = doc.splitTextToSize(tituloFull, maxW - 10);
+        y = 50;
+        setF(true, 14);
+        var tituloFull = String(metaInf.titulo || '');
+        if (tituloFull.indexOf('INFORME DE LABORATORIO') !== 0) {
+            tituloFull = 'INFORME DE LABORATORIO: ENSAYO DE ' + (metaInf.tituloCorto || 'LABORATORIO').toUpperCase();
+        }
+        var titLines = doc.splitTextToSize(tituloFull, maxW - 8);
         titLines.forEach(function(ln) {
             doc.text(ln, (pageW - doc.getTextWidth(ln)) / 2, y);
-            y += 8;
+            y += 7.5;
         });
 
         y = 100;
@@ -3531,9 +3535,13 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             doc.setPage(p);
             setF(false, 10);
             doc.setTextColor(100, 100, 100);
-            var pn = String(p);
-            doc.text(pn, pageW - marginR - doc.getTextWidth(pn), pageH - 8);
-            doc.text('GeoMetrics — Informe académico', marginL, pageH - 8);
+            // Pie más arriba para no chocar con el marco
+            var pieY = pageH - 14;
+            var pieTxt = 'GeoMetrics — Informe académico  ' + String(p);
+            setF(false, 9);
+            doc.setTextColor(100, 100, 100);
+            doc.text(pieTxt, marginL, pieY);
+            doc.text(String(p), pageW - marginR - doc.getTextWidth(String(p)), pieY);
             doc.setTextColor(0, 0, 0);
         }
 
