@@ -3963,3 +3963,34 @@ label.btn-adjuntar:not(.btn-adjuntar-icon) {
     opacity: 0.6;
     cursor: wait;
 }
+
+
+/* Civix — mejorar prompt (estilo Promptly) */
+.btn-mejorar-prompt {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(232, 184, 74, 0.18);
+    color: #e8b84a;
+    font-size: 1.15rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.15s;
+}
+.btn-mejorar-prompt:hover {
+    background: rgba(232, 184, 74, 0.35);
+    transform: scale(1.05);
+}
+.btn-mejorar-prompt:disabled {
+    opacity: 0.5;
+    cursor: wait;
+    transform: none;
+}
+.asistente-contenido .btn-mejorar-prompt {
+    width: 42px;
+    height: 42px;
+}
