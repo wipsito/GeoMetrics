@@ -308,6 +308,58 @@ function civixLeerArchivoParaIA(file) {
 }
 
 
+
+/** Reescribe el texto del usuario como un prompt claro y completo (estilo Promptly) */
+async function civixMejorarPrompt(textoOriginal) {
+    if (!AI_CONFIG.apiKey || AI_CONFIG.apiKey.indexOf('TU_API') === 0) {
+        throw new Error('API no configurada.');
+    }
+    if (window.location.protocol === 'file:') {
+        throw new Error('Usa GitHub Pages o Live Server, no abras el HTML con doble clic.');
+    }
+    var url = API_URLS[AI_CONFIG.provider] || API_URLS.openai;
+    var system = 'Eres un experto en ingeniería de prompts para estudiantes de Ingeniería Civil. ' +
+        'Tu única tarea es REESCRIBIR el mensaje del usuario como un prompt mejorado, claro, específico y bien estructurado, ' +
+        'listo para enviarlo a un tutor de IA (Civix). ' +
+        'Reglas: 1) Responde SOLO con el prompt mejorado, sin comillas, sin introducciones ni explicaciones. ' +
+        '2) Conserva la intención original. 3) Añade contexto útil de ingeniería civil si falta (unidades, norma, objetivo). ' +
+        '4) Si el mensaje es ambiguo, hazlo más preciso. 5) Escribe en español. 6) Sé conciso pero completo.';
+    var response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + AI_CONFIG.apiKey
+        },
+        body: JSON.stringify({
+            model: AI_CONFIG.model,
+            messages: [
+                { role: 'system', content: system },
+                { role: 'user', content: 'Mejora este prompt:\n\n' + textoOriginal }
+            ],
+            temperature: 0.35,
+            max_tokens: 800
+        })
+    });
+    if (!response.ok) {
+        var detalle = '';
+        try {
+            var errData = await response.json();
+            detalle = (errData.error && errData.error.message) ? errData.error.message : ('HTTP ' + response.status);
+        } catch (e) { detalle = 'HTTP ' + response.status; }
+        throw new Error(detalle);
+    }
+    var data = await response.json();
+    var msg = data.choices && data.choices[0] && data.choices[0].message;
+    var out = msg && msg.content ? String(msg.content).trim() : '';
+    if (!out) throw new Error('No se pudo mejorar el prompt.');
+    // Quitar comillas envolventes si la IA las pone
+    if ((out.charAt(0) === '"' && out.charAt(out.length - 1) === '"') ||
+        (out.charAt(0) === '«' && out.charAt(out.length - 1) === '»')) {
+        out = out.slice(1, -1).trim();
+    }
+    return out;
+}
+
 function inicializarAsistenteAI() {
     var btnAsistente = document.getElementById('btnAsistenteAI');
     var modal = document.getElementById('asistenteModal');
@@ -423,6 +475,32 @@ function inicializarAsistenteAI() {
     if (input) {
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') { e.preventDefault(); enviarMensaje(); }
+        });
+    }
+
+    var btnMejorar = document.getElementById('btnMejorarPrompt');
+    if (btnMejorar && input) {
+        btnMejorar.addEventListener('click', function() {
+            var texto = (input.value || '').trim();
+            if (!texto) {
+                input.focus();
+                input.placeholder = 'Escribe primero tu idea y luego pulsa ✨';
+                return;
+            }
+            btnMejorar.disabled = true;
+            var prevTitle = btnMejorar.title;
+            btnMejorar.textContent = '…';
+            btnMejorar.title = 'Mejorando prompt…';
+            civixMejorarPrompt(texto).then(function(mejorado) {
+                input.value = mejorado;
+                input.focus();
+            }).catch(function(err) {
+                agregarMensaje('No pude mejorar el prompt: ' + (err.message || err), 'bot');
+            }).finally(function() {
+                btnMejorar.disabled = false;
+                btnMejorar.textContent = '✨';
+                btnMejorar.title = prevTitle || 'Mejorar prompt (estilo Promptly)';
+            });
         });
     }
 }
