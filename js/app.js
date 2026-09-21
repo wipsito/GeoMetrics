@@ -878,11 +878,21 @@ function civixMarkdownAHtml(texto) {
         if (inOl) { html.push('</ol>'); inOl = false; }
     }
     function inlineFmt(s) {
+        s = String(s || '');
+        // Convertir <sub>/<sup> del modelo a marcadores antes de escapar
+        s = s.replace(/<\s*sub\s*>/gi, '⟦SUB⟧').replace(/<\s*\/\s*sub\s*>/gi, '⟦/SUB⟧');
+        s = s.replace(/<\s*sup\s*>/gi, '⟦SUP⟧').replace(/<\s*\/\s*sup\s*>/gi, '⟦/SUP⟧');
+        s = s.replace(/<\s*br\s*\/?\s*>/gi, '\n');
         s = escapeHtml(s);
         s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
         s = s.replace(/__([^_]+)__/g, '<strong>$1</strong>');
         s = s.replace(/`([^`]+)`/g, '<code class="civix-inline-code">$1</code>');
-        // fórmulas entre ⟦ ⟧
+        // Restaurar sub/sup seguros
+        s = s.replace(/⟦SUB⟧/g, '<sub>').replace(/⟦\/SUB⟧/g, '</sub>');
+        s = s.replace(/⟦SUP⟧/g, '<sup>').replace(/⟦\/SUP⟧/g, '</sup>');
+        // Si el modelo escribió el HTML ya escapado
+        s = s.replace(/&lt;sub&gt;/gi, '<sub>').replace(/&lt;\/sub&gt;/gi, '</sub>');
+        s = s.replace(/&lt;sup&gt;/gi, '<sup>').replace(/&lt;\/sup&gt;/gi, '</sup>');
         s = s.replace(/⟦([^⟧]+)⟧/g, '<span class="civix-formula">$1</span>');
         return s;
     }
