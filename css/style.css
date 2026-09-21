@@ -4216,3 +4216,6 @@ label.btn-adjuntar:not(.btn-adjuntar-icon) {
     font-weight: 600;
     cursor: pointer;
 }
+
+.civix-md sub, .mensaje-bot sub { font-size: 0.75em; vertical-align: sub; }
+.civix-md sup, .mensaje-bot sup { font-size: 0.75em; vertical-align: super; }
