@@ -267,10 +267,21 @@
                         </div>
                     </div>
                     <div class="asistente-acciones">
+                        <button type="button" class="btn-civix-historial" id="btnCivixHistorial" title="Mis conversaciones">💬 Chats</button>
+                        <button type="button" class="btn-civix-nuevo" id="btnCivixNuevo" title="Nueva conversación">＋ Nuevo</button>
                         <button class="btn-cerrar-asistente" id="btnCerrarAsistente">×</button>
                     </div>
                 </div>
                 
+                <div class="civix-historial-panel" id="civixHistorialPanel" hidden>
+                    <div class="civix-historial-head">
+                        <strong>Mis conversaciones</strong>
+                        <button type="button" id="btnCerrarHistorialCivix" class="btn-cerrar-hist-civix">×</button>
+                    </div>
+                    <div class="civix-historial-lista" id="civixHistorialLista">
+                        <p class="login-hint">Aún no hay chats guardados.</p>
+                    </div>
+                </div>
                 <div class="asistente-chat" id="chatMensajes">
                     <div class="mensaje mensaje-bot">
                         <p>¡Hola futuro ingeniero! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.</p>
@@ -282,7 +293,7 @@
                         <button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" title="Quitar archivo">×</button>
                     </div>
                     <div class="asistente-input">
-                        <input type="text" id="inputAsistente" placeholder="Describe el problema o el error que te aparece..." />
+                        <textarea id="inputAsistente" rows="2" placeholder="Describe el problema o el error… (Enter = enviar, Shift+Enter = salto de línea)"></textarea>
                         <button type="button" id="btnMejorarPrompt" class="btn-mejorar-prompt" title="Mejorar prompt (estilo Promptly)">✨</button>
                         <label class="btn-adjuntar-icon" for="civixFileInput" title="Adjuntar archivo">📎</label>
                         <input type="file" id="civixFileInput" hidden
