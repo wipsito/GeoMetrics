@@ -336,6 +336,183 @@ async function civixMejorarPrompt(textoOriginal) {
     return out;
 }
 
+
+/** Conversaciones Civix por usuario (local + Firebase opcional) */
+var CIVIX_CHATS_KEY = 'geometrics_civix_conversations';
+var civixChatActualId = null;
+
+function civixEmailActual() {
+    try {
+        if (typeof aulaGetSession === 'function') {
+            var s = aulaGetSession();
+            if (s && s.email) return String(s.email).toLowerCase();
+        }
+    } catch (e) {}
+    return 'anonimo';
+}
+
+function civixCargarTodos() {
+    try {
+        var all = JSON.parse(localStorage.getItem(CIVIX_CHATS_KEY) || '{}');
+        return all && typeof all === 'object' ? all : {};
+    } catch (e) { return {}; }
+}
+
+function civixGuardarTodos(all) {
+    try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(all)); } catch (e) {}
+}
+
+function civixListaUsuario() {
+    var email = civixEmailActual();
+    var all = civixCargarTodos();
+    var list = all[email] || [];
+    if (!Array.isArray(list)) list = [];
+    return list.sort(function(a, b) {
+        return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
+}
+
+function civixUid() {
+    return 'cx_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+
+function civixTituloDesdeMensajes(messages) {
+    for (var i = 0; i < (messages || []).length; i++) {
+        if (messages[i].role === 'user' && messages[i].content) {
+            var t = String(messages[i].content).replace(/\s+/g, ' ').trim();
+            return t.length > 48 ? t.slice(0, 48) + '…' : t;
+        }
+    }
+    return 'Nueva conversación';
+}
+
+function civixGuardarConversacionActual() {
+    if (!chatHistory || !chatHistory.length) return;
+    var email = civixEmailActual();
+    var all = civixCargarTodos();
+    if (!all[email]) all[email] = [];
+    var list = all[email];
+    var id = civixChatActualId || civixUid();
+    civixChatActualId = id;
+    var item = {
+        id: id,
+        title: civixTituloDesdeMensajes(chatHistory),
+        updatedAt: Date.now(),
+        messages: chatHistory.map(function(m) {
+            return { role: m.role, content: m.content };
+        })
+    };
+    var idx = -1;
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].id === id) { idx = i; break; }
+    }
+    if (idx >= 0) list[idx] = item;
+    else list.unshift(item);
+    // Máximo 40 chats por usuario
+    if (list.length > 40) list = list.slice(0, 40);
+    all[email] = list;
+    civixGuardarTodos(all);
+
+    // Nube (si Firebase está activo)
+    try {
+        if (typeof GeoCloud !== 'undefined' && GeoCloud.pushChat) {
+            var key = (typeof GeoCloud.emailKey === 'function')
+                ? GeoCloud.emailKey(email)
+                : String(email).replace(/[.#$\[\]]/g, '_');
+            if (typeof GeoCloud.cloudSet === 'function') {
+                GeoCloud.cloudSet('civixChats/' + key + '/' + id, item);
+            } else {
+                // reutilizar pushChat con id prefijado
+                GeoCloud.pushChat(Object.assign({}, item, { id: 'civix_' + key + '_' + id, tipo: 'civix', email: email }));
+            }
+        }
+    } catch (e) {}
+}
+
+function civixRenderBienvenida() {
+    var chatMensajes = document.getElementById('chatMensajes');
+    if (!chatMensajes) return;
+    chatMensajes.innerHTML = '';
+    var div = document.createElement('div');
+    div.className = 'mensaje mensaje-bot';
+    div.innerHTML = '<p>¡Hola futuro ingeniero! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.</p>';
+    chatMensajes.appendChild(div);
+}
+
+function civixNuevaConversacion() {
+    chatHistory = [];
+    civixChatActualId = null;
+    civixRenderBienvenida();
+    var panel = document.getElementById('civixHistorialPanel');
+    if (panel) panel.hidden = true;
+}
+
+function civixAbrirConversacion(id) {
+    var list = civixListaUsuario();
+    var found = null;
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].id === id) { found = list[i]; break; }
+    }
+    if (!found) return;
+    civixChatActualId = found.id;
+    chatHistory = (found.messages || []).map(function(m) {
+        return { role: m.role, content: m.content };
+    });
+    var chatMensajes = document.getElementById('chatMensajes');
+    if (!chatMensajes) return;
+    chatMensajes.innerHTML = '';
+    if (!chatHistory.length) {
+        civixRenderBienvenida();
+    } else {
+        chatHistory.forEach(function(m) {
+            if (m.role === 'user') agregarMensaje(m.content, 'usuario');
+            else agregarMensajeBotConDescargas(m.content);
+        });
+    }
+    var panel = document.getElementById('civixHistorialPanel');
+    if (panel) panel.hidden = true;
+}
+
+function civixEliminarConversacion(id) {
+    var email = civixEmailActual();
+    var all = civixCargarTodos();
+    var list = (all[email] || []).filter(function(c) { return c.id !== id; });
+    all[email] = list;
+    civixGuardarTodos(all);
+    if (civixChatActualId === id) civixNuevaConversacion();
+    civixPintarHistorial();
+}
+
+function civixPintarHistorial() {
+    var lista = document.getElementById('civixHistorialLista');
+    if (!lista) return;
+    var items = civixListaUsuario();
+    if (!items.length) {
+        lista.innerHTML = '<p class="login-hint">Aún no hay chats guardados. Envía un mensaje a Civix y se guardará solo.</p>';
+        return;
+    }
+    lista.innerHTML = '';
+    items.forEach(function(c) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'civix-hist-item';
+        var fecha = c.updatedAt ? new Date(c.updatedAt).toLocaleString('es-CO') : '';
+        btn.innerHTML = '<button type="button" class="civix-hist-del" title="Eliminar">🗑</button>' +
+            '<strong></strong><span></span>';
+        btn.querySelector('strong').textContent = c.title || 'Chat';
+        btn.querySelector('span').textContent = fecha;
+        btn.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('civix-hist-del')) {
+                e.stopPropagation();
+                if (confirm('¿Eliminar esta conversación?')) civixEliminarConversacion(c.id);
+                return;
+            }
+            civixAbrirConversacion(c.id);
+        });
+        lista.appendChild(btn);
+    });
+}
+
 function inicializarAsistenteAI() {
     var btnAsistente = document.getElementById('btnAsistenteAI');
     var modal = document.getElementById('asistenteModal');
@@ -441,6 +618,7 @@ function inicializarAsistenteAI() {
         llamarIA(payload).then(function(respuesta) {
             escribiendo.remove();
             agregarMensajeBotConDescargas(respuesta);
+            try { civixGuardarConversacionActual(); } catch (e) {}
         }).catch(function(err) {
             escribiendo.remove();
             agregarMensaje('Error: ' + (err.message || err), 'bot');
@@ -450,8 +628,30 @@ function inicializarAsistenteAI() {
     if (btnEnviar) btnEnviar.addEventListener('click', enviarMensaje);
     if (input) {
         input.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); enviarMensaje(); }
+            // Enter envía; Shift+Enter inserta salto de línea
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                enviarMensaje();
+            }
         });
+    }
+
+    var btnHist = document.getElementById('btnCivixHistorial');
+    var btnNuevo = document.getElementById('btnCivixNuevo');
+    var panelHist = document.getElementById('civixHistorialPanel');
+    var btnCerrarHist = document.getElementById('btnCerrarHistorialCivix');
+    if (btnHist && panelHist) {
+        btnHist.addEventListener('click', function() {
+            var open = panelHist.hidden;
+            panelHist.hidden = !open;
+            if (open) civixPintarHistorial();
+        });
+    }
+    if (btnCerrarHist && panelHist) {
+        btnCerrarHist.addEventListener('click', function() { panelHist.hidden = true; });
+    }
+    if (btnNuevo) {
+        btnNuevo.addEventListener('click', function() { civixNuevaConversacion(); });
     }
 
     var btnMejorar = document.getElementById('btnMejorarPrompt');
@@ -647,6 +847,8 @@ function agregarMensaje(texto, tipo, temporal) {
     div.className = 'mensaje mensaje-' + (tipo === 'usuario' ? 'usuario' : 'bot');
     if (temporal) div.classList.add('mensaje-temporal');
     var p = document.createElement('p');
+    p.style.whiteSpace = 'pre-wrap';
+    p.style.wordBreak = 'break-word';
     p.textContent = texto;
     div.appendChild(p);
     chatMensajes.appendChild(div);
