@@ -167,49 +167,148 @@ function civixExt(name) {
 }
 
 /** Extrae texto usable para la IA según el tipo de archivo */
+
+/** Selecciona páginas relevantes del libro para la pregunta (libros largos 100–900 pág.) */
+function civixExtraerFragmentosRelevantes(adj, pregunta, maxChars) {
+    maxChars = maxChars || 100000;
+    if (!adj) return '';
+    var pages = adj.pagesData;
+    if (!pages || !pages.length) {
+        var t = adj.text || '';
+        return t.length > maxChars ? t.slice(0, maxChars) + '\n\n...[truncado]' : t;
+    }
+    var q = String(pregunta || '').toLowerCase();
+    var words = q.split(/[^a-záéíóúñü0-9]+/i).filter(function(w) {
+        return w.length > 3;
+    });
+    // Sin pregunta clara: primeras páginas + muestra del medio + final (visión general)
+    function packPages(list) {
+        var out = [];
+        var len = 0;
+        for (var i = 0; i < list.length; i++) {
+            var block = '--- Página ' + list[i].n + ' ---\n' + list[i].text;
+            if (len + block.length > maxChars) break;
+            out.push(block);
+            len += block.length + 2;
+        }
+        return out.join('\n\n');
+    }
+    if (words.length < 2) {
+        var sample = [];
+        var n = pages.length;
+        var head = pages.slice(0, Math.min(25, n));
+        var midStart = Math.max(0, Math.floor(n / 2) - 8);
+        var mid = pages.slice(midStart, midStart + 16);
+        var tail = pages.slice(Math.max(0, n - 15));
+        var seen = {};
+        head.concat(mid).concat(tail).forEach(function(p) {
+            if (!seen[p.n]) { seen[p.n] = true; sample.push(p); }
+        });
+        sample.sort(function(a, b) { return a.n - b.n; });
+        return packPages(sample);
+    }
+    // Puntuar cada página
+    var scored = pages.map(function(p) {
+        var low = (p.text || '').toLowerCase();
+        var score = 0;
+        for (var i = 0; i < words.length; i++) {
+            if (low.indexOf(words[i]) >= 0) score += 1;
+            // bonus si aparece varias veces
+            var c = low.split(words[i]).length - 1;
+            if (c > 1) score += Math.min(3, c - 1);
+        }
+        return { n: p.n, text: p.text, score: score };
+    });
+    scored.sort(function(a, b) { return b.score - a.score; });
+    var chosen = [];
+    var used = {};
+    // Top páginas por relevancia
+    for (var i = 0; i < scored.length && chosen.length < 40; i++) {
+        if (scored[i].score <= 0) break;
+        chosen.push(scored[i]);
+        used[scored[i].n] = true;
+    }
+    // Contexto: ±1 página alrededor de las mejores
+    var tops = chosen.slice(0, 12);
+    tops.forEach(function(p) {
+        for (var d = -1; d <= 1; d++) {
+            var pn = p.n + d;
+            if (pn < 1 || used[pn]) continue;
+            for (var j = 0; j < pages.length; j++) {
+                if (pages[j].n === pn) {
+                    chosen.push(pages[j]);
+                    used[pn] = true;
+                    break;
+                }
+            }
+        }
+    });
+    // Si casi nada coincide, caer a muestra general
+    if (!chosen.length || (chosen[0].score !== undefined && chosen[0].score === 0)) {
+        return civixExtraerFragmentosRelevantes(
+            { pagesData: pages, text: adj.text },
+            '',
+            maxChars
+        );
+    }
+    chosen.sort(function(a, b) { return a.n - b.n; });
+    var body = packPages(chosen);
+    var header = '[Páginas seleccionadas por relevancia a tu pregunta: ' +
+        chosen.map(function(p) { return p.n; }).filter(function(v, i, arr) { return arr.indexOf(v) === i; }).join(', ') +
+        ' de ' + pages.length + ']\n\n';
+    return header + body;
+}
+
 function civixLeerArchivoParaIA(file) {
     var ext = civixExt(file.name);
     var name = file.name;
 
-    // --- PDF ---
+    // --- PDF libros/guías hasta ~900 páginas ---
     if (ext === 'pdf') {
         return civixLoadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js').then(function() {
             var lib = window['pdfjsLib'] || window['pdfjs-dist/build/pdf'] || null;
             if (!lib) throw new Error('No se cargó PDF.js (revisa tu conexión)');
             lib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
             return file.arrayBuffer().then(function(buf) {
-                var data = new Uint8Array(buf);
-                return lib.getDocument({ data: data }).promise;
+                return lib.getDocument({ data: new Uint8Array(buf) }).promise;
             }).then(function(pdf) {
-                var maxPages = Math.min(pdf.numPages || 1, 40);
-                var texts = [];
+                var totalPages = pdf.numPages || 1;
+                var maxPages = Math.min(totalPages, 900);
+                var pages = []; // { n, text }
                 var i = 1;
                 function next() {
                     if (i > maxPages) {
-                        var text = texts.join('\n\n').trim();
-                        if (!text) {
+                        var full = pages.map(function(p) {
+                            return '--- Página ' + p.n + ' ---\n' + p.text;
+                        }).join('\n\n').trim();
+                        if (!full) {
                             return {
                                 name: name,
                                 binary: true,
                                 size: file.size,
                                 text: '',
-                                note: 'PDF sin texto extraíble (¿escaneado?)'
+                                pagesData: [],
+                                note: 'PDF sin texto extraíble (¿escaneado?). Usa un PDF con texto seleccionable u OCR.'
                             };
                         }
-                        if (text.length > 100000) text = text.slice(0, 100000) + '\n\n...[truncado]';
+                        var note = maxPages + (totalPages > maxPages ? '/' + totalPages : '') + ' pág. indexadas';
+                        if (totalPages > 900) note += ' (máx. 900)';
                         return {
                             name: name,
                             binary: false,
                             size: file.size,
-                            text: text,
-                            note: maxPages + ' pág.'
+                            text: full,
+                            pagesData: pages,
+                            note: note,
+                            pages: maxPages,
+                            totalPages: totalPages
                         };
                     }
                     var n = i++;
                     return pdf.getPage(n).then(function(page) {
                         return page.getTextContent().then(function(tc) {
-                            var line = (tc.items || []).map(function(it) { return it.str; }).join(' ');
-                            texts.push(line);
+                            var line = (tc.items || []).map(function(it) { return it.str; }).join(' ').replace(/\s+/g, ' ').trim();
+                            pages.push({ n: n, text: line });
                             return next();
                         });
                     });
@@ -229,7 +328,7 @@ function civixLeerArchivoParaIA(file) {
             }).then(function(res) {
                 var text = (res && res.value) || '';
                 if (!text.trim()) throw new Error('DOCX vacío o no legible');
-                if (text.length > 100000) text = text.slice(0, 100000) + '\n\n...[truncado]';
+                if (text.length > 220000) text = text.slice(0, 220000) + '\n\n...[truncado]';
                 return { name: name, binary: false, size: file.size, text: text, note: 'Word' };
             });
         });
@@ -242,7 +341,7 @@ function civixLeerArchivoParaIA(file) {
                 var r = new FileReader();
                 r.onload = function() {
                     var text = String(r.result || '');
-                    if (text.length > 100000) text = text.slice(0, 100000) + '\n\n...[truncado]';
+                    if (text.length > 220000) text = text.slice(0, 220000) + '\n\n...[truncado]';
                     resolve({ name: name, binary: false, size: file.size, text: text, note: 'CSV' });
                 };
                 r.onerror = reject;
@@ -260,7 +359,7 @@ function civixLeerArchivoParaIA(file) {
                 });
                 var text = parts.join('\n\n');
                 if (!text.trim()) throw new Error('Excel vacío');
-                if (text.length > 100000) text = text.slice(0, 100000) + '\n\n...[truncado]';
+                if (text.length > 220000) text = text.slice(0, 220000) + '\n\n...[truncado]';
                 return { name: name, binary: false, size: file.size, text: text, note: 'Excel' };
             });
         });
@@ -299,7 +398,7 @@ function civixLeerArchivoParaIA(file) {
                 resolve({ name: name, binary: true, size: file.size, text: '', note: 'binario' });
                 return;
             }
-            if (text.length > 100000) text = text.slice(0, 100000) + '\n\n...[truncado]';
+            if (text.length > 220000) text = text.slice(0, 220000) + '\n\n...[truncado]';
             resolve({ name: name, binary: false, size: file.size, text: text, note: Math.round(file.size / 1024) + ' KB' });
         };
         r.onerror = function() { reject(new Error('lectura fallida')); };
@@ -560,9 +659,9 @@ function inicializarAsistenteAI() {
         fileInput.addEventListener('change', function() {
             var f = fileInput.files && fileInput.files[0];
             if (!f) { limpiarAdjunto(); return; }
-            var maxBytes = 8 * 1024 * 1024; // 8 MB
+            var maxBytes = 150 * 1024 * 1024; // 150 MB (libros hasta ~900 pág.)
             if (f.size > maxBytes) {
-                agregarMensaje('El archivo supera 8 MB. Sube un archivo más liviano o un extracto.', 'bot');
+                agregarMensaje('El archivo supera 150 MB. Comprime el PDF o divídelo por tomos/capítulos.', 'bot');
                 limpiarAdjunto();
                 return;
             }
@@ -577,10 +676,18 @@ function inicializarAsistenteAI() {
             }
             mostrarChip('⏳ Leyendo ' + f.name + '…');
 
+            var leyendo = agregarMensaje('📄 Indexando PDF… Si tiene cientos de páginas puede tardar 1–3 min. No cierres Civix.', 'bot', true);
             civixLeerArchivoParaIA(f).then(function(info) {
+                if (leyendo && leyendo.remove) leyendo.remove();
                 window.__civixAdjunto = info;
+                if (info && !info.binary) {
+                    agregarMensaje('✅ Documento listo: ' + info.name + (info.note ? ' · ' + info.note : '') + '. Escribe tu pregunta y Enviar (estilo ChatGPT sobre ese texto).', 'bot');
+                } else if (info && info.binary) {
+                    agregarMensaje('⚠️ No pude extraer texto de ' + info.name + '. ' + (info.note || ''), 'bot');
+                }
                 mostrarChip('📎 ' + info.name + (info.note ? ' · ' + info.note : ''));
             }).catch(function(err) {
+                if (leyendo && leyendo.remove) leyendo.remove();
                 agregarMensaje('No se pudo leer el archivo: ' + (err.message || err), 'bot');
                 limpiarAdjunto();
             });
@@ -598,18 +705,25 @@ function inicializarAsistenteAI() {
         agregarMensaje(visible, 'usuario');
         if (input) input.value = '';
 
-        var payload = texto || 'Revisa el archivo adjunto y corrige los errores.';
+        var payload = texto || (adj
+            ? 'Analiza el documento adjunto (texto guía / libro / apunte). Resume su contenido útil, explica los conceptos clave y responde con claridad. Cita páginas si aparecen marcadas como "--- Página N ---".'
+            : '');
         if (adj) {
             if (adj.binary) {
                 payload += '\n\n[ARCHIVO BINARIO: ' + adj.name + ', ' + adj.size + ' bytes]\n' +
-                    'No es texto legible (posible DWG/RVT/PDF). Explica qué exportación necesitas (DXF, IFC, TXT) ' +
-                    'o pide el mensaje de error de AutoCAD/Revit/Python. Si el usuario solo subió el binario, guía el diagnóstico.';
+                    'No se pudo extraer texto. Si es PDF escaneado, usa un PDF con texto seleccionable u OCR. ' +
+                    'Si es DWG/RVT, pide exportación DXF/IFC/TXT o el mensaje de error.';
             } else {
-                var body = adj.text;
-                if (body.length > 120000) body = body.slice(0, 120000) + '\n\n...[truncado]';
-                payload += '\n\n--- ARCHIVO: ' + adj.name + ' ---\n' + body + '\n--- FIN ARCHIVO ---';
+                var body = civixExtraerFragmentosRelevantes(adj, texto, 100000);
+                payload += '\n\n[DOCUMENTO DE REFERENCIA: ' + adj.name +
+                    (adj.note ? ' (' + adj.note + ')' : '') + ']\n' +
+                    'Es un libro o guía de estudio. El fragmento incluye páginas relevantes a la pregunta del usuario. ' +
+                    'Cita el archivo y el número de página (--- Página N ---) cuando uses información del texto. ' +
+                    'Si el fragmento no basta, indica qué tema o capítulo debería consultar el estudiante.\n' +
+                    '--- INICIO FRAGMENTOS DEL DOCUMENTO ---\n' + body + '\n--- FIN FRAGMENTOS ---';
             }
         }
+        if (!String(payload).trim()) return;
 
         limpiarAdjunto();
 
