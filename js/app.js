@@ -311,52 +311,28 @@ function civixLeerArchivoParaIA(file) {
 
 /** Reescribe el texto del usuario como un prompt claro y completo (estilo Promptly) */
 async function civixMejorarPrompt(textoOriginal) {
-    if (!AI_CONFIG.apiKey || AI_CONFIG.apiKey.indexOf('TU_API') === 0) {
-        throw new Error('API no configurada.');
-    }
     if (window.location.protocol === 'file:') {
         throw new Error('Usa GitHub Pages o Live Server, no abras el HTML con doble clic.');
     }
-    var url = API_URLS[AI_CONFIG.provider] || API_URLS.openai;
-    var system = 'Eres un experto en ingeniería de prompts para estudiantes de Ingeniería Civil. ' +
-        'Tu única tarea es REESCRIBIR el mensaje del usuario como un prompt mejorado, claro, específico y bien estructurado, ' +
-        'listo para enviarlo a un tutor de IA (Civix). ' +
-        'Reglas: 1) Responde SOLO con el prompt mejorado, sin comillas, sin introducciones ni explicaciones. ' +
-        '2) Conserva la intención original. 3) Añade contexto útil de ingeniería civil si falta (unidades, norma, objetivo). ' +
-        '4) Si el mensaje es ambiguo, hazlo más preciso. 5) Escribe en español. 6) Sé conciso pero completo.';
-    var response = await fetch(url, {
+    var backend = (AI_CONFIG.backendUrl || '').trim();
+    if (!backend) {
+        throw new Error('Falta configurar AI_CONFIG.backendUrl en js/config.js (URL del Worker).');
+    }
+    var response = await fetch(backend, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + AI_CONFIG.apiKey
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            model: AI_CONFIG.model,
-            messages: [
-                { role: 'system', content: system },
-                { role: 'user', content: 'Mejora este prompt:\n\n' + textoOriginal }
-            ],
-            temperature: 0.35,
-            max_tokens: 800
+            mode: 'improve',
+            messages: [{ role: 'user', content: textoOriginal }]
         })
     });
+    var data = {};
+    try { data = await response.json(); } catch (e) {}
     if (!response.ok) {
-        var detalle = '';
-        try {
-            var errData = await response.json();
-            detalle = (errData.error && errData.error.message) ? errData.error.message : ('HTTP ' + response.status);
-        } catch (e) { detalle = 'HTTP ' + response.status; }
-        throw new Error(detalle);
+        throw new Error((data && data.error) ? data.error : ('HTTP ' + response.status));
     }
-    var data = await response.json();
-    var msg = data.choices && data.choices[0] && data.choices[0].message;
-    var out = msg && msg.content ? String(msg.content).trim() : '';
+    var out = (data && data.content) ? String(data.content).trim() : '';
     if (!out) throw new Error('No se pudo mejorar el prompt.');
-    // Quitar comillas envolventes si la IA las pone
-    if ((out.charAt(0) === '"' && out.charAt(out.length - 1) === '"') ||
-        (out.charAt(0) === '«' && out.charAt(out.length - 1) === '»')) {
-        out = out.slice(1, -1).trim();
-    }
     return out;
 }
 
@@ -761,71 +737,52 @@ function civixExtDesdeLang(lang) {
 async function llamarIA(mensaje) {
     chatHistory.push({ role: 'user', content: mensaje });
 
-    // Key fija del proyecto (js/config.js). Los usuarios no pueden cambiarla.
-    if (!AI_CONFIG.apiKey) {
-        chatHistory.pop();
-        throw new Error('Falta la API key compartida en js/config.js');
-    }
-    // Ignorar keys guardadas localmente para que nadie borre/sobrescriba la del proyecto
     try { localStorage.removeItem('geometrics_api_key'); } catch (e) {}
     if (window.location.protocol === 'file:') {
         chatHistory.pop();
         throw new Error('No abras el HTML con doble clic. Usa el enlace de GitHub Pages o Live Server.');
     }
 
-    var url = API_URLS[AI_CONFIG.provider] || API_URLS.openai;
+    var backend = (AI_CONFIG.backendUrl || '').trim();
+    if (!backend) {
+        chatHistory.pop();
+        throw new Error('Falta AI_CONFIG.backendUrl en js/config.js. Despliega el Worker y pega su URL.');
+    }
+
     var response;
     try {
-        response = await fetch(url, {
+        response = await fetch(backend, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + AI_CONFIG.apiKey
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
+                mode: 'chat',
                 model: AI_CONFIG.model,
-                messages: [
-                    { role: 'system', content: AI_CONFIG.systemPrompt + '\n\nEscribe formulas SOLO en unicode legible (ejemplo: w = Ww/Ws x 100%). No uses LaTeX ni \\frac ni $$.' },
-                    ...chatHistory
-                ],
+                messages: chatHistory,
                 temperature: 0.4,
                 max_tokens: 4096
             })
         });
     } catch (networkErr) {
         chatHistory.pop();
-        throw new Error('No se pudo conectar con Groq. Revisa la conexión a internet.');
+        throw new Error('No se pudo conectar con el servidor de Civix. Revisa backendUrl e internet.');
     }
 
+    var data = {};
+    try { data = await response.json(); } catch (e) {}
     if (!response.ok) {
-        var detalle = '';
-        try {
-            var errData = await response.json();
-            detalle = (errData.error && errData.error.message) ? errData.error.message : JSON.stringify(errData);
-        } catch (e) {
-            detalle = 'HTTP ' + response.status;
-        }
         chatHistory.pop();
-        throw new Error('Error de la API: ' + detalle);
+        throw new Error((data && data.error) ? data.error : ('Error HTTP ' + response.status));
     }
 
-    var data = await response.json();
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        chatHistory.pop();
-        throw new Error('Respuesta inesperada de la API');
-    }
-    var msg = data.choices[0].message;
-    var respuesta = msg.content;
-    if ((!respuesta || !String(respuesta).trim()) && msg.reasoning) {
-        respuesta = msg.reasoning;
-    }
-    if (!respuesta || !String(respuesta).trim()) {
+    var respuesta = (data && data.content) ? String(data.content) : '';
+    if (!respuesta.trim()) {
         chatHistory.pop();
         throw new Error('Civix no devolvió texto. Intenta de nuevo.');
     }
     chatHistory.push({ role: 'assistant', content: respuesta });
     return respuesta;
 }
+
 
 
 
