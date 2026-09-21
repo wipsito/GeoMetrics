@@ -857,25 +857,152 @@ function agregarMensaje(texto, tipo, temporal) {
 }
 
 /** Respuesta del bot con bloques de código descargables */
+function civixEsFilaTabla(line) {
+    var t = String(line || '').trim();
+    return t.indexOf('|') === 0 || (t.indexOf('|') > 0 && t.split('|').length >= 3);
+}
+function civixEsSeparadorTabla(line) {
+    var t = String(line || '').replace(/\s/g, '');
+    return /^\|?[\-:|]+\|?$/.test(t) && t.indexOf('|') >= 0;
+}
+/** Renderiza markdown ligero a HTML seguro (títulos, listas, tablas, negritas) */
+function civixMarkdownAHtml(texto) {
+    var raw = normalizarRespuestaIA(String(texto || ''));
+    var lines = raw.split(/\r?\n/);
+    var html = [];
+    var i = 0;
+    var inUl = false, inOl = false;
+
+    function closeLists() {
+        if (inUl) { html.push('</ul>'); inUl = false; }
+        if (inOl) { html.push('</ol>'); inOl = false; }
+    }
+    function inlineFmt(s) {
+        s = escapeHtml(s);
+        s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        s = s.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+        s = s.replace(/`([^`]+)`/g, '<code class="civix-inline-code">$1</code>');
+        // fórmulas entre ⟦ ⟧
+        s = s.replace(/⟦([^⟧]+)⟧/g, '<span class="civix-formula">$1</span>');
+        return s;
+    }
+
+    while (i < lines.length) {
+        var line = lines[i];
+        var trim = line.trim();
+
+        // Tabla markdown
+        if (civixEsFilaTabla(trim) && i + 1 < lines.length && civixEsSeparadorTabla(lines[i + 1].trim())) {
+            closeLists();
+            var rows = [];
+            while (i < lines.length && civixEsFilaTabla(lines[i].trim())) {
+                var rowLine = lines[i].trim();
+                if (!civixEsSeparadorTabla(rowLine)) {
+                    var cells = rowLine.replace(/^\|/, '').replace(/\|$/, '').split('|').map(function(c) {
+                        return c.trim();
+                    });
+                    rows.push(cells);
+                }
+                i++;
+            }
+            if (rows.length) {
+                html.push('<div class="civix-table-wrap"><table class="civix-table">');
+                rows.forEach(function(cells, ri) {
+                    html.push('<tr>');
+                    cells.forEach(function(cell) {
+                        var tag = ri === 0 ? 'th' : 'td';
+                        html.push('<' + tag + '>' + inlineFmt(cell) + '</' + tag + '>');
+                    });
+                    html.push('</tr>');
+                });
+                html.push('</table></div>');
+            }
+            continue;
+        }
+
+        // Títulos
+        var hm = trim.match(/^(#{1,4})\s+(.+)$/);
+        if (hm) {
+            closeLists();
+            var level = hm[1].length;
+            html.push('<h' + (level + 1) + ' class="civix-h">' + inlineFmt(hm[2]) + '</h' + (level + 1) + '>');
+            i++;
+            continue;
+        }
+
+        // Separador
+        if (/^---+$/.test(trim) || /^\*\*\*+$/.test(trim)) {
+            closeLists();
+            html.push('<hr class="civix-hr"/>');
+            i++;
+            continue;
+        }
+
+        // Cita
+        if (trim.indexOf('> ') === 0) {
+            closeLists();
+            html.push('<blockquote class="civix-quote">' + inlineFmt(trim.slice(2)) + '</blockquote>');
+            i++;
+            continue;
+        }
+
+        // Lista con viñetas
+        if (/^[-*•]\s+/.test(trim)) {
+            if (inOl) { html.push('</ol>'); inOl = false; }
+            if (!inUl) { html.push('<ul class="civix-ul">'); inUl = true; }
+            html.push('<li>' + inlineFmt(trim.replace(/^[-*•]\s+/, '')) + '</li>');
+            i++;
+            continue;
+        }
+
+        // Lista numerada
+        if (/^\d+[.)]\s+/.test(trim)) {
+            if (inUl) { html.push('</ul>'); inUl = false; }
+            if (!inOl) { html.push('<ol class="civix-ol">'); inOl = true; }
+            html.push('<li>' + inlineFmt(trim.replace(/^\d+[.)]\s+/, '')) + '</li>');
+            i++;
+            continue;
+        }
+
+        // Línea vacía
+        if (!trim) {
+            closeLists();
+            i++;
+            continue;
+        }
+
+        closeLists();
+        html.push('<p class="civix-p">' + inlineFmt(trim) + '</p>');
+        i++;
+    }
+    closeLists();
+    return html.join('');
+}
+
 function agregarMensajeBotConDescargas(texto) {
     var chatMensajes = document.getElementById('chatMensajes');
     if (!chatMensajes) return;
     var div = document.createElement('div');
-    div.className = 'mensaje mensaje-bot';
+    div.className = 'mensaje mensaje-bot mensaje-bot-rich';
 
     // Extraer bloques ```lang\n...\n```
     var parts = [];
-    var re = /```([\w.+-]*)\n([\s\S]*?)```/g;
+    var re = /```([\w.+-]*)\n?([\s\S]*?)```/g;
     var last = 0;
     var match;
-    var idx = 0;
     while ((match = re.exec(texto)) !== null) {
         if (match.index > last) {
             parts.push({ type: 'text', content: texto.slice(last, match.index) });
         }
-        parts.push({ type: 'code', lang: match[1] || 'txt', content: match[2] });
+        var lang = match[1] || '';
+        var body = match[2] || '';
+        // Si el bloque es una "tabla" en texto plano con |, tratarlo como markdown tabla
+        if ((!lang || lang === 'text' || lang === 'markdown' || lang === 'md') && body.indexOf('|') >= 0) {
+            parts.push({ type: 'text', content: body });
+        } else {
+            parts.push({ type: 'code', lang: lang || 'txt', content: body });
+        }
         last = match.index + match[0].length;
-        idx++;
     }
     if (last < texto.length) parts.push({ type: 'text', content: texto.slice(last) });
     if (!parts.length) parts.push({ type: 'text', content: texto });
@@ -884,10 +1011,10 @@ function agregarMensajeBotConDescargas(texto) {
         if (part.type === 'text') {
             var t = part.content.trim();
             if (!t) return;
-            var p = document.createElement('p');
-            p.style.whiteSpace = 'pre-wrap';
-            p.textContent = t;
-            div.appendChild(p);
+            var box = document.createElement('div');
+            box.className = 'civix-md';
+            box.innerHTML = civixMarkdownAHtml(t);
+            div.appendChild(box);
         } else {
             var wrap = document.createElement('div');
             wrap.className = 'civix-code-block';
@@ -904,7 +1031,7 @@ function agregarMensajeBotConDescargas(texto) {
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn-descarga-civix';
-            btn.textContent = '⬇ Descargar corrección';
+            btn.textContent = '⬇ Descargar';
             btn.addEventListener('click', function() {
                 var ext = civixExtDesdeLang(part.lang);
                 var blob = new Blob([part.content], { type: 'text/plain;charset=utf-8' });
