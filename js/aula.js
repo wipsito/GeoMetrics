@@ -1690,37 +1690,59 @@ function aulaAnalizarTextoIA(texto) {
             pct: 0,
             nivel: 'insuficiente',
             iaSugerida: 'No aplica',
-            detalle: 'Texto demasiado corto para analizar. Pide al estudiante un archivo .txt o pega el contenido en el comentario de entrega.',
-            senales: []
+            detalle: 'Texto demasiado corto para analizar. Pide al estudiante un archivo .txt/.pdf con texto seleccionable o pega el contenido en el comentario.',
+            senales: [],
+            fragmentos: [],
+            textoMuestra: t,
+            fuentesSugeridas: []
         };
     }
 
     var lower = t.toLowerCase();
     var words = t.split(/\s+/).filter(Boolean);
-    var sentences = t.split(/[.!?…]+/).map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 8; });
+    var sentences = t.split(/[.!?…\n]+/).map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 12; });
     var score = 0;
     var senales = [];
+    var fragmentos = [];
 
-    // Frases típicas de LLM en español
+    function contextoDe(frase) {
+        var idx = lower.indexOf(frase.toLowerCase());
+        if (idx < 0) return frase;
+        var from = Math.max(0, idx - 60);
+        var to = Math.min(t.length, idx + frase.length + 80);
+        var slice = t.slice(from, to).replace(/\s+/g, ' ').trim();
+        if (from > 0) slice = '…' + slice;
+        if (to < t.length) slice = slice + '…';
+        return slice;
+    }
+
+    // Frases típicas de LLM
     var frasesIA = [
         'en conclusión', 'en resumen', 'es importante destacar', 'cabe destacar',
         'en el contexto de', 'de manera significativa', 'a lo largo de este',
         'como se puede observar', 'es fundamental', 'resulta relevante',
         'en este sentido', 'por otro lado', 'además, es necesario',
         'desde una perspectiva', 'en el presente trabajo', 'el objetivo principal',
-        'as an ai', 'como modelo de lenguaje', 'no puedo', 'estoy aquí para ayudar',
-        'chatgpt', 'openai', 'según la información proporcionada'
+        'según la información proporcionada', 'de manera general', 'es preciso señalar',
+        'a continuación se presenta', 'como se mencionó anteriormente'
     ];
     var hitsFrase = 0;
     frasesIA.forEach(function(f) {
-        if (lower.indexOf(f) >= 0) hitsFrase++;
+        if (lower.indexOf(f) >= 0) {
+            hitsFrase++;
+            fragmentos.push({
+                tipo: 'Frase formulaica (estilo IA)',
+                frase: f,
+                contexto: contextoDe(f)
+            });
+        }
     });
     if (hitsFrase >= 1) {
-        score += Math.min(25, hitsFrase * 8);
+        score += Math.min(28, hitsFrase * 7);
         senales.push('Frases formulaicas típicas de texto generado (' + hitsFrase + ')');
     }
 
-    // Baja variación de longitud de oraciones (textos IA suelen ser uniformes)
+    // Uniformidad de oraciones
     if (sentences.length >= 4) {
         var lens = sentences.map(function(s) { return s.split(/\s+/).length; });
         var mean = lens.reduce(function(a, b) { return a + b; }, 0) / lens.length;
@@ -1728,16 +1750,36 @@ function aulaAnalizarTextoIA(texto) {
         var std = Math.sqrt(variance);
         if (std < 4 && mean > 12) {
             score += 18;
-            senales.push('Longitud de oraciones muy uniforme (poco “burstiness”)');
+            senales.push('Longitud de oraciones muy uniforme');
+            fragmentos.push({
+                tipo: 'Estructura uniforme',
+                frase: 'oraciones ~' + mean.toFixed(0) + ' palabras',
+                contexto: sentences.slice(0, 2).join(' / ').slice(0, 180) + '…'
+            });
         } else if (std < 6) {
             score += 8;
             senales.push('Variación moderada-baja en longitud de oraciones');
         }
     }
 
-    // Alta densidad de conectores académicos
-    var conectores = (lower.match(/\b(además|asimismo|por consiguiente|en consecuencia|no obstante|sin embargo|por lo tanto|en efecto|cabe señalar)\b/g) || []).length;
-    var dens = words.length ? (conectores / words.length) * 100 : 0;
+    // Conectores
+    var conectorList = ['además', 'asimismo', 'por consiguiente', 'en consecuencia', 'no obstante', 'sin embargo', 'por lo tanto', 'en efecto', 'cabe señalar'];
+    var hitsCon = [];
+    conectorList.forEach(function(c) {
+        var re = new RegExp('\\b' + c + '\\b', 'gi');
+        var m;
+        while ((m = re.exec(t)) !== null) {
+            hitsCon.push(c);
+            if (fragmentos.length < 20) {
+                fragmentos.push({
+                    tipo: 'Conector formal',
+                    frase: c,
+                    contexto: contextoDe(m[0])
+                });
+            }
+        }
+    });
+    var dens = words.length ? (hitsCon.length / words.length) * 100 : 0;
     if (dens > 1.2) {
         score += 15;
         senales.push('Alta densidad de conectores formales (' + dens.toFixed(1) + '%)');
@@ -1746,35 +1788,81 @@ function aulaAnalizarTextoIA(texto) {
         senales.push('Uso frecuente de conectores formales');
     }
 
-    // Repetición de n-gramas
+    // Bigrams repetidos
     var bigrams = {};
     for (var i = 0; i < words.length - 1; i++) {
         var bg = (words[i] + ' ' + words[i + 1]).toLowerCase();
+        if (bg.length < 6) continue;
         bigrams[bg] = (bigrams[bg] || 0) + 1;
     }
-    var rep = 0;
-    Object.keys(bigrams).forEach(function(k) {
-        if (bigrams[k] >= 3) rep++;
-    });
-    if (rep >= 3) {
+    var repBgs = Object.keys(bigrams).filter(function(k) { return bigrams[k] >= 3; })
+        .sort(function(a, b) { return bigrams[b] - bigrams[a]; });
+    if (repBgs.length >= 2) {
         score += 12;
         senales.push('Repetición de expresiones (posible plantilla)');
+        repBgs.slice(0, 4).forEach(function(bg) {
+            fragmentos.push({
+                tipo: 'Expresión repetida ×' + bigrams[bg],
+                frase: bg,
+                contexto: contextoDe(bg)
+            });
+        });
     }
 
-    // Poca primera persona / errores tipográficos (IA suele ser “limpia”)
-    var typos = (t.match(/[a-záéíóú]{20,}/gi) || []).length; // palabras muy largas raras
     var primera = (lower.match(/\b(yo|nosotros|me|mi|creo que|pienso que|en mi opinión)\b/g) || []).length;
     if (words.length > 80 && primera === 0) {
         score += 10;
         senales.push('Ausencia de voz personal (estilo impersonal muy uniforme)');
     }
 
-    // Listas numeradas perfectas / estructura excesivamente ordenada
     var listas = (t.match(/^\s*(\d+[\.\)]|[-•])\s+/gm) || []).length;
     if (listas >= 5) {
         score += 8;
-        senales.push('Estructura muy ordenada (listas numeradas frecuentes)');
+        senales.push('Estructura muy ordenada (listas frecuentes)');
     }
+
+    // Pistas de posible copia de fuentes académicas conocidas (palabras clave + atribución sugerida)
+    var fuentesSugeridas = [];
+    var fuentesCatalogo = [
+        { keys: ['mohr', 'coulomb', 'ángulo de fricción', 'cohesión', 'corte directo'], fuente: 'Guía FLA-23 / ASTM D 3080 — ensayo de corte directo; Das, Principles of Geotechnical Engineering' },
+        { keys: ['límite líquido', 'límite plástico', 'atterberg', 'índice de plasticidad'], fuente: 'FLA-23 / ASTM D 4318 — límites de Atterberg; INV E-125' },
+        { keys: ['contenido de humedad', 'contenido de agua', 'astm d 2216'], fuente: 'FLA-23 / ASTM D 2216 / INV E-122 — contenido de humedad' },
+        { keys: ['granulometr', 'curva granulométrica', 'tamiz'], fuente: 'FLA-23 / ASTM D 422 / INV E-123 — granulometría' },
+        { keys: ['nsr-10', 'estudio geotécnico', 'título h'], fuente: 'NSR-10 Título H — Estudios geotécnicos' },
+        { keys: ['proctor', 'compactación', 'humedad óptima'], fuente: 'FLA-23 / ASTM D 698–1557 — compactación Proctor' },
+        { keys: ['consolidación', 'edómetro', 'índice de compresión'], fuente: 'FLA-23 / ASTM D 2435 — consolidación unidimensional' },
+        { keys: ['shelby', 'tubo de pared delgada', 'muestra inalterada'], fuente: 'FLA-23 / ASTM D 1587 / INV E-105 — tubos Shelby' }
+    ];
+    fuentesCatalogo.forEach(function(fc) {
+        var ok = fc.keys.some(function(k) { return lower.indexOf(k) >= 0; });
+        if (ok) {
+            fuentesSugeridas.push(fc.fuente);
+            var k0 = fc.keys.find(function(k) { return lower.indexOf(k) >= 0; });
+            fragmentos.push({
+                tipo: 'Posible origen temático (referencia de curso)',
+                frase: k0,
+                contexto: contextoDe(k0) + ' → ' + fc.fuente
+            });
+        }
+    });
+    // dedupe fuentes
+    fuentesSugeridas = fuentesSugeridas.filter(function(v, i, arr) { return arr.indexOf(v) === i; });
+
+    // Oraciones casi idénticas (auto-plagio / plantilla)
+    var seen = {};
+    sentences.forEach(function(s) {
+        var key = s.toLowerCase().replace(/\s+/g, ' ').slice(0, 80);
+        if (key.length < 30) return;
+        if (seen[key]) {
+            score += 5;
+            fragmentos.push({
+                tipo: 'Oración repetida / plantilla',
+                frase: s.slice(0, 60) + '…',
+                contexto: s.slice(0, 200)
+            });
+        }
+        seen[key] = true;
+    });
 
     score = Math.max(0, Math.min(95, Math.round(score)));
 
@@ -1782,22 +1870,25 @@ function aulaAnalizarTextoIA(texto) {
     if (score < 25) {
         nivel = 'bajo';
         iaSugerida = 'No se detectan indicios claros de IA';
-        detalle = 'El texto muestra más variación propia de escritura humana o es demasiado genérico para concluir. Revisa el contenido académicamente.';
+        detalle = 'El texto muestra variación razonable o es corto. Revisa el contenido académicamente y las fuentes citadas.';
     } else if (score < 50) {
         nivel = 'medio';
         iaSugerida = 'Posible asistencia de IA (no identificable)';
-        detalle = 'Hay señales mixtas. Podría ser texto humano formal, editado con IA o parcialmente generado. No se puede atribuir a un modelo concreto (ChatGPT, Claude, Gemini, etc.).';
+        detalle = 'Hay señales mixtas. Podría ser texto humano formal, editado con IA o parcialmente generado. Revisa los fragmentos marcados abajo.';
     } else if (score < 75) {
         nivel = 'alto';
         iaSugerida = 'Patrones compatibles con LLM (ChatGPT / Claude / Gemini u otros)';
-        detalle = 'Varias señales coinciden con texto generado o muy asistido por un modelo de lenguaje. La herramienta NO puede afirmar qué IA específica se usó; solo estima probabilidad orientativa.';
+        detalle = 'Varias señales coinciden con texto generado o muy asistido. Abajo se listan fragmentos concretos del documento analizado.';
     } else {
         nivel = 'muy alto';
         iaSugerida = 'Muy probable texto generado por IA (LLM genérico)';
-        detalle = 'El estilo es altamente compatible con salida de un LLM. Identificar la marca exacta (ChatGPT, Claude, Gemini, Copilot…) requiere servicios comerciales especializados y aun así no es 100 % confiable.';
+        detalle = 'Estilo altamente compatible con un LLM. La marca exacta no es certificable. Revisa fragmentos y fuentes temáticas sugeridas.';
     }
 
     if (!senales.length) senales.push('Análisis general de estilo y estructura');
+
+    // Limitar fragmentos mostrados
+    fragmentos = fragmentos.slice(0, 12);
 
     return {
         pct: score,
@@ -1805,6 +1896,9 @@ function aulaAnalizarTextoIA(texto) {
         iaSugerida: iaSugerida,
         detalle: detalle,
         senales: senales,
+        fragmentos: fragmentos,
+        textoMuestra: t.length > 2500 ? (t.slice(0, 2500) + '\n\n[… texto recortado para vista previa …]') : t,
+        fuentesSugeridas: fuentesSugeridas,
         palabras: words.length
     };
 }
@@ -1833,19 +1927,41 @@ function aulaDetectarIAEntrega(entregaId) {
 
         var color = r.pct >= 75 ? '#b91c1c' : (r.pct >= 50 ? '#c2410c' : (r.pct >= 25 ? '#a16207' : '#15803d'));
 
+        var fragHtml = (r.fragmentos && r.fragmentos.length)
+            ? r.fragmentos.map(function(f) {
+                return '<div class="ai-frag">' +
+                    '<div class="ai-frag-tipo">' + aulaEsc(f.tipo) + '</div>' +
+                    '<div class="ai-frag-frase">«' + aulaEsc(f.frase) + '»</div>' +
+                    '<div class="ai-frag-ctx">' + aulaEsc(f.contexto) + '</div>' +
+                    '</div>';
+            }).join('')
+            : '<p class="ai-muted">No se extrajeron fragmentos concretos.</p>';
+
+        var fuentesHtml = (r.fuentesSugeridas && r.fuentesSugeridas.length)
+            ? '<ul class="ai-fuentes">' + r.fuentesSugeridas.map(function(f) {
+                return '<li>' + aulaEsc(f) + '</li>';
+            }).join('') + '</ul>'
+            : '<p class="ai-muted">Sin coincidencias temáticas con el catálogo de la asignatura.</p>';
+
         var html = '<div class="ai-card">' +
-            '<h4>Análisis orientativo de IA</h4>' +
-            '<p class="ai-pct" style="color:' + color + '"><strong>' + r.pct + '%</strong> probabilidad estimada de texto generado/asistido por IA</p>' +
-            '<p><strong>Nivel:</strong> ' + aulaEsc(r.nivel) + '</p>' +
+            '<h4>Análisis orientativo de IA / similitud</h4>' +
+            '<p class="ai-pct" style="color:' + color + '"><strong>' + r.pct + '%</strong> probabilidad estimada de texto generado o muy asistido por IA</p>' +
+            '<p><strong>Nivel:</strong> ' + aulaEsc(r.nivel) + ' · <strong>Palabras analizadas:</strong> ' + (r.palabras || 0) + '</p>' +
             '<p><strong>Indicación de origen:</strong> ' + aulaEsc(r.iaSugerida) + '</p>' +
             '<p>' + aulaEsc(r.detalle) + '</p>' +
-            '<p><strong>Señales:</strong></p><ul>' +
+            '<p><strong>Señales detectadas:</strong></p><ul class="ai-senales">' +
             r.senales.map(function(s) { return '<li>' + aulaEsc(s) + '</li>'; }).join('') +
             '</ul>' +
+            '<h4 class="ai-sub">Fragmentos del documento (dónde aparece)</h4>' +
+            '<div class="ai-frag-list">' + fragHtml + '</div>' +
+            '<h4 class="ai-sub">Posibles fuentes temáticas de la asignatura</h4>' +
+            fuentesHtml +
+            '<h4 class="ai-sub">Texto extraído (vista previa)</h4>' +
+            '<pre class="ai-texto">' + aulaEsc(r.textoMuestra || texto || '(vacío)') + '</pre>' +
             (esBinario && texto.length < 40
-                ? '<p class="ai-warn">El archivo no es texto plano (.txt). Para un mejor análisis, el estudiante debe entregar también un .txt o pegar el contenido en el comentario.</p>'
+                ? '<p class="ai-warn">Poco texto extraíble. Preferible PDF con texto seleccionable o archivo .txt.</p>'
                 : '') +
-            '<p class="ai-disclaimer"><em>Aviso:</em> este detector es <strong>heurístico y educativo</strong>. No certifica plagio ni identifica con certeza ChatGPT, Claude, Gemini u otra IA. Úsalo como apoyo, no como única prueba para sancionar.</p>' +
+            '<p class="ai-disclaimer"><strong>Aviso:</strong> detector heurístico y educativo. No certifica plagio web ni identifica con certeza ChatGPT, Claude o Gemini. Las «fuentes temáticas» son coincidencias con el material del curso (FLA-23, ASTM, NSR-10), no una búsqueda en internet.</p>' +
             '</div>';
 
         if (box) {
