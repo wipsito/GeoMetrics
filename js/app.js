@@ -4071,12 +4071,12 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
         var fontReg = results[4], fontBold = results[5];
 
         var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        var marginL = 22, marginR = 16, marginT = 16, marginB = 16;
+        var marginL = 20, marginR = 18, marginT = 18, marginB = 20;
         var pageW = doc.internal.pageSize.getWidth();
         var pageH = doc.internal.pageSize.getHeight();
         var y = marginT;
         var maxW = pageW - marginL - marginR;
-        var lineH = 6.2;
+        var lineH = 6.8;
         var hasUnicodeFont = false;
 
         if (fontReg) {
@@ -4208,19 +4208,43 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                 doc.text(ln, marginL, y);
                 y += lineH;
             });
-            y += 2;
+            y += 3.5;
         }
         function addHeading(text) {
-            var lines = wrapText(text, maxW, 12);
-            ensureSpace(lines.length * lineH + 8);
-            y += 4;
+            var lines = wrapText(text, maxW, 13);
+            ensureSpace(lines.length * lineH + 10);
+            y += 5;
             lines.forEach(function(ln) {
                 ensureSpace(lineH + 1);
-                setF(true, 12);
+                setF(true, 13);
+                doc.setTextColor(30, 55, 110);
                 doc.text(ln, marginL, y);
                 y += lineH;
             });
-            y += 2;
+            // línea decorativa bajo el título
+            doc.setDrawColor(40, 70, 140);
+            doc.setLineWidth(0.35);
+            doc.line(marginL, y - 1, marginL + 40, y - 1);
+            y += 3;
+            doc.setTextColor(0, 0, 0);
+            setF(false, 11);
+        }
+        function addEq(num, formula, meaning) {
+            ensureSpace(lineH * 3 + 4);
+            setF(true, 11);
+            doc.setTextColor(20, 50, 100);
+            doc.text(sym('(' + num + ')  ' + formula), marginL + 4, y);
+            y += lineH;
+            setF(false, 10);
+            doc.setTextColor(60, 60, 60);
+            var ml = wrapText(meaning, maxW - 8, 10);
+            ml.forEach(function(ln) {
+                ensureSpace(lineH);
+                doc.text(ln, marginL + 6, y);
+                y += lineH * 0.95;
+            });
+            y += 3;
+            doc.setTextColor(0, 0, 0);
             setF(false, 11);
         }
 
@@ -4295,45 +4319,93 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             ? 'Beer, Johnston, DeWolf y Mazurek — Mecánica de materiales; Hibbeler — Mecánica de materiales / Estática.'
             : 'Guías unificadas de laboratorio FLA-23 (Universidad de Pamplona) y Das — Principles of Geotechnical Engineering, según el ensayo.';
 
-        addHeading('1. Resumen');
+        addHeading('1. Resumen ejecutivo');
         addParagraph(
-            'Se presenta el informe del ensayo «' + metaInf.tituloCorto + '» realizado en la asignatura ' +
-            asig + '. Se registran objetivos, fundamentos, procedimiento, resultados numéricos obtenidos en GeoMetrics y conclusiones orientadas al aprendizaje de laboratorio.'
+            'Este informe presenta los resultados del ensayo de laboratorio «' + metaInf.tituloCorto +
+            '», desarrollado en la asignatura ' + asig + ' mediante la plataforma GeoMetrics (Universidad de Pamplona).'
+        );
+        addParagraph(
+            'Se describen los objetivos de la práctica, el marco teórico con las ecuaciones fundamentales, el procedimiento seguido, ' +
+            'los resultados numéricos con unidades en el sistema de laboratorio (kPa, °) y la interpretación de los hallazgos.'
+        );
+        addParagraph(
+            'Los valores críticos obtenidos se discuten frente a rangos orientativos de la literatura (guías FLA-23 y textos de apoyo de la asignatura) ' +
+            'y se formulan conclusiones alineadas con los objetivos del laboratorio.'
         );
 
         addHeading('2. Introducción');
         addParagraph(
-            'El ensayo de laboratorio «' + metaInf.tituloCorto + '» forma parte de la formación en ingeniería civil. ' +
-            'Este documento describe el alcance de la práctica, la base teórica pertinente y los resultados calculados en la plataforma GeoMetrics de la Universidad de Pamplona.'
+            'El ensayo «' + metaInf.tituloCorto + '» constituye una práctica esencial en la formación del ingeniero civil. ' +
+            'Permite relacionar el comportamiento del material (suelo o sólido) con parámetros de diseño y con el criterio de falla correspondiente. ' +
+            'El presente documento se elabora de forma impersonal, con redacción en pasado en el procedimiento y en presente en el marco teórico, ' +
+            'siguiendo buenas prácticas de comunicación científica en ingeniería.'
         );
 
         addHeading('3. Objetivos');
-        addParagraph('Objetivo general: aplicar el procedimiento del ensayo «' + metaInf.tituloCorto + '» y analizar los resultados con rigor académico.');
-        addParagraph('Objetivos específicos: (a) registrar datos de laboratorio con unidades coherentes; (b) aplicar las fórmulas del marco teórico; (c) interpretar los resultados y discutir posibles fuentes de error; (d) formular conclusiones alineadas con los objetivos.');
+        addParagraph('Objetivo general');
+        addParagraph('Aplicar el procedimiento del ensayo «' + metaInf.tituloCorto + '», procesar los datos en GeoMetrics y analizar los resultados con rigor académico.');
+        addParagraph('Objetivos específicos');
+        addParagraph('• Registrar las lecturas de laboratorio con unidades coherentes (kPa, °, mm, etc.).');
+        addParagraph('• Aplicar las ecuaciones del marco teórico e identificar cada variable.');
+        addParagraph('• Presentar resultados en tablas y figuras con encabezados claros.');
+        addParagraph('• Interpretar los valores frente a rangos de referencia y formular conclusiones vinculadas a los objetivos.');
 
         addHeading('4. Marco teórico');
         addParagraph(
-            'Los conceptos y expresiones empleadas se limitan a las fuentes autorizadas de la asignatura. ' + fuenteMarco +
-            ' No se mezclan bibliografías de otras materias. Las fórmulas se aplican con las unidades del Sistema Internacional o las usuales del laboratorio, según el ensayo.'
+            'Los fundamentos se limitan a las fuentes autorizadas de la asignatura. ' + fuenteMarco
         );
+        if (tipoEnsayo === 'corte') {
+            addParagraph('Criterio de falla de Mohr–Coulomb (esfuerzo efectivo / laboratorio de corte):');
+            addEq('1', 'τ = c + σn · tan(φ)',
+                'donde τ = esfuerzo cortante en la falla (kPa); c = cohesión (kPa); σn = esfuerzo normal efectivo sobre el plano de falla (kPa); φ = ángulo de fricción interna (°).');
+            addEq('2', 'φ = arctan(b)',
+                'donde b es la pendiente de la regresión lineal τ frente a σn; φ se expresa en grados.');
+            addEq('3', 'R = (σ₁ − σ₃) / 2',
+                'Radio del círculo de Mohr (kPa); σ₁ y σ₃ son los esfuerzos principales mayor y menor (kPa).');
+            addEq('4', 'C = (σ₁ + σ₃) / 2',
+                'Centro del círculo de Mohr sobre el eje σ (kPa).');
+            addParagraph('Referencias del marco: guía FLA-23 de corte directo [1]; apoyo teórico en Das [2].');
+        } else {
+            addParagraph(
+                'Las expresiones específicas del ensayo se aplican según la guía correspondiente. ' +
+                'Todas las magnitudes se reportan con unidades explícitas y cifras significativas coherentes con la precisión del instrumento.'
+            );
+        }
 
         addHeading('5. Materiales y equipos');
         addParagraph(
-            'Se utilizaron los equipos e instrumentos propios del ensayo «' + metaInf.tituloCorto +
-            '» según la guía de laboratorio o el protocolo del curso. El registro de lecturas y el cálculo se apoyaron en GeoMetrics.'
+            'Se emplearon los equipos del ensayo «' + metaInf.tituloCorto +
+            '» conforme a la guía de laboratorio o al protocolo del curso (caja de corte, células de carga, calibración de área de muestra, etc., según aplique). ' +
+            'El registro y el cálculo se apoyaron en GeoMetrics.'
         );
 
         addHeading('6. Procedimiento');
         addParagraph(
-            'Se siguió el procedimiento estándar del ensayo. Los datos de entrada fueron digitados en GeoMetrics; ' +
-            'el software realizó los cálculos auxiliares. La redacción de esta sección se presenta de forma impersonal y en pasado, como corresponde a un informe de laboratorio.'
+            'Se ejecutó el procedimiento estándar del ensayo. Las lecturas se digitaron en GeoMetrics; el software realizó los cálculos auxiliares. ' +
+            'Secuencia general: (1) preparación y montaje de la muestra; (2) aplicación de niveles de esfuerzo o carga según el protocolo; ' +
+            '(3) registro de lecturas hasta la condición de falla o el criterio de terminación; (4) procesamiento de datos y generación de gráficas; ' +
+            '(5) elaboración del presente informe.'
         );
 
         addHeading('7. Resultados');
         if (!resumen || !resumen.length) {
             addParagraph('No se registraron valores numéricos en esta sesión. Complete el ensayo y vuelva a generar el informe.');
         } else {
-            addParagraph('A continuación se resumen los valores obtenidos (unidades según el ensayo):');
+            addParagraph('A continuación se presentan los valores obtenidos. Las unidades se indican de forma explícita (preferencia: kPa, °).');
+            // Tabla consolidada "Resultados principales"
+            var rowsPrinc = resumen.map(function(ln, idx) {
+                var s = String(ln);
+                var partes = s.split(/[:=·]/);
+                var param = (partes[0] || ('Dato ' + (idx + 1))).trim().slice(0, 40);
+                var rest = s.slice(param.length).replace(/^[:=·\s]+/, '').trim();
+                return [param, rest || '—', 'Ver texto', 'Resultado de GeoMetrics'];
+            });
+            if (typeof addTablaColor === 'function') {
+                addTablaColor(
+                    ['Parámetro', 'Valor', 'Unidad / nota', 'Comentario'],
+                    rowsPrinc.slice(0, 12)
+                );
+            }
             resumen.forEach(function(ln) { addParagraph('• ' + ln); });
         }
 
@@ -4417,52 +4489,116 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                     var imgH = (canvas.height / canvas.width) * imgW;
                     if (imgH > 95) { imgH = 95; imgW = (canvas.width / canvas.height) * imgH; }
                     ensureSpace(imgH + 20);
-                    addHeading('7.5. Figura — Círculos de Mohr');
+                    addHeading('7.5. Figura — Círculos de Mohr y envolvente de falla');
                     doc.addImage(img, 'PNG', marginL, y, imgW, imgH);
                     y += imgH + 4;
-                    addParagraph('Figura 1. Envolvente y círculos de Mohr del ensayo de corte directo.');
+                    addParagraph(
+                        'Figura 1. Diagrama de Mohr del ensayo de corte directo: semicírculos de falla por ensayo (E1, E2, …), ' +
+                        'puntos de falla (σn, τ) y envolvente τ = c + σn·tan(φ). ' +
+                        'Parámetros usados: c = ' + Number(dCorte.c).toFixed(2) + ' kPa; φ = ' + Number(dCorte.phi).toFixed(1) +
+                        '°. Ejes en kPa. Etiquetas σ₁ y σ₃ bajo el eje horizontal.'
+                    );
                 } catch (e) {}
             }
         }
 
         addHeading('8. Discusión');
         addParagraph(
-            'Los resultados deben interpretarse a la luz del marco teórico y de las condiciones reales del ensayo ' +
-            '(preparación de la muestra, calibración de equipos y posibles errores de lectura). ' +
-            'Se recomienda contrastar los valores con los rangos esperados en la guía oficial y con el criterio del docente.'
+            'Los resultados se interpretan a la luz del marco teórico y de las condiciones del ensayo. ' +
+            'A continuación se amplían las fuentes de incertidumbre y la comparación con rangos de referencia.'
         );
+        addHeading('8.1. Fuentes de error y mitigación');
+        addParagraph('• Calibración de la celda de carga o de los transductores: verificar cero y escala antes del ensayo.');
+        addParagraph('• Preparación de la muestra (densidad, humedad, homogeneidad): estandarizar el compactado y el tallado.');
+        addParagraph('• Área de la caja de corte y cálculo de σn: medir con precisión y usar A en m² de forma consistente.');
+        addParagraph('• Velocidad de corrimiento / tiempo de carga: seguir la velocidad recomendada en la guía para el tipo de suelo.');
+        addParagraph('• Lectura de la falla (pico vs residual): documentar el criterio usado (pico, residual o ambos).');
+        addParagraph('• Digitaciones y redondeos en GeoMetrics: contrastar los valores del informe con la pantalla de resultados del ensayo.');
+        addParagraph(
+            'Mitigación en ensayos futuros: protocolos de calibración, series repetidas, control de humedad y densidad, ' +
+            'y registro fotográfico o de gráficas generadas en el momento del ensayo.'
+        );
+        if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
+            var dc = window.__datosEnsayoMS2.corte;
+            var clasTxt = '';
+            if (typeof clasificarSueloCorte === 'function') {
+                var cl = clasificarSueloCorte(dc.c, dc.phi);
+                clasTxt = (cl && cl.tipo) ? (cl.tipo + (cl.detalle ? ('. ' + cl.detalle) : '')) : '';
+            }
+            addParagraph(
+                'Para el corte directo se obtuvo φ = ' + Number(dc.phi).toFixed(1) +
+                '° y c = ' + Number(dc.c).toFixed(2) + ' kPa. ' +
+                (clasTxt ? ('Clasificación orientativa del suelo: ' + clasTxt + ' ') : '') +
+                'La comparación definitiva debe hacerse con la guía FLA-23 y el criterio del docente.'
+            );
+            addHeading('8.2. Comparación orientativa con rangos de referencia');
+            addTablaColor(
+                ['Parámetro', 'Valor obtenido', 'Rango orientativo', 'Comentario'],
+                [
+                    ['φ (°)', Number(dc.phi).toFixed(1), '≈ 28–40 (granular)', 'Depende de densidad y granulometría'],
+                    ['c (kPa)', Number(dc.c).toFixed(2), '≈ 0–25 (según finos)', 'Valores altos sugieren cohesión o finos']
+                ]
+            );
+        } else {
+            addParagraph(
+                'Se recomienda contrastar los valores calculados con los rangos esperados en la guía oficial de la asignatura y con el criterio del docente.'
+            );
+        }
 
         addHeading('9. Conclusiones');
-        addParagraph('1. Se ejecutó el registro y el análisis del ensayo «' + metaInf.tituloCorto + '» conforme al alcance de la práctica.');
-        addParagraph('2. Los parámetros calculados se presentan en la sección de resultados con sus unidades.');
-        addParagraph('3. La interpretación final y la aceptación de los datos quedan sujetos a la revisión docente y a la guía de la asignatura.');
+        addParagraph('1. Se completó el registro y el análisis del ensayo «' + metaInf.tituloCorto + '» conforme al alcance de la práctica y a los objetivos planteados.');
+        addParagraph('2. Los parámetros calculados se reportan en la sección de resultados con unidades explícitas (kPa, ° u otras según el ensayo), alineados con los valores de GeoMetrics.');
+        if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
+            var dc2 = window.__datosEnsayoMS2.corte;
+            var cl2 = (typeof clasificarSueloCorte === 'function') ? clasificarSueloCorte(dc2.c, dc2.phi) : null;
+            addParagraph(
+                '3. Con φ = ' + Number(dc2.phi).toFixed(1) + '° y c = ' + Number(dc2.c).toFixed(2) +
+                ' kPa, el material se interpreta de forma orientativa como ' +
+                ((cl2 && cl2.tipo) ? cl2.tipo : 'suelo con componentes cohesivos y/o friccionantes según el criterio de Mohr–Coulomb') +
+                ', en coherencia con rangos típicos discutidos en la guía FLA-23 y textos de apoyo.'
+            );
+        } else {
+            addParagraph('3. Las ecuaciones aplicadas son coherentes con el marco teórico citado y con el procedimiento del laboratorio.');
+        }
+        addParagraph('4. La interpretación está sujeta a limitaciones experimentales (tamaño de muestra, velocidad de ensayo, calibración) y a la revisión docente.');
+        addParagraph('5. Se recomienda en el futuro: series repetidas, control estricto de calibración y contrastar φ y c con la sección de corte directo de la guía FLA-23.');
 
         addHeading('10. Referencias');
         if (esRM) {
-            addParagraph('Beer, F. P., Johnston, E. R., DeWolf, J. T. y Mazurek, D. F. Mecánica de materiales.');
-            addParagraph('Hibbeler, R. C. Mecánica de materiales / Estática.');
+            addParagraph('[1] Beer, F. P., Johnston, E. R., DeWolf, J. T. y Mazurek, D. F. (s. f.). Mecánica de materiales.');
+            addParagraph('[2] Hibbeler, R. C. (s. f.). Mecánica de materiales / Estática.');
         } else {
-            addParagraph('Universidad de Pamplona. Guías unificadas de laboratorio de suelos (FLA-23). Facultad de Ingenierías.');
-            addParagraph('Das, B. M. Principles of Geotechnical Engineering.');
+            addParagraph('[1] Universidad de Pamplona. (s. f.). Guía unificada de laboratorio FLA-23: Ensayo de corte directo. Facultad de Ingenierías, Programa de Ingeniería Civil. (Consultar el apartado de procedimiento y análisis de resultados en la guía oficial del curso; numeración de páginas según la edición entregada por el docente).');
+            addParagraph('[2] Das, B. M. (s. f.). Principles of Geotechnical Engineering. Capítulos de resistencia al corte y criterios de falla.');
         }
-        addParagraph('GeoMetrics. (2026). Laboratorio virtual. Universidad de Pamplona — Programa de Ingeniería Civil.');
+        addParagraph('[3] GeoMetrics. (2026). Laboratorio virtual. Universidad de Pamplona — Programa de Ingeniería Civil.');
 
         addHeading('11. Anexos');
-        addParagraph('Se consideran anexos los datos brutos del ensayo, capturas de gráficas generadas en GeoMetrics y cálculos complementarios que el estudiante o el docente adjunten al expediente del curso.');
+        addParagraph('Anexo A. Datos brutos y lecturas del ensayo registradas en GeoMetrics.');
+        addParagraph('Anexo B. Gráficas generadas (envolvente, círculos de Mohr u otras según el ensayo).');
+        addParagraph('Anexo C. Cálculos complementarios o capturas que el estudiante o el docente adjunten al expediente del curso.');
 
-        // Números de página: solo 1, 2, 3...
+        // Encabezado y pie en páginas del cuerpo (no portada = página 1)
         var total = doc.internal.getNumberOfPages();
+        var autorPie = (datosInf.estudiante || 'Estudiante').slice(0, 40);
+        var tituloCortoPie = String(metaInf.tituloCorto || 'Informe').slice(0, 35);
         for (var p = 1; p <= total; p++) {
             doc.setPage(p);
-            setF(false, 10);
+            if (p > 1) {
+                setF(false, 8);
+                doc.setTextColor(120, 120, 120);
+                doc.text('GeoMetrics · ' + sym(tituloCortoPie), marginL, 12);
+                doc.text(autorPie, pageW - marginR - doc.getTextWidth(autorPie), 12);
+                doc.setDrawColor(180, 180, 180);
+                doc.setLineWidth(0.2);
+                doc.line(marginL, 13.5, pageW - marginR, 13.5);
+            }
+            var pieY = pageH - 12;
+            setF(false, 8);
             doc.setTextColor(100, 100, 100);
-            // Pie más arriba para no chocar con el marco
-            var pieY = pageH - 14;
-            var pieTxt = 'GeoMetrics — Informe académico  ' + String(p);
-            setF(false, 9);
-            doc.setTextColor(100, 100, 100);
-            doc.text(pieTxt, marginL, pieY);
-            doc.text(String(p), pageW - marginR - doc.getTextWidth(String(p)), pieY);
+            doc.text('GeoMetrics — Informe académico', marginL, pieY);
+            var num = String(p);
+            doc.text(num, pageW - marginR - doc.getTextWidth(num), pieY);
             doc.setTextColor(0, 0, 0);
         }
 
