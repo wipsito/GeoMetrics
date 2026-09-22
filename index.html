@@ -808,70 +808,77 @@
 
         <!-- Ensayos de Resistencia de Materiales -->
         <section class="tab-content active" id="rm-ensayos">
+            <p class="login-hint" style="margin:0 0 14px">Equipos de referencia UniPamplona: máquina universal de ensayos (tipo SHIMADZU UH), banco de torsión, kit de flexión y durómetro Rockwell — Laboratorio de materiales / ensayo de materiales.</p>
             <div class="ensayos-grid">
                 <button class="ensayo-card" data-ensayo="traccion">
                     <div class="ensayo-icono">🔗</div>
                     <h3>Ensayo de Tracción</h3>
-                    <p>Determinación de propiedades mecánicas bajo carga axial.</p>
+                    <p>Máquina universal — curva σ–ε, E, σy, σu (probeta metálica).</p>
                     <span>INICIAR ENSAYO →</span>
                 </button>
-
                 <button class="ensayo-card" data-ensayo="compresion">
                     <div class="ensayo-icono">⬇️</div>
                     <h3>Ensayo de Compresión</h3>
-                    <p>Resistencia a compresión de cilindros de concreto.</p>
+                    <p>Máquina universal / prensa — cilindros de concreto o metal.</p>
                     <span>INICIAR ENSAYO →</span>
                 </button>
-
                 <button class="ensayo-card" data-ensayo="flexion">
                     <div class="ensayo-icono">📐</div>
                     <h3>Ensayo de Flexión</h3>
-                    <p>Módulo de ruptura en vigas de concreto.</p>
+                    <p>Kit de flexión en UTM — módulo de ruptura de viga.</p>
                     <span>INICIAR ENSAYO →</span>
                 </button>
-
+                <button class="ensayo-card" data-ensayo="torsion">
+                    <div class="ensayo-icono">🌀</div>
+                    <h3>Ensayo de Torsión</h3>
+                    <p>Banco de torsión — τ, γ, G y ángulo de giro.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
                 <button class="ensayo-card" data-ensayo="dureza">
                     <div class="ensayo-icono">💎</div>
                     <h3>Ensayo de Dureza</h3>
-                    <p>Dureza Brinell y Rockwell de metales.</p>
+                    <p>Durómetro Rockwell — dureza superficial de metales.</p>
                     <span>INICIAR ENSAYO →</span>
                 </button>
             </div>
-
-            <!-- Panel de Ensayos (oculto inicialmente) -->
-            <div class="panel-ensayo" id="panel-ensayo-rm">
-                <!-- Se llena dinámicamente -->
-            </div>
+            <div class="panel-ensayo" id="panel-ensayo-rm"></div>
         </section>
     
         <section class="tab-content" id="rm-simuladores">
-            <p class="login-hint" style="margin:0 0 14px">Los simuladores coinciden con los ensayos de la materia para practicar el mismo procedimiento de forma interactiva.</p>
+            <p class="login-hint" style="margin:0 0 14px">Simuladores interactivos de las mismas máquinas del laboratorio (UTM, flexión, torsión, Rockwell).</p>
             <div class="ensayos-grid simuladores-grid">
                 <div class="ensayo-card sim-card">
                     <div class="ensayo-icono">🔗</div>
                     <h3>Simulador de tracción</h3>
-                    <p>Misma práctica que el ensayo de tracción: curva esfuerzo–deformación y propiedades mecánicas.</p>
+                    <p>Máquina universal — curva σ–ε interactiva.</p>
                     <button type="button" class="btn-calcular btn-abrir-sim-rm" data-ensayo-rm="traccion">ABRIR SIMULADOR</button>
                 </div>
                 <div class="ensayo-card sim-card">
                     <div class="ensayo-icono">⬇️</div>
                     <h3>Simulador de compresión</h3>
-                    <p>Misma práctica que el ensayo de compresión: resistencia de cilindros y falla.</p>
+                    <p>Prensa / UTM — falla de cilindro.</p>
                     <button type="button" class="btn-calcular btn-abrir-sim-rm" data-ensayo-rm="compresion">ABRIR SIMULADOR</button>
                 </div>
                 <div class="ensayo-card sim-card">
                     <div class="ensayo-icono">📐</div>
                     <h3>Simulador de flexión</h3>
-                    <p>Misma práctica que el ensayo de flexión: módulo de ruptura en vigas.</p>
+                    <p>Kit de flexión — módulo de ruptura.</p>
                     <button type="button" class="btn-calcular btn-abrir-sim-rm" data-ensayo-rm="flexion">ABRIR SIMULADOR</button>
+                </div>
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">🌀</div>
+                    <h3>Simulador de torsión</h3>
+                    <p>Banco de torsión — τ, γ y G.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim-rm" data-ensayo-rm="torsion">ABRIR SIMULADOR</button>
                 </div>
                 <div class="ensayo-card sim-card">
                     <div class="ensayo-icono">💎</div>
                     <h3>Simulador de dureza</h3>
-                    <p>Misma práctica que el ensayo de dureza: Brinell / Rockwell en metales.</p>
+                    <p>Durómetro Rockwell.</p>
                     <button type="button" class="btn-calcular btn-abrir-sim-rm" data-ensayo-rm="dureza">ABRIR SIMULADOR</button>
                 </div>
             </div>
+            <div class="panel-ensayo" id="panel-sim-rm" style="margin-top:16px;"></div>
         </section>
 </main>
 
