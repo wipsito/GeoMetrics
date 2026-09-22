@@ -4695,20 +4695,22 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             'control de humedad y densidad, y archivo de la gráfica generada en el momento del ensayo.'
         );
         addHeading('8.1.1. Estimación orientativa de incertidumbre');
-        addParagraph('Valores indicativos de orden de magnitud (no sustituyen un análisis estadístico formal):');
-        addParagraph('• σ₁: ±5 % del valor reportado.');
-        addParagraph('• σ₃: ±5 % del valor reportado.');
-        addParagraph('• φ: ±1,5 °.');
-        addParagraph('• c: ±0,5 kPa (o ±5 % si c es elevado).');
+        addParagraph('Valores indicativos de orden de magnitud (máximo ±1 % en magnitudes relativas; no sustituyen un análisis estadístico formal):');
+        addParagraph('• σ₁: ±1 % del valor reportado.');
+        addParagraph('• σ₃: ±1 % del valor reportado.');
+        addParagraph('• φ: ±1,0 °.');
+        addParagraph('• c: ±1 % del valor reportado (mínimo práctico ±0,05 kPa).');
         if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
             var dcu = window.__datosEnsayoMS2.corte;
             var s1m = Number(dcu.avgS1) || 0;
             var s3m = Number(dcu.avgS3) || 0;
+            var cVal = Number(dcu.c) || 0;
+            var dcAbs = Math.max(0.05, 0.01 * cVal);
             addParagraph(
                 'Ejemplo con los promedios de este ensayo: σ₁ ≈ ' + s1m.toFixed(1) +
-                ' kPa (±' + (0.05 * s1m).toFixed(1) + ' kPa); σ₃ ≈ ' + s3m.toFixed(1) +
-                ' kPa (±' + (0.05 * s3m).toFixed(1) + ' kPa); φ = ' + Number(dcu.phi).toFixed(1) +
-                ' ° (±1,5 °); c = ' + Number(dcu.c).toFixed(2) + ' kPa (±0,5 kPa).'
+                ' kPa (±' + (0.01 * s1m).toFixed(1) + ' kPa); σ₃ ≈ ' + s3m.toFixed(1) +
+                ' kPa (±' + (0.01 * s3m).toFixed(1) + ' kPa); φ = ' + Number(dcu.phi).toFixed(1) +
+                ' ° (±1,0 °); c = ' + cVal.toFixed(2) + ' kPa (±' + dcAbs.toFixed(2) + ' kPa).'
             );
         }
         if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
