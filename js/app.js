@@ -3771,22 +3771,22 @@ var ESQUEMA_INFORME_ACADEMICO = [
 /** Normas de ensayo alineadas con NSR-10 Título H (H.2.6), NTC/ASTM e INVIAS */
 var NORMA_ENSAYO_NSR10 = {
     humedad: {
-        ntc: 'NTC 1495',
-        astm: 'ASTM D 2216',
-        invias: 'INVIAS — Especificaciones técnicas (contenido de humedad de suelos)',
-        uso: 'Parámetro básico de identificación y control de humedad en investigación del subsuelo (H.2.1.1.1).'
+        ntc: 'NTC 1495 (referencia ICONTEC)',
+        astm: 'ASTM D 2216-10',
+        invias: 'INV E-122-13 (INVIAS) — Contenido de agua (humedad); Guía FLA-23 UniPamplona',
+        uso: 'Propiedad índice w (%) para relaciones de fase e investigación del subsuelo (NSR-10 H.2.1.1.1).'
     },
     granulometria: {
-        ntc: 'NTC 1522',
-        astm: 'ASTM D 422 / práctica de tamizado',
-        invias: 'INVIAS — Granulometría de agregados y suelos',
-        uso: 'Clasificación y distribución de tamaños; apoyo a SCUS/NSR-10 H.2.5.'
+        ntc: 'NTC 1522 (referencia)',
+        astm: 'ASTM D 422-63',
+        invias: 'INV E-123-13 (INVIAS); Guía FLA-23 UniPamplona',
+        uso: 'Distribución de tamaños de partículas; curva granulométrica; apoyo a SUCS (H.2.5).'
     },
     limites: {
         ntc: 'NTC 1493, NTC 1494, NTC 4630',
-        astm: 'ASTM D 4318',
-        invias: 'INVIAS — Límites de Atterberg',
-        uso: 'Identificación de suelos cohesivos (H.2.5.2) y plasticidad.'
+        astm: 'ASTM D 4318-10',
+        invias: 'INV E-125-13 (límite líquido) e INV asociadas (LP/IP); Guía FLA-23',
+        uso: 'LL, LP e IP para clasificación de finos y comportamiento plástico.'
     },
     gravedad: {
         ntc: 'NTC 1974',
@@ -3808,9 +3808,9 @@ var NORMA_ENSAYO_NSR10 = {
     },
     clasificacion: {
         ntc: 'NTC 1504',
-        astm: 'ASTM D 2487 (SUCS)',
-        invias: 'INVIAS — Clasificación de suelos para ingeniería',
-        uso: 'Identificación de unidades de suelo (H.2.2.2.1-c) y H.2.5.'
+        astm: 'ASTM D 2487-11 (SUCS)',
+        invias: 'INV E-181-13 (INVIAS); Guía FLA-23 UniPamplona',
+        uso: 'Clasificación SUCS/AASHTO; identificación de unidades de suelo (H.2.2.2.1-c).'
     },
     permeabilidad: {
         ntc: 'NTC (permeabilidad de laboratorio)',
@@ -3847,90 +3847,115 @@ var NORMA_ENSAYO_NSR10 = {
 /** Textos de informe por ensayo — alineados a prácticas UniPamplona / FLA-23 / NSR-10 H */
 var TEXTO_INFORME_ENSAYO = {
     humedad: {
-        intro: 'El contenido de humedad natural es una propiedad índice del suelo: relaciona la masa de agua con la masa de sólidos y se expresa en porcentaje. Influye en la cohesión, la compresibilidad y la capacidad de soporte del terreno. Su determinación es un paso básico de la investigación del subsuelo (NSR-10 H.2.1.1.1).',
-        teorica: 'Según ASTM D 2216 / NTC 1495, la muestra se seca en horno a 105–110 °C hasta peso constante. w(%) = (Mw/Ms)×100, donde Mw es la masa de agua evaporada y Ms la masa de sólidos secos.',
-        proc: 'Se pesan recipientes limpios, se registra la masa húmeda, se seca en horno y se registra la masa seca. Se calcula Mw, Ms y w para cada determinación y, si aplica, el promedio de las muestras.',
-        grafica: 'Diagrama de barras del contenido de humedad por determinación (w en %).',
+        tituloFLA: 'Determinación en el laboratorio del contenido de agua (humedad) de muestras de suelo, roca y mezclas de suelo-agregado',
+        intro: 'Según la Guía Unificada FLA-23 (Mecánica de Suelos 1), este ensayo determina en el laboratorio el contenido de agua (humedad) por masa del suelo, roca o mezclas suelo-agregado. El contenido de agua es una de las propiedades índice más significativas y se usa en las ecuaciones que relacionan las fases aire, agua y sólidos.',
+        teorica: 'Normas de referencia: INV E-122-13 (INVIAS) y ASTM D 2216-10 (FLA-23). w = (masa de agua / masa de sólidos secos al horno) × 100. El horno debe mantener 110 ± 5 °C. Método A: reportar w con aproximación a 1 %. Método B: aproximación a 0,1 %. Unidades: % y g. No aplican kPa ni grados.',
+        proc: 'Registrar masa del recipiente limpio y seco; colocar muestra húmeda representativa; secar en horno a 110 ± 5 °C hasta peso constante; registrar masas; calcular Mw, Ms y w. Repetir determinaciones según la guía.',
+        materiales: 'Horno 110 ± 5 °C, balanza (0,01 g o 0,1 g según masa), recipientes no corrosibles, elementos de manejo de muestras calientes (FLA-23).',
+        grafica: 'Diagrama de barras del contenido de humedad w (%) por determinación.',
         canvasId: 'canvas-humedad'
     },
     granulometria: {
-        intro: 'El análisis granulométrico describe la distribución de tamaños de partículas del suelo. Afecta permeabilidad, compactación y resistencia. Es base de la clasificación SUCS/AASHTO y de la identificación de unidades de suelo en el estudio geotécnico (H.2.2.2.1-c).',
-        teorica: 'Por tamizado (ASTM D 422 / NTC 1522) se obtiene el porcentaje que pasa cada abertura. La curva granulométrica representa el % que pasa frente al diámetro de partícula (escala logarítmica en el eje de aberturas).',
-        proc: 'Se prepara y seca la muestra, se lava sobre el tamiz N.º 200 si aplica, se tamiza la fracción gruesa, se pesan retenidos y se calculan % retenido, % retenido acumulado y % que pasa. Se grafica la curva granulométrica.',
-        grafica: 'Curva granulométrica: % que pasa vs abertura de tamiz (eje de diámetros en escala log).',
+        tituloFLA: 'Determinación de los tamaños de las partículas de los suelos',
+        intro: 'Según FLA-23, el ensayo determina cuantitativamente la distribución de tamaños de partículas: mayores de 75 µm (retenidas en el N.º 200) por tamizado y menores de 75 µm por sedimentación con hidrómetro cuando aplique.',
+        teorica: 'Normas: INV E-123-13 (INVIAS) y ASTM D 422-63 (FLA-23). Se calcula % retenido, % retenido acumulado y % que pasa. La curva granulométrica representa el % que pasa frente a la abertura del tamiz (escala logarítmica en diámetros).',
+        proc: 'Preparar la muestra (vía seca/húmeda según guía), tamizar, pesar retenidos, calcular % que pasa y graficar la curva granulométrica.',
+        materiales: 'Tamices (N.º 200 a 3"), balanzas, agitador, horno 110 ± 5 °C; para finos: cilindro de sedimentación, hidrómetro y dispersante (FLA-23).',
+        grafica: 'Curva granulométrica: % que pasa vs abertura de tamiz (eje log de diámetros).',
         canvasId: 'canvas-granulo'
     },
     limites: {
-        intro: 'Los límites de Atterberg caracterizan el comportamiento de suelos finos con la humedad: límite líquido (LL), límite plástico (LP) e índice de plasticidad (IP = LL − LP). Son esenciales para clasificar finos (ML, CL, MH, CH, etc.).',
-        teorica: 'Norma ASTM D 4318 / NTC 1493–1494. El LL se obtiene de la curva de fluidez (humedad vs número de golpes). El LP se determina por el método del rollo. El IP indica el rango de plasticidad del suelo.',
-        proc: 'Se preparan pastas a distintas humedades, se registra el número de golpes en la copa de Casagrande, se calcula w de cada punto, se ajusta la curva de fluidez y se determina LL a 25 golpes. Se obtiene LP y se calcula IP.',
-        grafica: 'Curva de fluidez (límite líquido): humedad (%) vs número de golpes (escala log en golpes).',
+        tituloFLA: 'Determinación del límite líquido y del límite plástico e índice de plasticidad de los suelos',
+        intro: 'Según FLA-23, el límite líquido y el límite plástico, junto con el índice de plasticidad, caracterizan la consistencia de suelos finos y son base de la clasificación SUCS/AASHTO.',
+        teorica: 'Límite líquido: INV E-125-13 e ASTM D 4318-10. Límite plástico e IP: guía FLA-23 (INV/ASTM D 4318). LL se obtiene de la curva de fluidez (humedad vs golpes, gráfico semilogarítmico). IP = LL − LP. Unidades: % de humedad y número de golpes.',
+        proc: 'Preparar pasta que pasa el N.º 40; ensayo multipunto en copa de Casagrande; calcular w de cada punto; trazar curva de fluidez y obtener LL a 25 golpes; determinar LP e IP.',
+        materiales: 'Aparato de límite líquido (copa de bronce), ranurador, calibrador de 10 mm, balanza 0,01 g, horno 110 ± 5 °C, espátula (FLA-23).',
+        grafica: 'Curva de fluidez: humedad (%) vs número de golpes (eje de golpes en escala log).',
         canvasId: 'canvas-limites'
     },
     gravedad: {
-        intro: 'La gravedad específica de los sólidos (Gs) es la relación entre la densidad de las partículas sólidas y la del agua. Interviene en las relaciones volumétricas y en el cálculo de porosidad y grados de saturación.',
-        teorica: 'Según ASTM D 854 / NTC 1974 se determina con picnómetro. Gs = Ms / (Ms + Mpw − Mps), con las masas de picnómetro, agua y suelo según el procedimiento normalizado.',
-        proc: 'Se calibra el picnómetro, se introducen suelo y agua, se eliminan aireados, se registran masas y se calcula Gs. Se reporta el valor medio de las determinaciones.',
-        grafica: 'Comparación de valores de Gs por determinación (barras).',
+        tituloFLA: 'Determinación de la gravedad específica de las partículas sólidas de los suelos',
+        intro: 'Según FLA-23, Gs es la relación entre la masa de las partículas sólidas y la masa de un volumen igual de agua destilada a temperatura de referencia. Interviene en las relaciones de fase del suelo.',
+        teorica: 'Normas de referencia típicas: ASTM D 854 / NTC 1974 (alineadas con el espíritu de FLA-23 e INVIAS). Unidades: adimensional. No aplican kPa ni grados.',
+        proc: 'Picnómetro calibrado, desaireado, registro de masas y cálculo de Gs a la temperatura del ensayo.',
+        materiales: 'Picnómetro, balanza, baño térmico, agua destilada, horno (según norma de referencia).',
+        grafica: 'Comparación de Gs por determinación (barras).',
         canvasId: 'canvas-gravedad'
     },
     compactacion: {
-        intro: 'El ensayo Proctor relaciona la humedad de compactación con el peso unitario seco alcanzable bajo una energía de compactación dada. Define la humedad óptima y el γd máximo para control de rellenos.',
-        teorica: 'ASTM D 698 / D 1557 e INVIAS. Se grafica γd frente a w; el vértice de la curva Proctor indica wópt y γd máx.',
-        proc: 'Se compactan puntos a distintas humedades, se determina γh y w, se calcula γd = γh/(1+w) y se traza la curva de compactación.',
+        tituloFLA: 'Relaciones humedad – peso unitario seco en los suelos (ensayo de compactación)',
+        intro: 'Según FLA-23, el ensayo de compactación relaciona la humedad con el peso unitario seco bajo una energía de compactación definida (p. ej. Proctor modificado).',
+        teorica: 'Norma de referencia tipo INV E (compactación) / ASTM D 698 o D 1557. Se grafica γd vs w; el vértice define wópt y γd máx. Unidades: % y g/cm³ o kN/m³.',
+        proc: 'Compactar puntos a distintas humedades, determinar γh y w, calcular γd y trazar la curva de compactación.',
+        materiales: 'Molde Proctor, pisón, balanza, horno, extrusor (según energía normal o modificada de la guía).',
         grafica: 'Curva Proctor: peso unitario seco γd vs humedad w (%).',
         canvasId: 'canvas-proctor'
     },
     densidad: {
-        intro: 'La densidad in situ permite conocer el estado de densificación del terreno en campo (cono de arena, balón o terrón parafinado). Se relaciona con el control de compactación y con γd de laboratorio.',
-        teorica: 'Normas ASTM D 1556 / D 2167 y NTC asociadas. Con la masa y el volumen del hueco (o del terrón) se obtienen γh y, con la humedad, γd.',
-        proc: 'Se ejecuta el método de campo o de parafina, se registran masas y volúmenes, se calcula la densidad húmeda y seca y, si aplica, el grado de compactación respecto al Proctor.',
+        tituloFLA: 'Densidad y peso unitario del suelo en el terreno por el método del cono y arena',
+        intro: 'Según FLA-23, el método del cono y arena determina la densidad y el peso unitario del suelo in situ, fundamental para control de compactación en obra.',
+        teorica: 'Normas tipo INV E / ASTM D 1556 (cono de arena). Con masa y volumen del hueco se obtienen γh y, con la humedad, γd. Unidades: g/cm³ o kN/m³ y %.',
+        proc: 'Excavar el hueco, determinar volumen con arena calibrada, pesar el material extraído, obtener w y calcular densidades.',
+        materiales: 'Cono de arena, arena de densidad conocida, balanza, placas, herramientas de excavación (FLA-23).',
         grafica: 'Comparación de densidades húmeda y seca (barras).',
         canvasId: 'canvas-densidad'
     },
     clasificacion: {
-        intro: 'La clasificación SUCS (ASTM D 2487 / NTC 1504) y AASHTO permite identificar el suelo para ingeniería a partir de granulometría y plasticidad, de acuerdo con NSR-10 H.2.5 (cohesivos vs no cohesivos).',
-        teorica: 'Con % que pasa el N.º 200, LL e IP se ubica el suelo en la carta de plasticidad de Casagrande y se asigna el símbolo de grupo (CL, CH, ML, SM, etc.).',
-        proc: 'Se integran resultados de granulometría y límites de Atterberg, se aplica el criterio SUCS/AASHTO y se reporta el símbolo y nombre del grupo.',
-        grafica: 'Carta de plasticidad de Casagrande (IP vs LL) con el punto del suelo clasificado.',
+        tituloFLA: 'Sistema unificado de clasificación de suelos para propósitos de ingeniería',
+        intro: 'Según FLA-23, el SUCS clasifica suelos a partir de la distribución de tamaños de partículas, el límite líquido y el índice de plasticidad (INV E-181-13 / ASTM D 2487-11). También se puede reportar clasificación AASHTO.',
+        teorica: 'Con % que pasa el N.º 200, LL e IP se asigna el símbolo de grupo (GW, SP, CL, CH, etc.). El índice de grupo AASHTO se calcula según la fórmula de la guía cuando se solicite.',
+        proc: 'Integrar granulometría y límites de Atterberg; aplicar criterios SUCS (y AASHTO si aplica); reportar símbolo y nombre del grupo.',
+        materiales: 'Resultados de granulometría y límites; carta de plasticidad de Casagrande.',
+        grafica: 'Carta de plasticidad de Casagrande (IP vs LL) con el punto del suelo.',
         canvasId: 'canvas-sucs'
     },
     permeabilidad: {
-        intro: 'La permeabilidad (k) cuantifica la capacidad del suelo para conducir agua. Es clave en drenaje, filtraciones y análisis hidráulicos del Título H de la NSR-10.',
-        teorica: 'En laboratorio se emplean permeámetros de carga constante o variable. k se obtiene a partir del caudal, el gradiente hidráulico y las dimensiones de la muestra.',
-        proc: 'Se satura la muestra, se aplica carga hidráulica, se miden caudales o tiempos de descenso y se calcula k. Se reporta el valor representativo y las condiciones del ensayo.',
-        grafica: 'Relación caudal–gradiente o k por ensayo (barras / puntos).',
+        tituloFLA: 'Permeabilidad de suelos granulares (cabeza constante)',
+        intro: 'Según FLA-23, el ensayo de cabeza constante determina el coeficiente de permeabilidad de suelos granulares, parámetro hidráulico del subsuelo.',
+        teorica: 'Norma de referencia tipo INV E / ASTM D 2434. k se obtiene a partir del caudal, el gradiente hidráulico y las dimensiones de la muestra. Unidades: cm/s o m/s.',
+        proc: 'Saturar la muestra, aplicar carga hidráulica constante, medir caudales y calcular k.',
+        materiales: 'Permeámetro de carga constante, tanques, cronómetro, muestra granular preparada (FLA-23).',
+        grafica: 'Relación caudal–gradiente o valores de k por ensayo.',
         canvasId: 'canvas-perm'
     },
     corte: {
-        intro: 'El ensayo de corte directo determina parámetros de resistencia al corte c y φ (criterio de Mohr–Coulomb), insumos del análisis geotécnico y de la investigación del subsuelo (NSR-10 H.2.1, H.2.4). Norma de referencia: NTC 1917 / ASTM D 3080.',
-        teorica: 'τ = c + σn·tan(φ). Con varios niveles de σn se ajusta la envolvente. Los círculos de Mohr se construyen con R = (σ₁−σ₃)/2 y C = (σ₁+σ₃)/2.',
-        proc: 'Se monta la muestra, se aplica esfuerzo normal, se corta a velocidad controlada, se registra τ de falla, se regresiona la envolvente y se grafican Mohr y τ–σn.',
+        tituloFLA: 'Ensayo de corte directo en condición consolidada drenada (CD)',
+        intro: 'Según FLA-23, el corte directo consolidado drenado determina la resistencia al corte del suelo en condición CD, obteniendo parámetros c y φ.',
+        teorica: 'Normas: NTC 1917 / ASTM D 3080. τ = c + σn·tan(φ). Unidades: kPa y grados (°).',
+        proc: 'Montaje, consolidación, corte a velocidad controlada, registro de τ de falla, regresión de la envolvente y círculos de Mohr.',
+        materiales: 'Caja de corte, celdas de carga, marco de carga, muestra preparada según guía.',
         grafica: 'Envolvente τ–σn y círculos de Mohr (ejes en kPa).',
         canvasId: 'canvas-corte'
     },
     inconfinada: {
-        intro: 'La compresión inconfinada estima la resistencia no drenada de suelos cohesivos (qu, cu ≈ qu/2). Referencia: ASTM D 2166.',
-        teorica: 'Se aplica carga axial sin confinar lateralmente. qu es el esfuerzo máximo; cu se interpreta como resistencia no drenada Su en condiciones no drenadas.',
-        proc: 'Se prepara la probeta, se carga hasta falla, se registra la curva esfuerzo–deformación y se calcula qu y cu.',
-        grafica: 'Curva esfuerzo–deformación axial de la compresión inconfinada.',
+        tituloFLA: 'Compresión inconfinada en muestras de suelos',
+        intro: 'Según FLA-23, la compresión inconfinada determina la resistencia a la compresión no confinada de suelos cohesivos.',
+        teorica: 'ASTM D 2166. qu = esfuerzo máximo; cu ≈ qu/2. Unidades: kPa.',
+        proc: 'Preparar probeta, cargar hasta falla, registrar curva esfuerzo–deformación y calcular qu y cu.',
+        materiales: 'Prensa de compresión, deformímetros, probetas talladas (FLA-23).',
+        grafica: 'Curva esfuerzo–deformación de la compresión inconfinada.',
         canvasId: 'canvas-inconf'
     },
     consolidacion: {
-        intro: 'La consolidación unidimensional aporta parámetros de compresibilidad (Cc, Cr, σ′p) para estimar asentamientos. Referencia: NTC 1967 / ASTM D 2435.',
-        teorica: 'Se aplica carga por incrementos en el edómetro y se registra la deformación. La curva e–logσ′ permite obtener el índice de compresión y la presión de preconsolidación.',
-        proc: 'Se monta la muestra, se aplican escalones de carga, se miden deformaciones y se construye la curva de consolidación.',
-        grafica: 'Curva de consolidación (relación de vacíos o deformación vs log σ′).',
+        tituloFLA: 'Consolidación unidimensional de suelos',
+        intro: 'Según FLA-23, la consolidación unidimensional determina la magnitud y la velocidad de consolidación bajo carga axial con deformación lateral restringida.',
+        teorica: 'NTC 1967 / ASTM D 2435. Curva e–log σ′; índices Cc, Cr y presión de preconsolidación. Unidades: kPa e índice de vacíos.',
+        proc: 'Montaje en edómetro, escalones de carga, registro de deformaciones y construcción de la curva de consolidación.',
+        materiales: 'Edómetro, piedras porosas, diales o LVDT, marco de carga (FLA-23).',
+        grafica: 'Curva de consolidación (e o deformación vs log σ′).',
         canvasId: 'canvas-consol'
     },
     triaxial: {
-        intro: 'El ensayo triaxial permite obtener resistencia y trayectorias de esfuerzo en condiciones controladas de drenaje. Referencias: NTC 2041 / ASTM D 2850.',
-        teorica: 'Se confina la probeta y se lleva a falla por incremento de esfuerzo desviador. Se interpretan envolventes y parámetros de resistencia.',
-        proc: 'Se satura y confina la muestra, se aplica la trayectoria de carga, se registran esfuerzos y deformaciones y se graficán resultados.',
+        tituloFLA: 'Ensayo triaxial en suelos',
+        intro: 'El ensayo triaxial permite obtener resistencia y trayectorias de esfuerzo bajo confinamiento controlado.',
+        teorica: 'NTC 2041 / ASTM D 2850 (y variantes drenadas/no drenadas). Unidades: kPa.',
+        proc: 'Saturación, confinamiento, trayectoria de carga y registro de esfuerzos y deformaciones.',
+        materiales: 'Cámara triaxial, sistema de presión, marco de carga.',
         grafica: 'Curvas esfuerzo–deformación / trayectorias del triaxial.',
         canvasId: 'canvas-triaxial'
     }
 };
+
 
 var ENSAYOS_INFORME = {
     humedad: {
@@ -4547,9 +4572,11 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
 
         addHeading('3. Objetivos');
         addParagraph('Objetivo general');
+        var _tObj = (typeof TEXTO_INFORME_ENSAYO !== 'undefined' && TEXTO_INFORME_ENSAYO[tipoEnsayo]) ? TEXTO_INFORME_ENSAYO[tipoEnsayo] : null;
         addParagraph(
             'Aplicar el procedimiento del ensayo «' + metaInf.tituloCorto +
-            '», procesar los datos en GeoMetrics y analizar los resultados con rigor académico, en el marco de la investigación del subsuelo (NSR-10 H.2.1.1.1) y como insumo documental tipo anexo de un estudio geotécnico definitivo (H.2.2.2).'
+            '»' + (_tObj && _tObj.tituloFLA ? (' («' + _tObj.tituloFLA + '» — Guía FLA-23 UniPamplona)') : '') +
+            ', procesar los datos en GeoMetrics y analizar los resultados con rigor académico, en el marco de la investigación del subsuelo (NSR-10 H.2.1.1.1) y como insumo documental tipo anexo de un estudio geotécnico definitivo (H.2.2.2).'
         );
         addParagraph('Objetivos específicos');
         addParagraph('• Registrar las lecturas de laboratorio con unidades coherentes (kPa, °, mm, etc.).');
@@ -4622,11 +4649,15 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
         }
 
         addHeading('5. Materiales y equipos');
-        addParagraph(
-            'Se emplearon los equipos del ensayo «' + metaInf.tituloCorto +
-            '» conforme a la guía de laboratorio o al protocolo del curso (caja de corte, células de carga, calibración de área de muestra, etc., según aplique). ' +
-            'El registro y el cálculo se apoyaron en GeoMetrics.'
-        );
+        if (txtE && txtE.materiales) {
+            addParagraph(txtE.materiales);
+        } else {
+            addParagraph(
+                'Se emplearon los equipos del ensayo «' + metaInf.tituloCorto +
+                '» conforme a la Guía Unificada FLA-23 y al protocolo del curso.'
+            );
+        }
+        addParagraph('El registro de datos y el cálculo se realizaron en la plataforma GeoMetrics.');
 
         addHeading('6. Procedimiento');
         if (txtE && txtE.proc) {
