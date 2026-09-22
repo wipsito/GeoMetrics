@@ -3043,7 +3043,7 @@ function cargarHistorial() {
             '<h4>' + escapeHtml(item.nombre || 'Ensayo') + '</h4>' +
             '<p class="resultado-valor">' + escapeHtml(item.resultado || '') + '</p>' +
             '<div class="resultado-acciones">' +
-            '<button type="button" class="btn-ver-resultado" data-ver-res="' + idAttr + '">Ver datos</button>' +
+            '<button type="button" class="btn-ver-resultado" data-ver-res="' + idAttr + '">Descargar informe</button>' +
             '<button type="button" class="btn-del-resultado" data-del-res="' + idAttr + '">Eliminar</button>' +
             '</div></article>';
     });
@@ -3052,19 +3052,13 @@ function cargarHistorial() {
     container.querySelectorAll('[data-ver-res]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            verDetalleResultado(btn.getAttribute('data-ver-res'));
+            descargarInformeDesdeHistorial(btn.getAttribute('data-ver-res'));
         });
     });
     container.querySelectorAll('[data-del-res]').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
             eliminarResultado(btn.getAttribute('data-del-res'));
-        });
-    });
-    container.querySelectorAll('.resultado-card').forEach(function(card) {
-        card.addEventListener('click', function() {
-            var id = card.getAttribute('data-res-id');
-            if (id) verDetalleResultado(id);
         });
     });
 }
@@ -3094,6 +3088,78 @@ function eliminarResultado(id) {
     historial = historial.filter(function(item) { return item.id !== id; });
     localStorage.setItem(key, JSON.stringify(historial));
     cargarHistorial();
+}
+
+/** Restaura datos del historial y genera el PDF del ensayo */
+function descargarInformeDesdeHistorial(id) {
+    if (!id) return;
+    var key = historialStorageKey();
+    var historial = [];
+    try { historial = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { historial = []; }
+    var item = null;
+    for (var i = 0; i < historial.length; i++) {
+        if (historial[i].id === id) { item = historial[i]; break; }
+    }
+    if (!item) {
+        alert('No se encontró el registro guardado.');
+        return;
+    }
+    var det = item.detalle || {};
+    var tipo = det.tipo || '';
+    // Inferir tipo por nombre si falta
+    if (!tipo && item.nombre) {
+        var n = String(item.nombre).toLowerCase();
+        if (n.indexOf('corte') >= 0) tipo = 'corte';
+        else if (n.indexOf('inconfinad') >= 0) tipo = 'inconfinada';
+        else if (n.indexOf('consolid') >= 0) tipo = 'consolidacion';
+        else if (n.indexOf('triaxial') >= 0) tipo = 'triaxial';
+        else if (n.indexOf('humedad') >= 0) tipo = 'humedad';
+        else if (n.indexOf('granulo') >= 0) tipo = 'granulometria';
+        else if (n.indexOf('atterberg') >= 0 || n.indexOf('límite') >= 0) tipo = 'limites';
+        else if (n.indexOf('gravedad') >= 0) tipo = 'gravedad';
+        else if (n.indexOf('proctor') >= 0 || n.indexOf('compact') >= 0) tipo = 'compactacion';
+        else if (n.indexOf('densidad') >= 0) tipo = 'densidad';
+        else if (n.indexOf('clasific') >= 0) tipo = 'clasificacion';
+        else if (n.indexOf('permeab') >= 0) tipo = 'permeabilidad';
+    }
+    if (!tipo) {
+        alert('Este registro no tiene tipo de ensayo. Vuelve a calcular y pulsa GUARDAR DATOS.');
+        return;
+    }
+
+    var ms2 = { corte: 1, inconfinada: 1, consolidacion: 1, triaxial: 1 };
+    if (ms2[tipo]) {
+        window.__datosEnsayoMS2 = window.__datosEnsayoMS2 || {};
+        if (det.calculados) {
+            window.__datosEnsayoMS2[tipo] = det.calculados;
+        }
+        if (!window.__datosEnsayoMS2[tipo]) {
+            alert('No hay datos calculados guardados para este ensayo. Vuelve a calcularlo y guarda de nuevo.');
+            return;
+        }
+    } else {
+        window.__datosEnsayo = window.__datosEnsayo || {};
+        var keyMap = {
+            humedad: 'h', granulometria: 'g', limites: 'l', gravedad: 'ge',
+            compactacion: 'cp', densidad: 'd', clasificacion: 'c', permeabilidad: 'p'
+        };
+        var k = keyMap[tipo] || tipo;
+        if (det.calculados) {
+            window.__datosEnsayo[k] = det.calculados;
+            // también alias cortos usados por resumenDatosEnsayo
+            window.__datosEnsayo[tipo] = det.calculados;
+        }
+    }
+
+    if (typeof generarInformeEnsayoPDF !== 'function') {
+        alert('No se pudo generar el informe (función no disponible).');
+        return;
+    }
+    try {
+        generarInformeEnsayoPDF(tipo);
+    } catch (err) {
+        alert('Error al generar el PDF: ' + (err.message || err));
+    }
 }
 
 function verDetalleResultado(id) {
@@ -4658,6 +4724,9 @@ function guardarDatosEnsayoMS2(tipo) {
     } else if (tipo === 'consolidacion') {
         nombre = 'Consolidación (Suelos II)';
         resultado = 'Cc = ' + d.Cc.toFixed(3) + (d.Cv != null ? (' · Cv = ' + d.Cv.toFixed(3) + ' mm²/min') : '') + ' · σ\'p ≈ ' + d.pc.toFixed(1) + ' kPa';
+    } else if (tipo === 'triaxial') {
+        nombre = 'Triaxial (Suelos II)';
+        resultado = (d.resumen || d.texto || 'Ensayo triaxial calculado');
     }
     if (typeof guardarResultado === 'function') {
         guardarResultado(nombre, resultado, { tipo: tipo, calculados: d });
