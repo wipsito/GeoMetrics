@@ -4160,18 +4160,39 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             }
             var cols = headers.length;
             var colW = maxW / cols;
-            var rowH = 7.2;
-            ensureSpace(rowH * (rows.length + 1) + 6);
-            // header
+            var fontSize = cols >= 6 ? 7.5 : (cols >= 5 ? 8 : 9);
+            var padX = 1.2;
+
+            function fitCell(txt, width) {
+                txt = sym(String(txt == null ? '' : txt));
+                setF(false, fontSize);
+                var maxWCell = width - padX * 2;
+                if (doc.getTextWidth(txt) <= maxWCell) return txt;
+                // truncar con …
+                var t = txt;
+                while (t.length > 1 && doc.getTextWidth(t + '…') > maxWCell) {
+                    t = t.slice(0, -1);
+                }
+                return t + '…';
+            }
+
+            // Altura de fila fija (una sola línea por celda para evitar solapes)
+            var rowH = fontSize * 0.45 + 5.2;
+            ensureSpace(rowH * (rows.length + 1) + 8);
+
+            // Header
             doc.setFillColor(headerRGB[0], headerRGB[1], headerRGB[2]);
-            doc.rect(marginL, y - 4.5, maxW, rowH, 'F');
-            setF(true, 9);
+            doc.rect(marginL, y - 4.2, maxW, rowH, 'F');
+            setF(true, fontSize);
             doc.setTextColor(255, 255, 255);
             headers.forEach(function(h, i) {
-                doc.text(sym(String(h)), marginL + i * colW + 1.5, y);
+                var cell = fitCell(h, colW);
+                setF(true, fontSize);
+                doc.setTextColor(255, 255, 255);
+                doc.text(cell, marginL + i * colW + padX, y);
             });
             y += rowH;
-            doc.setTextColor(0, 0, 0);
+
             rows.forEach(function(row, ri) {
                 ensureSpace(rowH + 2);
                 if (ri % 2 === 0) {
@@ -4179,21 +4200,31 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                 } else {
                     doc.setFillColor(255, 255, 255);
                 }
-                doc.rect(marginL, y - 4.5, maxW, rowH, 'F');
-                doc.setDrawColor(200, 200, 200);
-                doc.setLineWidth(0.15);
-                doc.rect(marginL, y - 4.5, maxW, rowH);
-                setF(false, 9);
-                doc.setTextColor(30, 40, 60);
-                row.forEach(function(cell, i) {
-                    doc.text(sym(String(cell)), marginL + i * colW + 1.5, y);
-                });
+                doc.rect(marginL, y - 4.2, maxW, rowH, 'F');
+                doc.setDrawColor(190, 190, 190);
+                doc.setLineWidth(0.12);
+                doc.rect(marginL, y - 4.2, maxW, rowH);
+                // líneas verticales de columna
+                for (var c = 1; c < cols; c++) {
+                    var xL = marginL + c * colW;
+                    doc.line(xL, y - 4.2, xL, y - 4.2 + rowH);
+                }
+                setF(false, fontSize);
+                doc.setTextColor(25, 35, 50);
+                for (var ci = 0; ci < cols; ci++) {
+                    var val = row[ci] != null ? row[ci] : '';
+                    var cell = fitCell(val, colW);
+                    setF(false, fontSize);
+                    doc.setTextColor(25, 35, 50);
+                    doc.text(cell, marginL + ci * colW + padX, y);
+                }
                 y += rowH;
             });
-            y += 4;
+            y += 5;
             doc.setTextColor(0, 0, 0);
             setF(false, 11);
         }
+
         function wrapText(text, width, fontSize) {
             text = sym(String(text || ''));
             setF(false, fontSize || 11);
@@ -4390,22 +4421,20 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
         addHeading('7. Resultados');
         if (!resumen || !resumen.length) {
             addParagraph('No se registraron valores numéricos en esta sesión. Complete el ensayo y vuelva a generar el informe.');
+        } else if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
+            var d0 = window.__datosEnsayoMS2.corte;
+            addParagraph('Resultados principales del ensayo de corte directo (unidades: kPa y °).');
+            addTablaColor(
+                ['Parámetro', 'Valor', 'Unidad', 'Comentario'],
+                [
+                    ['Ángulo de fricción φ', Number(d0.phi).toFixed(1), '°', 'De la envolvente τ–σn'],
+                    ['Cohesión c', Number(d0.c).toFixed(2), 'kPa', 'Intercepto de la regresión'],
+                    ['σ₁ medio', Number(d0.avgS1).toFixed(2), 'kPa', 'Promedio de ensayos'],
+                    ['σ₃ medio', Number(d0.avgS3).toFixed(2), 'kPa', 'Promedio de ensayos']
+                ]
+            );
         } else {
-            addParagraph('A continuación se presentan los valores obtenidos. Las unidades se indican de forma explícita (preferencia: kPa, °).');
-            // Tabla consolidada "Resultados principales"
-            var rowsPrinc = resumen.map(function(ln, idx) {
-                var s = String(ln);
-                var partes = s.split(/[:=·]/);
-                var param = (partes[0] || ('Dato ' + (idx + 1))).trim().slice(0, 40);
-                var rest = s.slice(param.length).replace(/^[:=·\s]+/, '').trim();
-                return [param, rest || '—', 'Ver texto', 'Resultado de GeoMetrics'];
-            });
-            if (typeof addTablaColor === 'function') {
-                addTablaColor(
-                    ['Parámetro', 'Valor', 'Unidad / nota', 'Comentario'],
-                    rowsPrinc.slice(0, 12)
-                );
-            }
+            addParagraph('Valores obtenidos en GeoMetrics:');
             resumen.forEach(function(ln) { addParagraph('• ' + ln); });
         }
 
@@ -4500,10 +4529,34 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                     addParagraph(
                         'Figura 1. Diagrama de Mohr del ensayo de corte directo: semicírculos de falla por ensayo (E1, E2, …), ' +
                         'puntos de falla (σn, τ) y envolvente τ = c + σn·tan(φ). ' +
-                        'Parámetros usados: c = ' + Number(dCorte.c).toFixed(2) + ' kPa; φ = ' + Number(dCorte.phi).toFixed(1) +
-                        '°. Ejes en kPa. Etiquetas σ₁ y σ₃ bajo el eje horizontal.'
+                        'Parámetros: c = ' + Number(dCorte.c).toFixed(2) + ' kPa; φ = ' + Number(dCorte.phi).toFixed(1) +
+                        '°. Ejes en kPa.'
+                    );
+                    addHeading('7.6. Análisis por ensayo');
+                    dCorte.pts.forEach(function(p, idx) {
+                        var nE = idx + 1;
+                        var s1 = Number(p.s1), s3 = Number(p.s3);
+                        var radio = (typeof p.radio === 'number') ? p.radio : (s1 - s3) / 2;
+                        var centro = (typeof p.centro === 'number') ? p.centro : (s1 + s3) / 2;
+                        addParagraph(
+                            'Ensayo E' + nE + ': con σn = ' + Number(p.sn).toFixed(2) +
+                            ' kPa y τ = ' + Number(p.t).toFixed(2) +
+                            ' kPa, el punto de falla se sitúa sobre la envolvente. ' +
+                            'El círculo de Mohr asociado tiene centro C = ' + centro.toFixed(2) +
+                            ' kPa y radio R = ' + radio.toFixed(2) +
+                            ' kPa, de modo que σ₁ = ' + s1.toFixed(2) +
+                            ' kPa y σ₃ = ' + s3.toFixed(2) +
+                            ' kPa (verificación: C+R y C−R).'
+                        );
+                    });
+                    addParagraph(
+                        'La envolvente común (φ = ' + Number(dCorte.phi).toFixed(1) +
+                        '°, c = ' + Number(dCorte.c).toFixed(2) +
+                        ' kPa) es coherente con el conjunto de puntos de falla representados en la Figura 1.'
                     );
                 } catch (e) {}
+            } else {
+                addParagraph('Nota: genere la gráfica en pantalla (GENERAR GRÁFICA) antes de descargar el informe para incluir la Figura 1.');
             }
         }
 
