@@ -121,11 +121,26 @@ function inicializarApp() {
         });
     });
 
-    // Ensayos de resistencia de materiales (si existen)
+    // Ensayos y simuladores de Resistencia de Materiales (misma lista)
+    function abrirModuloRM(tipo, modo) {
+        var nombres = {
+            traccion: 'Tracción',
+            compresion: 'Compresión',
+            flexion: 'Flexión',
+            dureza: 'Dureza'
+        };
+        var label = nombres[tipo] || tipo;
+        var que = modo === 'sim' ? 'Simulador' : 'Ensayo';
+        alert(que + ' de ' + label + ' — el panel interactivo de Resistencia de Materiales se está habilitando en GeoMetrics. Usa Civix (Beer y Hibbeler) para reforzar la teoría mientras tanto.');
+    }
     document.querySelectorAll('#rm-ensayos .ensayo-card[data-ensayo]').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            // Placeholder: los formularios RM se pueden ampliar después
-            alert('Ensayo de ' + this.dataset.ensayo + ' — próximamente en el panel.');
+            abrirModuloRM(this.dataset.ensayo, 'ensayo');
+        });
+    });
+    document.querySelectorAll('.btn-abrir-sim-rm[data-ensayo-rm]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            abrirModuloRM(this.dataset.ensayoRm, 'sim');
         });
     });
 
@@ -476,14 +491,59 @@ function civixUid() {
 }
 
 function civixTituloDesdeMensajes(messages) {
+    var raw = '';
     for (var i = 0; i < (messages || []).length; i++) {
         if (messages[i].role === 'user' && messages[i].content) {
-            var t = String(messages[i].content).replace(/\s+/g, ' ').trim();
-            return t.length > 48 ? t.slice(0, 48) + '…' : t;
+            raw = String(messages[i].content).replace(/\s+/g, ' ').trim();
+            break;
         }
     }
-    return 'Nueva conversación';
+    if (!raw) return '✨ Nueva conversación';
+
+    // Quitar instrucciones largas de metodología; quedarse con lo esencial
+    var t = raw
+        .replace(/act[uú]a como docente[\s\S]{0,200}/i, '')
+        .replace(/asignatura\s*:\s*/i, '')
+        .replace(/textos?\s*gu[ií]a[s]?\s*:\s*/i, '')
+        .trim();
+    if (t.length < 8) t = raw;
+
+    var low = t.toLowerCase();
+    var mapa = [
+        { re: /momento\s*flector|flexi[oó]n/, name: '📐 Momento flector' },
+        { re: /esfuerzo\s*cortante|cortante|shear/, name: '✂️ Esfuerzo cortante' },
+        { re: /tracci[oó]n|tensi[oó]n\s*axial/, name: '🔗 Ensayo de tracción' },
+        { re: /compresi[oó]n/, name: '⬇️ Compresión' },
+        { re: /torsión|torsion/, name: '🌀 Torsión' },
+        { re: /m[oó]dulo\s*de\s*elasticidad|young|hooke/, name: '📈 Módulo de elasticidad' },
+        { re: /c[ií]rculo\s*de\s*mohr|mohr/, name: '⭕ Círculo de Mohr' },
+        { re: /corte\s*directo/, name: '🧪 Corte directo' },
+        { re: /consolidaci[oó]n|ed[oó]metro/, name: '📚 Consolidación' },
+        { re: /inconfinad/, name: '🧱 Compresión inconfinada' },
+        { re: /triaxial/, name: '🔬 Triaxial' },
+        { re: /granulometr|curva\s*granul/, name: '📊 Granulometría' },
+        { re: /l[ií]mites?\s*de\s*atterberg|l[ií]mite\s*l[ií]quido|plasticidad/, name: '📏 Límites de Atterberg' },
+        { re: /humedad|contenido\s*de\s*agua/, name: '💧 Contenido de humedad' },
+        { re: /proctor|compactaci[oó]n/, name: '🏗️ Compactación Proctor' },
+        { re: /permeabilidad/, name: '💦 Permeabilidad' },
+        { re: /clasificaci[oó]n\s*de\s*suelos|usc[s]?|aasho/, name: '🗂️ Clasificación de suelos' },
+        { re: /nsr-?10|norma\s*sismo/, name: '📋 NSR-10' },
+        { re: /beer|hibbeler|resistencia\s*de\s*materiales/, name: '📖 Resistencia de materiales' },
+        { re: /das|suelos|geot[eé]cnic/, name: '🌍 Mecánica de suelos' },
+        { re: /python|c[oó]digo|error|debug/, name: '🐛 Corrección de código' },
+        { re: /resuelve|ejercicio|taller|problema/, name: '✏️ Ejercicio guiado' },
+        { re: /explica|qu[eé]\s*es|tema/, name: '🎓 Tutoría de tema' }
+    ];
+    for (var j = 0; j < mapa.length; j++) {
+        if (mapa[j].re.test(low)) return mapa[j].name;
+    }
+    // Título llamativo genérico a partir del prompt
+    var corto = t.replace(/[^\wáéíóúñüÁÉÍÓÚÑÜ\s\-]/gi, '').trim();
+    if (corto.length > 42) corto = corto.slice(0, 42).replace(/\s+\S*$/, '') + '…';
+    if (!corto) corto = 'Consulta Civix';
+    return '💡 ' + corto.charAt(0).toUpperCase() + corto.slice(1);
 }
+
 
 function civixGuardarConversacionActual() {
     if (!chatHistory || !chatHistory.length) return;
@@ -3635,6 +3695,22 @@ function clasificarSueloCorte(c, phi) {
 /** Datos del informe según sesión (estudiante / materia / grupo / docente) */
 
 /** Catálogo de ensayos para informes PDF */
+/** Esquema obligatorio de informes descargables (GeoMetrics) */
+var ESQUEMA_INFORME_ACADEMICO = [
+    { id: 'portada', nombre: 'Portada', desc: 'Institución, logos, título del ensayo, estudiante, código, docente, grupo, asignatura, fecha.' },
+    { id: 'resumen', nombre: 'Resumen', desc: 'Síntesis del objetivo, método y principales resultados (máx. media página).' },
+    { id: 'introduccion', nombre: 'Introducción', desc: 'Contexto del ensayo, importancia en ingeniería civil y alcance del informe.' },
+    { id: 'objetivos', nombre: 'Objetivos', desc: 'Objetivo general y específicos del laboratorio.' },
+    { id: 'marco', nombre: 'Marco teórico', desc: 'Fundamentos y fórmulas según textos guía de la asignatura (sin mezclar materias).' },
+    { id: 'materiales', nombre: 'Materiales y equipos', desc: 'Listado de equipos, instrumentos y muestras utilizadas.' },
+    { id: 'procedimiento', nombre: 'Procedimiento', desc: 'Pasos del ensayo en tiempo pasado, de forma impersonal y reproducible.' },
+    { id: 'resultados', nombre: 'Resultados', desc: 'Datos con unidades, tablas, gráficos y cifras significativas coherentes.' },
+    { id: 'discusion', nombre: 'Discusión', desc: 'Análisis crítico de resultados, fuentes de error y comparación con la teoría.' },
+    { id: 'conclusiones', nombre: 'Conclusiones', desc: 'Hallazgos alineados con objetivos; no introducir datos nuevos.' },
+    { id: 'referencias', nombre: 'Referencias', desc: 'Fuentes autorizadas (guías FLA-23, Beer/Hibbeler, Das, NSR-10 según materia).' },
+    { id: 'anexos', nombre: 'Anexos', desc: 'Cálculos extendidos, capturas de gráficas y datos brutos si aplica.' }
+];
+
 var ENSAYOS_INFORME = {
     humedad: {
         titulo: 'INFORME DE LABORATORIO: ENSAYO DE CONTENIDO DE HUMEDAD',
@@ -3707,7 +3783,29 @@ var ENSAYOS_INFORME = {
         tituloCorto: 'Triaxial',
         materia: 'Mecánica de Suelos II',
         dataKey: 'triaxial'
-    }
+    },
+
+    traccion: {
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE TRACCIÓN',
+        tituloCorto: 'Tracción',
+        materia: 'Resistencia de Materiales'
+    },
+    compresion: {
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE COMPRESIÓN',
+        tituloCorto: 'Compresión',
+        materia: 'Resistencia de Materiales'
+    },
+    flexion: {
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE FLEXIÓN',
+        tituloCorto: 'Flexión',
+        materia: 'Resistencia de Materiales'
+    },
+    dureza: {
+        titulo: 'INFORME DE LABORATORIO: ENSAYO DE DUREZA',
+        tituloCorto: 'Dureza',
+        materia: 'Resistencia de Materiales'
+    },
+
 };
 
 function resumenDatosEnsayo(tipo) {
@@ -4054,21 +4152,54 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
         dibujarMarcoPagina();
         y = marginT + 6;
 
-        addHeading('Introducción');
+        // Esquema académico completo del informe
+        var asig = datosInf.asignatura || metaInf.materia || '';
+        var esRM = /resistencia/i.test(String(metaInf.materia || '') + asig);
+        var fuenteMarco = esRM
+            ? 'Beer, Johnston, DeWolf y Mazurek — Mecánica de materiales; Hibbeler — Mecánica de materiales / Estática.'
+            : 'Guías unificadas de laboratorio FLA-23 (Universidad de Pamplona) y Das — Principles of Geotechnical Engineering, según el ensayo.';
+
+        addHeading('1. Resumen');
         addParagraph(
-            'El presente informe corresponde al ensayo de laboratorio «' + metaInf.tituloCorto +
-            '», desarrollado en el marco de la asignatura ' + (datosInf.asignatura || metaInf.materia) +
-            ' mediante la plataforma GeoMetrics de la Universidad de Pamplona.'
+            'Se presenta el informe del ensayo «' + metaInf.tituloCorto + '» realizado en la asignatura ' +
+            asig + '. Se registran objetivos, fundamentos, procedimiento, resultados numéricos obtenidos en GeoMetrics y conclusiones orientadas al aprendizaje de laboratorio.'
         );
 
-        addHeading('Metodología');
+        addHeading('2. Introducción');
         addParagraph(
-            'Los datos se obtuvieron a partir del procedimiento del ensayo y del cálculo automático en GeoMetrics. ' +
-            'Los resultados se presentan a continuación de forma resumida para su análisis e interpretación.'
+            'El ensayo de laboratorio «' + metaInf.tituloCorto + '» forma parte de la formación en ingeniería civil. ' +
+            'Este documento describe el alcance de la práctica, la base teórica pertinente y los resultados calculados en la plataforma GeoMetrics de la Universidad de Pamplona.'
         );
 
-        addHeading('Resultados');
-        resumen.forEach(function(ln) { addParagraph('• ' + ln); });
+        addHeading('3. Objetivos');
+        addParagraph('Objetivo general: aplicar el procedimiento del ensayo «' + metaInf.tituloCorto + '» y analizar los resultados con rigor académico.');
+        addParagraph('Objetivos específicos: (a) registrar datos de laboratorio con unidades coherentes; (b) aplicar las fórmulas del marco teórico; (c) interpretar los resultados y discutir posibles fuentes de error; (d) formular conclusiones alineadas con los objetivos.');
+
+        addHeading('4. Marco teórico');
+        addParagraph(
+            'Los conceptos y expresiones empleadas se limitan a las fuentes autorizadas de la asignatura. ' + fuenteMarco +
+            ' No se mezclan bibliografías de otras materias. Las fórmulas se aplican con las unidades del Sistema Internacional o las usuales del laboratorio, según el ensayo.'
+        );
+
+        addHeading('5. Materiales y equipos');
+        addParagraph(
+            'Se utilizaron los equipos e instrumentos propios del ensayo «' + metaInf.tituloCorto +
+            '» según la guía de laboratorio o el protocolo del curso. El registro de lecturas y el cálculo se apoyaron en GeoMetrics.'
+        );
+
+        addHeading('6. Procedimiento');
+        addParagraph(
+            'Se siguió el procedimiento estándar del ensayo. Los datos de entrada fueron digitados en GeoMetrics; ' +
+            'el software realizó los cálculos auxiliares. La redacción de esta sección se presenta de forma impersonal y en pasado, como corresponde a un informe de laboratorio.'
+        );
+
+        addHeading('7. Resultados');
+        if (!resumen || !resumen.length) {
+            addParagraph('No se registraron valores numéricos en esta sesión. Complete el ensayo y vuelva a generar el informe.');
+        } else {
+            addParagraph('A continuación se resumen los valores obtenidos (unidades según el ensayo):');
+            resumen.forEach(function(ln) { addParagraph('• ' + ln); });
+        }
 
         // Gráfica solo para corte directo si existe canvas
         if (tipoEnsayo === 'corte') {
@@ -4088,14 +4219,30 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             }
         }
 
-        addHeading('Conclusiones');
-        addParagraph('1. Se registraron los resultados del ensayo ' + metaInf.tituloCorto + ' según el procedimiento de laboratorio.');
-        addParagraph('2. Los valores obtenidos deben contrastarse con la guía oficial y el criterio del docente.');
-        addParagraph('3. Informe generado automáticamente por GeoMetrics para el estudiante ' + (datosInf.estudiante || '') + '.');
+        addHeading('8. Discusión');
+        addParagraph(
+            'Los resultados deben interpretarse a la luz del marco teórico y de las condiciones reales del ensayo ' +
+            '(preparación de la muestra, calibración de equipos y posibles errores de lectura). ' +
+            'Se recomienda contrastar los valores con los rangos esperados en la guía oficial y con el criterio del docente.'
+        );
 
-        addHeading('Referencias');
-        addParagraph('Universidad de Pamplona. Guías unificadas de laboratorio de suelos. Facultad de Ingenierías.');
-        addParagraph('GeoMetrics. (2026). Laboratorio virtual de mecánica de suelos. Universidad de Pamplona.');
+        addHeading('9. Conclusiones');
+        addParagraph('1. Se ejecutó el registro y el análisis del ensayo «' + metaInf.tituloCorto + '» conforme al alcance de la práctica.');
+        addParagraph('2. Los parámetros calculados se presentan en la sección de resultados con sus unidades.');
+        addParagraph('3. La interpretación final y la aceptación de los datos quedan sujetos a la revisión docente y a la guía de la asignatura.');
+
+        addHeading('10. Referencias');
+        if (esRM) {
+            addParagraph('Beer, F. P., Johnston, E. R., DeWolf, J. T. y Mazurek, D. F. Mecánica de materiales.');
+            addParagraph('Hibbeler, R. C. Mecánica de materiales / Estática.');
+        } else {
+            addParagraph('Universidad de Pamplona. Guías unificadas de laboratorio de suelos (FLA-23). Facultad de Ingenierías.');
+            addParagraph('Das, B. M. Principles of Geotechnical Engineering.');
+        }
+        addParagraph('GeoMetrics. (2026). Laboratorio virtual. Universidad de Pamplona — Programa de Ingeniería Civil.');
+
+        addHeading('11. Anexos');
+        addParagraph('Se consideran anexos los datos brutos del ensayo, capturas de gráficas generadas en GeoMetrics y cálculos complementarios que el estudiante o el docente adjunten al expediente del curso.');
 
         // Números de página: solo 1, 2, 3...
         var total = doc.internal.getNumberOfPages();
