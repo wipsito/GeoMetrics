@@ -1944,7 +1944,10 @@ function aulaDetectarIAEntrega(entregaId) {
             : '<p class="ai-muted">Sin coincidencias temáticas con el catálogo de la asignatura.</p>';
 
         var html = '<div class="ai-card">' +
+            '<div class="ai-card-head">' +
             '<h4>Análisis orientativo de IA / similitud</h4>' +
+            '<button type="button" class="btn-cerrar-ai" data-cerrar-ai="' + entregaId + '">Cerrar</button>' +
+            '</div>' +
             '<p class="ai-pct" style="color:' + color + '"><strong>' + r.pct + '%</strong> probabilidad estimada de texto generado o muy asistido por IA</p>' +
             '<p><strong>Nivel:</strong> ' + aulaEsc(r.nivel) + ' · <strong>Palabras analizadas:</strong> ' + (r.palabras || 0) + '</p>' +
             '<p><strong>Indicación de origen:</strong> ' + aulaEsc(r.iaSugerida) + '</p>' +
@@ -1967,6 +1970,15 @@ function aulaDetectarIAEntrega(entregaId) {
         if (box) {
             box.hidden = false;
             box.innerHTML = html;
+            var btnCerrar = box.querySelector('[data-cerrar-ai]');
+            if (btnCerrar) {
+                btnCerrar.addEventListener('click', function(ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    box.hidden = true;
+                    box.innerHTML = '';
+                });
+            }
         } else {
             alert('Probabilidad IA: ' + r.pct + '%\n' + r.iaSugerida + '\n\n' + r.detalle);
         }
@@ -2042,15 +2054,23 @@ function aulaRenderEntregasDocente() {
             '<button type="button" class="btn-calificar-rapido" data-focus-cal="' + e.id + '">' +
             (calificada ? '✎ Corregir nota' : '✓ Calificar') + '</button>' +
             '</div>' +
+            '<div class="calificar-box' + (calificada ? ' calificada' : '') + '" data-cal-box="' + e.id + '" id="cal-box-' + e.id + '" hidden>' +
+            (calificada ? '<p class="estado-calificada">✓ Calificada — Nota: ' + aulaEsc(String(e.nota)) + '</p>' : '<p class="calificar-titulo">Registrar calificación</p>') +
+            '<div class="calificar-row">' +
+            '<label>Nota (0-5)</label>' +
+            '<input type="number" min="0" max="5" step="0.1" class="input-nota" data-nota-id="' + e.id + '" value="' + (calificada ? aulaEsc(String(e.nota)) : '') + '" placeholder="0-5">' +
+            '</div>' +
+            '<div class="calificar-row">' +
+            '<label>Comentario docente</label>' +
+            '<input type="text" class="input-comentario-doc" data-com-id="' + e.id + '" value="' + aulaEsc(e.comentarioDocente || '') + '" placeholder="Retroalimentación">' +
+            '</div>' +
+            '<div class="calificar-acciones-row">' +
+            '<button type="button" class="btn-calcular btn-calificar" data-calificar="' + e.id + '">Guardar calificación</button>' +
+            '<button type="button" class="btn-cerrar-cal" data-cerrar-cal="' + e.id + '">Cerrar</button>' +
+            '</div>' +
+            '</div>' +
             '<div class="ai-detect-result" id="ai-res-' + e.id + '" hidden></div>' +
-            '<div class="calificar-box' + (calificada ? ' calificada' : '') + '" data-cal-box="' + e.id + '">' +
-            (calificada ? '<p class="estado-calificada">✓ Calificada</p>' : '') +
-            '<label>Nota (0-5)</label> <input type="number" min="0" max="5" step="0.1" class="input-nota" data-nota-id="' + e.id + '" value="' + (calificada ? aulaEsc(String(e.nota)) : '') + '" placeholder="0-5"' + (calificada ? ' disabled' : '') + '>' +
-            '<label>Comentario docente</label> <input type="text" class="input-comentario-doc" data-com-id="' + e.id + '" value="' + aulaEsc(e.comentarioDocente || '') + '" placeholder="Retroalimentación"' + (calificada ? ' disabled' : '') + '>' +
-            (calificada
-                ? '<button type="button" class="btn-limpiar btn-corregir-nota" data-corregir="' + e.id + '">Corregir nota</button>'
-                : '<button type="button" class="btn-calcular btn-calificar" data-calificar="' + e.id + '">Guardar calificación</button>') +
-            '</div></div></div>';
+            '</div></div>';
     }).join('');
 
     box.querySelectorAll('[data-calificar]').forEach(function(btn) {
@@ -2147,7 +2167,6 @@ function aulaRenderEntregasDocente() {
             ev.preventDefault();
             ev.stopPropagation();
             var id = btn.getAttribute('data-focus-cal');
-            // Abrir el detalle de la entrega
             var det = document.getElementById('ent-det-' + id);
             var toggle = box.querySelector('[data-toggle-ent="' + id + '"]');
             if (det && det.hidden) {
@@ -2157,36 +2176,33 @@ function aulaRenderEntregasDocente() {
                     toggle.classList.add('open');
                 }
             }
-            var wrap = box.querySelector('[data-cal-box="' + id + '"]');
+            // No tocar el panel de IA ni los botones de acción
+            var ai = document.getElementById('ai-res-' + id);
+            if (ai) { /* se deja como esté */ }
+            var wrap = box.querySelector('[data-cal-box="' + id + '"]') || document.getElementById('cal-box-' + id);
             if (!wrap) return;
-            var notaEl = wrap.querySelector('.input-nota');
-            var comEl = wrap.querySelector('.input-comentario-doc');
-            // Si estaba bloqueada (ya calificada), habilitar edición
-            if (notaEl && notaEl.disabled) {
-                notaEl.disabled = false;
-                if (comEl) comEl.disabled = false;
-                var estado = wrap.querySelector('.estado-calificada');
-                if (estado) estado.textContent = 'Editando calificación…';
-                var corr = wrap.querySelector('[data-corregir]');
-                if (corr) {
-                    corr.textContent = 'Guardar calificación';
-                    corr.className = 'btn-calcular btn-calificar';
-                    corr.removeAttribute('data-corregir');
-                    corr.setAttribute('data-calificar', id);
-                    corr.onclick = function(e2) {
-                        e2.preventDefault();
-                        e2.stopPropagation();
-                        aulaGuardarCalificacion(id, box);
-                    };
-                }
-            }
+            wrap.hidden = false;
             wrap.classList.add('calificar-highlight');
-            try { wrap.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+            var notaEl = wrap.querySelector('.input-nota');
             if (notaEl) {
+                notaEl.disabled = false;
                 notaEl.focus();
                 try { notaEl.select(); } catch (e2) {}
             }
-            setTimeout(function() { wrap.classList.remove('calificar-highlight'); }, 2200);
+            var comEl = wrap.querySelector('.input-comentario-doc');
+            if (comEl) comEl.disabled = false;
+            try { wrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+            setTimeout(function() { wrap.classList.remove('calificar-highlight'); }, 1800);
+        });
+    });
+
+    box.querySelectorAll('[data-cerrar-cal]').forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var id = btn.getAttribute('data-cerrar-cal');
+            var wrap = document.getElementById('cal-box-' + id) || box.querySelector('[data-cal-box="' + id + '"]');
+            if (wrap) wrap.hidden = true;
         });
     });
 }
