@@ -3844,6 +3844,94 @@ var NORMA_ENSAYO_NSR10 = {
     }
 };
 
+/** Textos de informe por ensayo — alineados a prácticas UniPamplona / FLA-23 / NSR-10 H */
+var TEXTO_INFORME_ENSAYO = {
+    humedad: {
+        intro: 'El contenido de humedad natural es una propiedad índice del suelo: relaciona la masa de agua con la masa de sólidos y se expresa en porcentaje. Influye en la cohesión, la compresibilidad y la capacidad de soporte del terreno. Su determinación es un paso básico de la investigación del subsuelo (NSR-10 H.2.1.1.1).',
+        teorica: 'Según ASTM D 2216 / NTC 1495, la muestra se seca en horno a 105–110 °C hasta peso constante. w(%) = (Mw/Ms)×100, donde Mw es la masa de agua evaporada y Ms la masa de sólidos secos.',
+        proc: 'Se pesan recipientes limpios, se registra la masa húmeda, se seca en horno y se registra la masa seca. Se calcula Mw, Ms y w para cada determinación y, si aplica, el promedio de las muestras.',
+        grafica: 'Diagrama de barras del contenido de humedad por determinación (w en %).',
+        canvasId: 'canvas-humedad'
+    },
+    granulometria: {
+        intro: 'El análisis granulométrico describe la distribución de tamaños de partículas del suelo. Afecta permeabilidad, compactación y resistencia. Es base de la clasificación SUCS/AASHTO y de la identificación de unidades de suelo en el estudio geotécnico (H.2.2.2.1-c).',
+        teorica: 'Por tamizado (ASTM D 422 / NTC 1522) se obtiene el porcentaje que pasa cada abertura. La curva granulométrica representa el % que pasa frente al diámetro de partícula (escala logarítmica en el eje de aberturas).',
+        proc: 'Se prepara y seca la muestra, se lava sobre el tamiz N.º 200 si aplica, se tamiza la fracción gruesa, se pesan retenidos y se calculan % retenido, % retenido acumulado y % que pasa. Se grafica la curva granulométrica.',
+        grafica: 'Curva granulométrica: % que pasa vs abertura de tamiz (eje de diámetros en escala log).',
+        canvasId: 'canvas-granulo'
+    },
+    limites: {
+        intro: 'Los límites de Atterberg caracterizan el comportamiento de suelos finos con la humedad: límite líquido (LL), límite plástico (LP) e índice de plasticidad (IP = LL − LP). Son esenciales para clasificar finos (ML, CL, MH, CH, etc.).',
+        teorica: 'Norma ASTM D 4318 / NTC 1493–1494. El LL se obtiene de la curva de fluidez (humedad vs número de golpes). El LP se determina por el método del rollo. El IP indica el rango de plasticidad del suelo.',
+        proc: 'Se preparan pastas a distintas humedades, se registra el número de golpes en la copa de Casagrande, se calcula w de cada punto, se ajusta la curva de fluidez y se determina LL a 25 golpes. Se obtiene LP y se calcula IP.',
+        grafica: 'Curva de fluidez (límite líquido): humedad (%) vs número de golpes (escala log en golpes).',
+        canvasId: 'canvas-limites'
+    },
+    gravedad: {
+        intro: 'La gravedad específica de los sólidos (Gs) es la relación entre la densidad de las partículas sólidas y la del agua. Interviene en las relaciones volumétricas y en el cálculo de porosidad y grados de saturación.',
+        teorica: 'Según ASTM D 854 / NTC 1974 se determina con picnómetro. Gs = Ms / (Ms + Mpw − Mps), con las masas de picnómetro, agua y suelo según el procedimiento normalizado.',
+        proc: 'Se calibra el picnómetro, se introducen suelo y agua, se eliminan aireados, se registran masas y se calcula Gs. Se reporta el valor medio de las determinaciones.',
+        grafica: 'Comparación de valores de Gs por determinación (barras).',
+        canvasId: 'canvas-gravedad'
+    },
+    compactacion: {
+        intro: 'El ensayo Proctor relaciona la humedad de compactación con el peso unitario seco alcanzable bajo una energía de compactación dada. Define la humedad óptima y el γd máximo para control de rellenos.',
+        teorica: 'ASTM D 698 / D 1557 e INVIAS. Se grafica γd frente a w; el vértice de la curva Proctor indica wópt y γd máx.',
+        proc: 'Se compactan puntos a distintas humedades, se determina γh y w, se calcula γd = γh/(1+w) y se traza la curva de compactación.',
+        grafica: 'Curva Proctor: peso unitario seco γd vs humedad w (%).',
+        canvasId: 'canvas-proctor'
+    },
+    densidad: {
+        intro: 'La densidad in situ permite conocer el estado de densificación del terreno en campo (cono de arena, balón o terrón parafinado). Se relaciona con el control de compactación y con γd de laboratorio.',
+        teorica: 'Normas ASTM D 1556 / D 2167 y NTC asociadas. Con la masa y el volumen del hueco (o del terrón) se obtienen γh y, con la humedad, γd.',
+        proc: 'Se ejecuta el método de campo o de parafina, se registran masas y volúmenes, se calcula la densidad húmeda y seca y, si aplica, el grado de compactación respecto al Proctor.',
+        grafica: 'Comparación de densidades húmeda y seca (barras).',
+        canvasId: 'canvas-densidad'
+    },
+    clasificacion: {
+        intro: 'La clasificación SUCS (ASTM D 2487 / NTC 1504) y AASHTO permite identificar el suelo para ingeniería a partir de granulometría y plasticidad, de acuerdo con NSR-10 H.2.5 (cohesivos vs no cohesivos).',
+        teorica: 'Con % que pasa el N.º 200, LL e IP se ubica el suelo en la carta de plasticidad de Casagrande y se asigna el símbolo de grupo (CL, CH, ML, SM, etc.).',
+        proc: 'Se integran resultados de granulometría y límites de Atterberg, se aplica el criterio SUCS/AASHTO y se reporta el símbolo y nombre del grupo.',
+        grafica: 'Carta de plasticidad de Casagrande (IP vs LL) con el punto del suelo clasificado.',
+        canvasId: 'canvas-sucs'
+    },
+    permeabilidad: {
+        intro: 'La permeabilidad (k) cuantifica la capacidad del suelo para conducir agua. Es clave en drenaje, filtraciones y análisis hidráulicos del Título H de la NSR-10.',
+        teorica: 'En laboratorio se emplean permeámetros de carga constante o variable. k se obtiene a partir del caudal, el gradiente hidráulico y las dimensiones de la muestra.',
+        proc: 'Se satura la muestra, se aplica carga hidráulica, se miden caudales o tiempos de descenso y se calcula k. Se reporta el valor representativo y las condiciones del ensayo.',
+        grafica: 'Relación caudal–gradiente o k por ensayo (barras / puntos).',
+        canvasId: 'canvas-perm'
+    },
+    corte: {
+        intro: 'El ensayo de corte directo determina parámetros de resistencia al corte c y φ (criterio de Mohr–Coulomb), insumos del análisis geotécnico y de la investigación del subsuelo (NSR-10 H.2.1, H.2.4). Norma de referencia: NTC 1917 / ASTM D 3080.',
+        teorica: 'τ = c + σn·tan(φ). Con varios niveles de σn se ajusta la envolvente. Los círculos de Mohr se construyen con R = (σ₁−σ₃)/2 y C = (σ₁+σ₃)/2.',
+        proc: 'Se monta la muestra, se aplica esfuerzo normal, se corta a velocidad controlada, se registra τ de falla, se regresiona la envolvente y se grafican Mohr y τ–σn.',
+        grafica: 'Envolvente τ–σn y círculos de Mohr (ejes en kPa).',
+        canvasId: 'canvas-corte'
+    },
+    inconfinada: {
+        intro: 'La compresión inconfinada estima la resistencia no drenada de suelos cohesivos (qu, cu ≈ qu/2). Referencia: ASTM D 2166.',
+        teorica: 'Se aplica carga axial sin confinar lateralmente. qu es el esfuerzo máximo; cu se interpreta como resistencia no drenada Su en condiciones no drenadas.',
+        proc: 'Se prepara la probeta, se carga hasta falla, se registra la curva esfuerzo–deformación y se calcula qu y cu.',
+        grafica: 'Curva esfuerzo–deformación axial de la compresión inconfinada.',
+        canvasId: 'canvas-inconf'
+    },
+    consolidacion: {
+        intro: 'La consolidación unidimensional aporta parámetros de compresibilidad (Cc, Cr, σ′p) para estimar asentamientos. Referencia: NTC 1967 / ASTM D 2435.',
+        teorica: 'Se aplica carga por incrementos en el edómetro y se registra la deformación. La curva e–logσ′ permite obtener el índice de compresión y la presión de preconsolidación.',
+        proc: 'Se monta la muestra, se aplican escalones de carga, se miden deformaciones y se construye la curva de consolidación.',
+        grafica: 'Curva de consolidación (relación de vacíos o deformación vs log σ′).',
+        canvasId: 'canvas-consol'
+    },
+    triaxial: {
+        intro: 'El ensayo triaxial permite obtener resistencia y trayectorias de esfuerzo en condiciones controladas de drenaje. Referencias: NTC 2041 / ASTM D 2850.',
+        teorica: 'Se confina la probeta y se lleva a falla por incremento de esfuerzo desviador. Se interpretan envolventes y parámetros de resistencia.',
+        proc: 'Se satura y confina la muestra, se aplica la trayectoria de carga, se registran esfuerzos y deformaciones y se graficán resultados.',
+        grafica: 'Curvas esfuerzo–deformación / trayectorias del triaxial.',
+        canvasId: 'canvas-triaxial'
+    }
+};
+
 var ENSAYOS_INFORME = {
     humedad: {
         titulo: 'INFORME DE LABORATORIO: ENSAYO DE CONTENIDO DE HUMEDAD',
@@ -4440,12 +4528,21 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             'y se formulan conclusiones alineadas con los objetivos del laboratorio.'
         );
 
+        var txtE = (typeof TEXTO_INFORME_ENSAYO !== 'undefined' && TEXTO_INFORME_ENSAYO[tipoEnsayo])
+            ? TEXTO_INFORME_ENSAYO[tipoEnsayo] : null;
+
         addHeading('2. Introducción');
+        if (txtE && txtE.intro) {
+            addParagraph(txtE.intro);
+        } else {
+            addParagraph(
+                'El ensayo «' + metaInf.tituloCorto + '» constituye una práctica esencial en la formación del ingeniero civil. ' +
+                'El presente documento se elabora de forma impersonal, con redacción en pasado en el procedimiento y en presente en el marco teórico.'
+            );
+        }
         addParagraph(
-            'El ensayo «' + metaInf.tituloCorto + '» constituye una práctica esencial en la formación del ingeniero civil. ' +
-            'Permite relacionar el comportamiento del material (suelo o sólido) con parámetros de diseño y con el criterio de falla correspondiente. ' +
-            'El presente documento se elabora de forma impersonal, con redacción en pasado en el procedimiento y en presente en el marco teórico, ' +
-            'siguiendo buenas prácticas de comunicación científica en ingeniería.'
+            'Este informe corresponde específicamente al ensayo «' + metaInf.tituloCorto +
+            '» y no generaliza resultados de otros ensayos de la asignatura.'
         );
 
         addHeading('3. Objetivos');
@@ -4499,7 +4596,10 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             addParagraph('Aplicar la norma NTC/ASTM correspondiente al ensayo según NSR-10 H.2.6 y las especificaciones INVIAS del proyecto.');
         }
 
-        addHeading('4.3. Fundamentos del ensayo');
+        addHeading('4.3. Fundamentos del ensayo «' + metaInf.tituloCorto + '»');
+        if (txtE && txtE.teorica) {
+            addParagraph(txtE.teorica);
+        }
         addParagraph(
             'Los fundamentos de cálculo se limitan a las fuentes autorizadas de la asignatura y a las normas citadas. ' + fuenteMarco
         );
@@ -4529,11 +4629,12 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
         );
 
         addHeading('6. Procedimiento');
+        if (txtE && txtE.proc) {
+            addParagraph(txtE.proc);
+        }
         addParagraph(
-            'Se ejecutó el procedimiento estándar del ensayo. Las lecturas se digitaron en GeoMetrics; el software realizó los cálculos auxiliares. ' +
-            'Secuencia general: (1) preparación y montaje de la muestra; (2) aplicación de niveles de esfuerzo o carga según el protocolo; ' +
-            '(3) registro de lecturas hasta la condición de falla o el criterio de terminación; (4) procesamiento de datos y generación de gráficas; ' +
-            '(5) elaboración del presente informe.'
+            'Las lecturas se digitaron en GeoMetrics; el software realizó los cálculos auxiliares y, cuando correspondió, la gráfica del ensayo. ' +
+            'La redacción del procedimiento se presenta en pasado y de forma impersonal.'
         );
 
         addHeading('7. Resultados');
@@ -4675,6 +4776,38 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                 } catch (e) {}
             } else {
                 addParagraph('Nota: genere la gráfica en pantalla (GENERAR GRÁFICA) antes de descargar el informe para incluir la Figura 1.');
+            }
+        }
+
+        // Figura del ensayo (canvas de pantalla) — Suelos I y otros
+        if (tipoEnsayo !== 'corte') {
+            var tFig = (typeof TEXTO_INFORME_ENSAYO !== 'undefined') ? TEXTO_INFORME_ENSAYO[tipoEnsayo] : null;
+            var cid = tFig && tFig.canvasId ? tFig.canvasId : null;
+            var canvasO = cid ? document.getElementById(cid) : null;
+            if (canvasO) {
+                try {
+                    var imgO = canvasO.toDataURL('image/png');
+                    var imgWo = maxW;
+                    var imgHo = (canvasO.height / canvasO.width) * imgWo;
+                    if (imgHo > 100) { imgHo = 100; imgWo = (canvasO.width / canvasO.height) * imgHo; }
+                    ensureSpace(imgHo + 28);
+                    addHeading('7.5. Figura del ensayo');
+                    doc.addImage(imgO, 'PNG', marginL, y, imgWo, imgHo);
+                    y += imgHo + 4;
+                    addParagraph(
+                        'Figura 1. ' + (tFig && tFig.grafica ? tFig.grafica : ('Gráfica del ensayo «' + metaInf.tituloCorto + '».')) +
+                        ' Generada en GeoMetrics a partir de los datos del ensayo.'
+                    );
+                    addParagraph(
+                        'Análisis: la figura resume el comportamiento medido en este ensayo. ' +
+                        'Los valores numéricos de la sección de resultados deben interpretarse junto con esta gráfica y las normas citadas (NTC/ASTM/INVIAS / NSR-10 H).'
+                    );
+                } catch (eFig) {}
+            } else if (tFig) {
+                addParagraph(
+                    'Nota: para incluir la Figura 1, pulse GENERAR GRÁFICA en el ensayo «' + metaInf.tituloCorto +
+                    '» antes de descargar el informe. Gráfica esperada: ' + (tFig.grafica || 'según el ensayo') + '.'
+                );
             }
         }
 
