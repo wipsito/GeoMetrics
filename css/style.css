@@ -4560,3 +4560,18 @@ div.ai-detect-result[hidden] {
   gap: 12px;
   margin-bottom: 14px;
 }
+
+#panel-ensayo-rm,
+#panel-sim-rm {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+}
+#panel-ensayo-rm[style*="none"],
+#panel-sim-rm[style*="none"] {
+  display: none !important;
+}
+.rm-machine-canvas {
+  min-height: 280px;
+  background: #0f172a !important;
+}
