@@ -809,7 +809,6 @@ function normalizarRespuestaIA(texto) {
     if (!texto) return '';
     var s = String(texto);
 
-    // Convertir bloques LaTeX a fórmula legible destacada
     s = s.replace(/\$\$([\s\S]+?)\$\$/g, function(_, math) {
         return '\n\n⟦' + latexATextoLegible(math) + '⟧\n\n';
     });
@@ -822,50 +821,130 @@ function normalizarRespuestaIA(texto) {
     s = s.replace(/\$([^\$\n]+?)\$/g, function(_, math) {
         return latexATextoLegible(math);
     });
-    // Comandos LaTeX sueltos frecuentes
-    s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)');
-    s = s.replace(/\\sigma/g, 'σ').replace(/\\tau/g, 'τ').replace(/\\phi/g, 'φ');
-    s = s.replace(/\\gamma/g, 'γ').replace(/\\delta/g, 'δ').replace(/\\theta/g, 'θ');
-    s = s.replace(/\\alpha/g, 'α').replace(/\\beta/g, 'β').replace(/\\pi/g, 'π');
-    s = s.replace(/\\varepsilon/g, 'ε').replace(/\\epsilon/g, 'ε').replace(/\\rho/g, 'ρ');
-    s = s.replace(/\\omega/g, 'ω').replace(/\\mu/g, 'μ').replace(/\\lambda/g, 'λ');
-    s = s.replace(/\\cdot/g, '·').replace(/\\times/g, '×').replace(/\\div/g, '÷');
-    s = s.replace(/\\leq/g, '≤').replace(/\\geq/g, '≥').replace(/\\neq/g, '≠');
-    s = s.replace(/\\approx/g, '≈').replace(/\\pm/g, '±').replace(/\\infty/g, '∞');
-    s = s.replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
-    s = s.replace(/\\text\{([^}]+)\}/g, '$1').replace(/\\mathrm\{([^}]+)\}/g, '$1');
-    s = s.replace(/\\left|\\right/g, '');
-    s = s.replace(/\\,/g, ' ').replace(/\\;/g, ' ').replace(/\\!/g, '');
-    s = s.replace(/\\%/g, '%').replace(/\\_/g, '_');
-    s = s.replace(/\{([^{}]+)\}/g, '$1');
-    // Limpiar "Versión legible:" redundante si ya convertimos
+
+    s = latexATextoLegible(s);
+
+    // Potencias frecuentes en vigas
+    s = s.replace(/\bh\s*[³3]\b/g, 'h³');
+    s = s.replace(/\by\s*[²2]\b/g, 'y²');
+    s = s.replace(/\bb\s*[·\*x]?\s*h³/gi, 'b · h³');
+    s = s.replace(/\(b\s*[·\*]?\s*h3\)/gi, '(b · h³)');
+    s = s.replace(/0\.63(?=\))/g, '0.6³'); // si vino mal 0.63 por h3
+
+    // d2v/dx2 → d²v/dx²
+    s = s.replace(/\bd2v\b/g, 'd²v').replace(/\bdx2\b/g, 'dx²');
+    s = s.replace(/\(d2v\)\/\(dx2\)/g, 'd²v/dx²');
+    s = s.replace(/\(d²v\)\/\(dx²\)/g, 'd²v/dx²');
+
     s = s.replace(/\n{3,}/g, '\n\n');
-    return s;
+    return s.trim();
 }
 
 function latexATextoLegible(math) {
     if (!math) return '';
     var s = String(math);
-    s = s.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)');
-    s = s.replace(/\\sigma/g, 'σ').replace(/\\tau/g, 'τ').replace(/\\phi/g, 'φ');
-    s = s.replace(/\\gamma/g, 'γ').replace(/\\delta/g, 'δ').replace(/\\theta/g, 'θ');
-    s = s.replace(/\\alpha/g, 'α').replace(/\\beta/g, 'β').replace(/\\pi/g, 'π');
-    s = s.replace(/\\varepsilon/g, 'ε').replace(/\\epsilon/g, 'ε').replace(/\\rho/g, 'ρ');
-    s = s.replace(/\\cdot/g, '·').replace(/\\times/g, '×').replace(/\\div/g, '÷');
-    s = s.replace(/\\leq/g, '≤').replace(/\\geq/g, '≥').replace(/\\neq/g, '≠');
-    s = s.replace(/\\approx/g, '≈').replace(/\\pm/g, '±');
-    s = s.replace(/\\sqrt\{([^}]+)\}/g, '√($1)');
-    s = s.replace(/\\left|\\right/g, '');
-    s = s.replace(/\\,/g, ' ').replace(/\\;/g, ' ').replace(/\\!/g, '');
-    s = s.replace(/\\text\{([^}]+)\}/g, '$1');
-    s = s.replace(/\\mathrm\{([^}]+)\}/g, '$1');
-    s = s.replace(/[_^]\{([^}]+)\}/g, '$1');
-    s = s.replace(/[_^]([A-Za-z0-9])/g, '$1');
+
+    // Comandos pegados a letra: \mathbfM, \mathbfr
+    s = s.replace(/\\mathbf\{([^}]*)\}/g, '$1');
+    s = s.replace(/\\mathbf([A-Za-z])/g, '$1');
+    s = s.replace(/\\mathrm\{([^}]*)\}/g, '$1');
+    s = s.replace(/\\mathrm([A-Za-z])/g, '$1');
+    s = s.replace(/\\boldsymbol\{([^}]*)\}/g, '$1');
+    s = s.replace(/\\text\{([^}]*)\}/g, '$1');
+    s = s.replace(/\\operatorname\{([^}]*)\}/g, '$1');
+
+    // Fracciones con llaves
+    for (var k = 0; k < 3; k++) {
+        s = s.replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '($1)/($2)');
+        s = s.replace(/\\dfrac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '($1)/($2)');
+    }
+    // Fracción rota: quitar \frac y unir miles tipo 10 000
+    s = s.replace(/\\frac\s*([0-9]+)\s+([0-9]{3})/g, '$1 $2');
+    s = s.replace(/\\frac\s*/g, '');
+    s = s.replace(/sinθ/g, 'sin(θ)');
+    s = s.replace(/\brFsin\(/g, 'r · F · sin(');
+    s = s.replace(/\brF\s*sin/g, 'r · F · sin');
+    s = s.replace(/\bm4\b/g, 'm⁴');
+    s = s.replace(/\bm3\b/g, 'm³');
+
+    // Integrales
+    s = s.replace(/\\int_\{([^}]*)\}\^\{([^}]*)\}/g, '∫_$1^$2 ');
+    s = s.replace(/\\int_\{([^}]*)\}/g, '∫_$1 ');
+    s = s.replace(/\\int\s*([A-Za-z])/g, '∫_$1 ');
+    s = s.replace(/\\int\b/g, '∫ ');
+
+    // Subíndices max/min
+    s = s.replace(/\\max\b/g, 'max');
+    s = s.replace(/\\min\b/g, 'min');
+    s = s.replace(/([A-Za-zστανφμ])\\max\b/g, '$1_max');
+    s = s.replace(/([A-Za-zστανφμ])_?max\b/g, '$1_max');
+    s = s.replace(/([A-Za-zστανφμ])max\b/g, '$1_max');
+
+    // Símbolos griegos y operadores
+    var greeks = [
+        ['\\varepsilon', 'ε'], ['\\epsilon', 'ε'], ['\\vartheta', 'ϑ'],
+        ['\\sigma', 'σ'], ['\\tau', 'τ'], ['\\phi', 'φ'], ['\\varphi', 'φ'],
+        ['\\gamma', 'γ'], ['\\delta', 'δ'], ['\\theta', 'θ'],
+        ['\\alpha', 'α'], ['\\beta', 'β'], ['\\pi', 'π'],
+        ['\\rho', 'ρ'], ['\\omega', 'ω'], ['\\mu', 'μ'], ['\\lambda', 'λ'],
+        ['\\nu', 'ν'], ['\\xi', 'ξ'], ['\\eta', 'η'], ['\\kappa', 'κ']
+    ];
+    greeks.forEach(function(p) {
+        s = s.split(p[0]).join(p[1]);
+    });
+
+    s = s.replace(/\\partial/g, '∂');
+    s = s.replace(/\\infty/g, '∞');
+    s = s.replace(/\\sum/g, 'Σ');
+    s = s.replace(/\\sqrt\{([^}]*)\}/g, '√($1)');
+    s = s.replace(/\\sqrt/g, '√');
+    s = s.replace(/\\cdot/g, '·');
+    s = s.replace(/\\times/g, '×');
+    s = s.replace(/\\div/g, '÷');
+    s = s.replace(/\\leq/g, '≤');
+    s = s.replace(/\\geq/g, '≥');
+    s = s.replace(/\\neq/g, '≠');
+    s = s.replace(/\\approx/g, '≈');
+    s = s.replace(/\\pm/g, '±');
+    s = s.replace(/\\rightarrow/g, '→');
+    s = s.replace(/\\Rightarrow/g, '⇒');
+    s = s.replace(/\\to\b/g, '→');
+    s = s.replace(/\\sin/g, 'sin');
+    s = s.replace(/\\cos/g, 'cos');
+    s = s.replace(/\\tan/g, 'tan');
+    s = s.replace(/\\log/g, 'log');
+    s = s.replace(/\\ln/g, 'ln');
+    s = s.replace(/\\left/g, '');
+    s = s.replace(/\\right/g, '');
+    s = s.replace(/\\,/g, ' ');
+    s = s.replace(/\\;/g, ' ');
+    s = s.replace(/\\!/g, '');
+    s = s.replace(/\\:/g, ' ');
+    s = s.replace(/\\%/g, '%');
+    s = s.replace(/\\_/g, '_');
+    s = s.replace(/\\\s/g, ' ');
+
+    s = s.replace(/\^\{([^}]*)\}/g, '^$1');
+    s = s.replace(/_\{([^}]*)\}/g, '_$1');
+
+    // Quitar comandos LaTeX restantes \algo
+    s = s.replace(/\\[a-zA-Z]+/g, '');
+    // Llaves sobrantes
     s = s.replace(/[{}]/g, '');
-    s = s.replace(/\\\\/g, ' ');
-    s = s.replace(/\s+/g, ' ').trim();
+
+    // Limpiar "mathbf" "mathrm" si quedaron sin barra
+    s = s.replace(/\bmathbf\b/g, '');
+    s = s.replace(/\bmathrm\b/g, '');
+    s = s.replace(/\bboldsymbol\b/g, '');
+
+    // Espacios en × y ·
+    s = s.replace(/\s*×\s*/g, ' × ');
+    s = s.replace(/\s*·\s*/g, ' · ');
+    s = s.replace(/ {2,}/g, ' ');
+
     return s;
 }
+
 
 function formatearMensaje(texto) {
     if (!texto) return '';
@@ -1106,6 +1185,7 @@ function civixMarkdownAHtml(texto) {
 function agregarMensajeBotConDescargas(texto) {
     var chatMensajes = document.getElementById('chatMensajes');
     if (!chatMensajes) return;
+    texto = normalizarRespuestaIA(texto);
     var div = document.createElement('div');
     div.className = 'mensaje mensaje-bot mensaje-bot-rich';
 
