@@ -4435,18 +4435,21 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                     addParagraph('  Centro = (σ₁ + σ₃)/2 = (' + s1.toFixed(3) + ' + ' + s3.toFixed(3) + ')/2 = ' + centro.toFixed(3) + ' kPa');
                 });
 
-                addHeading('7.2. Tabla de esfuerzos principales, radio y centro (kPa)');
-                var headersM = ['Ensayo', 'σ₁ (kPa)', 'σ₃ (kPa)', 'Radio R (kPa)', 'Centro C (kPa)'];
+                addHeading('7.2. Tabla de esfuerzos principales, radio y centro');
+                addParagraph('Unidades: kPa en todas las columnas de esfuerzo. Verificación: σ₁ = C + R y σ₃ = C − R.');
+                var headersM = ['Ensayo', 'σ₁', 'σ₃', 'R', 'C', 'C+R', 'C−R'];
                 var rowsM = dCorte.pts.map(function(p, idx) {
                     var s1 = Number(p.s1), s3 = Number(p.s3);
                     var radio = (typeof p.radio === 'number') ? p.radio : (s1 - s3) / 2;
                     var centro = (typeof p.centro === 'number') ? p.centro : (s1 + s3) / 2;
                     return [
                         'E' + (idx + 1),
-                        s1.toFixed(3),
-                        s3.toFixed(3),
-                        radio.toFixed(3),
-                        centro.toFixed(3)
+                        s1.toFixed(2),
+                        s3.toFixed(2),
+                        radio.toFixed(2),
+                        centro.toFixed(2),
+                        (centro + radio).toFixed(2),
+                        (centro - radio).toFixed(2)
                     ];
                 });
                 // Color aleatorio distinto por tabla y por cada generación de informe
@@ -4455,9 +4458,11 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                 if (pal2.h.join() === pal1.h.join()) pal2 = colorAleatorioTabla();
                 if (pal3.h.join() === pal1.h.join() || pal3.h.join() === pal2.h.join()) pal3 = colorAleatorioTabla();
                 addTablaColor(headersM, rowsM, pal1.h, pal1.b);
+                addParagraph('Nota: columnas σ₁, σ₃, R, C, C+R y C−R en kPa. C+R y C−R deben coincidir con σ₁ y σ₃ (redondeo a 2 decimales).');
 
-                addHeading('7.3. Tabla de datos de falla (σn, τ en kPa)');
+                addHeading('7.3. Tabla de datos de falla');
                 var headersT = ['Ensayo', 'σn (kPa)', 'τ (kPa)', 'c_i (kPa)'];
+                addParagraph('Unidades uniformes: kPa.');
                 var rowsT = dCorte.pts.map(function(p, idx) {
                     return [
                         'E' + (idx + 1),
@@ -4515,9 +4520,26 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
         addParagraph('• Lectura de la falla (pico vs residual): documentar el criterio usado (pico, residual o ambos).');
         addParagraph('• Digitaciones y redondeos en GeoMetrics: contrastar los valores del informe con la pantalla de resultados del ensayo.');
         addParagraph(
-            'Mitigación en ensayos futuros: protocolos de calibración, series repetidas, control de humedad y densidad, ' +
-            'y registro fotográfico o de gráficas generadas en el momento del ensayo.'
+            'Mitigación: calibración previa, series repetidas (mínimo 3 repeticiones por nivel cuando sea posible), ' +
+            'control de humedad y densidad, y archivo de la gráfica generada en el momento del ensayo.'
         );
+        addHeading('8.1.1. Estimación orientativa de incertidumbre');
+        addParagraph('Valores indicativos de orden de magnitud (no sustituyen un análisis estadístico formal):');
+        addParagraph('• σ₁: ±5 % del valor reportado.');
+        addParagraph('• σ₃: ±5 % del valor reportado.');
+        addParagraph('• φ: ±1,5 °.');
+        addParagraph('• c: ±0,5 kPa (o ±5 % si c es elevado).');
+        if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
+            var dcu = window.__datosEnsayoMS2.corte;
+            var s1m = Number(dcu.avgS1) || 0;
+            var s3m = Number(dcu.avgS3) || 0;
+            addParagraph(
+                'Ejemplo con los promedios de este ensayo: σ₁ ≈ ' + s1m.toFixed(1) +
+                ' kPa (±' + (0.05 * s1m).toFixed(1) + ' kPa); σ₃ ≈ ' + s3m.toFixed(1) +
+                ' kPa (±' + (0.05 * s3m).toFixed(1) + ' kPa); φ = ' + Number(dcu.phi).toFixed(1) +
+                ' ° (±1,5 °); c = ' + Number(dcu.c).toFixed(2) + ' kPa (±0,5 kPa).'
+            );
+        }
         if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
             var dc = window.__datosEnsayoMS2.corte;
             var clasTxt = '';
@@ -4531,12 +4553,14 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                 (clasTxt ? ('Clasificación orientativa del suelo: ' + clasTxt + ' ') : '') +
                 'La comparación definitiva debe hacerse con la guía FLA-23 y el criterio del docente.'
             );
-            addHeading('8.2. Comparación orientativa con rangos de referencia');
+            addHeading('8.2. Rangos orientativos de φ y c (referencia didáctica tipo FLA-23 / literatura)');
+            addParagraph('Tabla de apoyo para comparación; los rangos exactos deben confirmarse en la edición de la guía entregada por el docente.');
             addTablaColor(
-                ['Parámetro', 'Valor obtenido', 'Rango orientativo', 'Comentario'],
+                ['Tipo de suelo', 'φ (°)', 'c (kPa)', 'Valor ensayo'],
                 [
-                    ['φ (°)', Number(dc.phi).toFixed(1), '≈ 28–40 (granular)', 'Depende de densidad y granulometría'],
-                    ['c (kPa)', Number(dc.c).toFixed(2), '≈ 0–25 (según finos)', 'Valores altos sugieren cohesión o finos']
+                    ['Arena granular', '28–40', '0–5', 'φ=' + Number(dc.phi).toFixed(1) + ' · c=' + Number(dc.c).toFixed(2)],
+                    ['Arena limosa', '20–35', '5–25', 'φ=' + Number(dc.phi).toFixed(1) + ' · c=' + Number(dc.c).toFixed(2)],
+                    ['Suelo compacto / mixto', '30–45', '10–30', 'φ=' + Number(dc.phi).toFixed(1) + ' · c=' + Number(dc.c).toFixed(2)]
                 ]
             );
         } else {
@@ -4561,22 +4585,22 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             addParagraph('3. Las ecuaciones aplicadas son coherentes con el marco teórico citado y con el procedimiento del laboratorio.');
         }
         addParagraph('4. La interpretación está sujeta a limitaciones experimentales (tamaño de muestra, velocidad de ensayo, calibración) y a la revisión docente.');
-        addParagraph('5. Se recomienda en el futuro: series repetidas, control estricto de calibración y contrastar φ y c con la sección de corte directo de la guía FLA-23.');
+        addParagraph('5. Para futuros ensayos se recomienda repetir cada prueba al menos 3 veces, promediar los resultados, documentar la calibración y contrastar φ y c con la sección de corte directo de la guía FLA-23.');
 
         addHeading('10. Referencias');
         if (esRM) {
             addParagraph('[1] Beer, F. P., Johnston, E. R., DeWolf, J. T. y Mazurek, D. F. (s. f.). Mecánica de materiales.');
             addParagraph('[2] Hibbeler, R. C. (s. f.). Mecánica de materiales / Estática.');
         } else {
-            addParagraph('[1] Universidad de Pamplona. (s. f.). Guía unificada de laboratorio FLA-23: Ensayo de corte directo. Facultad de Ingenierías, Programa de Ingeniería Civil. (Consultar el apartado de procedimiento y análisis de resultados en la guía oficial del curso; numeración de páginas según la edición entregada por el docente).');
-            addParagraph('[2] Das, B. M. (s. f.). Principles of Geotechnical Engineering. Capítulos de resistencia al corte y criterios de falla.');
+            addParagraph('[1] Universidad de Pamplona. (s. f.). Guía unificada de laboratorio FLA-23: Ensayo de corte directo. Facultad de Ingenierías, Programa de Ingeniería Civil. Apartados de procedimiento, datos y análisis (consultar páginas de la edición del curso; orientativamente el bloque de corte directo suele ubicarse en las primeras secciones de la guía unificada).');
+            addParagraph('[2] Das, B. M. (s. f.). Principles of Geotechnical Engineering. Capítulos de resistencia al corte y criterios de falla (Mohr–Coulomb).');
         }
         addParagraph('[3] GeoMetrics. (2026). Laboratorio virtual. Universidad de Pamplona — Programa de Ingeniería Civil.');
 
         addHeading('11. Anexos');
-        addParagraph('Anexo A. Datos brutos y lecturas del ensayo registradas en GeoMetrics.');
-        addParagraph('Anexo B. Gráficas generadas (envolvente, círculos de Mohr u otras según el ensayo).');
-        addParagraph('Anexo C. Cálculos complementarios o capturas que el estudiante o el docente adjunten al expediente del curso.');
+        addParagraph('Anexo A. Datos brutos y lecturas del ensayo registradas en GeoMetrics (exportables por el estudiante en formato .csv o .txt: columnas ensayo, σn_kPa, τ_kPa, σ1_kPa, σ3_kPa, R_kPa, C_kPa).');
+        addParagraph('Anexo B. Gráfica de envolvente y círculos de Mohr (Figura 1 de este informe), con leyenda de φ y c.');
+        addParagraph('Anexo C. Cálculos complementarios, capturas de pantalla o archivos adicionales que el estudiante o el docente adjunten al expediente del curso.');
 
         // Encabezado y pie en páginas del cuerpo (no portada = página 1)
         var total = doc.internal.getNumberOfPages();
