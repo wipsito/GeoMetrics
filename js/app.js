@@ -4812,86 +4812,111 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
         }
 
         addHeading('8. Discusión');
-        addParagraph(
-            'Los resultados se interpretan a la luz del marco teórico y de las condiciones del ensayo. ' +
-            'A continuación se amplían las fuentes de incertidumbre y la comparación con rangos de referencia.'
-        );
-        addHeading('8.1. Fuentes de error y mitigación');
-        addParagraph('• Calibración de la celda de carga o de los transductores: verificar cero y escala antes del ensayo.');
-        addParagraph('• Preparación de la muestra (densidad, humedad, homogeneidad): estandarizar el compactado y el tallado.');
-        addParagraph('• Área de la caja de corte y cálculo de σn: medir con precisión y usar A en m² de forma consistente.');
-        addParagraph('• Velocidad de corrimiento / tiempo de carga: seguir la velocidad recomendada en la guía para el tipo de suelo.');
-        addParagraph('• Lectura de la falla (pico vs residual): documentar el criterio usado (pico, residual o ambos).');
-        addParagraph('• Digitaciones y redondeos en GeoMetrics: contrastar los valores del informe con la pantalla de resultados del ensayo.');
-        addParagraph(
-            'Mitigación: calibración previa, series repetidas (mínimo 3 repeticiones por nivel cuando sea posible), ' +
-            'control de humedad y densidad, y archivo de la gráfica generada en el momento del ensayo.'
-        );
-        addHeading('8.1.1. Estimación orientativa de incertidumbre');
-        addParagraph('Valores indicativos de orden de magnitud (máximo ±1 % en magnitudes relativas; no sustituyen un análisis estadístico formal):');
-        addParagraph('• σ₁: ±1 % del valor reportado.');
-        addParagraph('• σ₃: ±1 % del valor reportado.');
-        addParagraph('• φ: ±1,0 °.');
-        addParagraph('• c: ±1 % del valor reportado (mínimo práctico ±0,05 kPa).');
-        if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
-            var dcu = window.__datosEnsayoMS2.corte;
-            var s1m = Number(dcu.avgS1) || 0;
-            var s3m = Number(dcu.avgS3) || 0;
-            var cVal = Number(dcu.c) || 0;
-            var dcAbs = Math.max(0.05, 0.01 * cVal);
+        if (tipoEnsayo === 'corte') {
             addParagraph(
-                'Ejemplo con los promedios de este ensayo: σ₁ ≈ ' + s1m.toFixed(1) +
-                ' kPa (±' + (0.01 * s1m).toFixed(1) + ' kPa); σ₃ ≈ ' + s3m.toFixed(1) +
-                ' kPa (±' + (0.01 * s3m).toFixed(1) + ' kPa); φ = ' + Number(dcu.phi).toFixed(1) +
-                ' ° (±1,0 °); c = ' + cVal.toFixed(2) + ' kPa (±' + dcAbs.toFixed(2) + ' kPa).'
+                'Los resultados del corte directo se interpretan con el criterio de Mohr–Coulomb y las condiciones del ensayo.'
             );
-        }
-        if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
-            var dc = window.__datosEnsayoMS2.corte;
-            var clasTxt = '';
-            if (typeof clasificarSueloCorte === 'function') {
-                var cl = clasificarSueloCorte(dc.c, dc.phi);
-                clasTxt = (cl && cl.tipo) ? (cl.tipo + (cl.detalle ? ('. ' + cl.detalle) : '')) : '';
+            addHeading('8.1. Fuentes de error y mitigación');
+            addParagraph('• Calibración de la celda de carga: verificar cero y escala antes del ensayo.');
+            addParagraph('• Preparación de la muestra (densidad, humedad, homogeneidad).');
+            addParagraph('• Área de la caja de corte y cálculo de σn (kPa).');
+            addParagraph('• Velocidad de corrimiento y criterio de falla (pico / residual).');
+            addParagraph('• Digitaciones y redondeos en GeoMetrics.');
+            addParagraph('Mitigación: calibración, series repetidas (≥ 3 cuando sea posible) y archivo de la gráfica.');
+            addHeading('8.1.1. Estimación orientativa de incertidumbre');
+            addParagraph('Máximo ±1 % en magnitudes relativas (no sustituye análisis estadístico formal):');
+            addParagraph('• σ₁: ±1 % · σ₃: ±1 % · φ: ±1,0 ° · c: ±1 % (mín. ±0,05 kPa).');
+            if (window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
+                var dcu = window.__datosEnsayoMS2.corte;
+                var s1m = Number(dcu.avgS1) || 0;
+                var s3m = Number(dcu.avgS3) || 0;
+                var cVal = Number(dcu.c) || 0;
+                var dcAbs = Math.max(0.05, 0.01 * cVal);
+                addParagraph(
+                    'Ejemplo: σ₁ ≈ ' + s1m.toFixed(1) + ' kPa (±' + (0.01 * s1m).toFixed(1) +
+                    ' kPa); σ₃ ≈ ' + s3m.toFixed(1) + ' kPa (±' + (0.01 * s3m).toFixed(1) +
+                    ' kPa); φ = ' + Number(dcu.phi).toFixed(1) + ' ° (±1,0 °); c = ' +
+                    cVal.toFixed(2) + ' kPa (±' + dcAbs.toFixed(2) + ' kPa).'
+                );
+                var clasTxt = '';
+                if (typeof clasificarSueloCorte === 'function') {
+                    var cl = clasificarSueloCorte(dcu.c, dcu.phi);
+                    clasTxt = (cl && cl.tipo) ? (cl.tipo + (cl.detalle ? ('. ' + cl.detalle) : '')) : '';
+                }
+                addParagraph(
+                    'Se obtuvo φ = ' + Number(dcu.phi).toFixed(1) + '° y c = ' + Number(dcu.c).toFixed(2) +
+                    ' kPa.' + (clasTxt ? (' Clasificación orientativa: ' + clasTxt) : '') +
+                    ' Contrastar con FLA-23 y el docente.'
+                );
+                addHeading('8.2. Rangos orientativos de φ y c');
+                addTablaColor(
+                    ['Tipo de suelo', 'φ (°)', 'c (kPa)', 'Valor ensayo'],
+                    [
+                        ['Arena granular', '28–40', '0–5', 'φ=' + Number(dcu.phi).toFixed(1) + ' · c=' + Number(dcu.c).toFixed(2)],
+                        ['Arena limosa', '20–35', '5–25', 'φ=' + Number(dcu.phi).toFixed(1) + ' · c=' + Number(dcu.c).toFixed(2)],
+                        ['Suelo compacto / mixto', '30–45', '10–30', 'φ=' + Number(dcu.phi).toFixed(1) + ' · c=' + Number(dcu.c).toFixed(2)]
+                    ]
+                );
             }
+        } else if (tipoEnsayo === 'humedad') {
             addParagraph(
-                'Para el corte directo se obtuvo φ = ' + Number(dc.phi).toFixed(1) +
-                '° y c = ' + Number(dc.c).toFixed(2) + ' kPa. ' +
-                (clasTxt ? ('Clasificación orientativa del suelo: ' + clasTxt + ' ') : '') +
-                'La comparación definitiva debe hacerse con la guía FLA-23 y el criterio del docente.'
+                'El contenido de humedad w se expresa únicamente en porcentaje (%). Las masas se reportan en gramos (g). ' +
+                'No intervienen esfuerzos (kPa) ni ángulos (°).'
             );
-            addHeading('8.2. Rangos orientativos de φ y c (referencia didáctica tipo FLA-23 / literatura)');
-            addParagraph('Tabla de apoyo para comparación; los rangos exactos deben confirmarse en la edición de la guía entregada por el docente.');
-            addTablaColor(
-                ['Tipo de suelo', 'φ (°)', 'c (kPa)', 'Valor ensayo'],
-                [
-                    ['Arena granular', '28–40', '0–5', 'φ=' + Number(dc.phi).toFixed(1) + ' · c=' + Number(dc.c).toFixed(2)],
-                    ['Arena limosa', '20–35', '5–25', 'φ=' + Number(dc.phi).toFixed(1) + ' · c=' + Number(dc.c).toFixed(2)],
-                    ['Suelo compacto / mixto', '30–45', '10–30', 'φ=' + Number(dc.phi).toFixed(1) + ' · c=' + Number(dc.c).toFixed(2)]
-                ]
-            );
+            addHeading('8.1. Fuentes de error y mitigación');
+            addParagraph('• Recipientes húmedos o sucios al inicio del ensayo.');
+            addParagraph('• Tiempo o temperatura de secado insuficiente (horno 105–110 °C hasta peso constante).');
+            addParagraph('• Pérdida de material al manipular o enfriar la muestra.');
+            addParagraph('• Error de pesaje en la balanza.');
+            addParagraph('• Digitaciones incorrectas en GeoMetrics.');
+            addParagraph('Mitigación: secar hasta peso constante, usar balanza calibrada y repetir al menos 2–3 determinaciones.');
+            addHeading('8.1.1. Incertidumbre orientativa');
+            addParagraph('• w: ±1 % relativo del valor reportado (orden de magnitud didáctico).');
+            var dhw = (window.__datosEnsayo && (window.__datosEnsayo.h || window.__datosEnsayo.humedad)) || {};
+            if (dhw.w != null) {
+                var wv = Number(dhw.w);
+                addParagraph('Ejemplo: w ≈ ' + wv.toFixed(2) + ' % (±' + (0.01 * wv).toFixed(2) + ' puntos porcentuales relativos de orden 1 %).');
+            }
+            addParagraph('El valor de w debe interpretarse junto con el tipo de suelo y las condiciones de muestreo; no se clasifica el suelo solo con este ensayo.');
         } else {
             addParagraph(
-                'Se recomienda contrastar los valores calculados con los rangos esperados en la guía oficial de la asignatura y con el criterio del docente.'
+                'Los resultados se interpretan según el marco teórico y las normas del ensayo «' + metaInf.tituloCorto +
+                '». Las unidades son las propias de este ensayo (no se usan por defecto kPa ni grados, salvo que el ensayo lo requiera).'
             );
+            addHeading('8.1. Fuentes de error y mitigación');
+            addParagraph('• Preparación y representatividad de la muestra.');
+            addParagraph('• Calibración de instrumentos (balanza, tamices, equipos del ensayo).');
+            addParagraph('• Cumplimiento del procedimiento normalizado (NTC/ASTM/INVIAS / FLA-23).');
+            addParagraph('• Digitaciones y redondeos en GeoMetrics.');
+            addParagraph('Mitigación: seguir la guía del ensayo, repetir determinaciones cuando sea posible y contrastar con el docente.');
+            addHeading('8.1.1. Incertidumbre orientativa');
+            addParagraph('Se adopta un orden de magnitud de ±1 % relativo sobre las magnitudes principales reportadas, sin sustituir un análisis estadístico formal.');
         }
 
         addHeading('9. Conclusiones');
-        addParagraph('1. Se completó el registro y el análisis del ensayo «' + metaInf.tituloCorto + '» conforme al alcance de la práctica y a los objetivos planteados.');
-        addParagraph('2. Los parámetros calculados se reportan en la sección de resultados con unidades explícitas (kPa, ° u otras según el ensayo), alineados con los valores de GeoMetrics.');
-        if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
+        addParagraph('1. Se completó el registro y el análisis del ensayo «' + metaInf.tituloCorto + '» conforme a los objetivos de la práctica.');
+        if (tipoEnsayo === 'humedad') {
+            addParagraph('2. El contenido de humedad se reporta en % y las masas en g, según ASTM D 2216 / NTC 1495.');
+            addParagraph('3. w = (Mw/Ms)×100 es la relación fundamental aplicada; no corresponden unidades de esfuerzo ni de ángulo.');
+            addParagraph('4. Los resultados dependen de la calidad del secado y del pesaje; se recomienda contrastarlos con el docente.');
+            addParagraph('5. Para trabajos futuros se recomienda al menos 3 determinaciones y promedio de w.');
+        } else if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
             var dc2 = window.__datosEnsayoMS2.corte;
             var cl2 = (typeof clasificarSueloCorte === 'function') ? clasificarSueloCorte(dc2.c, dc2.phi) : null;
+            addParagraph('2. Los parámetros se reportan en kPa y grados (°), alineados con GeoMetrics.');
             addParagraph(
                 '3. Con φ = ' + Number(dc2.phi).toFixed(1) + '° y c = ' + Number(dc2.c).toFixed(2) +
                 ' kPa, el material se interpreta de forma orientativa como ' +
-                ((cl2 && cl2.tipo) ? cl2.tipo : 'suelo con componentes cohesivos y/o friccionantes según el criterio de Mohr–Coulomb') +
-                ', en coherencia con rangos típicos discutidos en la guía FLA-23 y textos de apoyo.'
+                ((cl2 && cl2.tipo) ? cl2.tipo : 'suelo con componentes cohesivos y/o friccionantes') + '.'
             );
+            addParagraph('4. La interpretación está sujeta a limitaciones experimentales y a la revisión docente.');
+            addParagraph('5. Se recomienda repetir cada prueba al menos 3 veces y contrastar con FLA-23 / NTC 1917.');
         } else {
-            addParagraph('3. Las ecuaciones aplicadas son coherentes con el marco teórico citado y con el procedimiento del laboratorio.');
+            addParagraph('2. Los parámetros se reportan con las unidades propias del ensayo «' + metaInf.tituloCorto + '».');
+            addParagraph('3. Las ecuaciones y el procedimiento siguen las normas citadas para este ensayo.');
+            addParagraph('4. La interpretación está sujeta a limitaciones experimentales y a la revisión docente.');
+            addParagraph('5. Se recomienda repetir determinaciones cuando el protocolo lo permita y archivar la gráfica generada.');
         }
-        addParagraph('4. La interpretación está sujeta a limitaciones experimentales (tamaño de muestra, velocidad de ensayo, calibración) y a la revisión docente.');
-        addParagraph('5. Para futuros ensayos se recomienda repetir cada prueba al menos 3 veces, promediar los resultados, documentar la calibración y contrastar φ y c con la sección de corte directo de la guía FLA-23.');
 
         addHeading('10. Referencias');
         addParagraph('[1] Asociación Colombiana de Ingeniería Sísmica. (2010). Reglamento Colombiano de Construcción Sismo Resistente NSR-10. Título H — Estudios geotécnicos. Cap. H.2 (definiciones; estudio preliminar H.2.2.1; estudio definitivo H.2.2.2; normas técnicas H.2.6).');
