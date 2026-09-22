@@ -1581,25 +1581,22 @@ function activarEnterSiguienteCampo(root) {
 }
 
 
+
 /* ============================================================
-   RESISTENCIA DE MATERIALES — ensayos y simuladores
-   Máquinas de referencia UniPamplona:
-   - Máquina universal tipo SHIMADZU UH (tracción / compresión / flexión)
-   - Banco de torsión
-   - Durómetro Rockwell
+   RESISTENCIA DE MATERIALES — ensayos y simuladores animados
+   Estilo Suelos 2: máquina + controles + gráfica
+   Equipos UniPamplona: UTM SHIMADZU UH, banco torsión, Rockwell
    ============================================================ */
 window.__datosEnsayoRM = window.__datosEnsayoRM || {};
+window.__simRM = window.__simRM || { tipo: null, running: false, paused: false, t: 0, raf: null };
 
 function abrirModuloRM(tipo, modo) {
     modo = modo || 'ensayo';
+    detenerSimRM();
     var panelId = modo === 'sim' ? 'panel-sim-rm' : 'panel-ensayo-rm';
-    var panel = document.getElementById(panelId);
-    if (!panel) {
-        panel = document.getElementById('panel-ensayo-rm');
-    }
+    var panel = document.getElementById(panelId) || document.getElementById('panel-ensayo-rm');
     if (!panel) return;
 
-    // activar pestaña correcta
     if (modo === 'sim') {
         var tabSim = document.querySelector('#pantallaResistencia .tab-btn[data-tab="rm-simuladores"]');
         if (tabSim) tabSim.click();
@@ -1620,12 +1617,14 @@ function abrirModuloRM(tipo, modo) {
     panel.style.display = 'block';
     try { panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
 
-    if (modo === 'sim') {
-        setTimeout(function() { if (typeof dibujarMaquinaRM === 'function') dibujarMaquinaRM(tipo); }, 50);
-    }
+    setTimeout(function() {
+        dibujarMaquinaRM(tipo, 0);
+        if (modo === 'sim') bindSimRMControls(tipo);
+    }, 40);
 }
 
 function rmCerrarPanel(modo) {
+    detenerSimRM();
     var panel = document.getElementById(modo === 'sim' ? 'panel-sim-rm' : 'panel-ensayo-rm');
     if (panel) { panel.innerHTML = ''; panel.style.display = 'none'; }
 }
@@ -1636,144 +1635,358 @@ function rmNum(id) {
     var v = parseFloat(String(el.value).replace(',', '.'));
     return isNaN(v) ? null : v;
 }
-
 function rmSet(id, txt) {
     var el = document.getElementById(id);
     if (el) el.textContent = txt;
 }
 
-/* --- SVG / canvas máquinas --- */
-function dibujarMaquinaRM(tipo) {
+function detenerSimRM() {
+    if (window.__simRM && window.__simRM.raf) {
+        cancelAnimationFrame(window.__simRM.raf);
+        window.__simRM.raf = null;
+    }
+    if (window.__simRM) {
+        window.__simRM.running = false;
+        window.__simRM.paused = false;
+        window.__simRM.t = 0;
+    }
+}
+
+function rmShell(titulo, tipo, modo, camposHtml, resultadosHtml, extraHtml) {
+    var isSim = modo === 'sim';
+    return '<div class="ensayo-form rm-form sim-layout-rm">' +
+        '<div class="ensayo-form-header">' +
+        '<div><h3>' + titulo + '</h3>' +
+        '<p class="login-hint" style="margin:4px 0 0">UniPamplona · ' + rmEquipoNombre(tipo) + '</p></div>' +
+        '<button type="button" class="btn-limpiar" onclick="rmCerrarPanel(\'' + modo + '\')">← Volver</button></div>' +
+        '<div class="sim-rm-grid">' +
+        '<div class="sim-rm-left">' +
+        '<canvas id="rm-machine-canvas" width="480" height="340" class="rm-machine-canvas"></canvas>' +
+        (isSim
+            ? '<div class="sim-rm-controls">' +
+              '<button type="button" class="btn-calcular" id="btn-sim-rm-start">Iniciar simulador</button>' +
+              '<label class="sim-vel-label">Velocidad ' +
+              '<select id="rm-sim-vel"><option value="5">Lenta (5 s)</option>' +
+              '<option value="2.5" selected>Media (2.5 s)</option>' +
+              '<option value="1">Rápida (1 s)</option></select></label>' +
+              '<span class="sim-estado" id="rm-sim-estado">Listo</span></div>'
+            : '') +
+        '</div>' +
+        '<div class="sim-rm-right">' +
+        '<div class="form-grid rm-form-grid">' + camposHtml + '</div>' +
+        '<div class="rm-actions">' +
+        '<button type="button" class="btn-calcular" onclick="calcularRM' + rmCalcFn(tipo) + '()">CALCULAR</button>' +
+        (tipo === 'traccion' ? '<button type="button" class="btn-grafica" onclick="graficaRMTraccion()">GENERAR GRÁFICA</button>' : '') +
+        '</div>' +
+        '<div class="resultados-box rm-resultados">' + resultadosHtml + '</div>' +
+        (extraHtml || '') +
+        '<p class="error-msg" id="rm-' + rmPrefix(tipo) + '-error"></p>' +
+        '</div></div>' +
+        (tipo === 'traccion'
+            ? '<div class="grafica-panel rm-grafica-panel"><h4>Curva esfuerzo–deformación</h4>' +
+              '<canvas id="canvas-rm-traccion" width="700" height="320"></canvas></div>'
+            : '') +
+        '</div>';
+}
+
+function rmEquipoNombre(tipo) {
+    if (tipo === 'traccion') return 'Máquina universal (tipo SHIMADZU UH) — tracción';
+    if (tipo === 'compresion') return 'Máquina universal / prensa — compresión';
+    if (tipo === 'flexion') return 'Kit de flexión en UTM';
+    if (tipo === 'torsion') return 'Banco de torsión';
+    if (tipo === 'dureza') return 'Durómetro Rockwell';
+    return 'Laboratorio de materiales';
+}
+function rmPrefix(tipo) {
+    return ({ traccion: 'tr', compresion: 'co', flexion: 'fl', torsion: 'to', dureza: 'du' })[tipo] || 'x';
+}
+function rmCalcFn(tipo) {
+    return ({ traccion: 'Traccion', compresion: 'Compresion', flexion: 'Flexion', torsion: 'Torsion', dureza: 'Dureza' })[tipo] || '';
+}
+
+/* ---------- dibujo animado de máquinas ---------- */
+function dibujarMaquinaRM(tipo, progress) {
+    progress = Math.max(0, Math.min(1, progress || 0));
     var canvas = document.getElementById('rm-machine-canvas');
     if (!canvas) return;
     var ctx = canvas.getContext('2d');
     var W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#1a2332';
+    var grd = ctx.createLinearGradient(0, 0, 0, H);
+    grd.addColorStop(0, '#1e293b');
+    grd.addColorStop(1, '#0f172a');
+    ctx.fillStyle = grd;
     ctx.fillRect(0, 0, W, H);
 
-    if (tipo === 'traccion' || tipo === 'compresion') {
-        // Máquina universal esquemática
-        ctx.fillStyle = '#4b5563';
-        ctx.fillRect(W * 0.25, H * 0.08, W * 0.5, H * 0.12); // travesaño superior
-        ctx.fillRect(W * 0.2, H * 0.82, W * 0.6, H * 0.1); // base
-        ctx.fillStyle = '#6b7280';
-        ctx.fillRect(W * 0.28, H * 0.2, 18, H * 0.62); // columna izq
-        ctx.fillRect(W * 0.72 - 18, H * 0.2, 18, H * 0.62); // columna der
-        // mordazas / platos
-        ctx.fillStyle = '#9ca3af';
-        ctx.fillRect(W * 0.38, H * 0.28, W * 0.24, 14);
-        ctx.fillRect(W * 0.38, H * 0.62, W * 0.24, 14);
-        // probeta
+    if (tipo === 'traccion') dibujarUTMTraccion(ctx, W, H, progress);
+    else if (tipo === 'compresion') dibujarUTMCompresion(ctx, W, H, progress);
+    else if (tipo === 'flexion') dibujarFlexion(ctx, W, H, progress);
+    else if (tipo === 'torsion') dibujarTorsion(ctx, W, H, progress);
+    else if (tipo === 'dureza') dibujarDureza(ctx, W, H, progress);
+}
+
+function dibujarUTMTraccion(ctx, W, H, p) {
+    // columnas y marco
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(W * 0.18, H * 0.12, 22, H * 0.7);
+    ctx.fillRect(W * 0.78, H * 0.12, 22, H * 0.7);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(W * 0.16, H * 0.08, W * 0.68, 28); // travesaño
+    ctx.fillRect(W * 0.14, H * 0.82, W * 0.72, 36); // base
+    // plato superior (sube con p)
+    var topY = H * 0.22 - p * 18;
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(W * 0.35, topY, W * 0.3, 16);
+    // plato inferior
+    var botY = H * 0.68 + p * 12;
+    ctx.fillRect(W * 0.35, botY, W * 0.3, 16);
+    // probeta (se estira)
+    var midX = W * 0.5;
+    var neck = 10 - p * 3;
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(midX - 16, topY + 16, 32, 14);
+    ctx.fillRect(midX - neck, topY + 30, neck * 2, botY - topY - 44);
+    ctx.fillRect(midX - 16, botY - 14, 32, 14);
+    // flechas de carga
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(midX, topY - 8);
+    ctx.lineTo(midX, topY - 28);
+    ctx.moveTo(midX - 6, topY - 20);
+    ctx.lineTo(midX, topY - 28);
+    ctx.lineTo(midX + 6, topY - 20);
+    ctx.moveTo(midX, botY + 24);
+    ctx.lineTo(midX, botY + 44);
+    ctx.moveTo(midX - 6, botY + 36);
+    ctx.lineTo(midX, botY + 44);
+    ctx.lineTo(midX + 6, botY + 36);
+    ctx.stroke();
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('UTM — Tracción', 14, 22);
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Probeta · σ = P/A', 14, 38);
+    if (p > 0.02) {
         ctx.fillStyle = '#fbbf24';
-        var midX = W * 0.5, topY = H * 0.32, botY = H * 0.62;
-        if (tipo === 'compresion') {
-            ctx.fillRect(midX - 22, topY + 20, 44, botY - topY - 40);
-        } else {
-            ctx.fillRect(midX - 8, topY + 8, 16, botY - topY - 16);
-            ctx.fillRect(midX - 18, topY + 8, 36, 12);
-            ctx.fillRect(midX - 18, botY - 20, 36, 12);
-        }
-        ctx.fillStyle = '#e5e7eb';
-        ctx.font = '12px sans-serif';
-        ctx.fillText(tipo === 'traccion' ? 'UTM — Tracción' : 'UTM — Compresión', 12, 20);
-        ctx.fillText('Ref. SHIMADZU UH / UniPamplona', 12, 36);
-    } else if (tipo === 'flexion') {
-        ctx.fillStyle = '#4b5563';
-        ctx.fillRect(W * 0.1, H * 0.7, W * 0.8, 16); // base
-        ctx.fillStyle = '#9ca3af';
-        ctx.fillRect(W * 0.2, H * 0.55, 14, H * 0.15);
-        ctx.fillRect(W * 0.8 - 14, H * 0.55, 14, H * 0.15);
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(W * 0.18, H * 0.5, W * 0.64, 12); // viga
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.moveTo(W * 0.5, H * 0.25);
-        ctx.lineTo(W * 0.5, H * 0.48);
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        ctx.fillRect(W * 0.5 - 20, H * 0.48, 40, 8); // cargador
-        ctx.fillStyle = '#e5e7eb';
-        ctx.font = '12px sans-serif';
-        ctx.fillText('Kit de flexión en UTM — UniPamplona', 12, 20);
-    } else if (tipo === 'torsion') {
-        ctx.fillStyle = '#4b5563';
-        ctx.fillRect(W * 0.15, H * 0.35, W * 0.7, 24);
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(W * 0.25, H * 0.42, W * 0.5, 10); // barra
-        ctx.strokeStyle = '#9ca3af';
+        ctx.fillText('Alargamiento ' + (p * 100).toFixed(0) + '%', W - 140, 22);
+    }
+}
+
+function dibujarUTMCompresion(ctx, W, H, p) {
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(W * 0.18, H * 0.12, 22, H * 0.7);
+    ctx.fillRect(W * 0.78, H * 0.12, 22, H * 0.7);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(W * 0.16, H * 0.08, W * 0.68, 28);
+    ctx.fillRect(W * 0.14, H * 0.82, W * 0.72, 36);
+    var crush = p * 22;
+    var topY = H * 0.28 + crush;
+    var botY = H * 0.72;
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(W * 0.32, topY, W * 0.36, 14);
+    ctx.fillRect(W * 0.32, botY, W * 0.36, 14);
+    // cilindro se aplasta
+    var cylH = (botY - topY - 14) * (1 - p * 0.25);
+    var cylW = 50 + p * 12;
+    ctx.fillStyle = '#a8a29e';
+    ctx.fillRect(W * 0.5 - cylW / 2, botY - cylH, cylW, cylH);
+    ctx.strokeStyle = '#78716c';
+    ctx.strokeRect(W * 0.5 - cylW / 2, botY - cylH, cylW, cylH);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('UTM — Compresión', 14, 22);
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Cilindro · fc = P/A', 14, 38);
+}
+
+function dibujarFlexion(ctx, W, H, p) {
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(W * 0.08, H * 0.78, W * 0.84, 20);
+    // apoyos
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(W * 0.18, H * 0.62, 16, H * 0.16);
+    ctx.fillRect(W * 0.78, H * 0.62, 16, H * 0.16);
+    // viga se curva
+    var midY = H * 0.55 + p * 28;
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.16, H * 0.55);
+    ctx.quadraticCurveTo(W * 0.5, midY + 10, W * 0.84, H * 0.55);
+    ctx.stroke();
+    // cargador
+    var loadY = midY - 40 - (1 - p) * 20;
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(W * 0.5 - 24, loadY + 30, 48, 10);
+    ctx.strokeStyle = '#f87171';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.5, loadY);
+    ctx.lineTo(W * 0.5, loadY + 30);
+    ctx.stroke();
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('Kit de flexión — UTM', 14, 22);
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('σ = M c / I', 14, 38);
+}
+
+function dibujarTorsion(ctx, W, H, p) {
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(W * 0.12, H * 0.42, W * 0.76, 20);
+    // extremos
+    var ang = p * Math.PI * 1.2;
+    function chuck(cx, cy, rot) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rot);
+        ctx.strokeStyle = '#94a3b8';
         ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.arc(W * 0.22, H * 0.47, 28, 0, Math.PI * 2);
+        ctx.arc(0, 0, 32, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(-8, -8, 16, 16);
+        ctx.strokeStyle = '#fbbf24';
         ctx.beginPath();
-        ctx.arc(W * 0.78, H * 0.47, 28, 0, Math.PI * 2);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(28, 0);
         ctx.stroke();
-        ctx.fillStyle = '#e5e7eb';
-        ctx.font = '12px sans-serif';
-        ctx.fillText('Banco de torsión — UniPamplona', 12, 20);
-    } else if (tipo === 'dureza') {
-        ctx.fillStyle = '#4b5563';
-        ctx.fillRect(W * 0.35, H * 0.15, W * 0.3, H * 0.55);
-        ctx.fillStyle = '#9ca3af';
-        ctx.fillRect(W * 0.42, H * 0.7, W * 0.16, 12);
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(W * 0.4, H * 0.75, W * 0.2, 20); // muestra
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.moveTo(W * 0.5, H * 0.55);
-        ctx.lineTo(W * 0.5, H * 0.72);
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.fillStyle = '#e5e7eb';
-        ctx.font = '12px sans-serif';
-        ctx.fillText('Durómetro Rockwell — UniPamplona', 12, 20);
+        ctx.restore();
     }
+    chuck(W * 0.22, H * 0.52, 0);
+    chuck(W * 0.78, H * 0.52, ang);
+    // barra
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.28, H * 0.52);
+    ctx.lineTo(W * 0.72, H * 0.52);
+    ctx.stroke();
+    // marca helicoidal
+    ctx.strokeStyle = 'rgba(251,191,36,0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (var i = 0; i < 8; i++) {
+        var x0 = W * 0.3 + i * (W * 0.05);
+        var y0 = H * 0.52 + Math.sin(ang + i * 0.4) * 6;
+        if (i === 0) ctx.moveTo(x0, y0);
+        else ctx.lineTo(x0, y0);
+    }
+    ctx.stroke();
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('Banco de torsión', 14, 22);
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('τ = T r / J', 14, 38);
 }
 
-function rmMachineBlock(tipo, modo) {
-    if (modo !== 'sim') {
-        return '<p class="login-hint">Equipo de laboratorio UniPamplona · ' +
-            (tipo === 'traccion' || tipo === 'compresion' ? 'Máquina universal (tipo SHIMADZU UH)' :
-             tipo === 'flexion' ? 'Kit de flexión en UTM' :
-             tipo === 'torsion' ? 'Banco de torsión' : 'Durómetro Rockwell') + '</p>';
-    }
-    return '<div class="rm-machine-wrap">' +
-        '<canvas id="rm-machine-canvas" width="420" height="260" style="width:100%;max-width:420px;border-radius:10px;background:#1a2332;"></canvas>' +
-        '</div>';
+function dibujarDureza(ctx, W, H, p) {
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(W * 0.38, H * 0.1, W * 0.24, H * 0.5);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(W * 0.3, H * 0.6, W * 0.4, 18);
+    // penetrador baja
+    var tipY = H * 0.55 + p * 40;
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(W * 0.5 - 8, tipY - 30);
+    ctx.lineTo(W * 0.5 + 8, tipY - 30);
+    ctx.lineTo(W * 0.5, tipY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(W * 0.5 - 6, H * 0.35, 12, tipY - 30 - H * 0.35);
+    // muestra
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(W * 0.35, H * 0.72, W * 0.3, 28);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('Durómetro Rockwell', 14, 22);
+    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Penetración · lectura HR', 14, 38);
 }
 
-/* ========== TRACCIÓN ========== */
+/* ---------- animación ---------- */
+function bindSimRMControls(tipo) {
+    var btn = document.getElementById('btn-sim-rm-start');
+    if (!btn) return;
+    btn.onclick = function() {
+        if (window.__simRM.running && !window.__simRM.paused) {
+            // pausar
+            window.__simRM.paused = true;
+            window.__simRM.running = false;
+            if (window.__simRM.raf) { cancelAnimationFrame(window.__simRM.raf); window.__simRM.raf = null; }
+            btn.textContent = 'Continuar';
+            rmSet('rm-sim-estado', 'Pausado');
+            return;
+        }
+        if (window.__simRM.paused) {
+            window.__simRM.paused = false;
+            window.__simRM.running = true;
+            btn.textContent = 'Pausar';
+            rmSet('rm-sim-estado', 'En ensayo…');
+            window.__simRM.raf = requestAnimationFrame(function(ts) { tickSimRM(tipo, ts); });
+            return;
+        }
+        // iniciar de cero
+        window.__simRM.tipo = tipo;
+        window.__simRM.t0 = null;
+        window.__simRM.t = 0;
+        window.__simRM.running = true;
+        window.__simRM.paused = false;
+        btn.textContent = 'Pausar';
+        rmSet('rm-sim-estado', 'En ensayo…');
+        // calcular resultados al inicio
+        try { window['calcularRM' + rmCalcFn(tipo)](); } catch (e) {}
+        window.__simRM.raf = requestAnimationFrame(function(ts) { tickSimRM(tipo, ts); });
+    };
+}
+
+function tickSimRM(tipo, ts) {
+    if (!window.__simRM.running) return;
+    if (window.__simRM.t0 == null) window.__simRM.t0 = ts;
+    var velEl = document.getElementById('rm-sim-vel');
+    var dur = (velEl ? parseFloat(velEl.value) : 2.5) * 1000;
+    var p = Math.min(1, (ts - window.__simRM.t0) / dur);
+    window.__simRM.t = p;
+    dibujarMaquinaRM(tipo, p);
+    if (p >= 1) {
+        window.__simRM.running = false;
+        window.__simRM.raf = null;
+        var btn = document.getElementById('btn-sim-rm-start');
+        if (btn) btn.textContent = 'Reiniciar simulador';
+        rmSet('rm-sim-estado', 'Ensayo completado');
+        try { window['calcularRM' + rmCalcFn(tipo)](); } catch (e) {}
+        if (tipo === 'traccion') try { graficaRMTraccion(); } catch (e2) {}
+        return;
+    }
+    window.__simRM.raf = requestAnimationFrame(function(t2) { tickSimRM(tipo, t2); });
+}
+
+/* ========== formularios ========== */
 function crearFormularioRMTraccion(modo) {
-    var titulo = (modo === 'sim' ? 'Simulador' : 'Ensayo') + ' de Tracción';
-    return '<div class="ensayo-form rm-form">' +
-        '<div class="ensayo-form-header"><h3>' + titulo + '</h3>' +
-        '<button type="button" class="btn-limpiar" onclick="rmCerrarPanel(\'' + modo + '\')">Cerrar</button></div>' +
-        rmMachineBlock('traccion', modo) +
-        '<p class="login-hint">Beer &amp; Johnston / Hibbeler · σ = P/A · ε = δ/L₀ · E = σ/ε (zona elástica)</p>' +
-        '<div class="form-grid">' +
-        '<label>Diámetro inicial d₀ (mm)<input type="number" id="rm-tr-d" value="12.5" step="0.1"></label>' +
-        '<label>Longitud calibrada L₀ (mm)<input type="number" id="rm-tr-l0" value="50" step="0.1"></label>' +
+    return rmShell((modo === 'sim' ? 'Simulador' : 'Ensayo') + ' de Tracción', 'traccion', modo,
+        '<label>Diámetro d₀ (mm)<input type="number" id="rm-tr-d" value="12.5" step="0.1"></label>' +
+        '<label>Longitud L₀ (mm)<input type="number" id="rm-tr-l0" value="50" step="0.1"></label>' +
         '<label>Carga P (kN)<input type="number" id="rm-tr-p" value="45" step="0.1"></label>' +
         '<label>Alargamiento δ (mm)<input type="number" id="rm-tr-dL" value="0.12" step="0.01"></label>' +
-        '<label>Carga de fluencia Py (kN)<input type="number" id="rm-tr-py" value="35" step="0.1"></label>' +
-        '<label>Carga última Pu (kN)<input type="number" id="rm-tr-pu" value="55" step="0.1"></label>' +
-        '</div>' +
-        '<button type="button" class="btn-calcular" onclick="calcularRMTraccion()">CALCULAR</button>' +
-        '<div class="resultados-box">' +
+        '<label>Carga fluencia Py (kN)<input type="number" id="rm-tr-py" value="35" step="0.1"></label>' +
+        '<label>Carga última Pu (kN)<input type="number" id="rm-tr-pu" value="55" step="0.1"></label>',
         '<div><span>Área A₀</span><strong id="rm-tr-a">—</strong><small>mm²</small></div>' +
-        '<div><span>σ (esfuerzo)</span><strong id="rm-tr-s">—</strong><small>MPa</small></div>' +
-        '<div><span>ε (deformación)</span><strong id="rm-tr-e">—</strong><small>—</small></div>' +
-        '<div><span>E (módulo)</span><strong id="rm-tr-E">—</strong><small>GPa</small></div>' +
+        '<div><span>σ</span><strong id="rm-tr-s">—</strong><small>MPa</small></div>' +
+        '<div><span>ε</span><strong id="rm-tr-e">—</strong><small>—</small></div>' +
+        '<div><span>E</span><strong id="rm-tr-E">—</strong><small>GPa</small></div>' +
         '<div><span>σy</span><strong id="rm-tr-sy">—</strong><small>MPa</small></div>' +
-        '<div><span>σu</span><strong id="rm-tr-su">—</strong><small>MPa</small></div>' +
-        '</div>' +
-        '<div class="grafica-panel"><div class="grafica-header"><h4>Curva esfuerzo–deformación (esquema)</h4>' +
-        '<button type="button" class="btn-grafica" onclick="graficaRMTraccion()">GENERAR GRÁFICA</button></div>' +
-        '<canvas id="canvas-rm-traccion" width="640" height="320"></canvas></div>' +
-        '<p class="error-msg" id="rm-tr-error"></p></div>';
+        '<div><span>σu</span><strong id="rm-tr-su">—</strong><small>MPa</small></div>',
+        '<p class="login-hint">σ = P/A · ε = δ/L₀ · E = σ/ε (Beer / Hibbeler)</p>'
+    );
 }
 
 function calcularRMTraccion() {
@@ -1781,14 +1994,11 @@ function calcularRMTraccion() {
     if (err) err.textContent = '';
     var d = rmNum('rm-tr-d'), L0 = rmNum('rm-tr-l0'), P = rmNum('rm-tr-p'), dL = rmNum('rm-tr-dL');
     var Py = rmNum('rm-tr-py'), Pu = rmNum('rm-tr-pu');
-    if (!d || !L0 || d <= 0 || L0 <= 0) {
-        if (err) err.textContent = 'Diámetro y longitud inválidos';
-        return;
-    }
-    var A0 = Math.PI * Math.pow(d / 2, 2); // mm²
-    var sigma = (P != null) ? (P * 1000) / A0 : null; // kN->N / mm² = MPa
+    if (!d || !L0 || d <= 0 || L0 <= 0) { if (err) err.textContent = 'Diámetro y longitud inválidos'; return; }
+    var A0 = Math.PI * Math.pow(d / 2, 2);
+    var sigma = (P != null) ? (P * 1000) / A0 : null;
     var eps = (dL != null) ? dL / L0 : null;
-    var E = (sigma != null && eps && eps > 0) ? (sigma / eps) / 1000 : null; // GPa
+    var E = (sigma != null && eps && eps > 0) ? (sigma / eps) / 1000 : null;
     var sy = (Py != null) ? (Py * 1000) / A0 : null;
     var su = (Pu != null) ? (Pu * 1000) / A0 : null;
     rmSet('rm-tr-a', A0.toFixed(2));
@@ -1798,7 +2008,7 @@ function calcularRMTraccion() {
     rmSet('rm-tr-sy', sy != null ? sy.toFixed(1) : '—');
     rmSet('rm-tr-su', su != null ? su.toFixed(1) : '—');
     window.__datosEnsayoRM.traccion = { d: d, L0: L0, A0: A0, P: P, dL: dL, sigma: sigma, eps: eps, E: E, sy: sy, su: su };
-    if (typeof dibujarMaquinaRM === 'function') dibujarMaquinaRM('traccion');
+    if (!window.__simRM.running) dibujarMaquinaRM('traccion', 0);
 }
 
 function graficaRMTraccion() {
@@ -1812,58 +2022,44 @@ function graficaRMTraccion() {
     var pad = 50;
     ctx.strokeStyle = '#64748b';
     ctx.beginPath();
-    ctx.moveTo(pad, H - pad);
-    ctx.lineTo(W - 20, H - pad);
-    ctx.moveTo(pad, H - pad);
-    ctx.lineTo(pad, 20);
+    ctx.moveTo(pad, H - pad); ctx.lineTo(W - 20, H - pad);
+    ctx.moveTo(pad, H - pad); ctx.lineTo(pad, 20);
     ctx.stroke();
-    // curva esquemática hasta σu
-    var sy = d.sy || 250, su = d.su || 400, E = (d.E || 200) * 1000; // MPa
-    var epsY = sy / E, epsU = epsY + 0.15, epsB = epsU + 0.08;
-    function x(e) { return pad + (e / (epsB * 1.1)) * (W - pad - 30); }
-    function y(s) { return H - pad - (s / (su * 1.15)) * (H - pad - 30); }
+    var sy = d.sy || 250, su = d.su || 400, E = (d.E || 200) * 1000;
+    var epsY = sy / E, epsU = epsY + 0.12, epsB = epsU + 0.08;
+    function x(e) { return pad + (e / (epsB * 1.15)) * (W - pad - 30); }
+    function y(s) { return H - pad - (s / (su * 1.2)) * (H - pad - 30); }
     ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.moveTo(x(0), y(0));
     ctx.lineTo(x(epsY), y(sy));
-    ctx.lineTo(x(epsY * 1.05), y(sy * 0.98));
-    ctx.quadraticCurveTo(x(epsU * 0.6), y(su * 0.85), x(epsU), y(su));
-    ctx.quadraticCurveTo(x(epsB * 0.9), y(su * 0.92), x(epsB), y(su * 0.75));
+    ctx.lineTo(x(epsY * 1.08), y(sy * 0.97));
+    ctx.quadraticCurveTo(x(epsU * 0.55), y(su * 0.88), x(epsU), y(su));
+    ctx.quadraticCurveTo(x(epsB * 0.85), y(su * 0.9), x(epsB), y(su * 0.72));
     ctx.stroke();
-    ctx.fillStyle = '#e2e8f0';
+    ctx.fillStyle = '#94a3b8';
     ctx.font = '12px sans-serif';
-    ctx.fillText('ε', W - 30, H - 20);
-    ctx.fillText('σ (MPa)', 8, 24);
+    ctx.fillText('ε', W - 28, H - 18);
+    ctx.fillText('σ (MPa)', 8, 22);
     if (d.sigma != null && d.eps != null) {
         ctx.fillStyle = '#fbbf24';
         ctx.beginPath();
-        ctx.arc(x(Math.min(d.eps, epsB)), y(Math.min(d.sigma, su * 1.1)), 5, 0, Math.PI * 2);
+        ctx.arc(x(Math.min(d.eps, epsB)), y(Math.min(d.sigma, su * 1.15)), 6, 0, Math.PI * 2);
         ctx.fill();
     }
 }
 
-/* ========== COMPRESIÓN ========== */
 function crearFormularioRMCompresion(modo) {
-    var titulo = (modo === 'sim' ? 'Simulador' : 'Ensayo') + ' de Compresión';
-    return '<div class="ensayo-form rm-form">' +
-        '<div class="ensayo-form-header"><h3>' + titulo + '</h3>' +
-        '<button type="button" class="btn-limpiar" onclick="rmCerrarPanel(\'' + modo + '\')">Cerrar</button></div>' +
-        rmMachineBlock('compresion', modo) +
-        '<p class="login-hint">Cilindro de concreto o metal en máquina universal / prensa · fc = P / A</p>' +
-        '<div class="form-grid">' +
+    return rmShell((modo === 'sim' ? 'Simulador' : 'Ensayo') + ' de Compresión', 'compresion', modo,
         '<label>Diámetro d (mm)<input type="number" id="rm-co-d" value="100" step="0.1"></label>' +
         '<label>Altura h (mm)<input type="number" id="rm-co-h" value="200" step="0.1"></label>' +
-        '<label>Carga de falla P (kN)<input type="number" id="rm-co-p" value="450" step="0.1"></label>' +
-        '</div>' +
-        '<button type="button" class="btn-calcular" onclick="calcularRMCompresion()">CALCULAR</button>' +
-        '<div class="resultados-box">' +
+        '<label>Carga de falla P (kN)<input type="number" id="rm-co-p" value="450" step="0.1"></label>',
         '<div><span>Área A</span><strong id="rm-co-a">—</strong><small>mm²</small></div>' +
-        '<div><span>fc (resistencia)</span><strong id="rm-co-fc">—</strong><small>MPa</small></div>' +
-        '</div>' +
-        '<p class="error-msg" id="rm-co-error"></p></div>';
+        '<div><span>fc</span><strong id="rm-co-fc">—</strong><small>MPa</small></div>',
+        '<p class="login-hint">fc = P / A · cilindro en prensa / UTM</p>'
+    );
 }
-
 function calcularRMCompresion() {
     var err = document.getElementById('rm-co-error');
     if (err) err.textContent = '';
@@ -1874,114 +2070,79 @@ function calcularRMCompresion() {
     rmSet('rm-co-a', A.toFixed(1));
     rmSet('rm-co-fc', fc.toFixed(2));
     window.__datosEnsayoRM.compresion = { d: d, h: h, P: P, A: A, fc: fc };
-    dibujarMaquinaRM('compresion');
+    if (!window.__simRM.running) dibujarMaquinaRM('compresion', 0);
 }
 
-/* ========== FLEXIÓN ========== */
 function crearFormularioRMFlexion(modo) {
-    var titulo = (modo === 'sim' ? 'Simulador' : 'Ensayo') + ' de Flexión';
-    return '<div class="ensayo-form rm-form">' +
-        '<div class="ensayo-form-header"><h3>' + titulo + '</h3>' +
-        '<button type="button" class="btn-limpiar" onclick="rmCerrarPanel(\'' + modo + '\')">Cerrar</button></div>' +
-        rmMachineBlock('flexion', modo) +
-        '<p class="login-hint">Viga simplemente apoyada, carga centrada · σ = M·c / I · Mr = módulo de ruptura</p>' +
-        '<div class="form-grid">' +
+    return rmShell((modo === 'sim' ? 'Simulador' : 'Ensayo') + ' de Flexión', 'flexion', modo,
         '<label>Luz L (mm)<input type="number" id="rm-fl-L" value="300" step="1"></label>' +
         '<label>Ancho b (mm)<input type="number" id="rm-fl-b" value="100" step="0.1"></label>' +
         '<label>Altura h (mm)<input type="number" id="rm-fl-h" value="100" step="0.1"></label>' +
-        '<label>Carga de falla P (kN)<input type="number" id="rm-fl-p" value="25" step="0.1"></label>' +
-        '</div>' +
-        '<button type="button" class="btn-calcular" onclick="calcularRMFlexion()">CALCULAR</button>' +
-        '<div class="resultados-box">' +
+        '<label>Carga de falla P (kN)<input type="number" id="rm-fl-p" value="25" step="0.1"></label>',
         '<div><span>M máx</span><strong id="rm-fl-m">—</strong><small>N·mm</small></div>' +
         '<div><span>I</span><strong id="rm-fl-i">—</strong><small>mm⁴</small></div>' +
-        '<div><span>Mr (ruptura)</span><strong id="rm-fl-mr">—</strong><small>MPa</small></div>' +
-        '</div>' +
-        '<p class="error-msg" id="rm-fl-error"></p></div>';
+        '<div><span>Mr</span><strong id="rm-fl-mr">—</strong><small>MPa</small></div>',
+        '<p class="login-hint">M = PL/4 · Mr = Mc/I</p>'
+    );
 }
-
 function calcularRMFlexion() {
     var err = document.getElementById('rm-fl-error');
     if (err) err.textContent = '';
     var L = rmNum('rm-fl-L'), b = rmNum('rm-fl-b'), h = rmNum('rm-fl-h'), P = rmNum('rm-fl-p');
     if (!L || !b || !h || !P) { if (err) err.textContent = 'Complete todos los datos'; return; }
-    var M = (P * 1000) * L / 4; // N·mm
+    var M = (P * 1000) * L / 4;
     var I = b * Math.pow(h, 3) / 12;
-    var c = h / 2;
-    var Mr = (M * c) / I; // N/mm² = MPa
+    var Mr = (M * (h / 2)) / I;
     rmSet('rm-fl-m', M.toFixed(0));
     rmSet('rm-fl-i', I.toFixed(0));
     rmSet('rm-fl-mr', Mr.toFixed(2));
     window.__datosEnsayoRM.flexion = { L: L, b: b, h: h, P: P, M: M, I: I, Mr: Mr };
-    dibujarMaquinaRM('flexion');
+    if (!window.__simRM.running) dibujarMaquinaRM('flexion', 0);
 }
 
-/* ========== TORSIÓN ========== */
 function crearFormularioRMTorsion(modo) {
-    var titulo = (modo === 'sim' ? 'Simulador' : 'Ensayo') + ' de Torsión';
-    return '<div class="ensayo-form rm-form">' +
-        '<div class="ensayo-form-header"><h3>' + titulo + '</h3>' +
-        '<button type="button" class="btn-limpiar" onclick="rmCerrarPanel(\'' + modo + '\')">Cerrar</button></div>' +
-        rmMachineBlock('torsion', modo) +
-        '<p class="login-hint">Banco de torsión · τ = T·r / J · γ = r·θ / L · G = τ/γ</p>' +
-        '<div class="form-grid">' +
+    return rmShell((modo === 'sim' ? 'Simulador' : 'Ensayo') + ' de Torsión', 'torsion', modo,
         '<label>Diámetro d (mm)<input type="number" id="rm-to-d" value="20" step="0.1"></label>' +
         '<label>Longitud L (mm)<input type="number" id="rm-to-L" value="250" step="1"></label>' +
         '<label>Torque T (N·m)<input type="number" id="rm-to-T" value="80" step="0.1"></label>' +
-        '<label>Ángulo θ (°)<input type="number" id="rm-to-th" value="2.5" step="0.1"></label>' +
-        '</div>' +
-        '<button type="button" class="btn-calcular" onclick="calcularRMTorsion()">CALCULAR</button>' +
-        '<div class="resultados-box">' +
+        '<label>Ángulo θ (°)<input type="number" id="rm-to-th" value="2.5" step="0.1"></label>',
         '<div><span>J</span><strong id="rm-to-j">—</strong><small>mm⁴</small></div>' +
         '<div><span>τ</span><strong id="rm-to-tau">—</strong><small>MPa</small></div>' +
         '<div><span>γ</span><strong id="rm-to-g">—</strong><small>—</small></div>' +
-        '<div><span>G</span><strong id="rm-to-G">—</strong><small>GPa</small></div>' +
-        '</div>' +
-        '<p class="error-msg" id="rm-to-error"></p></div>';
+        '<div><span>G</span><strong id="rm-to-G">—</strong><small>GPa</small></div>',
+        '<p class="login-hint">τ = Tr/J · γ = rθ/L · G = τ/γ</p>'
+    );
 }
-
 function calcularRMTorsion() {
     var err = document.getElementById('rm-to-error');
     if (err) err.textContent = '';
     var d = rmNum('rm-to-d'), L = rmNum('rm-to-L'), T = rmNum('rm-to-T'), thDeg = rmNum('rm-to-th');
     if (!d || !L || !T || thDeg == null) { if (err) err.textContent = 'Complete todos los datos'; return; }
     var r = d / 2;
-    var J = Math.PI * Math.pow(d, 4) / 32; // mm⁴
-    var T_Nmm = T * 1000; // N·m → N·mm
-    var tau = (T_Nmm * r) / J; // MPa
+    var J = Math.PI * Math.pow(d, 4) / 32;
+    var tau = (T * 1000 * r) / J;
     var th = thDeg * Math.PI / 180;
     var gamma = (r * th) / L;
-    var G = (gamma > 0) ? (tau / gamma) / 1000 : null; // GPa
+    var G = (gamma > 0) ? (tau / gamma) / 1000 : null;
     rmSet('rm-to-j', J.toFixed(0));
     rmSet('rm-to-tau', tau.toFixed(2));
     rmSet('rm-to-g', gamma.toFixed(6));
     rmSet('rm-to-G', G != null ? G.toFixed(1) : '—');
     window.__datosEnsayoRM.torsion = { d: d, L: L, T: T, thDeg: thDeg, J: J, tau: tau, gamma: gamma, G: G };
-    dibujarMaquinaRM('torsion');
+    if (!window.__simRM.running) dibujarMaquinaRM('torsion', 0);
 }
 
-/* ========== DUREZA ========== */
 function crearFormularioRMDureza(modo) {
-    var titulo = (modo === 'sim' ? 'Simulador' : 'Ensayo') + ' de Dureza Rockwell';
-    return '<div class="ensayo-form rm-form">' +
-        '<div class="ensayo-form-header"><h3>' + titulo + '</h3>' +
-        '<button type="button" class="btn-limpiar" onclick="rmCerrarPanel(\'' + modo + '\')">Cerrar</button></div>' +
-        rmMachineBlock('dureza', modo) +
-        '<p class="login-hint">Durómetro Rockwell (ref. Instron / UniPamplona) · Escalas HRC, HRB…</p>' +
-        '<div class="form-grid">' +
-        '<label>Escala<select id="rm-du-esc"><option value="C">HRC (cono diamante)</option><option value="B">HRB (bola 1/16")</option></select></label>' +
+    return rmShell((modo === 'sim' ? 'Simulador' : 'Ensayo') + ' de Dureza Rockwell', 'dureza', modo,
+        '<label>Escala<select id="rm-du-esc"><option value="C">HRC</option><option value="B">HRB</option></select></label>' +
         '<label>Lectura 1<input type="number" id="rm-du-1" value="32" step="0.5"></label>' +
         '<label>Lectura 2<input type="number" id="rm-du-2" value="33" step="0.5"></label>' +
-        '<label>Lectura 3<input type="number" id="rm-du-3" value="31.5" step="0.5"></label>' +
-        '</div>' +
-        '<button type="button" class="btn-calcular" onclick="calcularRMDureza()">CALCULAR</button>' +
-        '<div class="resultados-box">' +
+        '<label>Lectura 3<input type="number" id="rm-du-3" value="31.5" step="0.5"></label>',
         '<div><span>Promedio</span><strong id="rm-du-avg">—</strong></div>' +
-        '<div><span>Escala</span><strong id="rm-du-sc">—</strong></div>' +
-        '</div>' +
-        '<p class="error-msg" id="rm-du-error"></p></div>';
+        '<div><span>Escala</span><strong id="rm-du-sc">—</strong></div>',
+        '<p class="login-hint">Durómetro Rockwell · promedio de lecturas</p>'
+    );
 }
-
 function calcularRMDureza() {
     var v1 = rmNum('rm-du-1'), v2 = rmNum('rm-du-2'), v3 = rmNum('rm-du-3');
     var esc = (document.getElementById('rm-du-esc') || {}).value || 'C';
@@ -1991,9 +2152,8 @@ function calcularRMDureza() {
     rmSet('rm-du-avg', avg.toFixed(1));
     rmSet('rm-du-sc', 'HR' + esc);
     window.__datosEnsayoRM.dureza = { escala: 'HR' + esc, lecturas: vals, promedio: avg };
-    dibujarMaquinaRM('dureza');
+    if (!window.__simRM.running) dibujarMaquinaRM('dureza', 0);
 }
-
 
 function crearFormularioHumedad() {
     return `
