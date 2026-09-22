@@ -4446,3 +4446,117 @@ div.ai-detect-result[hidden] {
   padding: 0 !important;
   border: none !important;
 }
+
+
+/* Resistencia de Materiales — layout tipo Suelos 2 */
+.sim-layout-rm { margin-top: 16px; }
+.sim-rm-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.05fr) minmax(280px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .sim-rm-grid { grid-template-columns: 1fr; }
+}
+.rm-machine-canvas {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: #0f172a;
+  display: block;
+}
+.sim-rm-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+.sim-vel-label {
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sim-vel-label select {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.3);
+  color: inherit;
+}
+.sim-estado {
+  font-size: 0.85rem;
+  color: #6ee7b7;
+  font-weight: 600;
+}
+.rm-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+.rm-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+}
+.rm-form-grid input,
+.rm-form-grid select {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(0,0,0,0.28);
+  color: #fff;
+  width: 100%;
+  box-sizing: border-box;
+}
+.rm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.rm-resultados {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.rm-resultados > div {
+  background: rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.rm-resultados span { display: block; font-size: 0.75rem; opacity: 0.75; }
+.rm-resultados strong { font-size: 1.05rem; }
+.rm-resultados small { margin-left: 4px; opacity: 0.7; }
+.rm-grafica-panel {
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.2);
+}
+.rm-grafica-panel canvas {
+  width: 100%;
+  max-width: 700px;
+  height: auto;
+  border-radius: 8px;
+}
+#panel-ensayo-rm .ensayo-form,
+#panel-sim-rm .ensayo-form {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+#panel-ensayo-rm .ensayo-form-header,
+#panel-sim-rm .ensayo-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
