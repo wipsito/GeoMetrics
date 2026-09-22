@@ -4338,3 +4338,23 @@ label.btn-adjuntar:not(.btn-adjuntar-icon) {
 }
 .ai-muted { color: #4b5563 !important; font-style: italic; }
 .ai-loading { color: #c4b5fd !important; font-weight: 600; }
+
+
+.btn-calificar-rapido {
+  margin-left: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #059669;
+  background: #059669;
+  color: #fff !important;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.btn-calificar-rapido:hover { background: #047857; }
+.calificar-highlight {
+  outline: 2px solid #34d399;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.35);
+  border-radius: 10px;
+  transition: box-shadow 0.3s ease;
+}
