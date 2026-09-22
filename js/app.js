@@ -3429,6 +3429,9 @@ function calcularCorteDirecto() {
         p.sc = sc;
         p.s1 = sc + R;
         p.s3 = sc - R;
+        // Mohr: radio = (σ1 − σ3)/2 ; centro = (σ1 + σ3)/2
+        p.radio = (p.s1 - p.s3) / 2;
+        p.centro = (p.s1 + p.s3) / 2;
         p.c_check = p.t - p.sn * tanPhi;
     });
 
@@ -4045,10 +4048,32 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                 .replace(/σ/g, 'sigma').replace(/τ/g, 'tau').replace(/φ/g, 'phi')
                 .replace(/≥/g, '>=').replace(/≈/g, 'aprox.').replace(/²/g, '2');
         }
+        function dibujarMarcaAgua() {
+            if (!logoGeo) return;
+            try {
+                var gW = 95, gH = 95;
+                var gx = (pageW - gW) / 2;
+                var gy = (pageH - gH) / 2;
+                if (doc.setGState) {
+                    doc.setGState(new doc.GState({ opacity: 0.08 }));
+                }
+                doc.addImage(logoGeo, 'PNG', gx, gy, gW, gH);
+                if (doc.setGState) {
+                    doc.setGState(new doc.GState({ opacity: 1 }));
+                }
+                setF(true, 14);
+                doc.setTextColor(180, 180, 180);
+                var marca = 'GeoMetrics';
+                doc.text(marca, (pageW - doc.getTextWidth(marca)) / 2, gy + gH + 8);
+                doc.setTextColor(0, 0, 0);
+                setF(false, 11);
+            } catch (e) {}
+        }
         function dibujarMarcoPagina() {
             doc.setDrawColor(40, 70, 140);
             doc.setLineWidth(0.6);
             doc.rect(8, 8, pageW - 16, pageH - 16);
+            dibujarMarcaAgua();
         }
         function ensureSpace(h) {
             if (y + h > pageH - marginB) {
@@ -4057,6 +4082,45 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                 y = marginT + 8;
                 setF(false, 11);
             }
+        }
+        function addTablaColor(headers, rows, headerRGB, bodyRGB) {
+            headerRGB = headerRGB || [40, 70, 140];
+            bodyRGB = bodyRGB || [232, 240, 250];
+            var cols = headers.length;
+            var colW = maxW / cols;
+            var rowH = 7.2;
+            ensureSpace(rowH * (rows.length + 1) + 6);
+            // header
+            doc.setFillColor(headerRGB[0], headerRGB[1], headerRGB[2]);
+            doc.rect(marginL, y - 4.5, maxW, rowH, 'F');
+            setF(true, 9);
+            doc.setTextColor(255, 255, 255);
+            headers.forEach(function(h, i) {
+                doc.text(sym(String(h)), marginL + i * colW + 1.5, y);
+            });
+            y += rowH;
+            doc.setTextColor(0, 0, 0);
+            rows.forEach(function(row, ri) {
+                ensureSpace(rowH + 2);
+                if (ri % 2 === 0) {
+                    doc.setFillColor(bodyRGB[0], bodyRGB[1], bodyRGB[2]);
+                } else {
+                    doc.setFillColor(255, 255, 255);
+                }
+                doc.rect(marginL, y - 4.5, maxW, rowH, 'F');
+                doc.setDrawColor(200, 200, 200);
+                doc.setLineWidth(0.15);
+                doc.rect(marginL, y - 4.5, maxW, rowH);
+                setF(false, 9);
+                doc.setTextColor(30, 40, 60);
+                row.forEach(function(cell, i) {
+                    doc.text(sym(String(cell)), marginL + i * colW + 1.5, y);
+                });
+                y += rowH;
+            });
+            y += 4;
+            doc.setTextColor(0, 0, 0);
+            setF(false, 11);
         }
         function wrapText(text, width, fontSize) {
             text = sym(String(text || ''));
@@ -4201,8 +4265,74 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             resumen.forEach(function(ln) { addParagraph('• ' + ln); });
         }
 
-        // Gráfica solo para corte directo si existe canvas
+        // Corte directo: tablas Mohr + desarrollo paso a paso
         if (tipoEnsayo === 'corte') {
+            var dCorte = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
+            if (dCorte && dCorte.pts && dCorte.pts.length) {
+                addHeading('7.1. Desarrollo de ecuaciones (paso a paso)');
+                addParagraph('Envolvente de falla (Coulomb): τ = c + σn · tan(φ)');
+                addParagraph('De la regresión lineal de los puntos (σn, τ) se obtiene la pendiente b = tan(φ) y el intercepto c.');
+                addParagraph('Ángulo de fricción: φ = arctan(b) = ' + Number(dCorte.phi).toFixed(1) + '°');
+                addParagraph('Cohesión (intercepto): c = ' + Number(dCorte.c).toFixed(2) + ' kPa');
+                addParagraph('Para cada ensayo, el centro y el radio del círculo de Mohr se calculan con:');
+                addParagraph('Radio R = (σ₁ − σ₃) / 2');
+                addParagraph('Centro C = (σ₁ + σ₃) / 2');
+                addParagraph('En el modelo de corte directo usado en GeoMetrics: R = τ / cos(φ) y C = σn + τ · tan(φ), de modo que σ₁ = C + R y σ₃ = C − R (coherente con las definiciones anteriores).');
+
+                dCorte.pts.forEach(function(p, idx) {
+                    var nE = idx + 1;
+                    var s1 = Number(p.s1), s3 = Number(p.s3);
+                    var radio = (typeof p.radio === 'number') ? p.radio : (s1 - s3) / 2;
+                    var centro = (typeof p.centro === 'number') ? p.centro : (s1 + s3) / 2;
+                    addParagraph('Ensayo ' + nE + ':');
+                    addParagraph('  σn = ' + Number(p.sn).toFixed(3) + ' kPa ;  τ = ' + Number(p.t).toFixed(3) + ' kPa');
+                    addParagraph('  σ₁ = ' + s1.toFixed(3) + ' kPa ;  σ₃ = ' + s3.toFixed(3) + ' kPa');
+                    addParagraph('  R = (σ₁ − σ₃)/2 = (' + s1.toFixed(3) + ' − ' + s3.toFixed(3) + ')/2 = ' + radio.toFixed(3) + ' kPa');
+                    addParagraph('  Centro = (σ₁ + σ₃)/2 = (' + s1.toFixed(3) + ' + ' + s3.toFixed(3) + ')/2 = ' + centro.toFixed(3) + ' kPa');
+                });
+
+                addHeading('7.2. Tabla de esfuerzos principales, radio y centro');
+                var headersM = ['Ensayo', 'σ₁ (kPa)', 'σ₃ (kPa)', 'Radio (kPa)', 'Centro (kPa)'];
+                var rowsM = dCorte.pts.map(function(p, idx) {
+                    var s1 = Number(p.s1), s3 = Number(p.s3);
+                    var radio = (typeof p.radio === 'number') ? p.radio : (s1 - s3) / 2;
+                    var centro = (typeof p.centro === 'number') ? p.centro : (s1 + s3) / 2;
+                    return [
+                        'E' + (idx + 1),
+                        s1.toFixed(3),
+                        s3.toFixed(3),
+                        radio.toFixed(3),
+                        centro.toFixed(3)
+                    ];
+                });
+                // Tabla 1 — azul
+                addTablaColor(headersM, rowsM, [40, 70, 140], [230, 238, 250]);
+
+                addHeading('7.3. Tabla de datos de falla (σn, τ)');
+                var headersT = ['Ensayo', 'σn (kPa)', 'τ (kPa)', 'c_i = τ − σn·tan(φ)'];
+                var rowsT = dCorte.pts.map(function(p, idx) {
+                    return [
+                        'E' + (idx + 1),
+                        Number(p.sn).toFixed(3),
+                        Number(p.t).toFixed(3),
+                        (typeof p.c_check === 'number' ? p.c_check : (p.t - p.sn * Math.tan(Number(dCorte.phi) * Math.PI / 180))).toFixed(3)
+                    ];
+                });
+                // Tabla 2 — verde
+                addTablaColor(headersT, rowsT, [34, 110, 70], [230, 245, 235]);
+
+                addHeading('7.4. Parámetros de la envolvente');
+                var headersP = ['Parámetro', 'Símbolo', 'Valor', 'Unidad'];
+                var rowsP = [
+                    ['Ángulo de fricción', 'φ', Number(dCorte.phi).toFixed(1), '°'],
+                    ['Cohesión', 'c', Number(dCorte.c).toFixed(2), 'kPa'],
+                    ['σ₁ medio', 'σ₁', Number(dCorte.avgS1).toFixed(2), 'kPa'],
+                    ['σ₃ medio', 'σ₃', Number(dCorte.avgS3).toFixed(2), 'kPa']
+                ];
+                // Tabla 3 — dorado/ámbar
+                addTablaColor(headersP, rowsP, [160, 110, 30], [255, 246, 220]);
+            }
+
             var canvas = document.getElementById('canvas-corte');
             if (canvas) {
                 try {
@@ -4211,7 +4341,7 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                     var imgH = (canvas.height / canvas.width) * imgW;
                     if (imgH > 95) { imgH = 95; imgW = (canvas.width / canvas.height) * imgH; }
                     ensureSpace(imgH + 20);
-                    addHeading('Figura');
+                    addHeading('7.5. Figura — Círculos de Mohr');
                     doc.addImage(img, 'PNG', marginL, y, imgW, imgH);
                     y += imgH + 4;
                     addParagraph('Figura 1. Envolvente y círculos de Mohr del ensayo de corte directo.');
