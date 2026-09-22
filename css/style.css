@@ -2948,6 +2948,10 @@ body {
     grid-template-columns: 1fr;
     gap: 6px;
 }
+.calificar-box[hidden],
+.ai-detect-result[hidden] {
+    display: none !important;
+}
 
 .calificar-box label {
     font-size: 11px;
@@ -4426,4 +4430,19 @@ label.btn-adjuntar:not(.btn-adjuntar-icon) {
   margin: 8px 0;
   position: relative;
   z-index: 2;
+}
+
+
+/* toggle IA / calificar — hidden debe ganar sobre display:grid */
+.calificar-box[hidden],
+.ai-detect-result[hidden],
+div.calificar-box[hidden],
+div.ai-detect-result[hidden] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
 }
