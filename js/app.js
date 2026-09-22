@@ -3476,35 +3476,34 @@ function graficaCorteDirecto() {
     ctx.fillStyle = '#1a120c';
     ctx.fillRect(0, 0, w, h);
 
-    // Eje X: σ en kN (F = σ·A). Eje Y: τ en kPa (esfuerzo cortante).
-    var A = (d.A && d.A > 0) ? d.A : 0.0036;
-    function toKN(kPa) { return kPa * A; }
+    // Ambos ejes en kPa (esfuerzos): σ y τ
     var ptsN = d.pts.map(function(p) {
+        var s1 = Number(p.s1), s3 = Number(p.s3);
+        var radio = (typeof p.radio === 'number') ? p.radio : (s1 - s3) / 2;
+        var centro = (typeof p.centro === 'number') ? p.centro : (s1 + s3) / 2;
         return {
-            sn: toKN(p.sn), t: p.t,           // τ en kPa
-            s1: toKN(p.s1), s3: toKN(p.s3), // σ en kN (etiquetas)
-            Rx: toKN(p.R), Ry: p.R,           // radio según eje
-            sc: toKN(p.sc),
-            // R y centro en kN (misma base que σ del eje X)
-            R_kN: toKN(p.R),
-            centro_kN: toKN(p.sc),
-            // también en kPa por si se necesita
-            R_kPa: p.R,
-            centro_kPa: p.sc,
-            s1kPa: p.s1, s3kPa: p.s3
+            sn: Number(p.sn),
+            t: Number(p.t),
+            s1: s1,
+            s3: s3,
+            R: Number(p.R != null ? p.R : radio),
+            sc: Number(p.sc != null ? p.sc : centro),
+            radio: radio,
+            centro: centro
         };
     });
-    var cY = d.c; // cohesión en kPa para envolvente en eje Y
+    var cY = Number(d.c) || 0;
+    var phiRad = (Number(d.phi) || 0) * Math.PI / 180;
 
-    var maxS = Math.max.apply(null, ptsN.map(function(p) { return Math.max(p.s1, p.sn); }));
-    maxS = Math.max(maxS * 1.25, 0.001);
+    var maxS = Math.max.apply(null, ptsN.map(function(p) { return Math.max(p.s1, p.sn, p.s3); }));
+    maxS = Math.max(maxS * 1.25, 1);
     var maxT = Math.max(
-        cY + (maxS / A) * Math.tan(d.phi * Math.PI / 180), // envolvente: τ(kPa) vs σ(kN)=σkPa*A
-        Math.max.apply(null, ptsN.map(function(p) { return p.Ry; })),
+        cY + maxS * Math.tan(phiRad),
+        Math.max.apply(null, ptsN.map(function(p) { return Math.max(p.t, p.R); })),
         1
     ) * 1.25;
 
-    var ox = 70, oy = h - 70, gx = w - 30, gy = 30; // más espacio abajo para etiquetas
+    var ox = 70, oy = h - 70, gx = w - 30, gy = 30;
     function sx(x) { return ox + (x / maxS) * (gx - ox); }
     function sy(y) { return oy - (y / maxT) * (oy - gy); }
 
@@ -3521,76 +3520,69 @@ function graficaCorteDirecto() {
     ctx.strokeStyle = '#8a7a60';
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(sx(0), oy); ctx.stroke();
 
-    // Envolvente: τ(kPa) = c + (σ_kN/A)·tanφ
+    // Envolvente: τ = c + σ · tan(φ)  (kPa vs kPa)
     ctx.strokeStyle = '#e8b84a';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.moveTo(sx(0), sy(cY));
-    ctx.lineTo(sx(maxS), sy(cY + (maxS / A) * Math.tan(d.phi * Math.PI / 180)));
+    ctx.lineTo(sx(maxS), sy(cY + maxS * Math.tan(phiRad)));
     ctx.stroke();
 
-    // Mohr circles for each test (semicírculo superior + σ1/σ3) — ejes en kN
-    var colors = ['#5ec8ff', '#9dffc0', '#ff9f7a'];
+    var colors = ['#5dade2', '#58d68d', '#f5b041', '#af7ac5', '#ec7063', '#1abc9c'];
     var labelBottom = [];
+
     ptsN.forEach(function(p, i) {
         var col = colors[i % colors.length];
+        // Semicírculo de Mohr (radio en kPa, centro en kPa)
+        var cx = p.centro;
+        var R = p.radio;
         ctx.strokeStyle = col;
-        ctx.lineWidth = 2.2;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        var steps = 72;
-        for (var k = 0; k <= steps; k++) {
-            var ang = Math.PI * k / steps; // 0..π semicírculo superior
-            var px = p.sc + p.Rx * Math.cos(ang);
-            var py = p.Ry * Math.sin(ang);
-            var X = sx(px), Y = sy(py);
-            if (k === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+        // arco superior de σ3 a σ1
+        var steps = 48;
+        for (var s = 0; s <= steps; s++) {
+            var ang = Math.PI - (Math.PI * s / steps); // π → 0
+            var px = cx + R * Math.cos(ang);
+            var py = R * Math.sin(ang);
+            if (s === 0) ctx.moveTo(sx(px), sy(py));
+            else ctx.lineTo(sx(px), sy(py));
         }
         ctx.stroke();
 
-        // Diámetro sobre el eje σ
-        ctx.strokeStyle = col;
-        ctx.globalAlpha = 0.45;
+        // Base σ3 — σ1
         ctx.beginPath();
         ctx.moveTo(sx(p.s3), oy);
         ctx.lineTo(sx(p.s1), oy);
         ctx.stroke();
-        ctx.globalAlpha = 1;
 
-        // Punto de falla (σn, τ) sobre la envolvente
+        // Punto de falla (σn, τ)
         ctx.fillStyle = col;
         ctx.beginPath(); ctx.arc(sx(p.sn), sy(p.t), 6, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(sx(p.sn), sy(p.t), 2.5, 0, Math.PI * 2); ctx.fill();
 
-        // Marcas σ1 y σ3 en el eje
+        // Extremes σ1, σ3
         ctx.fillStyle = col;
         ctx.beginPath(); ctx.arc(sx(p.s1), oy, 4, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.arc(sx(p.s3), oy, 4, 0, Math.PI * 2); ctx.fill();
 
-        // Etiqueta del ensayo junto al punto de falla
         ctx.font = 'bold 11px sans-serif';
         ctx.fillStyle = col;
         var labY = sy(p.t) - 10 - (i * 12);
         if (labY < gy + 8) labY = sy(p.t) + 14 + (i * 12);
         ctx.fillText('E' + (i + 1), sx(p.sn) + 8, labY);
 
-        // Guardar posiciones de etiquetas inferiores para anti-solape
-        labelBottom.push({
-            x: sx(p.s3), text: 'σ₃=' + p.s3.toFixed(3), col: col, row: 0
-        });
-        labelBottom.push({
-            x: sx(p.s1), text: 'σ₁=' + p.s1.toFixed(3), col: col, row: 0
-        });
+        labelBottom.push({ x: sx(p.s3), text: 'σ₃=' + p.s3.toFixed(1), col: col, row: 0 });
+        labelBottom.push({ x: sx(p.s1), text: 'σ₁=' + p.s1.toFixed(1), col: col, row: 0 });
     });
 
-    // Colocar etiquetas abajo sin solaparse (varias filas si hace falta)
     labelBottom.sort(function(a, b) { return a.x - b.x; });
     var placed = [];
-    var minGap = 58; // px mínimos entre centros de texto
+    var minGap = 58;
     labelBottom.forEach(function(lb) {
-        var row = 0;
-        var ok = false;
+        var row = 0, ok = false;
         while (!ok && row < 4) {
             ok = true;
             for (var pi = 0; pi < placed.length; pi++) {
@@ -3611,40 +3603,36 @@ function graficaCorteDirecto() {
         var ty = oy + 14 + lb.row * 13;
         var tx = lb.x - 24;
         if (tx < ox) tx = ox;
-        if (tx > gx - 50) tx = gx - 50;
+        if (tx > gx - 55) tx = gx - 55;
         ctx.fillText(lb.text, tx, ty);
     });
 
-    // Leyenda superior
     ctx.font = '12px sans-serif';
     ctx.fillStyle = '#e8b84a';
     ctx.fillText('Envolvente τ = c + σn·tanφ', ox + 8, gy + 14);
     ctx.fillStyle = '#c8d0d8';
     ctx.fillText('c = ' + d.c.toFixed(2) + ' kPa   φ = ' + d.phi.toFixed(1) + '°', ox + 8, gy + 30);
 
-    // Ejes en kN
+    // Ejes en kPa
     ctx.fillStyle = '#aaa';
     ctx.font = '12px sans-serif';
     var maxRow = 0;
     placed.forEach(function(lb) { if (lb.row > maxRow) maxRow = lb.row; });
-    ctx.fillText('σ (kN)', gx - 50, oy + 16 + (maxRow + 1) * 13);
+    ctx.fillText('σ (kPa)', gx - 55, oy + 16 + (maxRow + 1) * 13);
     ctx.save();
     ctx.translate(16, (gy + oy) / 2 + 20);
     ctx.rotate(-Math.PI / 2);
     ctx.fillText('τ (kPa)', 0, 0);
     ctx.restore();
 
-    // Apartado R y Centro debajo de la gráfica
-    // R = (σ1 − σ3)/2   Centro = (σ1 + σ3)/2   (con σ en kN del eje X)
+    // R y Centro en kPa: R = (σ1−σ3)/2 , Centro = (σ1+σ3)/2
     if (hint) {
         var html = '<div class="mohr-rc-wrap">';
         html += '<div class="mohr-rc-grid">';
         ptsN.forEach(function(p, i) {
-            var R = (p.s1 - p.s3) / 2;
-            var centro = (p.s1 + p.s3) / 2;
             html += '<div class="mohr-rc-item">' +
-                '<span>R' + (i + 1) + ' = <strong>' + R.toFixed(3) + '</strong> kN</span>' +
-                '<span>Centro' + (i + 1) + ' = <strong>' + centro.toFixed(3) + '</strong> kN</span>' +
+                '<span>R' + (i + 1) + ' = <strong>' + p.radio.toFixed(3) + '</strong> kPa</span>' +
+                '<span>Centro' + (i + 1) + ' = <strong>' + p.centro.toFixed(3) + '</strong> kPa</span>' +
                 '</div>';
         });
         html += '</div>';
