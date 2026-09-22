@@ -3847,114 +3847,258 @@ var NORMA_ENSAYO_NSR10 = {
 /** Textos de informe por ensayo — alineados a prácticas UniPamplona / FLA-23 / NSR-10 H */
 var TEXTO_INFORME_ENSAYO = {
     humedad: {
-        tituloFLA: 'Determinación en el laboratorio del contenido de agua (humedad) de muestras de suelo, roca y mezclas de suelo-agregado',
-        intro: 'Según la Guía Unificada FLA-23 (Mecánica de Suelos 1), este ensayo determina en el laboratorio el contenido de agua (humedad) por masa del suelo, roca o mezclas suelo-agregado. El contenido de agua es una de las propiedades índice más significativas y se usa en las ecuaciones que relacionan las fases aire, agua y sólidos.',
-        teorica: 'Normas de referencia: INV E-122-13 (INVIAS) y ASTM D 2216-10 (FLA-23). w = (masa de agua / masa de sólidos secos al horno) × 100. El horno debe mantener 110 ± 5 °C. Método A: reportar w con aproximación a 1 %. Método B: aproximación a 0,1 %. Unidades: % y g. No aplican kPa ni grados.',
-        proc: 'Registrar masa del recipiente limpio y seco; colocar muestra húmeda representativa; secar en horno a 110 ± 5 °C hasta peso constante; registrar masas; calcular Mw, Ms y w. Repetir determinaciones según la guía.',
-        materiales: 'Horno 110 ± 5 °C, balanza (0,01 g o 0,1 g según masa), recipientes no corrosibles, elementos de manejo de muestras calientes (FLA-23).',
-        grafica: 'Diagrama de barras del contenido de humedad w (%) por determinación.',
+        tituloFLA: 'Determinación del contenido de agua (humedad)',
+        intro: 'El contenido de humedad (w) expresa la relación entre la masa de agua y la masa de sólidos del suelo. Es una propiedad índice fundamental: interviene en la resistencia, la compactación, la consolidación y el estado de consistencia. Se determina secando la muestra en horno a 110 ± 5 °C hasta masa constante (ASTM D 2216 / INV E-122 / FLA-23).',
+        objetivoGeneral: 'Determinar el contenido de humedad de la muestra de suelo mediante el método de secado en horno.',
+        objetivosEspecificos: [
+            'Registrar las masas del recipiente, del suelo húmedo y del suelo seco.',
+            'Calcular la masa de agua y el contenido de humedad w en porcentaje.',
+            'Interpretar el resultado según el contexto de la muestra (estado natural / laboratorio).'
+        ],
+        materiales: 'Balanza de precisión, recipientes o cápsulas, horno a 110 ± 5 °C, espátula y muestra de suelo representativa.',
+        proc: '1) Pesar el recipiente limpio y seco (Mr). 2) Colocar la muestra húmeda y pesar (Mr+h). 3) Secar en horno a 110 ± 5 °C hasta peso constante. 4) Enfriar y pesar (Mr+s). 5) Calcular Mw = (Mr+h) − (Mr+s), Ms = (Mr+s) − Mr y w = (Mw/Ms)×100.',
+        formulas: [
+            { eq: 'Mw = Mh − Ms', desc: 'Masa de agua (g): diferencia entre masa húmeda y masa seca de suelo.' },
+            { eq: 'w = (Mw / Ms) × 100', desc: 'Contenido de humedad en porcentaje. Unidades: % y g. No aplican kPa ni grados.' }
+        ],
+        analisisGuia: 'Interpretar si w es bajo, medio o alto según el tipo de suelo y el contexto (campo o laboratorio). Relacionar con el estado natural y posibles usos posteriores (compactación, límites, etc.).',
+        conclusionesGuia: 'Reportar el valor de w obtenido y su relevancia como propiedad índice del suelo ensayado.',
+        referencias: [
+            'Guía Unificada FLA-23 — Mecánica de Suelos 1 (Universidad de Pamplona).',
+            'ASTM D 2216 — Laboratory determination of water (moisture) content.',
+            'INV E-122 — Contenido de agua (humedad).'
+        ],
         canvasId: 'canvas-humedad'
     },
     granulometria: {
         tituloFLA: 'Determinación de los tamaños de las partículas de los suelos',
-        intro: 'Según FLA-23, el ensayo determina cuantitativamente la distribución de tamaños de partículas: mayores de 75 µm (retenidas en el N.º 200) por tamizado y menores de 75 µm por sedimentación con hidrómetro cuando aplique.',
-        teorica: 'Normas: INV E-123-13 (INVIAS) y ASTM D 422-63 (FLA-23). Se calcula % retenido, % retenido acumulado y % que pasa. La curva granulométrica representa el % que pasa frente a la abertura del tamiz (escala logarítmica en diámetros).',
-        proc: 'Preparar la muestra (vía seca/húmeda según guía), tamizar, pesar retenidos, calcular % que pasa y graficar la curva granulométrica.',
-        materiales: 'Tamices (N.º 200 a 3"), balanzas, agitador, horno 110 ± 5 °C; para finos: cilindro de sedimentación, hidrómetro y dispersante (FLA-23).',
-        grafica: 'Curva granulométrica: % que pasa vs abertura de tamiz (eje log de diámetros).',
+        intro: 'La granulometría describe la distribución de tamaños de partículas del suelo. Es base de la clasificación SUCS/AASHTO y del comportamiento hidráulico y mecánico. Se obtiene por tamizado (fracción > 75 µm) y, si aplica, sedimentación (FLA-23 / ASTM D 422 / INV E-123).',
+        objetivoGeneral: 'Determinar la distribución de tamaños de partículas y construir la curva granulométrica.',
+        objetivosEspecificos: [
+            'Obtener masas retenidas en cada tamiz y calcular % retenido, acumulado y % que pasa.',
+            'Graficar la curva granulométrica (% que pasa vs abertura, eje log de diámetros).',
+            'Estimar D10, D30, D60 y los coeficientes Cu y Cc cuando corresponda.'
+        ],
+        materiales: 'Juego de tamices, balanza, agitador, bandejas, horno y muestra preparada según la guía.',
+        proc: 'Preparar la muestra, tamizar, pesar retenidos, calcular porcentajes y dibujar la curva. Reportar D10, D30, D60, Cu = D60/D10 y Cc = (D30)²/(D10·D60) si hay datos suficientes.',
+        formulas: [
+            { eq: '% retenido = (mi / M) × 100', desc: 'mi = masa retenida en el tamiz i; M = masa total de la muestra.' },
+            { eq: '% pasa = 100 − % retenido acumulado', desc: 'Fracción que atraviesa el tamiz considerado.' },
+            { eq: 'Cu = D60 / D10', desc: 'Coeficiente de uniformidad.' },
+            { eq: 'Cc = (D30)² / (D10 · D60)', desc: 'Coeficiente de curvatura.' }
+        ],
+        analisisGuia: 'Analizar predominio de grava, arena o finos, y si el suelo es bien o mal graduado según Cu y Cc.',
+        conclusionesGuia: 'Resumir la distribución granulométrica y los parámetros D10, D30, D60, Cu y Cc obtenidos.',
+        referencias: [
+            'Guía FLA-23 — Granulometría.',
+            'ASTM D 422 / INV E-123.'
+        ],
         canvasId: 'canvas-granulo'
     },
     limites: {
-        tituloFLA: 'Determinación del límite líquido y del límite plástico e índice de plasticidad de los suelos',
-        intro: 'Según FLA-23, el límite líquido y el límite plástico, junto con el índice de plasticidad, caracterizan la consistencia de suelos finos y son base de la clasificación SUCS/AASHTO.',
-        teorica: 'Límite líquido: INV E-125-13 e ASTM D 4318-10. Límite plástico e IP: guía FLA-23 (INV/ASTM D 4318). LL se obtiene de la curva de fluidez (humedad vs golpes, gráfico semilogarítmico). IP = LL − LP. Unidades: % de humedad y número de golpes.',
-        proc: 'Preparar pasta que pasa el N.º 40; ensayo multipunto en copa de Casagrande; calcular w de cada punto; trazar curva de fluidez y obtener LL a 25 golpes; determinar LP e IP.',
-        materiales: 'Aparato de límite líquido (copa de bronce), ranurador, calibrador de 10 mm, balanza 0,01 g, horno 110 ± 5 °C, espátula (FLA-23).',
-        grafica: 'Curva de fluidez: humedad (%) vs número de golpes (eje de golpes en escala log).',
+        tituloFLA: 'Límites de Atterberg (LL, LP e IP)',
+        intro: 'Los límites de Atterberg caracterizan la consistencia de suelos finos con la variación del contenido de agua. El límite líquido (LL), el límite plástico (LP) y el índice de plasticidad (IP = LL − LP) son esenciales para la clasificación y el comportamiento de suelos cohesivos (ASTM D 4318 / FLA-23).',
+        objetivoGeneral: 'Determinar el límite líquido, el límite plástico y el índice de plasticidad de la muestra.',
+        objetivosEspecificos: [
+            'Obtener la curva de fluidez (humedad vs número de golpes) y el LL a 25 golpes.',
+            'Determinar el LP e IP = LL − LP.',
+            'Interpretar la plasticidad del suelo.'
+        ],
+        materiales: 'Copa de Casagrande (o equipo equivalente), ranurador, espátula, balanza, cápsulas, horno y tamiz N.º 40.',
+        proc: 'Preparar pasta que pasa el N.º 40; realizar puntos de LL; trazar curva de fluidez; obtener LL; determinar LP por rollitos; calcular IP.',
+        formulas: [
+            { eq: 'w = (Mw / Ms) × 100', desc: 'Humedad de cada punto del ensayo.' },
+            { eq: 'IP = LL − LP', desc: 'Índice de plasticidad.' }
+        ],
+        analisisGuia: 'Interpretar la plasticidad (baja, media, alta) y el comportamiento frente a cambios de humedad. Relacionar con la clasificación de finos.',
+        conclusionesGuia: 'Reportar LL, LP e IP y su significado para el suelo ensayado.',
+        referencias: [
+            'Guía FLA-23 — Límites de Atterberg.',
+            'ASTM D 4318 / INV E-125.'
+        ],
         canvasId: 'canvas-limites'
     },
     gravedad: {
-        tituloFLA: 'Determinación de la gravedad específica de las partículas sólidas de los suelos',
-        intro: 'Según FLA-23, Gs es la relación entre la masa de las partículas sólidas y la masa de un volumen igual de agua destilada a temperatura de referencia. Interviene en las relaciones de fase del suelo.',
-        teorica: 'Normas de referencia típicas: ASTM D 854 / NTC 1974 (alineadas con el espíritu de FLA-23 e INVIAS). Unidades: adimensional. No aplican kPa ni grados.',
-        proc: 'Picnómetro calibrado, desaireado, registro de masas y cálculo de Gs a la temperatura del ensayo.',
-        materiales: 'Picnómetro, balanza, baño térmico, agua destilada, horno (según norma de referencia).',
-        grafica: 'Comparación de Gs por determinación (barras).',
+        tituloFLA: 'Gravedad específica de las partículas sólidas (Gs)',
+        intro: 'La gravedad específica Gs es la relación entre la masa de las partículas sólidas y la masa de un volumen igual de agua a temperatura de referencia. Interviene en las relaciones de fase (índice de vacíos, porosidad, grado de saturación).',
+        objetivoGeneral: 'Determinar la gravedad específica de los sólidos del suelo (Gs).',
+        objetivosEspecificos: [
+            'Registrar las masas del picnómetro en las condiciones del ensayo.',
+            'Calcular Gs y compararlo con rangos típicos.',
+            'Identificar posibles fuentes de error (aire atrapado, temperatura, humedad residual).'
+        ],
+        materiales: 'Picnómetro, balanza, agua destilada, termómetro, bomba de vacío si aplica, horno.',
+        proc: 'Calibrar el picnómetro, desairear, registrar masas y temperatura, y aplicar la fórmula de Gs según la norma de referencia.',
+        formulas: [
+            { eq: 'Gs = Ms / (Ms + Mpw − Mpsw)', desc: 'Forma típica con masas de picnómetro+agua y picnómetro+suelo+agua (ajustar según protocolo del laboratorio).' }
+        ],
+        analisisGuia: 'Comparar Gs con valores típicos (p. ej. 2,65–2,70 para muchos minerales). Discutir aire atrapado, temperatura y humedad residual.',
+        conclusionesGuia: 'Reportar Gs y su utilidad en cálculos posteriores de fase.',
+        referencias: ['ASTM D 854 / NTC 1974', 'Guía FLA-23'],
         canvasId: 'canvas-gravedad'
     },
     compactacion: {
-        tituloFLA: 'Relaciones humedad – peso unitario seco en los suelos (ensayo de compactación)',
-        intro: 'Según FLA-23, el ensayo de compactación relaciona la humedad con el peso unitario seco bajo una energía de compactación definida (p. ej. Proctor modificado).',
-        teorica: 'Norma de referencia tipo INV E (compactación) / ASTM D 698 o D 1557. Se grafica γd vs w; el vértice define wópt y γd máx. Unidades: % y g/cm³ o kN/m³.',
-        proc: 'Compactar puntos a distintas humedades, determinar γh y w, calcular γd y trazar la curva de compactación.',
-        materiales: 'Molde Proctor, pisón, balanza, horno, extrusor (según energía normal o modificada de la guía).',
-        grafica: 'Curva Proctor: peso unitario seco γd vs humedad w (%).',
+        tituloFLA: 'Compactación Proctor — relaciones humedad–peso unitario seco',
+        intro: 'La compactación mejora la densidad y la resistencia del suelo. El ensayo Proctor relaciona el contenido de humedad con el peso unitario seco bajo una energía de compactación definida, permitiendo obtener la humedad óptima (wopt) y la densidad seca máxima (γd máx).',
+        objetivoGeneral: 'Determinar la curva de compactación y obtener wopt y γd máx.',
+        objetivosEspecificos: [
+            'Calcular humedad y densidades húmeda y seca en cada punto.',
+            'Construir la curva γd vs w.',
+            'Identificar humedad óptima y densidad seca máxima.'
+        ],
+        materiales: 'Molde Proctor, pisón, balanza, horno, regla, recipientes y muestra.',
+        proc: 'Compactar puntos a distintas humedades, determinar γh y w, calcular γd = γh/(1+w) y graficar la curva de compactación.',
+        formulas: [
+            { eq: 'γh = Mh / V', desc: 'Densidad húmeda.' },
+            { eq: 'γd = γh / (1 + w)', desc: 'Densidad seca (w en decimal).' }
+        ],
+        analisisGuia: 'Analizar la forma de la curva, la relación agua–compactación y el significado de wopt en obra.',
+        conclusionesGuia: 'Reportar wopt y γd máx como parámetros de control de compactación.',
+        referencias: ['ASTM D 698 / D 1557', 'Guía FLA-23'],
         canvasId: 'canvas-proctor'
     },
     densidad: {
-        tituloFLA: 'Densidad y peso unitario del suelo en el terreno por el método del cono y arena',
-        intro: 'Según FLA-23, el método del cono y arena determina la densidad y el peso unitario del suelo in situ, fundamental para control de compactación en obra.',
-        teorica: 'Normas tipo INV E / ASTM D 1556 (cono de arena). Con masa y volumen del hueco se obtienen γh y, con la humedad, γd. Unidades: g/cm³ o kN/m³ y %.',
-        proc: 'Excavar el hueco, determinar volumen con arena calibrada, pesar el material extraído, obtener w y calcular densidades.',
-        materiales: 'Cono de arena, arena de densidad conocida, balanza, placas, herramientas de excavación (FLA-23).',
-        grafica: 'Comparación de densidades húmeda y seca (barras).',
+        tituloFLA: 'Densidad in situ (cono de arena u otro método)',
+        intro: 'La densidad de campo verifica el grado de compactación logrado en obra. Se determina la densidad húmeda y seca del suelo in situ y, si existe Proctor de referencia, el grado de compactación.',
+        objetivoGeneral: 'Determinar la densidad de campo y el grado de compactación cuando aplique.',
+        objetivosEspecificos: [
+            'Obtener masa y volumen del material extraído.',
+            'Calcular densidades húmeda y seca.',
+            'Comparar con γd máx del Proctor si está disponible.'
+        ],
+        materiales: 'Cono de arena (o método del balón), arena calibrada, balanza, herramientas de excavación.',
+        proc: 'Excavar el hueco, determinar volumen, pesar el material, obtener w y calcular densidades y grado de compactación.',
+        formulas: [
+            { eq: 'γd campo = γh / (1 + w)', desc: 'Densidad seca de campo.' },
+            { eq: 'GC = (γd campo / γd máx) × 100', desc: 'Grado de compactación (%).' }
+        ],
+        analisisGuia: 'Comparar el grado de compactación con el porcentaje exigido por el proyecto o la especificación.',
+        conclusionesGuia: 'Reportar γd de campo y GC, e indicar si cumple el criterio de obra.',
+        referencias: ['ASTM D 1556', 'Guía FLA-23'],
         canvasId: 'canvas-densidad'
     },
     clasificacion: {
-        tituloFLA: 'Sistema unificado de clasificación de suelos para propósitos de ingeniería',
-        intro: 'Según FLA-23, el SUCS clasifica suelos a partir de la distribución de tamaños de partículas, el límite líquido y el índice de plasticidad (INV E-181-13 / ASTM D 2487-11). También se puede reportar clasificación AASHTO.',
-        teorica: 'Con % que pasa el N.º 200, LL e IP se asigna el símbolo de grupo (GW, SP, CL, CH, etc.). El índice de grupo AASHTO se calcula según la fórmula de la guía cuando se solicite.',
-        proc: 'Integrar granulometría y límites de Atterberg; aplicar criterios SUCS (y AASHTO si aplica); reportar símbolo y nombre del grupo.',
-        materiales: 'Resultados de granulometría y límites; carta de plasticidad de Casagrande.',
-        grafica: 'Carta de plasticidad de Casagrande (IP vs LL) con el punto del suelo.',
+        tituloFLA: 'Clasificación de suelos (SUCS)',
+        intro: 'El Sistema Unificado de Clasificación de Suelos (SUCS) asigna un símbolo de grupo a partir de la granulometría y, en finos, de los límites de Atterberg (ASTM D 2487 / INV E-181 / FLA-23).',
+        objetivoGeneral: 'Clasificar el suelo según el sistema SUCS a partir de los datos de laboratorio.',
+        objetivosEspecificos: [
+            'Determinar si el suelo es grueso o fino.',
+            'Aplicar criterios de grava/arena y de plasticidad de finos.',
+            'Asignar el símbolo SUCS y justificarlo con los datos.'
+        ],
+        materiales: 'Resultados de granulometría y de límites de Atterberg; carta de plasticidad.',
+        proc: '1) ¿Finos > 50 %? 2) Si grueso: grava vs arena. 3) Caracterizar finos con LL e IP. 4) Asignar símbolo (GW, SP, CL, CH, etc.).',
+        formulas: [
+            { eq: 'IP = LL − LP', desc: 'Índice de plasticidad usado en la carta de Casagrande.' }
+        ],
+        analisisGuia: 'Explicar por qué se obtuvo el símbolo: porcentajes de grava/arena/finos y posición en la carta de plasticidad.',
+        conclusionesGuia: 'Enunciar el símbolo SUCS y el nombre del grupo (p. ej. SP — arena mal graduada).',
+        referencias: ['ASTM D 2487', 'INV E-181', 'Guía FLA-23'],
         canvasId: 'canvas-sucs'
     },
     permeabilidad: {
-        tituloFLA: 'Permeabilidad de suelos granulares (cabeza constante)',
-        intro: 'Según FLA-23, el ensayo de cabeza constante determina el coeficiente de permeabilidad de suelos granulares, parámetro hidráulico del subsuelo.',
-        teorica: 'Norma de referencia tipo INV E / ASTM D 2434. k se obtiene a partir del caudal, el gradiente hidráulico y las dimensiones de la muestra. Unidades: cm/s o m/s.',
-        proc: 'Saturar la muestra, aplicar carga hidráulica constante, medir caudales y calcular k.',
-        materiales: 'Permeámetro de carga constante, tanques, cronómetro, muestra granular preparada (FLA-23).',
-        grafica: 'Relación caudal–gradiente o valores de k por ensayo.',
+        tituloFLA: 'Permeabilidad de suelos (carga constante o variable)',
+        intro: 'El coeficiente de permeabilidad k cuantifica la capacidad del suelo para conducir agua. Se determina en laboratorio con permeámetro de carga constante (granulares) o variable (finos), aplicando la ley de Darcy.',
+        objetivoGeneral: 'Determinar el coeficiente de permeabilidad k de la muestra.',
+        objetivosEspecificos: [
+            'Registrar carga hidráulica, caudales o tiempos según el método.',
+            'Calcular k mediante la ley de Darcy.',
+            'Interpretar el comportamiento hidráulico del suelo.'
+        ],
+        materiales: 'Permeámetro, muestra, agua, cronómetro, probeta o balanza según el método.',
+        proc: 'Saturar la muestra, aplicar el gradiente hidráulico, medir caudales o tiempos y calcular k.',
+        formulas: [
+            { eq: 'q = k · i · A', desc: 'Ley de Darcy: caudal, gradiente e área de la sección.' },
+            { eq: 'k = (q · L) / (A · Δh)', desc: 'Forma típica a carga constante.' }
+        ],
+        analisisGuia: 'Relacionar k con el tamaño de partículas y clasificar cualitativamente el suelo como más o menos permeable.',
+        conclusionesGuia: 'Reportar k y su implicación en drenaje o filtración.',
+        referencias: ['ASTM D 2434', 'Guía FLA-23'],
         canvasId: 'canvas-perm'
     },
     corte: {
-        tituloFLA: 'Ensayo de corte directo en condición consolidada drenada (CD)',
-        intro: 'Según FLA-23, el corte directo consolidado drenado determina la resistencia al corte del suelo en condición CD, obteniendo parámetros c y φ.',
-        teorica: 'Normas: NTC 1917 / ASTM D 3080. τ = c + σn·tan(φ). Unidades: kPa y grados (°).',
-        proc: 'Montaje, consolidación, corte a velocidad controlada, registro de τ de falla, regresión de la envolvente y círculos de Mohr.',
-        materiales: 'Caja de corte, celdas de carga, marco de carga, muestra preparada según guía.',
-        grafica: 'Envolvente τ–σn y círculos de Mohr (ejes en kPa).',
+        tituloFLA: 'Ensayo de corte directo (condición CD)',
+        intro: 'El ensayo de corte directo determina la resistencia al corte del suelo sobre un plano impuesto. A partir de varios niveles de esfuerzo normal se obtiene la envolvente de falla y los parámetros c y φ del criterio de Mohr–Coulomb.',
+        objetivoGeneral: 'Determinar la cohesión c y el ángulo de fricción interna φ del suelo mediante corte directo.',
+        objetivosEspecificos: [
+            'Registrar esfuerzos normales y cortantes de falla en cada ensayo.',
+            'Obtener la envolvente τ–σn y los parámetros c y φ.',
+            'Construir o interpretar los círculos de Mohr asociados.'
+        ],
+        materiales: 'Caja de corte, celdas de carga, marco de carga, muestra preparada según FLA-23.',
+        proc: 'Montaje, consolidación si aplica, corte a velocidad controlada, registro de τ de falla, regresión de la envolvente y cálculo de σ₁, σ₃, R y centro.',
+        formulas: [
+            { eq: 'τ = c + σn · tan(φ)', desc: 'Criterio de Mohr–Coulomb (c en kPa, φ en grados).' },
+            { eq: 'R = (σ₁ − σ₃) / 2', desc: 'Radio del círculo de Mohr (kPa).' },
+            { eq: 'C = (σ₁ + σ₃) / 2', desc: 'Centro del círculo de Mohr (kPa).' }
+        ],
+        analisisGuia: 'Analizar la influencia del esfuerzo normal, la interpretación de c y φ y la clasificación orientativa del suelo.',
+        conclusionesGuia: 'Reportar c, φ y la coherencia de la envolvente con los puntos de falla.',
+        referencias: ['ASTM D 3080', 'NTC 1917', 'Guía FLA-23 de corte directo', 'Das — Principles of Geotechnical Engineering'],
         canvasId: 'canvas-corte'
     },
     inconfinada: {
-        tituloFLA: 'Compresión inconfinada en muestras de suelos',
-        intro: 'Según FLA-23, la compresión inconfinada determina la resistencia a la compresión no confinada de suelos cohesivos.',
-        teorica: 'ASTM D 2166. qu = esfuerzo máximo; cu ≈ qu/2. Unidades: kPa.',
-        proc: 'Preparar probeta, cargar hasta falla, registrar curva esfuerzo–deformación y calcular qu y cu.',
-        materiales: 'Prensa de compresión, deformímetros, probetas talladas (FLA-23).',
-        grafica: 'Curva esfuerzo–deformación de la compresión inconfinada.',
+        tituloFLA: 'Compresión inconfinada',
+        intro: 'La compresión inconfinada determina la resistencia a la compresión axial de un suelo cohesivo sin confinamiento lateral (σ₃ = 0). Se obtiene qu y, en condiciones no drenadas, cu ≈ qu/2.',
+        objetivoGeneral: 'Determinar la resistencia a la compresión inconfinada qu y la cohesión no drenada cu.',
+        objetivosEspecificos: [
+            'Registrar la curva esfuerzo–deformación.',
+            'Identificar qu y la deformación en la falla.',
+            'Calcular cu = qu/2 cuando aplique.'
+        ],
+        materiales: 'Prensa de compresión, deformímetros, probeta tallada.',
+        proc: 'Preparar la probeta, cargar hasta la falla, registrar pares carga–deformación y calcular esfuerzos.',
+        formulas: [
+            { eq: 'qu = Pfalla / A', desc: 'Resistencia a la compresión inconfinada.' },
+            { eq: 'cu = qu / 2', desc: 'Cohesión no drenada (φ ≈ 0).' }
+        ],
+        analisisGuia: 'Analizar el comportamiento esfuerzo–deformación, la forma de falla y la resistencia del suelo.',
+        conclusionesGuia: 'Reportar qu, cu y la deformación en la falla.',
+        referencias: ['ASTM D 2166', 'Guía FLA-23'],
         canvasId: 'canvas-inconf'
     },
     consolidacion: {
-        tituloFLA: 'Consolidación unidimensional de suelos',
-        intro: 'Según FLA-23, la consolidación unidimensional determina la magnitud y la velocidad de consolidación bajo carga axial con deformación lateral restringida.',
-        teorica: 'NTC 1967 / ASTM D 2435. Curva e–log σ′; índices Cc, Cr y presión de preconsolidación. Unidades: kPa e índice de vacíos.',
-        proc: 'Montaje en edómetro, escalones de carga, registro de deformaciones y construcción de la curva de consolidación.',
-        materiales: 'Edómetro, piedras porosas, diales o LVDT, marco de carga (FLA-23).',
-        grafica: 'Curva de consolidación (e o deformación vs log σ′).',
+        tituloFLA: 'Consolidación unidimensional',
+        intro: 'La consolidación unidimensional evalúa la magnitud y la velocidad de compresión del suelo bajo carga axial con deformación lateral restringida. Se obtienen parámetros como Cc, Cv y la presión de preconsolidación.',
+        objetivoGeneral: 'Determinar los parámetros de consolidación del suelo a partir del ensayo edométrico.',
+        objetivosEspecificos: [
+            'Registrar deformaciones por escalón de carga.',
+            'Construir curvas e–log σ′ y deformación–log t cuando aplique.',
+            'Estimar Cc, Cv y σ′p según el procedimiento del laboratorio.'
+        ],
+        materiales: 'Edómetro, piedras porosas, diales o LVDT, marco de carga.',
+        proc: 'Montaje, saturación, aplicación de escalones de carga, registro de lecturas y construcción de curvas de consolidación.',
+        formulas: [
+            { eq: 'e = e0 − ΔH / H0 · (1 + e0)', desc: 'Relación típica entre cambio de altura e índice de vacíos (ajustar según datos).' },
+            { eq: 'Cc = −Δe / Δlog σ′', desc: 'Índice de compresión en el tramo virgen.' }
+        ],
+        analisisGuia: 'Interpretar compresibilidad, consolidación primaria y estado de preconsolidación del suelo.',
+        conclusionesGuia: 'Reportar Cc, Cv, σ′p y e0 según lo obtenido en la práctica.',
+        referencias: ['ASTM D 2435', 'NTC 1967', 'Guía FLA-23'],
         canvasId: 'canvas-consol'
     },
     triaxial: {
-        tituloFLA: 'Ensayo triaxial en suelos',
-        intro: 'El ensayo triaxial permite obtener resistencia y trayectorias de esfuerzo bajo confinamiento controlado.',
-        teorica: 'NTC 2041 / ASTM D 2850 (y variantes drenadas/no drenadas). Unidades: kPa.',
-        proc: 'Saturación, confinamiento, trayectoria de carga y registro de esfuerzos y deformaciones.',
-        materiales: 'Cámara triaxial, sistema de presión, marco de carga.',
-        grafica: 'Curvas esfuerzo–deformación / trayectorias del triaxial.',
+        tituloFLA: 'Ensayo triaxial (UU / CU / CD)',
+        intro: 'El ensayo triaxial permite obtener la resistencia y las trayectorias de esfuerzo bajo confinamiento controlado. Debe especificarse la modalidad: UU, CU o CD.',
+        objetivoGeneral: 'Determinar parámetros de resistencia (c, φ) y el comportamiento esfuerzo–deformación bajo confinamiento.',
+        objetivosEspecificos: [
+            'Registrar curvas esfuerzo desviador–deformación para cada σ₃.',
+            'Construir círculos de Mohr y la envolvente de falla.',
+            'Obtener c y φ según la modalidad del ensayo.'
+        ],
+        materiales: 'Cámara triaxial, sistema de presión, marco de carga, probetas.',
+        proc: 'Preparación, saturación si aplica, confinamiento, trayectoria de carga y registro de esfuerzos y deformaciones.',
+        formulas: [
+            { eq: 'σ₁ − σ₃ = esfuerzo desviador', desc: 'Diferencia de esfuerzos principales.' },
+            { eq: 'τ = c + σ · tan(φ)', desc: 'Envolvente de falla en términos de esfuerzos efectivos o totales según la modalidad.' }
+        ],
+        analisisGuia: 'Comparar probetas, influencia del confinamiento y forma de falla; interpretar c y φ.',
+        conclusionesGuia: 'Reportar σ₁, σ₃, c, φ y el tipo de comportamiento según UU, CU o CD.',
+        referencias: ['ASTM D 2850 y variantes', 'NTC 2041'],
         canvasId: 'canvas-triaxial'
     }
 };
+
 
 
 var ENSAYOS_INFORME = {
@@ -4177,6 +4321,207 @@ function aulaDatosInformeEnsayo(materiaPreferida) {
     } catch (e) {
         return vacio;
     }
+}
+
+
+/** Datos de entrada / tablas según tipo de ensayo */
+function construirDatosYCalculosInforme(tipo, api) {
+    var addP = api.addParagraph, addH = api.addHeading, addT = api.addTablaColor;
+    if (tipo === 'humedad') {
+        var dh = (window.__datosEnsayo && (window.__datosEnsayo.h || window.__datosEnsayo.humedad)) || {};
+        addP('Se registran las masas del ensayo de contenido de humedad (unidades: g).');
+        var filas = [];
+        if (dh.mr != null) filas.push(['Masa del recipiente (Mr)', Number(dh.mr).toFixed(2), 'g']);
+        if (dh.mh != null || dh.humedo != null) filas.push(['Masa recipiente + suelo húmedo', Number(dh.mh != null ? dh.mh : dh.humedo).toFixed(2), 'g']);
+        if (dh.ms != null || dh.seco != null) filas.push(['Masa recipiente + suelo seco', Number(dh.ms != null ? dh.ms : dh.seco).toFixed(2), 'g']);
+        if (dh.agua != null) filas.push(['Masa de agua (Mw)', Number(dh.agua).toFixed(2), 'g']);
+        if (dh.suelo != null) filas.push(['Masa de sólidos (Ms)', Number(dh.suelo).toFixed(2), 'g']);
+        if (filas.length) addT(['Magnitud', 'Valor', 'Unidad'], filas);
+        else if (api.resumen && api.resumen.length) api.resumen.forEach(function(ln) { addP('• ' + ln); });
+        else addP('Complete el ensayo de humedad en GeoMetrics para poblar esta tabla.');
+        return filas.length > 0;
+    }
+    if (tipo === 'corte') {
+        var d0 = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
+        if (d0 && d0.pts && d0.pts.length) {
+            addP('Datos de falla por ensayo (esfuerzos en kPa).');
+            addT(
+                ['Ensayo', 'σn (kPa)', 'τ (kPa)', 'σ₁ (kPa)', 'σ₃ (kPa)'],
+                d0.pts.map(function(p, i) {
+                    return ['E' + (i + 1), Number(p.sn).toFixed(2), Number(p.t).toFixed(2), Number(p.s1).toFixed(2), Number(p.s3).toFixed(2)];
+                })
+            );
+            return true;
+        }
+        addP('No hay puntos de corte registrados en esta sesión.');
+        return false;
+    }
+    if (tipo === 'inconfinada') {
+        var di = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.inconfinada;
+        if (di && di.pts) {
+            addT(['ε (%)', 'σ (kPa)', 'P (N)', 'ΔL'], di.pts.map(function(p) {
+                return [Number(p.eps).toFixed(2), Number(p.sig).toFixed(2), Number(p.P).toFixed(1), Number(p.dl).toFixed(2)];
+            }));
+            return true;
+        }
+    }
+    // genérico
+    if (api.resumen && api.resumen.length) {
+        api.resumen.forEach(function(ln) { addP('• ' + ln); });
+        return true;
+    }
+    addP('Registre los datos del ensayo en GeoMetrics y vuelva a generar el informe.');
+    return false;
+}
+
+function construirCalculosNumericosInforme(tipo, api) {
+    var addP = api.addParagraph;
+    if (tipo === 'humedad') {
+        var dh = (window.__datosEnsayo && (window.__datosEnsayo.h || window.__datosEnsayo.humedad)) || {};
+        if (dh.agua != null && dh.suelo != null) {
+            addP('Mw = ' + Number(dh.agua).toFixed(2) + ' g');
+            addP('Ms = ' + Number(dh.suelo).toFixed(2) + ' g');
+            if (dh.w != null) addP('w = (Mw/Ms)×100 = ' + Number(dh.w).toFixed(2) + ' %');
+        } else if (dh.w != null) {
+            addP('w = ' + Number(dh.w).toFixed(2) + ' %');
+        } else {
+            addP('Aplique w = (Mw/Ms)×100 con las masas registradas.');
+        }
+        return;
+    }
+    if (tipo === 'corte') {
+        var d0 = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
+        if (d0) {
+            addP('De la regresión τ = c + σn·tan(φ):');
+            addP('φ = ' + Number(d0.phi).toFixed(1) + '°');
+            addP('c = ' + Number(d0.c).toFixed(2) + ' kPa');
+            if (d0.pts) {
+                d0.pts.forEach(function(p, i) {
+                    var R = (typeof p.radio === 'number') ? p.radio : (Number(p.s1) - Number(p.s3)) / 2;
+                    var C = (typeof p.centro === 'number') ? p.centro : (Number(p.s1) + Number(p.s3)) / 2;
+                    addP('E' + (i + 1) + ': R = (σ₁−σ₃)/2 = ' + Number(R).toFixed(2) + ' kPa; Centro = (σ₁+σ₃)/2 = ' + Number(C).toFixed(2) + ' kPa');
+                });
+            }
+        }
+        return;
+    }
+    if (tipo === 'inconfinada') {
+        var di = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.inconfinada;
+        if (di) {
+            addP('qu = ' + Number(di.qu).toFixed(2) + ' kPa');
+            addP('cu = qu/2 = ' + Number(di.cu).toFixed(2) + ' kPa');
+        }
+        return;
+    }
+    addP('Los cálculos numéricos se detallan a partir de los datos de la sección anterior.');
+}
+
+function construirResultadosInforme(tipo, api) {
+    var addP = api.addParagraph, addT = api.addTablaColor;
+    if (tipo === 'humedad') {
+        var dh = (window.__datosEnsayo && (window.__datosEnsayo.h || window.__datosEnsayo.humedad)) || {};
+        addP('Resultado principal del ensayo de contenido de humedad:');
+        if (dh.w != null) {
+            addT(['Parámetro', 'Valor', 'Unidad'], [['Contenido de humedad w', Number(dh.w).toFixed(2), '%']]);
+        } else {
+            addP('No se obtuvo w en esta sesión.');
+        }
+        return;
+    }
+    if (tipo === 'corte') {
+        var d0 = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
+        if (d0) {
+            addT(['Parámetro', 'Valor', 'Unidad'], [
+                ['Ángulo de fricción φ', Number(d0.phi).toFixed(1), '°'],
+                ['Cohesión c', Number(d0.c).toFixed(2), 'kPa'],
+                ['σ₁ medio', Number(d0.avgS1).toFixed(2), 'kPa'],
+                ['σ₃ medio', Number(d0.avgS3).toFixed(2), 'kPa']
+            ]);
+            if (d0.pts && d0.pts.length) {
+                addP('Tabla de Mohr (R y centro en kPa):');
+                addT(
+                    ['Ensayo', 'σ₁', 'σ₃', 'R', 'Centro'],
+                    d0.pts.map(function(p, i) {
+                        var s1 = Number(p.s1), s3 = Number(p.s3);
+                        var R = (typeof p.radio === 'number') ? p.radio : (s1 - s3) / 2;
+                        var C = (typeof p.centro === 'number') ? p.centro : (s1 + s3) / 2;
+                        return ['E' + (i + 1), s1.toFixed(2), s3.toFixed(2), Number(R).toFixed(2), Number(C).toFixed(2)];
+                    })
+                );
+            }
+        } else addP('Sin resultados de corte en esta sesión.');
+        return;
+    }
+    if (tipo === 'inconfinada') {
+        var di = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.inconfinada;
+        if (di) {
+            addT(['Parámetro', 'Valor', 'Unidad'], [
+                ['qu', Number(di.qu).toFixed(2), 'kPa'],
+                ['cu', Number(di.cu).toFixed(2), 'kPa'],
+                ['ε en falla', di.peak ? Number(di.peak.eps).toFixed(2) : '—', '%']
+            ]);
+        }
+        return;
+    }
+    if (api.resumen && api.resumen.length) {
+        addP('Valores obtenidos en GeoMetrics:');
+        api.resumen.forEach(function(ln) { addP('• ' + ln); });
+    } else {
+        addP('Complete el ensayo para listar resultados numéricos.');
+    }
+}
+
+function construirAnalisisEspecifico(tipo, api) {
+    var addP = api.addParagraph;
+    if (tipo === 'humedad') {
+        var dh = (window.__datosEnsayo && (window.__datosEnsayo.h || window.__datosEnsayo.humedad)) || {};
+        if (dh.w != null) {
+            var w = Number(dh.w);
+            var nivel = w < 10 ? 'bajo' : (w < 25 ? 'medio' : 'alto');
+            addP('Para w = ' + w.toFixed(2) + ' %, el contenido de agua se interpreta como ' + nivel + ' en un sentido orientativo (depende del tipo de suelo y del contexto de muestreo).');
+        }
+        addP('Este ensayo no clasifica el suelo por sí solo; complementa granulometría, límites y densidades.');
+        return;
+    }
+    if (tipo === 'corte') {
+        var d0 = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
+        if (d0 && typeof clasificarSueloCorte === 'function') {
+            var cl = clasificarSueloCorte(d0.c, d0.phi);
+            if (cl && cl.tipo) addP('Clasificación orientativa a partir de c y φ: ' + cl.tipo + (cl.detalle ? ('. ' + cl.detalle) : ''));
+        }
+        addP('La envolvente debe ser coherente con los puntos de falla; se recomienda contrastar con FLA-23 y el criterio del docente.');
+        return;
+    }
+    if (tipo === 'inconfinada') {
+        addP('El valor de qu refleja la resistencia del suelo cohesivo sin confinamiento; cu = qu/2 aplica bajo el supuesto φ ≈ 0 (no drenado).');
+        return;
+    }
+    addP('Los resultados deben interpretarse según la norma del ensayo y las condiciones de la muestra.');
+}
+
+function construirConclusionesEspecificas(tipo, api) {
+    var addP = api.addParagraph;
+    if (tipo === 'humedad') {
+        var dh = (window.__datosEnsayo && (window.__datosEnsayo.h || window.__datosEnsayo.humedad)) || {};
+        if (dh.w != null) addP('Se obtuvo un contenido de humedad w = ' + Number(dh.w).toFixed(2) + ' %.');
+        addP('El contenido de humedad es una propiedad índice esencial para el análisis de fases y el control de calidad de suelos.');
+        return;
+    }
+    if (tipo === 'corte') {
+        var d0 = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
+        if (d0) {
+            addP('Se obtuvieron φ = ' + Number(d0.phi).toFixed(1) + '° y c = ' + Number(d0.c).toFixed(2) + ' kPa.');
+        }
+        addP('Los parámetros de resistencia al corte son insumos para el análisis de estabilidad y capacidad portante, sujetos a revisión docente.');
+        return;
+    }
+    if (tipo === 'inconfinada') {
+        var di = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.inconfinada;
+        if (di) addP('Se obtuvieron qu = ' + Number(di.qu).toFixed(2) + ' kPa y cu = ' + Number(di.cu).toFixed(2) + ' kPa.');
+        return;
+    }
+    addP('Se completó el ensayo «' + tipo + '» conforme a los objetivos de la práctica.');
+    addP('Se recomienda archivar la gráfica generada y contrastar los resultados con la guía FLA-23 y el docente.');
 }
 
 function generarInformeCorteDirectoPDF() {
@@ -4539,466 +4884,151 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             ? 'Beer, Johnston, DeWolf y Mazurek — Mecánica de materiales; Hibbeler — Mecánica de materiales / Estática.'
             : 'Guías unificadas de laboratorio FLA-23 (Universidad de Pamplona) y Das — Principles of Geotechnical Engineering, según el ensayo.';
 
-        addHeading('1. Resumen ejecutivo');
-        addParagraph(
-            'Este informe presenta los resultados del ensayo de laboratorio «' + metaInf.tituloCorto +
-            '», desarrollado en la asignatura ' + asig + ' mediante la plataforma GeoMetrics (Universidad de Pamplona).'
-        );
-        addParagraph(
-            'Se describen los objetivos de la práctica, el marco teórico con las ecuaciones fundamentales, el procedimiento seguido, ' +
-            'los resultados numéricos con unidades en el sistema de laboratorio (kPa, °) y la interpretación de los hallazgos.'
-        );
-        addParagraph(
-            'Los valores críticos obtenidos se discuten frente a rangos orientativos de la literatura (guías FLA-23 y textos de apoyo de la asignatura) ' +
-            'y se formulan conclusiones alineadas con los objetivos del laboratorio.'
-        );
 
         var txtE = (typeof TEXTO_INFORME_ENSAYO !== 'undefined' && TEXTO_INFORME_ENSAYO[tipoEnsayo])
             ? TEXTO_INFORME_ENSAYO[tipoEnsayo] : null;
 
-        addHeading('2. Introducción');
+        // ========== 2. INTRODUCCIÓN ==========
+        addHeading('1. Introducción');
         if (txtE && txtE.intro) {
             addParagraph(txtE.intro);
         } else {
             addParagraph(
-                'El ensayo «' + metaInf.tituloCorto + '» constituye una práctica esencial en la formación del ingeniero civil. ' +
-                'El presente documento se elabora de forma impersonal, con redacción en pasado en el procedimiento y en presente en el marco teórico.'
+                'Este informe presenta los resultados del ensayo de laboratorio «' + metaInf.tituloCorto +
+                '», realizado en la asignatura ' + asig + ' con la plataforma GeoMetrics (Universidad de Pamplona).'
             );
         }
         addParagraph(
-            'Este informe corresponde específicamente al ensayo «' + metaInf.tituloCorto +
-            '» y no generaliza resultados de otros ensayos de la asignatura.'
+            'La base teórica se limita a lo necesario para entender el ensayo, justificar los cálculos y interpretar los resultados. ' +
+            'No se desarrolla un tratado general de mecánica de suelos ajeno a esta práctica.'
         );
 
-        addHeading('3. Objetivos');
-        addParagraph('Objetivo general');
-        var _tObj = (typeof TEXTO_INFORME_ENSAYO !== 'undefined' && TEXTO_INFORME_ENSAYO[tipoEnsayo]) ? TEXTO_INFORME_ENSAYO[tipoEnsayo] : null;
-        addParagraph(
-            'Aplicar el procedimiento del ensayo «' + metaInf.tituloCorto +
-            '»' + (_tObj && _tObj.tituloFLA ? (' («' + _tObj.tituloFLA + '» — Guía FLA-23 UniPamplona)') : '') +
-            ', procesar los datos en GeoMetrics y analizar los resultados con rigor académico, en el marco de la investigación del subsuelo (NSR-10 H.2.1.1.1) y como insumo documental tipo anexo de un estudio geotécnico definitivo (H.2.2.2).'
-        );
-        addParagraph('Objetivos específicos');
-        addParagraph('• Registrar las lecturas de laboratorio con unidades coherentes (kPa, °, mm, etc.).');
-        addParagraph('• Aplicar las ecuaciones del marco teórico e identificar cada variable.');
-        addParagraph('• Presentar resultados en tablas y figuras con encabezados claros.');
-        addParagraph('• Interpretar los valores frente a rangos de referencia y formular conclusiones vinculadas a los objetivos.');
+        // ========== 3. OBJETIVOS ==========
+        addHeading('2. Objetivos');
+        addHeading('2.1. Objetivo general');
+        addParagraph((txtE && txtE.objetivoGeneral)
+            ? txtE.objetivoGeneral
+            : ('Aplicar el procedimiento del ensayo «' + metaInf.tituloCorto + '» y analizar los resultados obtenidos.'));
+        addHeading('2.2. Objetivos específicos');
+        var objs = (txtE && txtE.objetivosEspecificos) ? txtE.objetivosEspecificos : [
+            'Registrar los datos de laboratorio con unidades coherentes.',
+            'Aplicar las ecuaciones propias del ensayo.',
+            'Presentar resultados en tablas y figuras.',
+            'Interpretar los valores y formular conclusiones.'
+        ];
+        objs.forEach(function(o) { addParagraph('• ' + o); });
 
-        addHeading('4. Marco normativo y teórico');
-        addParagraph(
-            'Este informe de laboratorio se enmarca en la investigación del subsuelo descrita en el Reglamento NSR-10, Título H — Estudios geotécnicos. ' +
-            'Según H.2.1.1, el estudio geotécnico comprende reconocimiento de campo, investigación del subsuelo (ensayos de campo y laboratorio) y análisis y recomendaciones de ingeniería.'
-        );
-        addHeading('4.1. Estudio geotécnico preliminar y definitivo (NSR-10 H.2.2)');
-        addParagraph(
-            'Estudio geotécnico preliminar (H.2.2.1): conjunto de actividades para aproximarse a las características geotécnicas del terreno, ' +
-            'problemas potenciales y criterios generales de proyecto. No es de presentación obligatoria y no reemplaza, bajo ninguna circunstancia, al estudio definitivo.'
-        );
-        addParagraph(
-            'Estudio geotécnico definitivo (H.2.2.2): trabajo obligatorio para un proyecto específico, en el cual se precisan las condiciones físico-mecánicas del subsuelo ' +
-            'y las recomendaciones de diseño y construcción. Su contenido mínimo incluye (H.2.2.2.1): datos del proyecto, del subsuelo, de cada unidad de suelo, ' +
-            'análisis geotécnicos, recomendaciones de diseño y construcción, y anexos con resultados de ensayos de laboratorio (gráficos y tablas).'
-        );
-        addParagraph(
-            'Los resultados de este ensayo de laboratorio aportan parámetros de identificación y/o resistencia-deformabilidad que pueden integrarse como ' +
-            'anexo técnico de un estudio geotécnico definitivo (H.2.2.2.1-h), sin sustituir por sí solos el estudio completo exigido por el Reglamento.'
-        );
+        // ========== 4. MATERIALES ==========
+        addHeading('3. Materiales y equipos');
+        addParagraph((txtE && txtE.materiales)
+            ? txtE.materiales
+            : ('Equipos del ensayo «' + metaInf.tituloCorto + '» conforme a la guía FLA-23 y al protocolo del curso.'));
+        addParagraph('El registro de datos y los cálculos se realizaron en GeoMetrics.');
 
-        var norma = (typeof NORMA_ENSAYO_NSR10 !== 'undefined' && NORMA_ENSAYO_NSR10[tipoEnsayo])
-            ? NORMA_ENSAYO_NSR10[tipoEnsayo]
-            : null;
-        addHeading('4.2. Normas de ensayo (NSR-10 H.2.6, ASTM, INVIAS)');
-        if (norma) {
-            addParagraph('De acuerdo con H.2.6, las normas NTC (ICONTEC) y ASTM forman parte integrante del Reglamento NSR-10. Complementariamente se citan especificaciones INVIAS de uso frecuente en proyectos viales y de infraestructura en Colombia.');
-            addTablaColor(
-                ['Referencia', 'Norma / documento'],
-                [
-                    ['NTC (ICONTEC)', norma.ntc],
-                    ['ASTM', norma.astm],
-                    ['INVIAS', norma.invias],
-                    ['Uso en el estudio', norma.uso]
-                ]
-            );
+        // ========== 5. PROCEDIMIENTO ==========
+        addHeading('4. Procedimiento');
+        if (txtE && txtE.proc) addParagraph(txtE.proc);
+        else addParagraph('Se siguió el procedimiento de la guía de laboratorio correspondiente al ensayo.');
+        addParagraph('Las lecturas y resultados quedaron registrados en la sesión de GeoMetrics del estudiante.');
+
+        // ========== 5. DATOS / 6. CÁLCULOS / 7. RESULTADOS (técnicos por ensayo) ==========
+        addHeading('5. Datos obtenidos');
+        var datosOk = construirDatosYCalculosInforme(tipoEnsayo, {
+            addParagraph: addParagraph,
+            addHeading: addHeading,
+            addTablaColor: addTablaColor,
+            addEq: addEq,
+            ensureSpace: ensureSpace,
+            doc: doc,
+            pageW: pageW,
+            marginL: marginL,
+            marginR: marginR,
+            getY: function() { return y; },
+            setY: function(v) { y = v; },
+            resumen: resumen,
+            metaInf: metaInf,
+            txtE: txtE
+        });
+
+        addHeading('6. Cálculos');
+        if (txtE && txtE.formulas && txtE.formulas.length) {
+            txtE.formulas.forEach(function(f, idx) {
+                addEq(String(idx + 1), f.eq, f.desc);
+            });
         } else {
-            addParagraph('Aplicar la norma NTC/ASTM correspondiente al ensayo según NSR-10 H.2.6 y las especificaciones INVIAS del proyecto.');
+            addParagraph('Las expresiones de cálculo se aplicaron según la norma del ensayo.');
         }
-
-        addHeading('4.3. Fundamentos del ensayo «' + metaInf.tituloCorto + '»');
-        if (txtE && txtE.teorica) {
-            addParagraph(txtE.teorica);
-        }
-        addParagraph(
-            'Los fundamentos de cálculo se limitan a las fuentes autorizadas de la asignatura y a las normas citadas. ' + fuenteMarco
-        );
-        if (tipoEnsayo === 'corte') {
-            addParagraph('Criterio de falla de Mohr–Coulomb (esfuerzo efectivo / laboratorio de corte):');
-            addEq('1', 'τ = c + σn · tan(φ)',
-                'donde τ = esfuerzo cortante en la falla (kPa); c = cohesión (kPa); σn = esfuerzo normal efectivo sobre el plano de falla (kPa); φ = ángulo de fricción interna (°).');
-            addEq('2', 'φ = arctan(b)',
-                'donde b es la pendiente de la regresión lineal τ frente a σn; φ se expresa en grados.');
-            addEq('3', 'R = (σ₁ − σ₃) / 2',
-                'Radio del círculo de Mohr (kPa); σ₁ y σ₃ son los esfuerzos principales mayor y menor (kPa).');
-            addEq('4', 'C = (σ₁ + σ₃) / 2',
-                'Centro del círculo de Mohr sobre el eje σ (kPa).');
-            addParagraph('Referencias del marco: guía FLA-23 de corte directo [1]; apoyo teórico en Das [2].');
-        } else {
-            addParagraph(
-                'Las expresiones específicas del ensayo se aplican según la guía correspondiente. ' +
-                'Todas las magnitudes se reportan con unidades explícitas y cifras significativas coherentes con la precisión del instrumento.'
-            );
-        }
-
-        addHeading('5. Materiales y equipos');
-        if (txtE && txtE.materiales) {
-            addParagraph(txtE.materiales);
-        } else {
-            addParagraph(
-                'Se emplearon los equipos del ensayo «' + metaInf.tituloCorto +
-                '» conforme a la Guía Unificada FLA-23 y al protocolo del curso.'
-            );
-        }
-        addParagraph('El registro de datos y el cálculo se realizaron en la plataforma GeoMetrics.');
-
-        addHeading('6. Procedimiento');
-        if (txtE && txtE.proc) {
-            addParagraph(txtE.proc);
-        }
-        addParagraph(
-            'Las lecturas se digitaron en GeoMetrics; el software realizó los cálculos auxiliares y, cuando correspondió, la gráfica del ensayo. ' +
-            'La redacción del procedimiento se presenta en pasado y de forma impersonal.'
-        );
+        // cálculos numéricos específicos
+        construirCalculosNumericosInforme(tipoEnsayo, {
+            addParagraph: addParagraph,
+            addHeading: addHeading,
+            addTablaColor: addTablaColor,
+            addEq: addEq
+        });
 
         addHeading('7. Resultados');
-        if (!resumen || !resumen.length) {
-            addParagraph('No se registraron valores numéricos en esta sesión. Complete el ensayo y vuelva a generar el informe.');
-        } else if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
-            var d0 = window.__datosEnsayoMS2.corte;
-            addParagraph('Resultados principales del ensayo de corte directo (unidades: kPa y °).');
-            addTablaColor(
-                ['Parámetro', 'Valor', 'Unidad', 'Comentario'],
-                [
-                    ['Ángulo de fricción φ', Number(d0.phi).toFixed(1), '°', 'De la envolvente τ–σn'],
-                    ['Cohesión c', Number(d0.c).toFixed(2), 'kPa', 'Intercepto de la regresión'],
-                    ['σ₁ medio', Number(d0.avgS1).toFixed(2), 'kPa', 'Promedio de ensayos'],
-                    ['σ₃ medio', Number(d0.avgS3).toFixed(2), 'kPa', 'Promedio de ensayos']
-                ]
-            );
-        } else {
-            addParagraph('Valores obtenidos en GeoMetrics:');
-            resumen.forEach(function(ln) { addParagraph('• ' + ln); });
-        }
+        construirResultadosInforme(tipoEnsayo, {
+            addParagraph: addParagraph,
+            addHeading: addHeading,
+            addTablaColor: addTablaColor,
+            ensureSpace: ensureSpace,
+            doc: doc,
+            pageW: pageW,
+            marginL: marginL,
+            getY: function() { return y; },
+            setY: function(v) { y = v; },
+            resumen: resumen,
+            metaInf: metaInf,
+            txtE: txtE
+        });
 
-        // Corte directo: tablas Mohr + desarrollo paso a paso
-        if (tipoEnsayo === 'corte') {
-            var dCorte = window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte;
-            if (dCorte && dCorte.pts && dCorte.pts.length) {
-                addHeading('7.1. Desarrollo de ecuaciones (paso a paso)');
-                addParagraph('Envolvente de falla (Coulomb): τ = c + σn · tan(φ)');
-                addParagraph('De la regresión lineal de los puntos (σn, τ) se obtiene la pendiente b = tan(φ) y el intercepto c.');
-                addParagraph('Ángulo de fricción: φ = arctan(b) = ' + Number(dCorte.phi).toFixed(1) + '°');
-                addParagraph('Cohesión (intercepto): c = ' + Number(dCorte.c).toFixed(2) + ' kPa');
-                addParagraph('Para cada ensayo, el centro y el radio del círculo de Mohr se calculan con:');
-                addParagraph('Radio R = (σ₁ − σ₃) / 2');
-                addParagraph('Centro C = (σ₁ + σ₃) / 2');
-                addParagraph('En el modelo de corte directo usado en GeoMetrics: R = τ / cos(φ) y C = σn + τ · tan(φ), de modo que σ₁ = C + R y σ₃ = C − R (coherente con las definiciones anteriores).');
-
-                dCorte.pts.forEach(function(p, idx) {
-                    var nE = idx + 1;
-                    var s1 = Number(p.s1), s3 = Number(p.s3);
-                    var radio = (typeof p.radio === 'number') ? p.radio : (s1 - s3) / 2;
-                    var centro = (typeof p.centro === 'number') ? p.centro : (s1 + s3) / 2;
-                    addParagraph('Ensayo ' + nE + ':');
-                    addParagraph('  σn = ' + Number(p.sn).toFixed(3) + ' kPa ;  τ = ' + Number(p.t).toFixed(3) + ' kPa');
-                    addParagraph('  σ₁ = ' + s1.toFixed(3) + ' kPa ;  σ₃ = ' + s3.toFixed(3) + ' kPa');
-                    addParagraph('  R = (σ₁ − σ₃)/2 = (' + s1.toFixed(3) + ' − ' + s3.toFixed(3) + ')/2 = ' + radio.toFixed(3) + ' kPa');
-                    addParagraph('  Centro = (σ₁ + σ₃)/2 = (' + s1.toFixed(3) + ' + ' + s3.toFixed(3) + ')/2 = ' + centro.toFixed(3) + ' kPa');
-                });
-
-                addHeading('7.2. Tabla de esfuerzos principales, radio y centro');
-                addParagraph('Unidades: kPa en todas las columnas de esfuerzo. Verificación: σ₁ = C + R y σ₃ = C − R.');
-                var headersM = ['Ensayo', 'σ₁', 'σ₃', 'R', 'C', 'C+R', 'C−R'];
-                var rowsM = dCorte.pts.map(function(p, idx) {
-                    var s1 = Number(p.s1), s3 = Number(p.s3);
-                    var radio = (typeof p.radio === 'number') ? p.radio : (s1 - s3) / 2;
-                    var centro = (typeof p.centro === 'number') ? p.centro : (s1 + s3) / 2;
-                    return [
-                        'E' + (idx + 1),
-                        s1.toFixed(2),
-                        s3.toFixed(2),
-                        radio.toFixed(2),
-                        centro.toFixed(2),
-                        (centro + radio).toFixed(2),
-                        (centro - radio).toFixed(2)
-                    ];
-                });
-                // Color aleatorio distinto por tabla y por cada generación de informe
-                var pal1 = colorAleatorioTabla(), pal2 = colorAleatorioTabla(), pal3 = colorAleatorioTabla();
-                // Evitar que las 3 tablas salgan del mismo color
-                if (pal2.h.join() === pal1.h.join()) pal2 = colorAleatorioTabla();
-                if (pal3.h.join() === pal1.h.join() || pal3.h.join() === pal2.h.join()) pal3 = colorAleatorioTabla();
-                addTablaColor(headersM, rowsM, pal1.h, pal1.b);
-                addParagraph('Nota: columnas σ₁, σ₃, R, C, C+R y C−R en kPa. C+R y C−R deben coincidir con σ₁ y σ₃ (redondeo a 2 decimales).');
-
-                addHeading('7.3. Tabla de datos de falla');
-                var headersT = ['Ensayo', 'σn (kPa)', 'τ (kPa)', 'c_i (kPa)'];
-                addParagraph('Unidades uniformes: kPa.');
-                var rowsT = dCorte.pts.map(function(p, idx) {
-                    return [
-                        'E' + (idx + 1),
-                        Number(p.sn).toFixed(3),
-                        Number(p.t).toFixed(3),
-                        (typeof p.c_check === 'number' ? p.c_check : (p.t - p.sn * Math.tan(Number(dCorte.phi) * Math.PI / 180))).toFixed(3)
-                    ];
-                });
-                addTablaColor(headersT, rowsT, pal2.h, pal2.b);
-
-                addHeading('7.4. Parámetros de la envolvente');
-                var headersP = ['Parámetro', 'Símbolo', 'Valor', 'Unidad'];
-                var rowsP = [
-                    ['Ángulo de fricción', 'φ', Number(dCorte.phi).toFixed(1), '°'],
-                    ['Cohesión', 'c', Number(dCorte.c).toFixed(2), 'kPa'],
-                    ['σ₁ medio', 'σ₁', Number(dCorte.avgS1).toFixed(2), 'kPa'],
-                    ['σ₃ medio', 'σ₃', Number(dCorte.avgS3).toFixed(2), 'kPa'],
-                    ['Radio medio', 'R', (dCorte.pts.reduce(function(s, p) { return s + ((p.radio != null) ? p.radio : (p.s1 - p.s3) / 2); }, 0) / dCorte.pts.length).toFixed(3), 'kPa'],
-                    ['Centro medio', 'C', (dCorte.pts.reduce(function(s, p) { return s + ((p.centro != null) ? p.centro : (p.s1 + p.s3) / 2); }, 0) / dCorte.pts.length).toFixed(3), 'kPa']
-                ];
-                addTablaColor(headersP, rowsP, pal3.h, pal3.b);
-            }
-
-            var canvas = document.getElementById('canvas-corte');
-            if (canvas) {
+        // Figura si hay canvas
+        var canvasIdFig = (txtE && txtE.canvasId) ? txtE.canvasId : null;
+        if (tipoEnsayo === 'corte') canvasIdFig = 'canvas-corte';
+        if (canvasIdFig) {
+            var canvasEl = document.getElementById(canvasIdFig);
+            if (canvasEl && canvasEl.width) {
                 try {
-                    var img = canvas.toDataURL('image/png');
-                    var imgW = maxW;
-                    var imgH = (canvas.height / canvas.width) * imgW;
-                    if (imgH > 95) { imgH = 95; imgW = (canvas.width / canvas.height) * imgH; }
-                    ensureSpace(imgH + 20);
-                    addHeading('7.5. Figura — Círculos de Mohr y envolvente de falla');
-                    doc.addImage(img, 'PNG', marginL, y, imgW, imgH);
-                    y += imgH + 4;
-                    addParagraph(
-                        'Figura 1. Diagrama de Mohr del ensayo de corte directo: semicírculos de falla por ensayo (E1, E2, …), ' +
-                        'puntos de falla (σn, τ) y envolvente τ = c + σn·tan(φ). ' +
-                        'Parámetros: c = ' + Number(dCorte.c).toFixed(2) + ' kPa; φ = ' + Number(dCorte.phi).toFixed(1) +
-                        '°. Ejes en kPa.'
-                    );
-                    addHeading('7.6. Análisis por ensayo');
-                    dCorte.pts.forEach(function(p, idx) {
-                        var nE = idx + 1;
-                        var s1 = Number(p.s1), s3 = Number(p.s3);
-                        var radio = (typeof p.radio === 'number') ? p.radio : (s1 - s3) / 2;
-                        var centro = (typeof p.centro === 'number') ? p.centro : (s1 + s3) / 2;
-                        addParagraph(
-                            'Ensayo E' + nE + ': con σn = ' + Number(p.sn).toFixed(2) +
-                            ' kPa y τ = ' + Number(p.t).toFixed(2) +
-                            ' kPa, el punto de falla se sitúa sobre la envolvente. ' +
-                            'El círculo de Mohr asociado tiene centro C = ' + centro.toFixed(2) +
-                            ' kPa y radio R = ' + radio.toFixed(2) +
-                            ' kPa, de modo que σ₁ = ' + s1.toFixed(2) +
-                            ' kPa y σ₃ = ' + s3.toFixed(2) +
-                            ' kPa (verificación: C+R y C−R).'
-                        );
-                    });
-                    addParagraph(
-                        'La envolvente común (φ = ' + Number(dCorte.phi).toFixed(1) +
-                        '°, c = ' + Number(dCorte.c).toFixed(2) +
-                        ' kPa) es coherente con el conjunto de puntos de falla representados en la Figura 1.'
-                    );
-                } catch (e) {}
-            } else {
-                addParagraph('Nota: genere la gráfica en pantalla (GENERAR GRÁFICA) antes de descargar el informe para incluir la Figura 1.');
-            }
-        }
-
-        // Figura del ensayo (canvas de pantalla) — Suelos I y otros
-        if (tipoEnsayo !== 'corte') {
-            var tFig = (typeof TEXTO_INFORME_ENSAYO !== 'undefined') ? TEXTO_INFORME_ENSAYO[tipoEnsayo] : null;
-            var cid = tFig && tFig.canvasId ? tFig.canvasId : null;
-            var canvasO = cid ? document.getElementById(cid) : null;
-            if (canvasO) {
-                try {
-                    var imgO = canvasO.toDataURL('image/png');
-                    var imgWo = maxW;
-                    var imgHo = (canvasO.height / canvasO.width) * imgWo;
-                    if (imgHo > 100) { imgHo = 100; imgWo = (canvasO.width / canvasO.height) * imgHo; }
-                    ensureSpace(imgHo + 28);
-                    addHeading('7.5. Figura del ensayo');
-                    doc.addImage(imgO, 'PNG', marginL, y, imgWo, imgHo);
-                    y += imgHo + 4;
-                    addParagraph(
-                        'Figura 1. ' + (tFig && tFig.grafica ? tFig.grafica : ('Gráfica del ensayo «' + metaInf.tituloCorto + '».')) +
-                        ' Generada en GeoMetrics a partir de los datos del ensayo.'
-                    );
-                    addParagraph(
-                        'Análisis: la figura resume el comportamiento medido en este ensayo. ' +
-                        'Los valores numéricos de la sección de resultados deben interpretarse junto con esta gráfica y las normas citadas (NTC/ASTM/INVIAS / NSR-10 H).'
-                    );
-                } catch (eFig) {}
-            } else if (tFig) {
-                addParagraph(
-                    'Nota: para incluir la Figura 1, pulse GENERAR GRÁFICA en el ensayo «' + metaInf.tituloCorto +
-                    '» antes de descargar el informe. Gráfica esperada: ' + (tFig.grafica || 'según el ensayo') + '.'
-                );
-            }
-        }
-
-        addHeading('8. Discusión');
-        if (tipoEnsayo === 'corte') {
-            addParagraph(
-                'Los resultados del corte directo se interpretan con el criterio de Mohr–Coulomb y las condiciones del ensayo.'
-            );
-            addHeading('8.1. Fuentes de error y mitigación');
-            addParagraph('• Calibración de la celda de carga: verificar cero y escala antes del ensayo.');
-            addParagraph('• Preparación de la muestra (densidad, humedad, homogeneidad).');
-            addParagraph('• Área de la caja de corte y cálculo de σn (kPa).');
-            addParagraph('• Velocidad de corrimiento y criterio de falla (pico / residual).');
-            addParagraph('• Digitaciones y redondeos en GeoMetrics.');
-            addParagraph('Mitigación: calibración, series repetidas (≥ 3 cuando sea posible) y archivo de la gráfica.');
-            addHeading('8.1.1. Estimación orientativa de incertidumbre');
-            addParagraph('Máximo ±1 % en magnitudes relativas (no sustituye análisis estadístico formal):');
-            addParagraph('• σ₁: ±1 % · σ₃: ±1 % · φ: ±1,0 ° · c: ±1 % (mín. ±0,05 kPa).');
-            if (window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
-                var dcu = window.__datosEnsayoMS2.corte;
-                var s1m = Number(dcu.avgS1) || 0;
-                var s3m = Number(dcu.avgS3) || 0;
-                var cVal = Number(dcu.c) || 0;
-                var dcAbs = Math.max(0.05, 0.01 * cVal);
-                addParagraph(
-                    'Ejemplo: σ₁ ≈ ' + s1m.toFixed(1) + ' kPa (±' + (0.01 * s1m).toFixed(1) +
-                    ' kPa); σ₃ ≈ ' + s3m.toFixed(1) + ' kPa (±' + (0.01 * s3m).toFixed(1) +
-                    ' kPa); φ = ' + Number(dcu.phi).toFixed(1) + ' ° (±1,0 °); c = ' +
-                    cVal.toFixed(2) + ' kPa (±' + dcAbs.toFixed(2) + ' kPa).'
-                );
-                var clasTxt = '';
-                if (typeof clasificarSueloCorte === 'function') {
-                    var cl = clasificarSueloCorte(dcu.c, dcu.phi);
-                    clasTxt = (cl && cl.tipo) ? (cl.tipo + (cl.detalle ? ('. ' + cl.detalle) : '')) : '';
+                    ensureSpace(90);
+                    addHeading('7.1. Figura del ensayo');
+                    var imgData = canvasEl.toDataURL('image/png');
+                    var figW = Math.min(pageW - marginL - marginR, 160);
+                    var figH = figW * (canvasEl.height / canvasEl.width);
+                    if (figH > 100) { figH = 100; figW = figH * (canvasEl.width / canvasEl.height); }
+                    doc.addImage(imgData, 'PNG', marginL, y, figW, figH);
+                    y += figH + 6;
+                    addParagraph('Figura. ' + ((txtE && txtE.grafica) ? txtE.grafica : ('Gráfica del ensayo «' + metaInf.tituloCorto + '» generada en GeoMetrics.')));
+                } catch (eFig) {
+                    addParagraph('Nota: genere la gráfica en pantalla (GENERAR GRÁFICA) antes de descargar el informe para incluir la figura.');
                 }
-                addParagraph(
-                    'Se obtuvo φ = ' + Number(dcu.phi).toFixed(1) + '° y c = ' + Number(dcu.c).toFixed(2) +
-                    ' kPa.' + (clasTxt ? (' Clasificación orientativa: ' + clasTxt) : '') +
-                    ' Contrastar con FLA-23 y el docente.'
-                );
-                addHeading('8.2. Rangos orientativos de φ y c');
-                addTablaColor(
-                    ['Tipo de suelo', 'φ (°)', 'c (kPa)', 'Valor ensayo'],
-                    [
-                        ['Arena granular', '28–40', '0–5', 'φ=' + Number(dcu.phi).toFixed(1) + ' · c=' + Number(dcu.c).toFixed(2)],
-                        ['Arena limosa', '20–35', '5–25', 'φ=' + Number(dcu.phi).toFixed(1) + ' · c=' + Number(dcu.c).toFixed(2)],
-                        ['Suelo compacto / mixto', '30–45', '10–30', 'φ=' + Number(dcu.phi).toFixed(1) + ' · c=' + Number(dcu.c).toFixed(2)]
-                    ]
-                );
-            }
-        } else if (tipoEnsayo === 'humedad') {
-            addParagraph(
-                'El contenido de humedad w se expresa únicamente en porcentaje (%). Las masas se reportan en gramos (g). ' +
-                'No intervienen esfuerzos (kPa) ni ángulos (°).'
-            );
-            addHeading('8.1. Fuentes de error y mitigación');
-            addParagraph('• Recipientes húmedos o sucios al inicio del ensayo.');
-            addParagraph('• Tiempo o temperatura de secado insuficiente (horno 105–110 °C hasta peso constante).');
-            addParagraph('• Pérdida de material al manipular o enfriar la muestra.');
-            addParagraph('• Error de pesaje en la balanza.');
-            addParagraph('• Digitaciones incorrectas en GeoMetrics.');
-            addParagraph('Mitigación: secar hasta peso constante, usar balanza calibrada y repetir al menos 2–3 determinaciones.');
-            addHeading('8.1.1. Incertidumbre orientativa');
-            addParagraph('• w: ±1 % relativo del valor reportado (orden de magnitud didáctico).');
-            var dhw = (window.__datosEnsayo && (window.__datosEnsayo.h || window.__datosEnsayo.humedad)) || {};
-            if (dhw.w != null) {
-                var wv = Number(dhw.w);
-                addParagraph('Ejemplo: w ≈ ' + wv.toFixed(2) + ' % (±' + (0.01 * wv).toFixed(2) + ' puntos porcentuales relativos de orden 1 %).');
-            }
-            addParagraph('El valor de w debe interpretarse junto con el tipo de suelo y las condiciones de muestreo; no se clasifica el suelo solo con este ensayo.');
-        } else {
-            addParagraph(
-                'Los resultados se interpretan según el marco teórico y las normas del ensayo «' + metaInf.tituloCorto +
-                '». Las unidades son las propias de este ensayo (no se usan por defecto kPa ni grados, salvo que el ensayo lo requiera).'
-            );
-            addHeading('8.1. Fuentes de error y mitigación');
-            addParagraph('• Preparación y representatividad de la muestra.');
-            addParagraph('• Calibración de instrumentos (balanza, tamices, equipos del ensayo).');
-            addParagraph('• Cumplimiento del procedimiento normalizado (NTC/ASTM/INVIAS / FLA-23).');
-            addParagraph('• Digitaciones y redondeos en GeoMetrics.');
-            addParagraph('Mitigación: seguir la guía del ensayo, repetir determinaciones cuando sea posible y contrastar con el docente.');
-            addHeading('8.1.1. Incertidumbre orientativa');
-            addParagraph('Se adopta un orden de magnitud de ±1 % relativo sobre las magnitudes principales reportadas, sin sustituir un análisis estadístico formal.');
-        }
-
-        addHeading('9. Conclusiones');
-        addParagraph('1. Se completó el registro y el análisis del ensayo «' + metaInf.tituloCorto + '» conforme a los objetivos de la práctica.');
-        if (tipoEnsayo === 'humedad') {
-            addParagraph('2. El contenido de humedad se reporta en % y las masas en g, según ASTM D 2216 / NTC 1495.');
-            addParagraph('3. w = (Mw/Ms)×100 es la relación fundamental aplicada; no corresponden unidades de esfuerzo ni de ángulo.');
-            addParagraph('4. Los resultados dependen de la calidad del secado y del pesaje; se recomienda contrastarlos con el docente.');
-            addParagraph('5. Para trabajos futuros se recomienda al menos 3 determinaciones y promedio de w.');
-        } else if (tipoEnsayo === 'corte' && window.__datosEnsayoMS2 && window.__datosEnsayoMS2.corte) {
-            var dc2 = window.__datosEnsayoMS2.corte;
-            var cl2 = (typeof clasificarSueloCorte === 'function') ? clasificarSueloCorte(dc2.c, dc2.phi) : null;
-            addParagraph('2. Los parámetros se reportan en kPa y grados (°), alineados con GeoMetrics.');
-            addParagraph(
-                '3. Con φ = ' + Number(dc2.phi).toFixed(1) + '° y c = ' + Number(dc2.c).toFixed(2) +
-                ' kPa, el material se interpreta de forma orientativa como ' +
-                ((cl2 && cl2.tipo) ? cl2.tipo : 'suelo con componentes cohesivos y/o friccionantes') + '.'
-            );
-            addParagraph('4. La interpretación está sujeta a limitaciones experimentales y a la revisión docente.');
-            addParagraph('5. Se recomienda repetir cada prueba al menos 3 veces y contrastar con FLA-23 / NTC 1917.');
-        } else {
-            addParagraph('2. Los parámetros se reportan con las unidades propias del ensayo «' + metaInf.tituloCorto + '».');
-            addParagraph('3. Las ecuaciones y el procedimiento siguen las normas citadas para este ensayo.');
-            addParagraph('4. La interpretación está sujeta a limitaciones experimentales y a la revisión docente.');
-            addParagraph('5. Se recomienda repetir determinaciones cuando el protocolo lo permita y archivar la gráfica generada.');
-        }
-
-        addHeading('10. Referencias');
-        addParagraph('[1] Asociación Colombiana de Ingeniería Sísmica. (2010). Reglamento Colombiano de Construcción Sismo Resistente NSR-10. Título H — Estudios geotécnicos. Cap. H.2 (definiciones; estudio preliminar H.2.2.1; estudio definitivo H.2.2.2; normas técnicas H.2.6).');
-        if (esRM) {
-            addParagraph('[2] Beer, F. P., Johnston, E. R., DeWolf, J. T. y Mazurek, D. F. (s. f.). Mecánica de materiales.');
-            addParagraph('[3] Hibbeler, R. C. (s. f.). Mecánica de materiales / Estática.');
-        } else {
-            addParagraph('[2] Universidad de Pamplona. (s. f.). Guías unificadas de laboratorio FLA-23 (ensayos de suelos). Facultad de Ingenierías, Programa de Ingeniería Civil.');
-            addParagraph('[3] Das, B. M. (s. f.). Principles of Geotechnical Engineering.');
-            if (norma) {
-                addParagraph('[4] ICONTEC / ASTM. ' + norma.ntc + ' · ' + norma.astm + '.');
-                addParagraph('[5] Instituto Nacional de Vías — INVIAS. Especificaciones técnicas de construcción (apartados de suelos y ensayos de laboratorio aplicables).');
             } else {
-                addParagraph('[4] ICONTEC y ASTM. Normas de ensayos de suelos referenciadas en NSR-10 H.2.6.');
-                addParagraph('[5] Instituto Nacional de Vías — INVIAS. Especificaciones técnicas de construcción.');
+                addParagraph('Nota: para incluir la figura, genere la gráfica en pantalla antes de descargar el informe.');
             }
         }
-        addParagraph('[6] GeoMetrics. (2026). Laboratorio virtual. Universidad de Pamplona — Programa de Ingeniería Civil.');
 
+        // ========== 8. ANÁLISIS ==========
+        addHeading('8. Análisis de resultados');
+        if (txtE && txtE.analisisGuia) addParagraph(txtE.analisisGuia);
+        construirAnalisisEspecifico(tipoEnsayo, { addParagraph: addParagraph, addTablaColor: addTablaColor });
+
+        // ========== 9. CONCLUSIONES ==========
+        addHeading('9. Conclusiones');
+        if (txtE && txtE.conclusionesGuia) addParagraph(txtE.conclusionesGuia);
+        construirConclusionesEspecificas(tipoEnsayo, { addParagraph: addParagraph, resumen: resumen });
+
+        // ========== 10. REFERENCIAS ==========
+        addHeading('10. Referencias');
+        var refs = (txtE && txtE.referencias) ? txtE.referencias : [
+            'Guía Unificada de Laboratorios FLA-23 — Mecánica de Suelos (Universidad de Pamplona).',
+            'Normas ASTM / NTC / INVIAS aplicables al ensayo.'
+        ];
+        refs.forEach(function(r, i) { addParagraph('[' + (i + 1) + '] ' + r); });
+
+        // ========== 11. ANEXOS ==========
         addHeading('11. Anexos');
-        addParagraph(
-            'Conforme a NSR-10 H.2.2.2.1-(h), el estudio geotécnico definitivo debe anexar resultados de ensayos de campo y laboratorio en forma de gráficos y tablas. ' +
-            'Este informe aporta ese tipo de evidencia para el ensayo «' + metaInf.tituloCorto + '».'
-        );
-        addParagraph('Anexo A. Datos brutos y lecturas del ensayo registradas en GeoMetrics (exportables en .csv o .txt).');
-        addParagraph('Anexo B. Gráficas y figuras del ensayo (p. ej. envolvente y círculos de Mohr cuando aplique).');
-        addParagraph('Anexo C. Memoria de cálculo auxiliar y capturas que el estudiante o el docente adjunten al expediente del curso o del proyecto.');
-
-        // Encabezado y pie en páginas del cuerpo (no portada = página 1)
-        var total = doc.internal.getNumberOfPages();
-        var autorPie = (datosInf.estudiante || 'Estudiante').slice(0, 40);
-        var tituloCortoPie = String(metaInf.tituloCorto || 'Informe').slice(0, 35);
-        for (var p = 1; p <= total; p++) {
-            doc.setPage(p);
-            if (p > 1) {
-                setF(false, 8);
-                doc.setTextColor(120, 120, 120);
-                doc.text('GeoMetrics · ' + sym(tituloCortoPie), marginL, 12);
-                doc.text(autorPie, pageW - marginR - doc.getTextWidth(autorPie), 12);
-                doc.setDrawColor(180, 180, 180);
-                doc.setLineWidth(0.2);
-                doc.line(marginL, 13.5, pageW - marginR, 13.5);
-            }
-            var pieY = pageH - 12;
-            setF(false, 8);
-            doc.setTextColor(100, 100, 100);
-            doc.text('GeoMetrics — Informe académico', marginL, pieY);
-            var num = String(p);
-            doc.text(num, pageW - marginR - doc.getTextWidth(num), pieY);
-            doc.setTextColor(0, 0, 0);
-        }
+        addParagraph('Anexo A. Datos brutos registrados en GeoMetrics.');
+        addParagraph('Anexo B. Gráficas del ensayo (cuando se generen en pantalla).');
+        addParagraph('Anexo C. Memoria de cálculo auxiliar, si el docente la solicita.');
 
         var safeName = String(metaInf.tituloCorto || 'ensayo').replace(/\s+/g, '_');
         doc.save('Informe_' + safeName + '_GeoMetrics.pdf');
