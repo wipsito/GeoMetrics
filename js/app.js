@@ -1593,17 +1593,42 @@ window.__simRM = window.__simRM || { tipo: null, running: false, paused: false, 
 function abrirModuloRM(tipo, modo) {
     modo = modo || 'ensayo';
     detenerSimRM();
+
+    // Activar pestaña sin destruir contenido (solo clases)
+    var root = document.getElementById('pantallaResistencia');
+    if (root) {
+        var tabName = modo === 'sim' ? 'rm-simuladores' : 'rm-ensayos';
+        root.querySelectorAll('.tab-btn').forEach(function(b) {
+            b.classList.toggle('active', b.getAttribute('data-tab') === tabName);
+        });
+        root.querySelectorAll('.tab-content').forEach(function(sec) {
+            sec.classList.toggle('active', sec.id === tabName);
+        });
+    }
+
+    // Ocultar grillas de tarjetas (como Suelos 1/2)
+    var gridEn = document.querySelector('#rm-ensayos .ensayos-grid');
+    var gridSim = document.querySelector('#rm-simuladores .simuladores-grid') ||
+                  document.querySelector('#rm-simuladores .ensayos-grid');
+    var hintEn = document.querySelector('#rm-ensayos > .login-hint');
+    var hintSim = document.querySelector('#rm-simuladores > .login-hint');
+    if (modo === 'sim') {
+        if (gridSim) gridSim.style.display = 'none';
+        if (hintSim) hintSim.style.display = 'none';
+        if (gridEn) gridEn.style.display = '';
+    } else {
+        if (gridEn) gridEn.style.display = 'none';
+        if (hintEn) hintEn.style.display = 'none';
+    }
+
     var panelId = modo === 'sim' ? 'panel-sim-rm' : 'panel-ensayo-rm';
-    var panel = document.getElementById(panelId) || document.getElementById('panel-ensayo-rm');
+    var panel = document.getElementById(panelId);
+    if (!panel) panel = document.getElementById('panel-ensayo-rm');
     if (!panel) return;
 
-    if (modo === 'sim') {
-        var tabSim = document.querySelector('#pantallaResistencia .tab-btn[data-tab="rm-simuladores"]');
-        if (tabSim) tabSim.click();
-    } else {
-        var tabEn = document.querySelector('#pantallaResistencia .tab-btn[data-tab="rm-ensayos"]');
-        if (tabEn) tabEn.click();
-    }
+    // Limpiar el otro panel
+    var other = document.getElementById(modo === 'sim' ? 'panel-ensayo-rm' : 'panel-sim-rm');
+    if (other) { other.innerHTML = ''; other.style.display = 'none'; }
 
     var html = '';
     if (tipo === 'traccion') html = crearFormularioRMTraccion(modo);
@@ -1615,18 +1640,33 @@ function abrirModuloRM(tipo, modo) {
 
     panel.innerHTML = html;
     panel.style.display = 'block';
-    try { panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+    window.scrollTo(0, 0);
 
-    setTimeout(function() {
-        dibujarMaquinaRM(tipo, 0);
-        if (modo === 'sim') bindSimRMControls(tipo);
-    }, 40);
+    // Dibujar tras layout (doble frame para que el canvas tenga tamaño real)
+    requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+            try { dibujarMaquinaRM(tipo, 0); } catch (e) { console.warn('RM draw', e); }
+            if (modo === 'sim') {
+                try { bindSimRMControls(tipo); } catch (e2) { console.warn('RM bind', e2); }
+            }
+        });
+    });
 }
 
 function rmCerrarPanel(modo) {
     detenerSimRM();
     var panel = document.getElementById(modo === 'sim' ? 'panel-sim-rm' : 'panel-ensayo-rm');
     if (panel) { panel.innerHTML = ''; panel.style.display = 'none'; }
+
+    var gridEn = document.querySelector('#rm-ensayos .ensayos-grid');
+    var gridSim = document.querySelector('#rm-simuladores .simuladores-grid') ||
+                  document.querySelector('#rm-simuladores .ensayos-grid');
+    var hintEn = document.querySelector('#rm-ensayos > .login-hint');
+    var hintSim = document.querySelector('#rm-simuladores > .login-hint');
+    if (gridEn) gridEn.style.display = 'grid';
+    if (gridSim) gridSim.style.display = 'grid';
+    if (hintEn) hintEn.style.display = '';
+    if (hintSim) hintSim.style.display = '';
 }
 
 function rmNum(id) {
@@ -1709,8 +1749,12 @@ function dibujarMaquinaRM(tipo, progress) {
     progress = Math.max(0, Math.min(1, progress || 0));
     var canvas = document.getElementById('rm-machine-canvas');
     if (!canvas) return;
+    // asegurar tamaño de buffer
+    if (!canvas.width || canvas.width < 100) { canvas.width = 480; canvas.height = 340; }
     var ctx = canvas.getContext('2d');
+    if (!ctx) return;
     var W = canvas.width, H = canvas.height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, W, H);
     var grd = ctx.createLinearGradient(0, 0, 0, H);
     grd.addColorStop(0, '#1e293b');
@@ -1916,8 +1960,12 @@ function dibujarDureza(ctx, W, H, p) {
 /* ---------- animación ---------- */
 function bindSimRMControls(tipo) {
     var btn = document.getElementById('btn-sim-rm-start');
-    if (!btn) return;
-    btn.onclick = function() {
+    if (!btn) {
+        console.warn('btn-sim-rm-start no encontrado');
+        return;
+    }
+    btn.onclick = function(ev) {
+        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
         if (window.__simRM.running && !window.__simRM.paused) {
             // pausar
             window.__simRM.paused = true;
