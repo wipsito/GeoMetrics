@@ -1500,6 +1500,231 @@ function aulaGuardarCalificacion(id, box) {
     if (typeof aulaActualizarResumenDocente === 'function') aulaActualizarResumenDocente();
 }
 
+
+/** Extrae texto legible de una entrega (comentario + archivo de texto si aplica). */
+function aulaExtraerTextoEntrega(e) {
+    var partes = [];
+    if (e.comentario) partes.push(String(e.comentario));
+    if (e.data && e.fileName) {
+        var name = String(e.fileName).toLowerCase();
+        var isText = /\.(txt|md|csv|json|log|py|js|html|css|tex)$/i.test(name) ||
+            (typeof e.data === 'string' && e.data.indexOf('data:text/') === 0);
+        if (isText && typeof e.data === 'string') {
+            try {
+                var raw = e.data;
+                if (raw.indexOf('base64,') >= 0) {
+                    var b64 = raw.split('base64,')[1] || '';
+                    var bin = atob(b64);
+                    // UTF-8 safe-ish
+                    try {
+                        partes.push(decodeURIComponent(escape(bin)));
+                    } catch (err1) {
+                        partes.push(bin);
+                    }
+                } else if (raw.indexOf(',') >= 0) {
+                    partes.push(decodeURIComponent(raw.split(',').slice(1).join(',') || ''));
+                }
+            } catch (err2) {}
+        }
+    }
+    return partes.join('\n\n').trim();
+}
+
+/**
+ * Análisis orientativo de texto generado por IA (heurístico, NO certificado).
+ * No puede identificar con certeza el modelo (ChatGPT, Claude, Gemini, etc.).
+ */
+function aulaAnalizarTextoIA(texto) {
+    var t = String(texto || '').trim();
+    if (t.length < 40) {
+        return {
+            pct: 0,
+            nivel: 'insuficiente',
+            iaSugerida: 'No aplica',
+            detalle: 'Texto demasiado corto para analizar. Pide al estudiante un archivo .txt o pega el contenido en el comentario de entrega.',
+            senales: []
+        };
+    }
+
+    var lower = t.toLowerCase();
+    var words = t.split(/\s+/).filter(Boolean);
+    var sentences = t.split(/[.!?…]+/).map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 8; });
+    var score = 0;
+    var senales = [];
+
+    // Frases típicas de LLM en español
+    var frasesIA = [
+        'en conclusión', 'en resumen', 'es importante destacar', 'cabe destacar',
+        'en el contexto de', 'de manera significativa', 'a lo largo de este',
+        'como se puede observar', 'es fundamental', 'resulta relevante',
+        'en este sentido', 'por otro lado', 'además, es necesario',
+        'desde una perspectiva', 'en el presente trabajo', 'el objetivo principal',
+        'as an ai', 'como modelo de lenguaje', 'no puedo', 'estoy aquí para ayudar',
+        'chatgpt', 'openai', 'según la información proporcionada'
+    ];
+    var hitsFrase = 0;
+    frasesIA.forEach(function(f) {
+        if (lower.indexOf(f) >= 0) hitsFrase++;
+    });
+    if (hitsFrase >= 1) {
+        score += Math.min(25, hitsFrase * 8);
+        senales.push('Frases formulaicas típicas de texto generado (' + hitsFrase + ')');
+    }
+
+    // Baja variación de longitud de oraciones (textos IA suelen ser uniformes)
+    if (sentences.length >= 4) {
+        var lens = sentences.map(function(s) { return s.split(/\s+/).length; });
+        var mean = lens.reduce(function(a, b) { return a + b; }, 0) / lens.length;
+        var variance = lens.reduce(function(a, b) { return a + Math.pow(b - mean, 2); }, 0) / lens.length;
+        var std = Math.sqrt(variance);
+        if (std < 4 && mean > 12) {
+            score += 18;
+            senales.push('Longitud de oraciones muy uniforme (poco “burstiness”)');
+        } else if (std < 6) {
+            score += 8;
+            senales.push('Variación moderada-baja en longitud de oraciones');
+        }
+    }
+
+    // Alta densidad de conectores académicos
+    var conectores = (lower.match(/\b(además|asimismo|por consiguiente|en consecuencia|no obstante|sin embargo|por lo tanto|en efecto|cabe señalar)\b/g) || []).length;
+    var dens = words.length ? (conectores / words.length) * 100 : 0;
+    if (dens > 1.2) {
+        score += 15;
+        senales.push('Alta densidad de conectores formales (' + dens.toFixed(1) + '%)');
+    } else if (dens > 0.6) {
+        score += 7;
+        senales.push('Uso frecuente de conectores formales');
+    }
+
+    // Repetición de n-gramas
+    var bigrams = {};
+    for (var i = 0; i < words.length - 1; i++) {
+        var bg = (words[i] + ' ' + words[i + 1]).toLowerCase();
+        bigrams[bg] = (bigrams[bg] || 0) + 1;
+    }
+    var rep = 0;
+    Object.keys(bigrams).forEach(function(k) {
+        if (bigrams[k] >= 3) rep++;
+    });
+    if (rep >= 3) {
+        score += 12;
+        senales.push('Repetición de expresiones (posible plantilla)');
+    }
+
+    // Poca primera persona / errores tipográficos (IA suele ser “limpia”)
+    var typos = (t.match(/[a-záéíóú]{20,}/gi) || []).length; // palabras muy largas raras
+    var primera = (lower.match(/\b(yo|nosotros|me|mi|creo que|pienso que|en mi opinión)\b/g) || []).length;
+    if (words.length > 80 && primera === 0) {
+        score += 10;
+        senales.push('Ausencia de voz personal (estilo impersonal muy uniforme)');
+    }
+
+    // Listas numeradas perfectas / estructura excesivamente ordenada
+    var listas = (t.match(/^\s*(\d+[\.\)]|[-•])\s+/gm) || []).length;
+    if (listas >= 5) {
+        score += 8;
+        senales.push('Estructura muy ordenada (listas numeradas frecuentes)');
+    }
+
+    score = Math.max(0, Math.min(95, Math.round(score)));
+
+    var nivel, iaSugerida, detalle;
+    if (score < 25) {
+        nivel = 'bajo';
+        iaSugerida = 'No se detectan indicios claros de IA';
+        detalle = 'El texto muestra más variación propia de escritura humana o es demasiado genérico para concluir. Revisa el contenido académicamente.';
+    } else if (score < 50) {
+        nivel = 'medio';
+        iaSugerida = 'Posible asistencia de IA (no identificable)';
+        detalle = 'Hay señales mixtas. Podría ser texto humano formal, editado con IA o parcialmente generado. No se puede atribuir a un modelo concreto (ChatGPT, Claude, Gemini, etc.).';
+    } else if (score < 75) {
+        nivel = 'alto';
+        iaSugerida = 'Patrones compatibles con LLM (ChatGPT / Claude / Gemini u otros)';
+        detalle = 'Varias señales coinciden con texto generado o muy asistido por un modelo de lenguaje. La herramienta NO puede afirmar qué IA específica se usó; solo estima probabilidad orientativa.';
+    } else {
+        nivel = 'muy alto';
+        iaSugerida = 'Muy probable texto generado por IA (LLM genérico)';
+        detalle = 'El estilo es altamente compatible con salida de un LLM. Identificar la marca exacta (ChatGPT, Claude, Gemini, Copilot…) requiere servicios comerciales especializados y aun así no es 100 % confiable.';
+    }
+
+    if (!senales.length) senales.push('Análisis general de estilo y estructura');
+
+    return {
+        pct: score,
+        nivel: nivel,
+        iaSugerida: iaSugerida,
+        detalle: detalle,
+        senales: senales,
+        palabras: words.length
+    };
+}
+
+function aulaDetectarIAEntrega(entregaId) {
+    var box = document.getElementById('ai-res-' + entregaId);
+    var list = aulaLoad(AULA_KEYS.entregas, []);
+    var e = null;
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].id === entregaId) { e = list[i]; break; }
+    }
+    if (!e) {
+        alert('No se encontró la entrega.');
+        return;
+    }
+    if (box) {
+        box.hidden = false;
+        box.innerHTML = '<p class="ai-loading">Analizando texto de la entrega…</p>';
+    }
+
+    setTimeout(function() {
+        var texto = aulaExtraerTextoEntrega(e);
+        // Si el archivo no es texto, avisar
+        var name = String(e.fileName || '').toLowerCase();
+        var esBinario = e.data && !/\.(txt|md|csv|json|log|py|js|html|css|tex)$/i.test(name) &&
+            !(typeof e.data === 'string' && e.data.indexOf('data:text/') === 0);
+
+        var r = aulaAnalizarTextoIA(texto);
+        var color = r.pct >= 75 ? '#b91c1c' : (r.pct >= 50 ? '#c2410c' : (r.pct >= 25 ? '#a16207' : '#15803d'));
+
+        var html = '<div class="ai-card">' +
+            '<h4>Análisis orientativo de IA</h4>' +
+            '<p class="ai-pct" style="color:' + color + '"><strong>' + r.pct + '%</strong> probabilidad estimada de texto generado/asistido por IA</p>' +
+            '<p><strong>Nivel:</strong> ' + aulaEsc(r.nivel) + '</p>' +
+            '<p><strong>Indicación de origen:</strong> ' + aulaEsc(r.iaSugerida) + '</p>' +
+            '<p>' + aulaEsc(r.detalle) + '</p>' +
+            '<p><strong>Señales:</strong></p><ul>' +
+            r.senales.map(function(s) { return '<li>' + aulaEsc(s) + '</li>'; }).join('') +
+            '</ul>' +
+            (esBinario && texto.length < 40
+                ? '<p class="ai-warn">El archivo no es texto plano (.txt). Para un mejor análisis, el estudiante debe entregar también un .txt o pegar el contenido en el comentario.</p>'
+                : '') +
+            '<p class="ai-disclaimer"><em>Aviso:</em> este detector es <strong>heurístico y educativo</strong>. No certifica plagio ni identifica con certeza ChatGPT, Claude, Gemini u otra IA. Úsalo como apoyo, no como única prueba para sancionar.</p>' +
+            '</div>';
+
+        if (box) {
+            box.hidden = false;
+            box.innerHTML = html;
+        } else {
+            alert('Probabilidad IA: ' + r.pct + '%\n' + r.iaSugerida + '\n\n' + r.detalle);
+        }
+
+        // Guardar último análisis en la entrega (opcional)
+        e.aiDetect = {
+            pct: r.pct,
+            nivel: r.nivel,
+            iaSugerida: r.iaSugerida,
+            fecha: new Date().toISOString()
+        };
+        for (var j = 0; j < list.length; j++) {
+            if (list[j].id === entregaId) list[j] = e;
+        }
+        aulaSave(AULA_KEYS.entregas, list);
+        if (window.GeoCloud && typeof GeoCloud.syncUp === 'function') {
+            try { GeoCloud.syncUp(); } catch (err) {}
+        }
+    }, 400);
+}
+
 function aulaRenderEntregasDocente() {
     var box = document.getElementById('listaEntregasDocente');
     if (!box) return;
@@ -1548,7 +1773,9 @@ function aulaRenderEntregasDocente() {
                 '<button type="button" class="btn-preview-file" data-preview-src="' + e.data.replace(/"/g, '&quot;') + '" data-preview-name="' + aulaEsc(e.fileName || 'archivo') + '">Vista previa</button>' +
                 '<a class="btn-descarga" download="' + aulaEsc(e.fileName) + '" href="' + e.data + '">Descargar</a>'
             ) : '') +
+            '<button type="button" class="btn-detect-ai" data-detect-ai="' + e.id + '">🔍 Detectar IA</button>' +
             '</div>' +
+            '<div class="ai-detect-result" id="ai-res-' + e.id + '" hidden></div>' +
             '<div class="calificar-box' + (calificada ? ' calificada' : '') + '" data-cal-box="' + e.id + '">' +
             (calificada ? '<p class="estado-calificada">✓ Calificada</p>' : '') +
             '<label>Nota (0-5)</label> <input type="number" min="0" max="5" step="0.1" class="input-nota" data-nota-id="' + e.id + '" value="' + (calificada ? aulaEsc(String(e.nota)) : '') + '" placeholder="0-5"' + (calificada ? ' disabled' : '') + '>' +
@@ -1612,6 +1839,14 @@ function aulaRenderEntregasDocente() {
             ev.preventDefault();
             ev.stopPropagation();
             aulaAbrirVistaPrevia(btn.getAttribute('data-preview-src'), btn.getAttribute('data-preview-name'));
+        });
+    });
+
+    box.querySelectorAll('[data-detect-ai]').forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            aulaDetectarIAEntrega(btn.getAttribute('data-detect-ai'));
         });
     });
 }
