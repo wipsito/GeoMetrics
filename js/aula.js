@@ -171,13 +171,104 @@ function aulaRequireSession() {
 function aulaReadFileAsDataURL(file, maxBytes) {
     return new Promise(function(resolve, reject) {
         if (!file) return reject(new Error('Selecciona un archivo'));
-        if (maxBytes && file.size > maxBytes) {
-            return reject(new Error('El archivo supera el tamaño máximo recomendado (2 MB).'));
+        var max = maxBytes || (100 * 1024 * 1024);
+        if (file.size > max) {
+            return reject(new Error('El archivo supera el tamaño máximo permitido (100 MB).'));
         }
         var reader = new FileReader();
-        reader.onload = function() { resolve({ name: file.name, type: file.type, data: reader.result, size: file.size }); };
+        reader.onload = function() { resolve({ name: file.name, type: file.type || 'application/octet-stream', data: reader.result, size: file.size }); };
         reader.onerror = function() { reject(new Error('No se pudo leer el archivo')); };
         reader.readAsDataURL(file);
+    });
+}
+
+/** IndexedDB para archivos grandes (entregas / presentaciones). localStorage solo guarda metadatos. */
+var AULA_IDB_NAME = 'geometrics_files_v1';
+var AULA_IDB_STORE = 'files';
+
+function aulaIdbOpen() {
+    return new Promise(function(resolve, reject) {
+        if (!window.indexedDB) return reject(new Error('Este navegador no soporta IndexedDB'));
+        var req = indexedDB.open(AULA_IDB_NAME, 1);
+        req.onupgradeneeded = function() {
+            var db = req.result;
+            if (!db.objectStoreNames.contains(AULA_IDB_STORE)) {
+                db.createObjectStore(AULA_IDB_STORE, { keyPath: 'id' });
+            }
+        };
+        req.onsuccess = function() { resolve(req.result); };
+        req.onerror = function() { reject(req.error || new Error('No se pudo abrir IndexedDB')); };
+    });
+}
+
+function aulaIdbPut(id, record) {
+    return aulaIdbOpen().then(function(db) {
+        return new Promise(function(resolve, reject) {
+            var tx = db.transaction(AULA_IDB_STORE, 'readwrite');
+            tx.oncomplete = function() { resolve(id); };
+            tx.onerror = function() { reject(tx.error); };
+            tx.objectStore(AULA_IDB_STORE).put(Object.assign({ id: id }, record));
+        });
+    });
+}
+
+function aulaIdbGet(id) {
+    return aulaIdbOpen().then(function(db) {
+        return new Promise(function(resolve, reject) {
+            var tx = db.transaction(AULA_IDB_STORE, 'readonly');
+            var req = tx.objectStore(AULA_IDB_STORE).get(id);
+            req.onsuccess = function() { resolve(req.result || null); };
+            req.onerror = function() { reject(req.error); };
+        });
+    });
+}
+
+function aulaIdbDelete(id) {
+    return aulaIdbOpen().then(function(db) {
+        return new Promise(function(resolve, reject) {
+            var tx = db.transaction(AULA_IDB_STORE, 'readwrite');
+            tx.oncomplete = function() { resolve(); };
+            tx.onerror = function() { reject(tx.error); };
+            tx.objectStore(AULA_IDB_STORE).delete(id);
+        });
+    }).catch(function() {});
+}
+
+/** Guarda archivo grande en IDB; devuelve referencia liviana para localStorage/Firebase meta. */
+function aulaGuardarArchivoGrande(fileObj) {
+    var id = 'file_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+    return aulaIdbPut(id, {
+        name: fileObj.name,
+        type: fileObj.type,
+        size: fileObj.size,
+        data: fileObj.data,
+        created: new Date().toISOString()
+    }).then(function() {
+        return {
+            id: id,
+            name: fileObj.name,
+            type: fileObj.type,
+            size: fileObj.size,
+            // Marca de referencia (no embeber base64 en localStorage)
+            storage: 'idb',
+            dataRef: id
+        };
+    });
+}
+
+function aulaResolverUrlArchivo(entregaOFile) {
+    return new Promise(function(resolve) {
+        if (!entregaOFile) return resolve(null);
+        // Compat: entregas antiguas con data URL completo
+        if (entregaOFile.data && String(entregaOFile.data).indexOf('data:') === 0) {
+            return resolve(entregaOFile.data);
+        }
+        var ref = entregaOFile.dataRef || entregaOFile.fileRef ||
+            (entregaOFile.storage === 'idb' ? entregaOFile.id : null);
+        if (!ref) return resolve(entregaOFile.data || null);
+        aulaIdbGet(ref).then(function(rec) {
+            resolve(rec && rec.data ? rec.data : null);
+        }).catch(function() { resolve(null); });
     });
 }
 
@@ -1501,39 +1592,97 @@ function aulaGuardarCalificacion(id, box) {
 }
 
 
-/** Extrae texto legible de una entrega (comentario + archivo de texto si aplica). */
-function aulaExtraerTextoEntrega(e) {
-    var partes = [];
-    if (e.comentario) partes.push(String(e.comentario));
-    if (e.data && e.fileName) {
-        var name = String(e.fileName).toLowerCase();
+/** Extrae texto de comentario + archivo (.txt o PDF con pdf.js). */
+function aulaDataUrlToUint8(dataUrl) {
+    try {
+        var b64 = String(dataUrl).split('base64,')[1];
+        if (!b64) return null;
+        var bin = atob(b64);
+        var arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        return arr;
+    } catch (e) { return null; }
+}
+
+function aulaLoadPdfJs() {
+    return new Promise(function(resolve, reject) {
+        if (window.pdfjsLib) return resolve(window.pdfjsLib);
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload = function() {
+            if (window.pdfjsLib) {
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+                    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                resolve(window.pdfjsLib);
+            } else reject(new Error('pdf.js no cargó'));
+        };
+        s.onerror = function() { reject(new Error('No se pudo cargar pdf.js')); };
+        document.head.appendChild(s);
+    });
+}
+
+function aulaExtraerTextoDeDataUrl(dataUrl, fileName) {
+    return new Promise(function(resolve) {
+        if (!dataUrl) return resolve('');
+        var name = String(fileName || '').toLowerCase();
         var isText = /\.(txt|md|csv|json|log|py|js|html|css|tex)$/i.test(name) ||
-            (typeof e.data === 'string' && e.data.indexOf('data:text/') === 0);
-        if (isText && typeof e.data === 'string') {
+            String(dataUrl).indexOf('data:text/') === 0;
+        if (isText) {
             try {
-                var raw = e.data;
+                var raw = dataUrl;
                 if (raw.indexOf('base64,') >= 0) {
                     var b64 = raw.split('base64,')[1] || '';
                     var bin = atob(b64);
-                    // UTF-8 safe-ish
-                    try {
-                        partes.push(decodeURIComponent(escape(bin)));
-                    } catch (err1) {
-                        partes.push(bin);
-                    }
+                    try { resolve(decodeURIComponent(escape(bin))); }
+                    catch (e1) { resolve(bin); }
                 } else if (raw.indexOf(',') >= 0) {
-                    partes.push(decodeURIComponent(raw.split(',').slice(1).join(',') || ''));
-                }
-            } catch (err2) {}
+                    resolve(decodeURIComponent(raw.split(',').slice(1).join(',') || ''));
+                } else resolve('');
+            } catch (e2) { resolve(''); }
+            return;
         }
-    }
-    return partes.join('\n\n').trim();
+        if (/\.pdf$/i.test(name) || String(dataUrl).indexOf('application/pdf') >= 0) {
+            var bytes = aulaDataUrlToUint8(dataUrl);
+            if (!bytes) return resolve('');
+            aulaLoadPdfJs().then(function(pdfjsLib) {
+                return pdfjsLib.getDocument({ data: bytes }).promise;
+            }).then(function(pdf) {
+                var maxPages = Math.min(pdf.numPages || 1, 15);
+                var parts = [];
+                var chain = Promise.resolve();
+                for (var p = 1; p <= maxPages; p++) {
+                    (function(pageNum) {
+                        chain = chain.then(function() {
+                            return pdf.getPage(pageNum).then(function(page) {
+                                return page.getTextContent().then(function(tc) {
+                                    var line = (tc.items || []).map(function(it) { return it.str; }).join(' ');
+                                    parts.push(line);
+                                });
+                            });
+                        });
+                    })(p);
+                }
+                return chain.then(function() { return parts.join('\n'); });
+            }).then(function(txt) { resolve(txt || ''); })
+              .catch(function() { resolve(''); });
+            return;
+        }
+        resolve('');
+    });
 }
 
-/**
- * Análisis orientativo de texto generado por IA (heurístico, NO certificado).
- * No puede identificar con certeza el modelo (ChatGPT, Claude, Gemini, etc.).
- */
+function aulaExtraerTextoEntregaAsync(e) {
+    var partes = [];
+    if (e.comentario) partes.push(String(e.comentario));
+    return aulaResolverUrlArchivo(e).then(function(url) {
+        if (!url) return partes.join('\n\n').trim();
+        return aulaExtraerTextoDeDataUrl(url, e.fileName).then(function(t) {
+            if (t) partes.push(t);
+            return partes.join('\n\n').trim();
+        });
+    });
+}
+
 function aulaAnalizarTextoIA(texto) {
     var t = String(texto || '').trim();
     if (t.length < 40) {
@@ -1676,14 +1825,12 @@ function aulaDetectarIAEntrega(entregaId) {
         box.innerHTML = '<p class="ai-loading">Analizando texto de la entrega…</p>';
     }
 
-    setTimeout(function() {
-        var texto = aulaExtraerTextoEntrega(e);
-        // Si el archivo no es texto, avisar
+    aulaExtraerTextoEntregaAsync(e).then(function(texto) {
         var name = String(e.fileName || '').toLowerCase();
-        var esBinario = e.data && !/\.(txt|md|csv|json|log|py|js|html|css|tex)$/i.test(name) &&
-            !(typeof e.data === 'string' && e.data.indexOf('data:text/') === 0);
+        var esBinario = !/\.(txt|md|csv|json|log|py|js|html|css|tex|pdf)$/i.test(name) && texto.length < 40;
 
         var r = aulaAnalizarTextoIA(texto);
+
         var color = r.pct >= 75 ? '#b91c1c' : (r.pct >= 50 ? '#c2410c' : (r.pct >= 25 ? '#a16207' : '#15803d'));
 
         var html = '<div class="ai-card">' +
@@ -1722,7 +1869,9 @@ function aulaDetectarIAEntrega(entregaId) {
         if (window.GeoCloud && typeof GeoCloud.syncUp === 'function') {
             try { GeoCloud.syncUp(); } catch (err) {}
         }
-    }, 400);
+    }).catch(function() {
+        if (box) box.innerHTML = '<p class="ai-warn">No se pudo analizar el archivo.</p>';
+    });
 }
 
 function aulaRenderEntregasDocente() {
@@ -1769,9 +1918,9 @@ function aulaRenderEntregasDocente() {
             '<small>Archivo: ' + aulaEsc(e.fileName || '—') + ' · Entregado: ' + aulaFormatDate(e.fecha) +
             ' · ' + aulaEsc(e.materia || t.materia || '') + ' · Grupo ' + aulaEsc(e.grupo || '') + '</small>' +
             '<div class="aula-item-acciones">' +
-            (e.data ? (
-                '<button type="button" class="btn-preview-file" data-preview-src="' + e.data.replace(/"/g, '&quot;') + '" data-preview-name="' + aulaEsc(e.fileName || 'archivo') + '">Vista previa</button>' +
-                '<a class="btn-descarga" download="' + aulaEsc(e.fileName) + '" href="' + e.data + '">Descargar</a>'
+            ((e.data || e.dataRef) ? (
+                '<button type="button" class="btn-preview-file" data-entrega-id="' + e.id + '" data-preview-name="' + aulaEsc(e.fileName || 'archivo') + '">Vista previa</button>' +
+                '<button type="button" class="btn-descarga btn-descarga-ent" data-entrega-id="' + e.id + '" data-download-name="' + aulaEsc(e.fileName || 'archivo') + '">Descargar</button>'
             ) : '') +
             '<button type="button" class="btn-detect-ai" data-detect-ai="' + e.id + '">🔍 Detectar IA</button>' +
             '</div>' +
@@ -1838,7 +1987,32 @@ function aulaRenderEntregasDocente() {
         btn.addEventListener('click', function(ev) {
             ev.preventDefault();
             ev.stopPropagation();
-            aulaAbrirVistaPrevia(btn.getAttribute('data-preview-src'), btn.getAttribute('data-preview-name'));
+            var eid = btn.getAttribute('data-entrega-id');
+            var nombre = btn.getAttribute('data-preview-name') || 'archivo';
+            var ent = aulaLoad(AULA_KEYS.entregas, []).find(function(x) { return x.id === eid; });
+            aulaResolverUrlArchivo(ent).then(function(url) {
+                if (!url) { alert('No se encontró el archivo en este dispositivo. Si se entregó en otro PC, debe volver a subirse o sincronizarse.'); return; }
+                aulaAbrirVistaPrevia(url, nombre);
+            });
+        });
+    });
+
+    box.querySelectorAll('.btn-descarga-ent').forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var eid = btn.getAttribute('data-entrega-id');
+            var nombre = btn.getAttribute('data-download-name') || 'archivo';
+            var ent = aulaLoad(AULA_KEYS.entregas, []).find(function(x) { return x.id === eid; });
+            aulaResolverUrlArchivo(ent).then(function(url) {
+                if (!url) { alert('Archivo no disponible en este navegador.'); return; }
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = nombre;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            });
         });
     });
 
@@ -2227,40 +2401,87 @@ function aulaEntregar() {
     var user = aulaRequireSession();
     if (!user || user.rol !== 'estudiante') return;
     var err = document.getElementById('entregaError');
-    err.textContent = '';
+    if (err) err.textContent = '';
     var tareaId = document.getElementById('entregaTarea').value;
     var comentario = (document.getElementById('entregaComentario').value || '').trim();
     var fileInput = document.getElementById('entregaArchivo');
-    if (!tareaId) { err.textContent = 'Selecciona una tarea.'; return; }
-    if (!fileInput.files || !fileInput.files[0]) { err.textContent = 'Adjunta un archivo.'; return; }
+    if (!tareaId) { if (err) err.textContent = 'Selecciona una tarea.'; return; }
+    if (!fileInput.files || !fileInput.files[0]) { if (err) err.textContent = 'Adjunta un archivo.'; return; }
 
-    aulaReadFileAsDataURL(fileInput.files[0], 105 * 1024 * 1024).then(function(file) {
-        var list = aulaLoad(AULA_KEYS.entregas, []);
-        // reemplazar entrega previa de la misma tarea
-        list = list.filter(function(e) { return !(e.tareaId === tareaId && e.estudianteId === user.id); });
-        list.push({
-            id: aulaUid(),
-            tareaId: tareaId,
-            estudianteId: user.id,
-            estudianteNombre: user.nombre,
-            materia: user.materia,
-            grupo: user.grupo,
-            comentario: comentario,
-            fileName: file.name,
-            data: file.data,
-            fecha: new Date().toISOString()
-        });
-        try {
-            aulaSave(AULA_KEYS.entregas, list);
-        } catch (e) {
-            err.textContent = 'No se pudo guardar (archivo muy pesado para el navegador).';
-            return;
+    var rawFile = fileInput.files[0];
+    if (rawFile.size > 100 * 1024 * 1024) {
+        if (err) err.textContent = 'El archivo supera 100 MB.';
+        return;
+    }
+    if (err) err.textContent = 'Subiendo archivo…';
+
+    aulaReadFileAsDataURL(rawFile, 100 * 1024 * 1024).then(function(file) {
+        // Archivos > ~400 KB van a IndexedDB para no saturar localStorage
+        var usarIdb = file.size > 400 * 1024 || (file.data && file.data.length > 500000);
+        var guardarMeta = function(fileMeta) {
+            var list = aulaLoad(AULA_KEYS.entregas, []);
+            // eliminar entrega previa misma tarea + borrar blob viejo si había
+            var prev = list.filter(function(e) { return e.tareaId === tareaId && e.estudianteId === user.id; });
+            prev.forEach(function(p) {
+                if (p.dataRef) aulaIdbDelete(p.dataRef);
+            });
+            list = list.filter(function(e) { return !(e.tareaId === tareaId && e.estudianteId === user.id); });
+            var row = {
+                id: aulaUid(),
+                tareaId: tareaId,
+                estudianteId: user.id,
+                estudianteNombre: user.nombre,
+                materia: user.materia,
+                grupo: user.grupo,
+                comentario: comentario,
+                fileName: fileMeta.name || file.name,
+                fileType: fileMeta.type || file.type,
+                fileSize: fileMeta.size || file.size,
+                fecha: new Date().toISOString()
+            };
+            if (fileMeta.storage === 'idb') {
+                row.storage = 'idb';
+                row.dataRef = fileMeta.dataRef || fileMeta.id;
+                // no guardar data base64 en localStorage
+            } else {
+                row.data = fileMeta.data || file.data;
+            }
+            list.push(row);
+            try {
+                aulaSave(AULA_KEYS.entregas, list);
+            } catch (e2) {
+                // Si aún falla, forzar IDB
+                if (!row.dataRef) {
+                    return aulaGuardarArchivoGrande(file).then(function(meta) {
+                        row.storage = 'idb';
+                        row.dataRef = meta.dataRef;
+                        delete row.data;
+                        list = list.filter(function(e) { return e.id !== row.id; });
+                        list.push(row);
+                        aulaSave(AULA_KEYS.entregas, list);
+                    });
+                }
+                throw e2;
+            }
+            if (err) err.textContent = '';
+            document.getElementById('entregaComentario').value = '';
+            fileInput.value = '';
+            aulaRenderEstudiante();
+            if (window.GeoCloud && typeof GeoCloud.syncUp === 'function') {
+                try { GeoCloud.syncUp(); } catch (e3) {}
+            }
+        };
+
+        if (usarIdb) {
+            return aulaGuardarArchivoGrande(file).then(guardarMeta);
         }
-        document.getElementById('entregaComentario').value = '';
-        fileInput.value = '';
-        aulaRenderEstudiante();
+        try {
+            guardarMeta({ name: file.name, type: file.type, size: file.size, data: file.data });
+        } catch (e4) {
+            return aulaGuardarArchivoGrande(file).then(guardarMeta);
+        }
     }).catch(function(e) {
-        err.textContent = e.message || 'Error al entregar';
+        if (err) err.textContent = (e && e.message) ? e.message : 'Error al entregar. Prueba un PDF más liviano o exporta a PDF comprimido.';
     });
 }
 
