@@ -4231,3 +4231,32 @@ label.btn-adjuntar:not(.btn-adjuntar-icon) {
     border: 1px solid rgba(232,184,74,0.45);
     color: #f0d78c;
 }
+
+
+/* Detector IA (docente) */
+.btn-detect-ai {
+  margin-left: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #7c3aed;
+  background: #f5f3ff;
+  color: #5b21b6;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.btn-detect-ai:hover { background: #ede9fe; }
+.ai-detect-result { margin-top: 10px; }
+.ai-card {
+  background: #faf5ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.ai-card h4 { margin: 0 0 8px; color: #5b21b6; }
+.ai-pct { font-size: 1.15rem; margin: 6px 0; }
+.ai-disclaimer { margin-top: 10px; color: #6b7280; font-size: 0.82rem; }
+.ai-warn { color: #b45309; background: #fffbeb; padding: 8px; border-radius: 6px; }
+.ai-loading { color: #7c3aed; }
