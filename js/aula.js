@@ -1916,9 +1916,13 @@ function aulaDetectarIAEntrega(entregaId) {
     }
     // Ocultar panel de calificación (el botón Calificar se mantiene)
     var calBox = document.getElementById('cal-box-' + entregaId);
-    if (calBox) calBox.hidden = true;
+    if (calBox) {
+        calBox.hidden = true;
+        calBox.style.display = 'none';
+    }
     if (box) {
         box.hidden = false;
+        box.style.display = '';
         box.innerHTML = '<p class="ai-loading">Analizando texto de la entrega…</p>';
     }
 
@@ -1979,6 +1983,7 @@ function aulaDetectarIAEntrega(entregaId) {
                     ev.preventDefault();
                     ev.stopPropagation();
                     box.hidden = true;
+                    box.style.display = 'none';
                     box.innerHTML = '';
                 });
             }
@@ -2183,11 +2188,13 @@ function aulaRenderEntregasDocente() {
             var ai = document.getElementById('ai-res-' + id);
             if (ai) {
                 ai.hidden = true;
+                ai.style.display = 'none';
                 ai.innerHTML = '';
             }
             var wrap = box.querySelector('[data-cal-box="' + id + '"]') || document.getElementById('cal-box-' + id);
             if (!wrap) return;
             wrap.hidden = false;
+            wrap.style.display = 'grid';
             wrap.classList.add('calificar-highlight');
             var notaEl = wrap.querySelector('.input-nota');
             if (notaEl) {
@@ -2208,7 +2215,10 @@ function aulaRenderEntregasDocente() {
             ev.stopPropagation();
             var id = btn.getAttribute('data-cerrar-cal');
             var wrap = document.getElementById('cal-box-' + id) || box.querySelector('[data-cal-box="' + id + '"]');
-            if (wrap) wrap.hidden = true;
+            if (wrap) {
+                wrap.hidden = true;
+                wrap.style.display = 'none';
+            }
         });
     });
 }
