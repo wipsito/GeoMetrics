@@ -2039,6 +2039,8 @@ function aulaRenderEntregasDocente() {
                 '<button type="button" class="btn-descarga btn-descarga-ent" data-entrega-id="' + e.id + '" data-download-name="' + aulaEsc(e.fileName || 'archivo') + '">Descargar</button>'
             ) : '') +
             '<button type="button" class="btn-detect-ai" data-detect-ai="' + e.id + '">🔍 Detectar IA</button>' +
+            '<button type="button" class="btn-calificar-rapido" data-focus-cal="' + e.id + '">' +
+            (calificada ? '✎ Corregir nota' : '✓ Calificar') + '</button>' +
             '</div>' +
             '<div class="ai-detect-result" id="ai-res-' + e.id + '" hidden></div>' +
             '<div class="calificar-box' + (calificada ? ' calificada' : '') + '" data-cal-box="' + e.id + '">' +
@@ -2137,6 +2139,54 @@ function aulaRenderEntregasDocente() {
             ev.preventDefault();
             ev.stopPropagation();
             aulaDetectarIAEntrega(btn.getAttribute('data-detect-ai'));
+        });
+    });
+
+    box.querySelectorAll('[data-focus-cal]').forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var id = btn.getAttribute('data-focus-cal');
+            // Abrir el detalle de la entrega
+            var det = document.getElementById('ent-det-' + id);
+            var toggle = box.querySelector('[data-toggle-ent="' + id + '"]');
+            if (det && det.hidden) {
+                det.hidden = false;
+                if (toggle) {
+                    toggle.setAttribute('aria-expanded', 'true');
+                    toggle.classList.add('open');
+                }
+            }
+            var wrap = box.querySelector('[data-cal-box="' + id + '"]');
+            if (!wrap) return;
+            var notaEl = wrap.querySelector('.input-nota');
+            var comEl = wrap.querySelector('.input-comentario-doc');
+            // Si estaba bloqueada (ya calificada), habilitar edición
+            if (notaEl && notaEl.disabled) {
+                notaEl.disabled = false;
+                if (comEl) comEl.disabled = false;
+                var estado = wrap.querySelector('.estado-calificada');
+                if (estado) estado.textContent = 'Editando calificación…';
+                var corr = wrap.querySelector('[data-corregir]');
+                if (corr) {
+                    corr.textContent = 'Guardar calificación';
+                    corr.className = 'btn-calcular btn-calificar';
+                    corr.removeAttribute('data-corregir');
+                    corr.setAttribute('data-calificar', id);
+                    corr.onclick = function(e2) {
+                        e2.preventDefault();
+                        e2.stopPropagation();
+                        aulaGuardarCalificacion(id, box);
+                    };
+                }
+            }
+            wrap.classList.add('calificar-highlight');
+            try { wrap.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+            if (notaEl) {
+                notaEl.focus();
+                try { notaEl.select(); } catch (e2) {}
+            }
+            setTimeout(function() { wrap.classList.remove('calificar-highlight'); }, 2200);
         });
     });
 }
