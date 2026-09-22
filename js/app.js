@@ -3768,6 +3768,82 @@ var ESQUEMA_INFORME_ACADEMICO = [
     { id: 'anexos', nombre: 'Anexos', desc: 'Cálculos extendidos, capturas de gráficas y datos brutos si aplica.' }
 ];
 
+/** Normas de ensayo alineadas con NSR-10 Título H (H.2.6), NTC/ASTM e INVIAS */
+var NORMA_ENSAYO_NSR10 = {
+    humedad: {
+        ntc: 'NTC 1495',
+        astm: 'ASTM D 2216',
+        invias: 'INVIAS — Especificaciones técnicas (contenido de humedad de suelos)',
+        uso: 'Parámetro básico de identificación y control de humedad en investigación del subsuelo (H.2.1.1.1).'
+    },
+    granulometria: {
+        ntc: 'NTC 1522',
+        astm: 'ASTM D 422 / práctica de tamizado',
+        invias: 'INVIAS — Granulometría de agregados y suelos',
+        uso: 'Clasificación y distribución de tamaños; apoyo a SCUS/NSR-10 H.2.5.'
+    },
+    limites: {
+        ntc: 'NTC 1493, NTC 1494, NTC 4630',
+        astm: 'ASTM D 4318',
+        invias: 'INVIAS — Límites de Atterberg',
+        uso: 'Identificación de suelos cohesivos (H.2.5.2) y plasticidad.'
+    },
+    gravedad: {
+        ntc: 'NTC 1974',
+        astm: 'ASTM D 854',
+        invias: 'INVIAS — Densidad relativa de sólidos',
+        uso: 'Relaciones volumétricas y de fase del suelo.'
+    },
+    compactacion: {
+        ntc: 'NTC / Proctor (referencia de laboratorio)',
+        astm: 'ASTM D 698 / D 1557',
+        invias: 'INVIAS — Compactación de suelos (Proctor)',
+        uso: 'Control de rellenos y obras de adecuación del terreno.'
+    },
+    densidad: {
+        ntc: 'NTC 1667 / NTC 1528',
+        astm: 'ASTM D 1556 / D 2167',
+        invias: 'INVIAS — Densidad in situ (cono de arena / balón)',
+        uso: 'Estado de densificación en campo.'
+    },
+    clasificacion: {
+        ntc: 'NTC 1504',
+        astm: 'ASTM D 2487 (SUCS)',
+        invias: 'INVIAS — Clasificación de suelos para ingeniería',
+        uso: 'Identificación de unidades de suelo (H.2.2.2.1-c) y H.2.5.'
+    },
+    permeabilidad: {
+        ntc: 'NTC (permeabilidad de laboratorio)',
+        astm: 'ASTM D 2434 / D 5084 (referencia)',
+        invias: 'INVIAS — Permeabilidad de suelos',
+        uso: 'Flujo y drenaje; apoyo a análisis hidráulicos del Título H.'
+    },
+    corte: {
+        ntc: 'NTC 1917',
+        astm: 'ASTM D 3080',
+        invias: 'INVIAS — Resistencia al corte (corte directo)',
+        uso: 'Parámetros c y φ para resistencia al corte (H.2.0, H.2.4); insumos de análisis geotécnicos del estudio definitivo.'
+    },
+    inconfinada: {
+        ntc: 'NTC / compresión inconfinada',
+        astm: 'ASTM D 2166',
+        invias: 'INVIAS — Resistencia a la compresión inconfinada',
+        uso: 'Resistencia no drenada Su (H.2.0) en suelos cohesivos.'
+    },
+    consolidacion: {
+        ntc: 'NTC 1967',
+        astm: 'ASTM D 2435',
+        invias: 'INVIAS — Consolidación unidimensional',
+        uso: 'Parámetros de deformabilidad y asentamiento (H.2.2.2.1-e).'
+    },
+    triaxial: {
+        ntc: 'NTC 2041',
+        astm: 'ASTM D 2850 / D 4767 (referencia)',
+        invias: 'INVIAS — Ensayo triaxial en suelos',
+        uso: 'Resistencia y trayectoria de esfuerzos para diseño geotécnico.'
+    }
+};
+
 var ENSAYOS_INFORME = {
     humedad: {
         titulo: 'INFORME DE LABORATORIO: ENSAYO DE CONTENIDO DE HUMEDAD',
@@ -4374,16 +4450,58 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
 
         addHeading('3. Objetivos');
         addParagraph('Objetivo general');
-        addParagraph('Aplicar el procedimiento del ensayo «' + metaInf.tituloCorto + '», procesar los datos en GeoMetrics y analizar los resultados con rigor académico.');
+        addParagraph(
+            'Aplicar el procedimiento del ensayo «' + metaInf.tituloCorto +
+            '», procesar los datos en GeoMetrics y analizar los resultados con rigor académico, en el marco de la investigación del subsuelo (NSR-10 H.2.1.1.1) y como insumo documental tipo anexo de un estudio geotécnico definitivo (H.2.2.2).'
+        );
         addParagraph('Objetivos específicos');
         addParagraph('• Registrar las lecturas de laboratorio con unidades coherentes (kPa, °, mm, etc.).');
         addParagraph('• Aplicar las ecuaciones del marco teórico e identificar cada variable.');
         addParagraph('• Presentar resultados en tablas y figuras con encabezados claros.');
         addParagraph('• Interpretar los valores frente a rangos de referencia y formular conclusiones vinculadas a los objetivos.');
 
-        addHeading('4. Marco teórico');
+        addHeading('4. Marco normativo y teórico');
         addParagraph(
-            'Los fundamentos se limitan a las fuentes autorizadas de la asignatura. ' + fuenteMarco
+            'Este informe de laboratorio se enmarca en la investigación del subsuelo descrita en el Reglamento NSR-10, Título H — Estudios geotécnicos. ' +
+            'Según H.2.1.1, el estudio geotécnico comprende reconocimiento de campo, investigación del subsuelo (ensayos de campo y laboratorio) y análisis y recomendaciones de ingeniería.'
+        );
+        addHeading('4.1. Estudio geotécnico preliminar y definitivo (NSR-10 H.2.2)');
+        addParagraph(
+            'Estudio geotécnico preliminar (H.2.2.1): conjunto de actividades para aproximarse a las características geotécnicas del terreno, ' +
+            'problemas potenciales y criterios generales de proyecto. No es de presentación obligatoria y no reemplaza, bajo ninguna circunstancia, al estudio definitivo.'
+        );
+        addParagraph(
+            'Estudio geotécnico definitivo (H.2.2.2): trabajo obligatorio para un proyecto específico, en el cual se precisan las condiciones físico-mecánicas del subsuelo ' +
+            'y las recomendaciones de diseño y construcción. Su contenido mínimo incluye (H.2.2.2.1): datos del proyecto, del subsuelo, de cada unidad de suelo, ' +
+            'análisis geotécnicos, recomendaciones de diseño y construcción, y anexos con resultados de ensayos de laboratorio (gráficos y tablas).'
+        );
+        addParagraph(
+            'Los resultados de este ensayo de laboratorio aportan parámetros de identificación y/o resistencia-deformabilidad que pueden integrarse como ' +
+            'anexo técnico de un estudio geotécnico definitivo (H.2.2.2.1-h), sin sustituir por sí solos el estudio completo exigido por el Reglamento.'
+        );
+
+        var norma = (typeof NORMA_ENSAYO_NSR10 !== 'undefined' && NORMA_ENSAYO_NSR10[tipoEnsayo])
+            ? NORMA_ENSAYO_NSR10[tipoEnsayo]
+            : null;
+        addHeading('4.2. Normas de ensayo (NSR-10 H.2.6, ASTM, INVIAS)');
+        if (norma) {
+            addParagraph('De acuerdo con H.2.6, las normas NTC (ICONTEC) y ASTM forman parte integrante del Reglamento NSR-10. Complementariamente se citan especificaciones INVIAS de uso frecuente en proyectos viales y de infraestructura en Colombia.');
+            addTablaColor(
+                ['Referencia', 'Norma / documento'],
+                [
+                    ['NTC (ICONTEC)', norma.ntc],
+                    ['ASTM', norma.astm],
+                    ['INVIAS', norma.invias],
+                    ['Uso en el estudio', norma.uso]
+                ]
+            );
+        } else {
+            addParagraph('Aplicar la norma NTC/ASTM correspondiente al ensayo según NSR-10 H.2.6 y las especificaciones INVIAS del proyecto.');
+        }
+
+        addHeading('4.3. Fundamentos del ensayo');
+        addParagraph(
+            'Los fundamentos de cálculo se limitan a las fuentes autorizadas de la asignatura y a las normas citadas. ' + fuenteMarco
         );
         if (tipoEnsayo === 'corte') {
             addParagraph('Criterio de falla de Mohr–Coulomb (esfuerzo efectivo / laboratorio de corte):');
@@ -4641,19 +4759,31 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
         addParagraph('5. Para futuros ensayos se recomienda repetir cada prueba al menos 3 veces, promediar los resultados, documentar la calibración y contrastar φ y c con la sección de corte directo de la guía FLA-23.');
 
         addHeading('10. Referencias');
+        addParagraph('[1] Asociación Colombiana de Ingeniería Sísmica. (2010). Reglamento Colombiano de Construcción Sismo Resistente NSR-10. Título H — Estudios geotécnicos. Cap. H.2 (definiciones; estudio preliminar H.2.2.1; estudio definitivo H.2.2.2; normas técnicas H.2.6).');
         if (esRM) {
-            addParagraph('[1] Beer, F. P., Johnston, E. R., DeWolf, J. T. y Mazurek, D. F. (s. f.). Mecánica de materiales.');
-            addParagraph('[2] Hibbeler, R. C. (s. f.). Mecánica de materiales / Estática.');
+            addParagraph('[2] Beer, F. P., Johnston, E. R., DeWolf, J. T. y Mazurek, D. F. (s. f.). Mecánica de materiales.');
+            addParagraph('[3] Hibbeler, R. C. (s. f.). Mecánica de materiales / Estática.');
         } else {
-            addParagraph('[1] Universidad de Pamplona. (s. f.). Guía unificada de laboratorio FLA-23: Ensayo de corte directo. Facultad de Ingenierías, Programa de Ingeniería Civil. Apartados de procedimiento, datos y análisis (consultar páginas de la edición del curso; orientativamente el bloque de corte directo suele ubicarse en las primeras secciones de la guía unificada).');
-            addParagraph('[2] Das, B. M. (s. f.). Principles of Geotechnical Engineering. Capítulos de resistencia al corte y criterios de falla (Mohr–Coulomb).');
+            addParagraph('[2] Universidad de Pamplona. (s. f.). Guías unificadas de laboratorio FLA-23 (ensayos de suelos). Facultad de Ingenierías, Programa de Ingeniería Civil.');
+            addParagraph('[3] Das, B. M. (s. f.). Principles of Geotechnical Engineering.');
+            if (norma) {
+                addParagraph('[4] ICONTEC / ASTM. ' + norma.ntc + ' · ' + norma.astm + '.');
+                addParagraph('[5] Instituto Nacional de Vías — INVIAS. Especificaciones técnicas de construcción (apartados de suelos y ensayos de laboratorio aplicables).');
+            } else {
+                addParagraph('[4] ICONTEC y ASTM. Normas de ensayos de suelos referenciadas en NSR-10 H.2.6.');
+                addParagraph('[5] Instituto Nacional de Vías — INVIAS. Especificaciones técnicas de construcción.');
+            }
         }
-        addParagraph('[3] GeoMetrics. (2026). Laboratorio virtual. Universidad de Pamplona — Programa de Ingeniería Civil.');
+        addParagraph('[6] GeoMetrics. (2026). Laboratorio virtual. Universidad de Pamplona — Programa de Ingeniería Civil.');
 
         addHeading('11. Anexos');
-        addParagraph('Anexo A. Datos brutos y lecturas del ensayo registradas en GeoMetrics (exportables por el estudiante en formato .csv o .txt: columnas ensayo, σn_kPa, τ_kPa, σ1_kPa, σ3_kPa, R_kPa, C_kPa).');
-        addParagraph('Anexo B. Gráfica de envolvente y círculos de Mohr (Figura 1 de este informe), con leyenda de φ y c.');
-        addParagraph('Anexo C. Cálculos complementarios, capturas de pantalla o archivos adicionales que el estudiante o el docente adjunten al expediente del curso.');
+        addParagraph(
+            'Conforme a NSR-10 H.2.2.2.1-(h), el estudio geotécnico definitivo debe anexar resultados de ensayos de campo y laboratorio en forma de gráficos y tablas. ' +
+            'Este informe aporta ese tipo de evidencia para el ensayo «' + metaInf.tituloCorto + '».'
+        );
+        addParagraph('Anexo A. Datos brutos y lecturas del ensayo registradas en GeoMetrics (exportables en .csv o .txt).');
+        addParagraph('Anexo B. Gráficas y figuras del ensayo (p. ej. envolvente y círculos de Mohr cuando aplique).');
+        addParagraph('Anexo C. Memoria de cálculo auxiliar y capturas que el estudiante o el docente adjunten al expediente del curso o del proyecto.');
 
         // Encabezado y pie en páginas del cuerpo (no portada = página 1)
         var total = doc.internal.getNumberOfPages();
