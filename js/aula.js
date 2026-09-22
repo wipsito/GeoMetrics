@@ -1914,6 +1914,9 @@ function aulaDetectarIAEntrega(entregaId) {
         alert('No se encontró la entrega.');
         return;
     }
+    // Ocultar panel de calificación (el botón Calificar se mantiene)
+    var calBox = document.getElementById('cal-box-' + entregaId);
+    if (calBox) calBox.hidden = true;
     if (box) {
         box.hidden = false;
         box.innerHTML = '<p class="ai-loading">Analizando texto de la entrega…</p>';
@@ -2176,9 +2179,12 @@ function aulaRenderEntregasDocente() {
                     toggle.classList.add('open');
                 }
             }
-            // No tocar el panel de IA ni los botones de acción
+            // Ocultar análisis de IA (el botón Detectar IA se mantiene)
             var ai = document.getElementById('ai-res-' + id);
-            if (ai) { /* se deja como esté */ }
+            if (ai) {
+                ai.hidden = true;
+                ai.innerHTML = '';
+            }
             var wrap = box.querySelector('[data-cal-box="' + id + '"]') || document.getElementById('cal-box-' + id);
             if (!wrap) return;
             wrap.hidden = false;
