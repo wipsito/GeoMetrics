@@ -4083,9 +4083,27 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                 setF(false, 11);
             }
         }
+        function colorAleatorioTabla() {
+            var paletas = [
+                { h: [40, 70, 140], b: [230, 238, 250] },   // azul
+                { h: [34, 110, 70], b: [230, 245, 235] },    // verde
+                { h: [160, 110, 30], b: [255, 246, 220] },   // dorado
+                { h: [120, 50, 120], b: [245, 232, 250] },   // morado
+                { h: [160, 55, 55], b: [255, 235, 235] },    // rojo
+                { h: [20, 110, 130], b: [225, 245, 250] },   // cian
+                { h: [90, 90, 40], b: [245, 245, 220] },     // oliva
+                { h: [50, 70, 100], b: [235, 240, 248] },    // slate
+                { h: [140, 70, 40], b: [255, 240, 230] },    // terracota
+                { h: [30, 90, 90], b: [230, 248, 248] }      // teal
+            ];
+            return paletas[Math.floor(Math.random() * paletas.length)];
+        }
         function addTablaColor(headers, rows, headerRGB, bodyRGB) {
-            headerRGB = headerRGB || [40, 70, 140];
-            bodyRGB = bodyRGB || [232, 240, 250];
+            if (!headerRGB || !bodyRGB) {
+                var pal = colorAleatorioTabla();
+                headerRGB = headerRGB || pal.h;
+                bodyRGB = bodyRGB || pal.b;
+            }
             var cols = headers.length;
             var colW = maxW / cols;
             var rowH = 7.2;
@@ -4291,8 +4309,8 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                     addParagraph('  Centro = (σ₁ + σ₃)/2 = (' + s1.toFixed(3) + ' + ' + s3.toFixed(3) + ')/2 = ' + centro.toFixed(3) + ' kPa');
                 });
 
-                addHeading('7.2. Tabla de esfuerzos principales, radio y centro');
-                var headersM = ['Ensayo', 'σ₁ (kPa)', 'σ₃ (kPa)', 'Radio (kPa)', 'Centro (kPa)'];
+                addHeading('7.2. Tabla de esfuerzos principales, radio y centro (kPa)');
+                var headersM = ['Ensayo', 'σ₁ (kPa)', 'σ₃ (kPa)', 'Radio R (kPa)', 'Centro C (kPa)'];
                 var rowsM = dCorte.pts.map(function(p, idx) {
                     var s1 = Number(p.s1), s3 = Number(p.s3);
                     var radio = (typeof p.radio === 'number') ? p.radio : (s1 - s3) / 2;
@@ -4305,11 +4323,15 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                         centro.toFixed(3)
                     ];
                 });
-                // Tabla 1 — azul
-                addTablaColor(headersM, rowsM, [40, 70, 140], [230, 238, 250]);
+                // Color aleatorio distinto por tabla y por cada generación de informe
+                var pal1 = colorAleatorioTabla(), pal2 = colorAleatorioTabla(), pal3 = colorAleatorioTabla();
+                // Evitar que las 3 tablas salgan del mismo color
+                if (pal2.h.join() === pal1.h.join()) pal2 = colorAleatorioTabla();
+                if (pal3.h.join() === pal1.h.join() || pal3.h.join() === pal2.h.join()) pal3 = colorAleatorioTabla();
+                addTablaColor(headersM, rowsM, pal1.h, pal1.b);
 
-                addHeading('7.3. Tabla de datos de falla (σn, τ)');
-                var headersT = ['Ensayo', 'σn (kPa)', 'τ (kPa)', 'c_i = τ − σn·tan(φ)'];
+                addHeading('7.3. Tabla de datos de falla (σn, τ en kPa)');
+                var headersT = ['Ensayo', 'σn (kPa)', 'τ (kPa)', 'c_i (kPa)'];
                 var rowsT = dCorte.pts.map(function(p, idx) {
                     return [
                         'E' + (idx + 1),
@@ -4318,8 +4340,7 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                         (typeof p.c_check === 'number' ? p.c_check : (p.t - p.sn * Math.tan(Number(dCorte.phi) * Math.PI / 180))).toFixed(3)
                     ];
                 });
-                // Tabla 2 — verde
-                addTablaColor(headersT, rowsT, [34, 110, 70], [230, 245, 235]);
+                addTablaColor(headersT, rowsT, pal2.h, pal2.b);
 
                 addHeading('7.4. Parámetros de la envolvente');
                 var headersP = ['Parámetro', 'Símbolo', 'Valor', 'Unidad'];
@@ -4327,10 +4348,11 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                     ['Ángulo de fricción', 'φ', Number(dCorte.phi).toFixed(1), '°'],
                     ['Cohesión', 'c', Number(dCorte.c).toFixed(2), 'kPa'],
                     ['σ₁ medio', 'σ₁', Number(dCorte.avgS1).toFixed(2), 'kPa'],
-                    ['σ₃ medio', 'σ₃', Number(dCorte.avgS3).toFixed(2), 'kPa']
+                    ['σ₃ medio', 'σ₃', Number(dCorte.avgS3).toFixed(2), 'kPa'],
+                    ['Radio medio', 'R', (dCorte.pts.reduce(function(s, p) { return s + ((p.radio != null) ? p.radio : (p.s1 - p.s3) / 2); }, 0) / dCorte.pts.length).toFixed(3), 'kPa'],
+                    ['Centro medio', 'C', (dCorte.pts.reduce(function(s, p) { return s + ((p.centro != null) ? p.centro : (p.s1 + p.s3) / 2); }, 0) / dCorte.pts.length).toFixed(3), 'kPa']
                 ];
-                // Tabla 3 — dorado/ámbar
-                addTablaColor(headersP, rowsP, [160, 110, 30], [255, 246, 220]);
+                addTablaColor(headersP, rowsP, pal3.h, pal3.b);
             }
 
             var canvas = document.getElementById('canvas-corte');
