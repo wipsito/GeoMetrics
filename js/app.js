@@ -132,6 +132,38 @@ function inicializarApp() {
             if (typeof abrirModuloRM === 'function') abrirModuloRM(this.dataset.ensayoRm, 'sim');
         });
     });
+    // Al cambiar de pestaña en RM: mostrar siempre la lista de esa pestaña
+    document.querySelectorAll('#pantallaResistencia .tab-btn').forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            var t = tab.getAttribute('data-tab');
+            if (typeof detenerSimRM === 'function') detenerSimRM();
+            if (t === 'rm-ensayos') {
+                var pSim = document.getElementById('panel-sim-rm');
+                if (pSim) { pSim.innerHTML = ''; pSim.style.display = 'none'; }
+                var gEn = document.querySelector('#rm-ensayos .ensayos-grid');
+                if (gEn) gEn.style.display = 'grid';
+                var pEn = document.getElementById('panel-ensayo-rm');
+                // si no hay ensayo abierto, asegurar lista visible
+                if (pEn && (!pEn.innerHTML || pEn.innerHTML.trim() === '')) {
+                    pEn.style.display = 'none';
+                    if (gEn) gEn.style.display = 'grid';
+                }
+            } else if (t === 'rm-simuladores') {
+                var pEn2 = document.getElementById('panel-ensayo-rm');
+                if (pEn2) { pEn2.innerHTML = ''; pEn2.style.display = 'none'; }
+                var gSim = document.querySelector('#rm-simuladores .simuladores-grid') ||
+                           document.querySelector('#rm-simuladores > .ensayos-grid');
+                if (gSim) gSim.style.display = 'grid';
+                var pSim2 = document.getElementById('panel-sim-rm');
+                if (pSim2 && (!pSim2.innerHTML || pSim2.innerHTML.trim() === '')) {
+                    pSim2.style.display = 'none';
+                    if (gSim) gSim.style.display = 'grid';
+                }
+            } else if (t === 'rm-teoria') {
+                if (typeof rmRestaurarListas === 'function') rmRestaurarListas();
+            }
+        });
+    });
 
     // Inicializar simuladores de flujo (si hay canvas)
     inicializarSimuladores();
@@ -1590,14 +1622,39 @@ function activarEnterSiguienteCampo(root) {
 window.__datosEnsayoRM = window.__datosEnsayoRM || {};
 window.__simRM = window.__simRM || { tipo: null, running: false, paused: false, t: 0, raf: null };
 
+function rmGetGridEnsayos() {
+    return document.getElementById('rm-ensayos-grid') ||
+           document.querySelector('#rm-ensayos .ensayos-grid');
+}
+function rmGetGridSims() {
+    return document.getElementById('rm-sims-grid') ||
+           document.querySelector('#rm-simuladores .simuladores-grid') ||
+           document.querySelector('#rm-simuladores .ensayos-grid');
+}
+
+/** Restaura listas: ensayos y simuladores independientes */
+function rmRestaurarListas() {
+    detenerSimRM();
+    var pEn = document.getElementById('panel-ensayo-rm');
+    var pSim = document.getElementById('panel-sim-rm');
+    if (pEn) { pEn.innerHTML = ''; pEn.style.display = 'none'; }
+    if (pSim) { pSim.innerHTML = ''; pSim.style.display = 'none'; }
+    var gEn = rmGetGridEnsayos();
+    var gSim = rmGetGridSims();
+    if (gEn) gEn.style.display = 'grid';
+    if (gSim) gSim.style.display = 'grid';
+    document.querySelectorAll('#rm-ensayos > .login-hint, #rm-simuladores > .login-hint').forEach(function(h) {
+        h.style.display = '';
+    });
+}
+
 function abrirModuloRM(tipo, modo) {
     modo = modo || 'ensayo';
     detenerSimRM();
 
-    // Activar pestaña sin destruir contenido (solo clases)
     var root = document.getElementById('pantallaResistencia');
+    var tabName = modo === 'sim' ? 'rm-simuladores' : 'rm-ensayos';
     if (root) {
-        var tabName = modo === 'sim' ? 'rm-simuladores' : 'rm-ensayos';
         root.querySelectorAll('.tab-btn').forEach(function(b) {
             b.classList.toggle('active', b.getAttribute('data-tab') === tabName);
         });
@@ -1606,29 +1663,28 @@ function abrirModuloRM(tipo, modo) {
         });
     }
 
-    // Ocultar grillas de tarjetas (como Suelos 1/2)
-    var gridEn = document.querySelector('#rm-ensayos .ensayos-grid');
-    var gridSim = document.querySelector('#rm-simuladores .simuladores-grid') ||
-                  document.querySelector('#rm-simuladores .ensayos-grid');
-    var hintEn = document.querySelector('#rm-ensayos > .login-hint');
-    var hintSim = document.querySelector('#rm-simuladores > .login-hint');
+    var gEn = rmGetGridEnsayos();
+    var gSim = rmGetGridSims();
+    var pEn = document.getElementById('panel-ensayo-rm');
+    var pSim = document.getElementById('panel-sim-rm');
+
+    // Separación estricta: solo toca la pestaña activa
     if (modo === 'sim') {
-        if (gridSim) gridSim.style.display = 'none';
-        if (hintSim) hintSim.style.display = 'none';
-        if (gridEn) gridEn.style.display = '';
+        if (gSim) gSim.style.display = 'none';
+        if (pEn) { pEn.innerHTML = ''; pEn.style.display = 'none'; }
+        // no tocar grid de ensayos
+        if (gEn) gEn.style.display = 'grid';
     } else {
-        if (gridEn) gridEn.style.display = 'none';
-        if (hintEn) hintEn.style.display = 'none';
+        if (gEn) gEn.style.display = 'none';
+        if (pSim) { pSim.innerHTML = ''; pSim.style.display = 'none'; }
+        if (gSim) gSim.style.display = 'grid';
     }
 
-    var panelId = modo === 'sim' ? 'panel-sim-rm' : 'panel-ensayo-rm';
-    var panel = document.getElementById(panelId);
-    if (!panel) panel = document.getElementById('panel-ensayo-rm');
-    if (!panel) return;
+    var hint = document.querySelector('#' + tabName + ' > .login-hint');
+    if (hint) hint.style.display = 'none';
 
-    // Limpiar el otro panel
-    var other = document.getElementById(modo === 'sim' ? 'panel-ensayo-rm' : 'panel-sim-rm');
-    if (other) { other.innerHTML = ''; other.style.display = 'none'; }
+    var panel = modo === 'sim' ? pSim : pEn;
+    if (!panel) return;
 
     var html = '';
     if (tipo === 'traccion') html = crearFormularioRMTraccion(modo);
@@ -1642,7 +1698,6 @@ function abrirModuloRM(tipo, modo) {
     panel.style.display = 'block';
     window.scrollTo(0, 0);
 
-    // Dibujar tras layout (doble frame para que el canvas tenga tamaño real)
     requestAnimationFrame(function() {
         requestAnimationFrame(function() {
             try { dibujarMaquinaRM(tipo, 0); } catch (e) { console.warn('RM draw', e); }
@@ -1655,18 +1710,22 @@ function abrirModuloRM(tipo, modo) {
 
 function rmCerrarPanel(modo) {
     detenerSimRM();
-    var panel = document.getElementById(modo === 'sim' ? 'panel-sim-rm' : 'panel-ensayo-rm');
-    if (panel) { panel.innerHTML = ''; panel.style.display = 'none'; }
-
-    var gridEn = document.querySelector('#rm-ensayos .ensayos-grid');
-    var gridSim = document.querySelector('#rm-simuladores .simuladores-grid') ||
-                  document.querySelector('#rm-simuladores .ensayos-grid');
-    var hintEn = document.querySelector('#rm-ensayos > .login-hint');
-    var hintSim = document.querySelector('#rm-simuladores > .login-hint');
-    if (gridEn) gridEn.style.display = 'grid';
-    if (gridSim) gridSim.style.display = 'grid';
-    if (hintEn) hintEn.style.display = '';
-    if (hintSim) hintSim.style.display = '';
+    modo = modo || 'ensayo';
+    if (modo === 'sim') {
+        var pSim = document.getElementById('panel-sim-rm');
+        if (pSim) { pSim.innerHTML = ''; pSim.style.display = 'none'; }
+        var gSim = rmGetGridSims();
+        if (gSim) gSim.style.display = 'grid';
+        var hSim = document.querySelector('#rm-simuladores > .login-hint');
+        if (hSim) hSim.style.display = '';
+    } else {
+        var pEn = document.getElementById('panel-ensayo-rm');
+        if (pEn) { pEn.innerHTML = ''; pEn.style.display = 'none'; }
+        var gEn = rmGetGridEnsayos();
+        if (gEn) gEn.style.display = 'grid';
+        var hEn = document.querySelector('#rm-ensayos > .login-hint');
+        if (hEn) hEn.style.display = '';
+    }
 }
 
 function rmNum(id) {
