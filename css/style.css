@@ -4575,3 +4575,78 @@ div.ai-detect-result[hidden] {
   min-height: 280px;
   background: #0f172a !important;
 }
+
+
+/* RM simuladores — layout tipo Suelos 2 */
+.sim-s2-grid {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.9fr) minmax(260px, 1.2fr) minmax(220px, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .sim-s2-grid { grid-template-columns: 1fr 1fr; }
+  .sim-s2-graph { grid-column: 1 / -1; }
+}
+@media (max-width: 720px) {
+  .sim-s2-grid { grid-template-columns: 1fr; }
+}
+.sim-s2-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rm-form-grid-sim {
+  grid-template-columns: 1fr !important;
+}
+.btn-sim-start {
+  width: 100%;
+  margin-top: 4px;
+}
+.sim-s2-machine {
+  display: flex;
+  justify-content: center;
+}
+.sim-s2-machine .rm-machine-canvas {
+  max-width: 100%;
+  width: 100%;
+}
+.sim-s2-graph {
+  background: rgba(0,0,0,0.25);
+  border-radius: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.sim-s2-graph-title {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: #e8b84a;
+}
+.rm-live-canvas {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: #0f172a;
+  display: block;
+}
+.sim-s2-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+.sim-s2-chips > div {
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: center;
+}
+.sim-s2-chips span {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+.sim-s2-chips strong {
+  font-size: 1.05rem;
+}
