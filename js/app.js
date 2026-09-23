@@ -1934,115 +1934,260 @@ function dibujarUTMTraccion(ctx, W, H, p) {
 }
 
 function dibujarUTMCompresion(ctx, W, H, p) {
+    // p: 0 = sin carga, 1 = máxima compresión
     ctx.fillStyle = '#475569';
-    ctx.fillRect(W * 0.18, H * 0.12, 22, H * 0.7);
-    ctx.fillRect(W * 0.78, H * 0.12, 22, H * 0.7);
+    ctx.fillRect(W * 0.18, H * 0.1, 20, H * 0.72);
+    ctx.fillRect(W * 0.78, H * 0.1, 20, H * 0.72);
     ctx.fillStyle = '#64748b';
-    ctx.fillRect(W * 0.16, H * 0.08, W * 0.68, 28);
-    ctx.fillRect(W * 0.14, H * 0.82, W * 0.72, 36);
-    var crush = p * 22;
-    var topY = H * 0.28 + crush;
-    var botY = H * 0.72;
+    ctx.fillRect(W * 0.16, H * 0.06, W * 0.68, 26); // travesaño fijo
+    ctx.fillRect(W * 0.14, H * 0.84, W * 0.72, 32); // base
+
+    // Dimensiones del cilindro en reposo
+    var cylW0 = 56;
+    var cylH0 = H * 0.38;
+    var botPlateY = H * 0.78;
+    var topPlateY0 = botPlateY - cylH0 - 18;
+
+    // El plato superior BAJA con p; el cilindro se ACORTA y ensancha un poco
+    var topPlateY = topPlateY0 + p * (cylH0 * 0.42);
+    var cylH = botPlateY - 14 - (topPlateY + 14);
+    var cylW = cylW0 + p * 18; // abombamiento por Poisson
+    var cylX = W * 0.5 - cylW / 2;
+
+    // Plato superior (móvil)
     ctx.fillStyle = '#94a3b8';
-    ctx.fillRect(W * 0.32, topY, W * 0.36, 14);
-    ctx.fillRect(W * 0.32, botY, W * 0.36, 14);
-    // cilindro se aplasta
-    var cylH = (botY - topY - 14) * (1 - p * 0.25);
-    var cylW = 50 + p * 12;
+    ctx.fillRect(W * 0.3, topPlateY, W * 0.4, 14);
+    // Plato inferior (fijo)
+    ctx.fillRect(W * 0.3, botPlateY, W * 0.4, 14);
+
+    // Cilindro entre platos
     ctx.fillStyle = '#a8a29e';
-    ctx.fillRect(W * 0.5 - cylW / 2, botY - cylH, cylW, cylH);
     ctx.strokeStyle = '#78716c';
-    ctx.strokeRect(W * 0.5 - cylW / 2, botY - cylH, cylW, cylH);
+    ctx.lineWidth = 2;
+    // forma ligeramente barril si p > 0
+    if (p > 0.05) {
+        ctx.beginPath();
+        var midY = topPlateY + 14 + cylH / 2;
+        ctx.moveTo(cylX + 4, topPlateY + 14);
+        ctx.quadraticCurveTo(cylX - 2 - p * 6, midY, cylX + 4, topPlateY + 14 + cylH);
+        ctx.lineTo(cylX + cylW - 4, topPlateY + 14 + cylH);
+        ctx.quadraticCurveTo(cylX + cylW + 2 + p * 6, midY, cylX + cylW - 4, topPlateY + 14);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+    } else {
+        ctx.fillRect(cylX, topPlateY + 14, cylW, cylH);
+        ctx.strokeRect(cylX, topPlateY + 14, cylW, cylH);
+    }
+
+    // Flecha de carga hacia abajo
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 2.5;
+    var ax = W * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(ax, topPlateY - 8);
+    ctx.lineTo(ax, topPlateY - 36);
+    ctx.moveTo(ax - 7, topPlateY - 22);
+    ctx.lineTo(ax, topPlateY - 8);
+    ctx.lineTo(ax + 7, topPlateY - 22);
+    ctx.stroke();
+
     ctx.fillStyle = '#e2e8f0';
     ctx.font = 'bold 13px sans-serif';
     ctx.fillText('UTM — Compresión', 14, 22);
     ctx.font = '11px sans-serif';
     ctx.fillStyle = '#94a3b8';
     ctx.fillText('Cilindro · fc = P/A', 14, 38);
+    if (p > 0.02) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText('Acortamiento ' + (p * 100).toFixed(0) + '%', W - 150, 22);
+    }
 }
 
 function dibujarFlexion(ctx, W, H, p) {
+    // p = 0 → viga RECTA; p → 1 → flecha máxima
     ctx.fillStyle = '#475569';
-    ctx.fillRect(W * 0.08, H * 0.78, W * 0.84, 20);
-    // apoyos
+    ctx.fillRect(W * 0.08, H * 0.82, W * 0.84, 18);
+
+    // Apoyos
     ctx.fillStyle = '#94a3b8';
-    ctx.fillRect(W * 0.18, H * 0.62, 16, H * 0.16);
-    ctx.fillRect(W * 0.78, H * 0.62, 16, H * 0.16);
-    // viga se curva
-    var midY = H * 0.55 + p * 28;
-    ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = 10;
+    var supportY = H * 0.68;
+    ctx.fillRect(W * 0.18, supportY, 16, H * 0.14);
+    ctx.fillRect(W * 0.78, supportY, 16, H * 0.14);
+    // triángulos de apoyo
     ctx.beginPath();
-    ctx.moveTo(W * 0.16, H * 0.55);
-    ctx.quadraticCurveTo(W * 0.5, midY + 10, W * 0.84, H * 0.55);
+    ctx.moveTo(W * 0.18, supportY);
+    ctx.lineTo(W * 0.18 + 8, supportY - 10);
+    ctx.lineTo(W * 0.18 + 16, supportY);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(W * 0.78, supportY);
+    ctx.lineTo(W * 0.78 + 8, supportY - 10);
+    ctx.lineTo(W * 0.78 + 16, supportY);
+    ctx.fill();
+
+    // Viga: recta en p=0, parábola hacia abajo con p
+    var y0 = supportY - 12;
+    var flecha = p * 48; // deflexión central
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 12;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(W * 0.16, y0);
+    ctx.quadraticCurveTo(W * 0.5, y0 + flecha, W * 0.84, y0);
     ctx.stroke();
-    // cargador
-    var loadY = midY - 40 - (1 - p) * 20;
+    // borde superior más fino
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.16, y0 - 5);
+    ctx.quadraticCurveTo(W * 0.5, y0 + flecha - 5, W * 0.84, y0 - 5);
+    ctx.stroke();
+
+    // Cargador: baja desde arriba hasta contactar la viga
+    var contactY = y0 + flecha * 0.5;
+    var loadTop = 40 + (1 - p) * 30;
+    var loadBot = contactY - 4;
     ctx.fillStyle = '#ef4444';
-    ctx.fillRect(W * 0.5 - 24, loadY + 30, 48, 10);
+    ctx.fillRect(W * 0.5 - 22, loadBot - 8, 44, 10);
     ctx.strokeStyle = '#f87171';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(W * 0.5, loadY);
-    ctx.lineTo(W * 0.5, loadY + 30);
+    ctx.moveTo(W * 0.5, loadTop);
+    ctx.lineTo(W * 0.5, loadBot - 8);
     ctx.stroke();
+    // punta de flecha
+    ctx.beginPath();
+    ctx.moveTo(W * 0.5 - 6, loadTop + 12);
+    ctx.lineTo(W * 0.5, loadTop);
+    ctx.lineTo(W * 0.5 + 6, loadTop + 12);
+    ctx.stroke();
+
     ctx.fillStyle = '#e2e8f0';
     ctx.font = 'bold 13px sans-serif';
     ctx.fillText('Kit de flexión — UTM', 14, 22);
     ctx.font = '11px sans-serif';
     ctx.fillStyle = '#94a3b8';
     ctx.fillText('σ = M c / I', 14, 38);
+    if (p > 0.05) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillText('δ ≈ ' + (flecha * 0.5).toFixed(1) + ' (esc.)', W - 130, 22);
+    }
 }
 
 function dibujarTorsion(ctx, W, H, p) {
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(W * 0.12, H * 0.42, W * 0.76, 20);
-    // extremos
-    var ang = p * Math.PI * 1.2;
-    function chuck(cx, cy, rot) {
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(rot);
-        ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(0, 0, 32, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = '#64748b';
-        ctx.fillRect(-8, -8, 16, 16);
-        ctx.strokeStyle = '#fbbf24';
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(28, 0);
-        ctx.stroke();
-        ctx.restore();
-    }
-    chuck(W * 0.22, H * 0.52, 0);
-    chuck(W * 0.78, H * 0.52, ang);
-    // barra
-    ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = 8;
+    // Banco de torsión con BARRA cilíndrica visible que gira
+    var cy = H * 0.55;
+    var leftX = W * 0.18;
+    var rightX = W * 0.82;
+    var barR = 14;
+
+    // Base del banco
+    ctx.fillStyle = '#3f3f46';
+    ctx.fillRect(W * 0.1, H * 0.72, W * 0.8, 28);
+    ctx.fillStyle = '#52525b';
+    ctx.fillRect(W * 0.12, H * 0.68, 36, 40);
+    ctx.fillRect(W * 0.82 - 12, H * 0.68, 36, 40);
+
+    // Chuck izquierdo (fijo)
+    ctx.save();
+    ctx.translate(leftX, cy);
+    ctx.fillStyle = '#64748b';
     ctx.beginPath();
-    ctx.moveTo(W * 0.28, H * 0.52);
-    ctx.lineTo(W * 0.72, H * 0.52);
+    ctx.arc(0, 0, 36, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 3;
     ctx.stroke();
-    // marca helicoidal
-    ctx.strokeStyle = 'rgba(251,191,36,0.5)';
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-10, -10, 20, 20);
+    ctx.restore();
+
+    // Ángulo de giro del extremo derecho
+    var ang = p * Math.PI * 1.6;
+
+    // BARRA (cilindro en perspectiva simple) con líneas helicoidales que giran
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(leftX + 20, cy - barR, rightX - leftX - 40, barR * 2);
+    // sombra
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(leftX + 20, cy, rightX - leftX - 40, barR);
+
+    // Líneas de referencia en la barra (muestran el giro)
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 2;
+    var nLines = 6;
+    for (var i = 0; i < nLines; i++) {
+        var t0 = i / nLines;
+        var x0 = leftX + 24 + t0 * (rightX - leftX - 48);
+        var phase = ang * t0;
+        var yOff = Math.sin(phase) * (barR - 3);
+        ctx.beginPath();
+        ctx.moveTo(x0, cy - barR + 3);
+        // curva helicoidal
+        for (var s = 0; s <= 8; s++) {
+            var ts = s / 8;
+            var xx = x0 + ts * ((rightX - leftX - 48) / nLines);
+            var yy = cy + Math.sin(phase + ts * ang / nLines + i) * (barR - 4) * 0.7;
+            if (s === 0) ctx.moveTo(xx, yy);
+            else ctx.lineTo(xx, yy);
+        }
+        ctx.stroke();
+    }
+
+    // Sección circular al centro (vista del diámetro)
+    ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    for (var i = 0; i < 8; i++) {
-        var x0 = W * 0.3 + i * (W * 0.05);
-        var y0 = H * 0.52 + Math.sin(ang + i * 0.4) * 6;
-        if (i === 0) ctx.moveTo(x0, y0);
-        else ctx.lineTo(x0, y0);
-    }
+    ctx.ellipse(W * 0.5, cy, 8, barR, 0, 0, Math.PI * 2);
     ctx.stroke();
+
+    // Chuck derecho (gira)
+    ctx.save();
+    ctx.translate(rightX, cy);
+    ctx.rotate(ang);
+    ctx.fillStyle = '#64748b';
+    ctx.beginPath();
+    ctx.arc(0, 0, 36, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(-10, -10, 20, 20);
+    // brazo de torque
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(42, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(34, -7);
+    ctx.lineTo(42, 0);
+    ctx.lineTo(34, 7);
+    ctx.stroke();
+    ctx.restore();
+
+    // Etiqueta ángulo
     ctx.fillStyle = '#e2e8f0';
     ctx.font = 'bold 13px sans-serif';
     ctx.fillText('Banco de torsión', 14, 22);
     ctx.font = '11px sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('τ = T r / J', 14, 38);
+    ctx.fillText('Barra circular · τ = T r / J', 14, 38);
+    if (p > 0.02) {
+        ctx.fillStyle = '#38bdf8';
+        var deg = (ang * 180 / Math.PI);
+        ctx.fillText('θ ≈ ' + deg.toFixed(0) + '°', W - 90, 22);
+    }
+
+    // Flecha de torque curva
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(rightX, cy, 48, -0.8, 0.8);
+    ctx.stroke();
 }
 
 function dibujarDureza(ctx, W, H, p) {
