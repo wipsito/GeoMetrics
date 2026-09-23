@@ -2076,118 +2076,195 @@ function dibujarFlexion(ctx, W, H, p) {
 }
 
 function dibujarTorsion(ctx, W, H, p) {
-    // Banco de torsión con BARRA cilíndrica visible que gira
-    var cy = H * 0.55;
-    var leftX = W * 0.18;
-    var rightX = W * 0.82;
-    var barR = 14;
+    // Viga rectangular: p=0 recta (como diagrama teórico);
+    // p→1 se retuerce a lo largo de L (torsión visible).
+    p = Math.max(0, Math.min(1, p || 0));
 
-    // Base del banco
-    ctx.fillStyle = '#3f3f46';
-    ctx.fillRect(W * 0.1, H * 0.72, W * 0.8, 28);
-    ctx.fillStyle = '#52525b';
-    ctx.fillRect(W * 0.12, H * 0.68, 36, 40);
-    ctx.fillRect(W * 0.82 - 12, H * 0.68, 36, 40);
+    var cx = W * 0.5;
+    var cy = H * 0.48;
+    var leftX = W * 0.16;
+    var rightX = W * 0.84;
+    var len = rightX - leftX;
+    var halfH = 28; // semi-altura sección
+    var halfW = 18; // semi-ancho (perspectiva)
 
-    // Chuck izquierdo (fijo)
-    ctx.save();
-    ctx.translate(leftX, cy);
-    ctx.fillStyle = '#64748b';
-    ctx.beginPath();
-    ctx.arc(0, 0, 36, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(-10, -10, 20, 20);
-    ctx.restore();
+    // Fondo ya pintado por dibujarMaquinaRM
 
-    // Ángulo de giro del extremo derecho
-    var ang = p * Math.PI * 1.6;
+    // Soportes / empotramientos (bloques grises)
+    function drawSupport(x, side) {
+        ctx.fillStyle = '#6b7280';
+        ctx.fillRect(x - 22, cy - 42, 28, 84);
+        ctx.fillStyle = '#4b5563';
+        ctx.fillRect(x - 26, cy - 48, 36, 12);
+        ctx.fillRect(x - 26, cy + 36, 36, 12);
+        // sombra
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(x - 22, cy + 40, 28, 8);
+    }
+    drawSupport(leftX - 8, 'L');
+    drawSupport(rightX + 8, 'R');
 
-    // BARRA (cilindro en perspectiva simple) con líneas helicoidales que giran
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillRect(leftX + 20, cy - barR, rightX - leftX - 40, barR * 2);
-    // sombra
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.fillRect(leftX + 20, cy, rightX - leftX - 40, barR);
+    // Ángulo de torsión acumulado a lo largo de la viga
+    var maxTwist = p * Math.PI * 0.85; // giro total extremo derecho
 
-    // Líneas de referencia en la barra (muestran el giro)
-    ctx.strokeStyle = '#b45309';
-    ctx.lineWidth = 2;
-    var nLines = 6;
-    for (var i = 0; i < nLines; i++) {
-        var t0 = i / nLines;
-        var x0 = leftX + 24 + t0 * (rightX - leftX - 48);
-        var phase = ang * t0;
-        var yOff = Math.sin(phase) * (barR - 3);
-        ctx.beginPath();
-        ctx.moveTo(x0, cy - barR + 3);
-        // curva helicoidal
-        for (var s = 0; s <= 8; s++) {
-            var ts = s / 8;
-            var xx = x0 + ts * ((rightX - leftX - 48) / nLines);
-            var yy = cy + Math.sin(phase + ts * ang / nLines + i) * (barR - 4) * 0.7;
-            if (s === 0) ctx.moveTo(xx, yy);
-            else ctx.lineTo(xx, yy);
+    // Dibujar viga por rebanadas (prismas) para simular torsión
+    var slices = 24;
+    for (var i = 0; i < slices; i++) {
+        var t0 = i / slices;
+        var t1 = (i + 1) / slices;
+        var x0 = leftX + t0 * len;
+        var x1 = leftX + t1 * len;
+        var ang0 = maxTwist * t0;
+        var ang1 = maxTwist * t1;
+
+        // vértices de la sección (rectángulo) rotados
+        function corners(ang) {
+            var c = Math.cos(ang), s = Math.sin(ang);
+            return [
+                { y: -halfH * c - halfW * s, z: -halfH * s + halfW * c },
+                { y: -halfH * c + halfW * s, z: -halfH * s - halfW * c },
+                { y:  halfH * c + halfW * s, z:  halfH * s - halfW * c },
+                { y:  halfH * c - halfW * s, z:  halfH * s + halfW * c }
+            ];
         }
+        var c0 = corners(ang0);
+        var c1 = corners(ang1);
+
+        // cara superior (más clara)
+        ctx.beginPath();
+        ctx.moveTo(x0, cy + c0[0].y * 0.55);
+        ctx.lineTo(x1, cy + c1[0].y * 0.55);
+        ctx.lineTo(x1, cy + c1[1].y * 0.55);
+        ctx.lineTo(x0, cy + c0[1].y * 0.55);
+        ctx.closePath();
+        ctx.fillStyle = p > 0.15 ? '#9ca3af' : '#a1a1aa';
+        ctx.fill();
+
+        // cara frontal
+        ctx.beginPath();
+        ctx.moveTo(x0, cy + c0[1].y * 0.55);
+        ctx.lineTo(x1, cy + c1[1].y * 0.55);
+        ctx.lineTo(x1, cy + c1[2].y * 0.55);
+        ctx.lineTo(x0, cy + c0[2].y * 0.55);
+        ctx.closePath();
+        ctx.fillStyle = p > 0.15 ? '#71717a' : '#78716c';
+        ctx.fill();
+
+        // borde superior
+        ctx.strokeStyle = '#d4d4d8';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(x0, cy + c0[0].y * 0.55);
+        ctx.lineTo(x1, cy + c1[0].y * 0.55);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x0, cy + c0[1].y * 0.55);
+        ctx.lineTo(x1, cy + c1[1].y * 0.55);
         ctx.stroke();
     }
 
-    // Sección circular al centro (vista del diámetro)
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 2;
+    // Línea de eje (eje longitudinal)
+    ctx.strokeStyle = p > 0.2 ? 'rgba(239,68,68,0.85)' : 'rgba(255,255,255,0.45)';
+    ctx.setLineDash([6, 5]);
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.ellipse(W * 0.5, cy, 8, barR, 0, 0, Math.PI * 2);
+    ctx.moveTo(leftX, cy);
+    // eje sigue el centro (recto)
+    ctx.lineTo(rightX, cy);
     ctx.stroke();
+    ctx.setLineDash([]);
 
-    // Chuck derecho (gira)
-    ctx.save();
-    ctx.translate(rightX, cy);
-    ctx.rotate(ang);
-    ctx.fillStyle = '#64748b';
-    ctx.beginPath();
-    ctx.arc(0, 0, 36, 0, Math.PI * 2);
-    ctx.fill();
+    // Cotas L
     ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.fillStyle = '#334155';
-    ctx.fillRect(-10, -10, 20, 20);
-    // brazo de torque
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 1;
+    var dimY = H * 0.82;
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(42, 0);
+    ctx.moveTo(leftX, dimY);
+    ctx.lineTo(rightX, dimY);
+    ctx.moveTo(leftX, dimY - 6);
+    ctx.lineTo(leftX, dimY + 6);
+    ctx.moveTo(rightX, dimY - 6);
+    ctx.lineTo(rightX, dimY + 6);
     ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(34, -7);
-    ctx.lineTo(42, 0);
-    ctx.lineTo(34, 7);
-    ctx.stroke();
-    ctx.restore();
-
-    // Etiqueta ángulo
     ctx.fillStyle = '#e2e8f0';
     ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('Banco de torsión', 14, 22);
+    ctx.fillText('L', cx - 4, dimY - 8);
+
+    // Pares de torsión T en extremos (flechas curvas)
+    function torqueArrow(x, dir, label) {
+        // dir: 1 = sentido horario visual, -1 antihorario
+        ctx.strokeStyle = '#3b82f6';
+        ctx.fillStyle = '#3b82f6';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, cy, 38, -1.1 * dir, 1.1 * dir, dir < 0);
+        ctx.stroke();
+        // punta
+        var a = 1.05 * dir;
+        var px = x + Math.cos(a) * 38;
+        var py = cy + Math.sin(a) * 38;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px - 8 * dir, py - 10);
+        ctx.lineTo(px + 6 * dir, py - 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText(label, x - 6, cy - 48);
+    }
+    torqueArrow(leftX + 10, 1, 'T');
+    torqueArrow(rightX - 10, -1, 'T');
+
+    // Sección transversal (esquina inferior izquierda)
+    var sx = 28, sy = H - 100;
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(sx, sy, 52, 52);
+    ctx.strokeRect(sx, sy, 52, 52);
+    if (p < 0.08) {
+        // sección sin girar + flechas de cortante circulares
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx + 26, sy + 26, 16, 0, Math.PI * 2);
+        ctx.stroke();
+        // flechitas
+        ctx.beginPath();
+        ctx.moveTo(sx + 26 + 16, sy + 26);
+        ctx.lineTo(sx + 26 + 12, sy + 20);
+        ctx.moveTo(sx + 26 + 16, sy + 26);
+        ctx.lineTo(sx + 26 + 12, sy + 32);
+        ctx.stroke();
+    } else {
+        // sección girada φ
+        ctx.save();
+        ctx.translate(sx + 26, sy + 26);
+        ctx.rotate(maxTwist * 0.35);
+        ctx.strokeStyle = '#f87171';
+        ctx.strokeRect(-18, -18, 36, 36);
+        ctx.restore();
+        // original punteada
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = '#64748b';
+        ctx.strokeRect(sx + 8, sy + 8, 36, 36);
+        ctx.setLineDash([]);
+    }
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px sans-serif';
+    ctx.fillText('Sección', sx + 4, sy - 6);
+
+    // Título
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('Viga sometida a torsión', 14, 22);
     ctx.font = '11px sans-serif';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('Barra circular · τ = T r / J', 14, 38);
-    if (p > 0.02) {
-        ctx.fillStyle = '#38bdf8';
-        var deg = (ang * 180 / Math.PI);
-        ctx.fillText('θ ≈ ' + deg.toFixed(0) + '°', W - 90, 22);
+    ctx.fillText(p < 0.05 ? 'Estado inicial · par T en extremos' : 'Deformación por giro · τ = T r / J', 14, 38);
+    if (p > 0.05) {
+        ctx.fillStyle = '#f87171';
+        ctx.fillText('φ ≈ ' + (maxTwist * 180 / Math.PI).toFixed(0) + '°', W - 70, 22);
     }
-
-    // Flecha de torque curva
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(rightX, cy, 48, -0.8, 0.8);
-    ctx.stroke();
 }
 
 function dibujarDureza(ctx, W, H, p) {
