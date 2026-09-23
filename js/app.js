@@ -3836,9 +3836,7 @@ function simTorsion() {
     document.getElementById('rm-tor-phi-grados').textContent = (phi * 180 / Math.PI).toFixed(3);
 }
 
-function dibujarTorsion(d, T) {
-    // Visualización de torsión
-}
+/* dibujarTorsion (stub MS2 eliminado — usa dibujarTorsion RM) */
 
 // =========================================
 // CÁLCULOS MS2
