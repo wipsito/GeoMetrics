@@ -1753,39 +1753,95 @@ function detenerSimRM() {
 
 function rmShell(titulo, tipo, modo, camposHtml, resultadosHtml, extraHtml) {
     var isSim = modo === 'sim';
-    return '<div class="ensayo-form rm-form sim-layout-rm">' +
+    if (!isSim) {
+        // ENSAYO: datos + resultados (sin animación obligatoria), máquina compacta
+        return '<div class="ensayo-form rm-form">' +
+            '<div class="ensayo-form-header">' +
+            '<div><h3>' + titulo + '</h3>' +
+            '<p class="login-hint" style="margin:4px 0 0">UniPamplona · ' + rmEquipoNombre(tipo) + '</p></div>' +
+            '<button type="button" class="btn-limpiar" onclick="rmCerrarPanel(\'ensayo\')">← Volver</button></div>' +
+            '<div class="sim-rm-grid">' +
+            '<div class="sim-rm-left">' +
+            '<canvas id="rm-machine-canvas" width="480" height="340" class="rm-machine-canvas"></canvas>' +
+            '</div>' +
+            '<div class="sim-rm-right">' +
+            '<div class="form-grid rm-form-grid">' + camposHtml + '</div>' +
+            '<div class="rm-actions">' +
+            '<button type="button" class="btn-calcular" onclick="calcularRM' + rmCalcFn(tipo) + '()">CALCULAR</button>' +
+            (tipo === 'traccion' ? '<button type="button" class="btn-grafica" onclick="graficaRMTraccion()">GENERAR GRÁFICA</button>' : '') +
+            '</div>' +
+            '<div class="resultados-box rm-resultados">' + resultadosHtml + '</div>' +
+            (extraHtml || '') +
+            '<p class="error-msg" id="rm-' + rmPrefix(tipo) + '-error"></p>' +
+            '</div></div>' +
+            (tipo === 'traccion'
+                ? '<div class="grafica-panel rm-grafica-panel"><h4>Curva esfuerzo–deformación</h4>' +
+                  '<canvas id="canvas-rm-traccion" width="700" height="320"></canvas></div>'
+                : '') +
+            '</div>';
+    }
+
+    // SIMULADOR — mismo orden que Suelos 2:
+    // izquierda: parámetros + iniciar | centro: máquina | derecha: gráfica
+    return '<div class="ensayo-form rm-form sim-layout-rm sim-layout-suelos2">' +
         '<div class="ensayo-form-header">' +
         '<div><h3>' + titulo + '</h3>' +
         '<p class="login-hint" style="margin:4px 0 0">UniPamplona · ' + rmEquipoNombre(tipo) + '</p></div>' +
-        '<button type="button" class="btn-limpiar" onclick="rmCerrarPanel(\'' + modo + '\')">← Volver</button></div>' +
-        '<div class="sim-rm-grid">' +
-        '<div class="sim-rm-left">' +
-        '<canvas id="rm-machine-canvas" width="480" height="340" class="rm-machine-canvas"></canvas>' +
-        (isSim
-            ? '<div class="sim-rm-controls">' +
-              '<button type="button" class="btn-calcular" id="btn-sim-rm-start">Iniciar simulador</button>' +
-              '<label class="sim-vel-label">Velocidad ' +
-              '<select id="rm-sim-vel"><option value="5">Lenta (5 s)</option>' +
-              '<option value="2.5" selected>Media (2.5 s)</option>' +
-              '<option value="1">Rápida (1 s)</option></select></label>' +
-              '<span class="sim-estado" id="rm-sim-estado">Listo</span></div>'
-            : '') +
-        '</div>' +
-        '<div class="sim-rm-right">' +
-        '<div class="form-grid rm-form-grid">' + camposHtml + '</div>' +
-        '<div class="rm-actions">' +
-        '<button type="button" class="btn-calcular" onclick="calcularRM' + rmCalcFn(tipo) + '()">CALCULAR</button>' +
-        (tipo === 'traccion' ? '<button type="button" class="btn-grafica" onclick="graficaRMTraccion()">GENERAR GRÁFICA</button>' : '') +
-        '</div>' +
-        '<div class="resultados-box rm-resultados">' + resultadosHtml + '</div>' +
-        (extraHtml || '') +
+        '<button type="button" class="btn-limpiar" onclick="rmCerrarPanel(\'sim\')">← Volver</button></div>' +
+        '<div class="sim-s2-grid">' +
+        // COLUMNA IZQ — controles
+        '<div class="sim-s2-controls">' +
+        '<div class="form-grid rm-form-grid rm-form-grid-sim">' + camposHtml + '</div>' +
+        '<label class="sim-vel-label">Velocidad de ensayo' +
+        '<select id="rm-sim-vel"><option value="5">Lenta (~5 s)</option>' +
+        '<option value="2.5" selected>Media (~2.5 s)</option>' +
+        '<option value="1">Rápida (~1 s)</option></select></label>' +
+        '<button type="button" class="btn-calcular btn-sim-start" id="btn-sim-rm-start">▶ INICIAR ENSAYO</button>' +
+        '<button type="button" class="btn-limpiar" id="btn-sim-rm-reset" onclick="rmReiniciarSim(\'' + tipo + '\')">Reiniciar</button>' +
+        '<p class="login-hint" style="margin-top:8px">' + (extraHtml || '') + '</p>' +
         '<p class="error-msg" id="rm-' + rmPrefix(tipo) + '-error"></p>' +
-        '</div></div>' +
-        (tipo === 'traccion'
-            ? '<div class="grafica-panel rm-grafica-panel"><h4>Curva esfuerzo–deformación</h4>' +
-              '<canvas id="canvas-rm-traccion" width="700" height="320"></canvas></div>'
-            : '') +
+        '</div>' +
+        // COLUMNA CENTRO — máquina
+        '<div class="sim-s2-machine">' +
+        '<canvas id="rm-machine-canvas" width="520" height="380" class="rm-machine-canvas"></canvas>' +
+        '</div>' +
+        // COLUMNA DER — gráfica en vivo
+        '<div class="sim-s2-graph">' +
+        '<h4 class="sim-s2-graph-title">' + rmGraphTitle(tipo) + '</h4>' +
+        '<canvas id="canvas-rm-live" width="420" height="320" class="rm-live-canvas"></canvas>' +
+        '</div>' +
+        '</div>' +
+        // FILA INFERIOR — chips de resultados
+        '<div class="sim-s2-chips rm-resultados" id="rm-sim-chips">' + resultadosHtml +
+        '<div><span>Estado</span><strong id="rm-sim-estado">Listo</strong></div>' +
+        '</div>' +
         '</div>';
+}
+
+function rmGraphTitle(tipo) {
+    if (tipo === 'traccion') return 'σ (MPa) vs ε';
+    if (tipo === 'compresion') return 'fc vs deformación';
+    if (tipo === 'flexion') return 'Carga vs deflexión';
+    if (tipo === 'torsion') return 'τ vs γ';
+    if (tipo === 'dureza') return 'Lecturas HR';
+    return 'Resultados';
+}
+
+function rmReiniciarSim(tipo) {
+    detenerSimRM();
+    var btn = document.getElementById('btn-sim-rm-start');
+    if (btn) btn.textContent = '▶ INICIAR ENSAYO';
+    rmSet('rm-sim-estado', 'Listo');
+    dibujarMaquinaRM(tipo, 0);
+    var live = document.getElementById('canvas-rm-live');
+    if (live) {
+        var ctx = live.getContext('2d');
+        if (ctx) {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, live.width, live.height);
+        }
+    }
+    try { window['calcularRM' + rmCalcFn(tipo)](); } catch (e) {}
 }
 
 function rmEquipoNombre(tipo) {
@@ -2030,14 +2086,14 @@ function bindSimRMControls(tipo) {
             window.__simRM.paused = true;
             window.__simRM.running = false;
             if (window.__simRM.raf) { cancelAnimationFrame(window.__simRM.raf); window.__simRM.raf = null; }
-            btn.textContent = 'Continuar';
+            btn.textContent = '▶ CONTINUAR';
             rmSet('rm-sim-estado', 'Pausado');
             return;
         }
         if (window.__simRM.paused) {
             window.__simRM.paused = false;
             window.__simRM.running = true;
-            btn.textContent = 'Pausar';
+            btn.textContent = '⏸ PAUSAR';
             rmSet('rm-sim-estado', 'En ensayo…');
             window.__simRM.raf = requestAnimationFrame(function(ts) { tickSimRM(tipo, ts); });
             return;
@@ -2048,10 +2104,10 @@ function bindSimRMControls(tipo) {
         window.__simRM.t = 0;
         window.__simRM.running = true;
         window.__simRM.paused = false;
-        btn.textContent = 'Pausar';
+        btn.textContent = '⏸ PAUSAR';
         rmSet('rm-sim-estado', 'En ensayo…');
-        // calcular resultados al inicio
         try { window['calcularRM' + rmCalcFn(tipo)](); } catch (e) {}
+        try { dibujarGraficaRMLive(tipo, 0.02); } catch (e0) {}
         window.__simRM.raf = requestAnimationFrame(function(ts) { tickSimRM(tipo, ts); });
     };
 }
@@ -2064,17 +2120,125 @@ function tickSimRM(tipo, ts) {
     var p = Math.min(1, (ts - window.__simRM.t0) / dur);
     window.__simRM.t = p;
     dibujarMaquinaRM(tipo, p);
+    try { dibujarGraficaRMLive(tipo, p); } catch (eG) {}
     if (p >= 1) {
         window.__simRM.running = false;
         window.__simRM.raf = null;
         var btn = document.getElementById('btn-sim-rm-start');
-        if (btn) btn.textContent = 'Reiniciar simulador';
-        rmSet('rm-sim-estado', 'Ensayo completado');
+        if (btn) btn.textContent = '▶ INICIAR ENSAYO';
+        rmSet('rm-sim-estado', 'Completado');
         try { window['calcularRM' + rmCalcFn(tipo)](); } catch (e) {}
-        if (tipo === 'traccion') try { graficaRMTraccion(); } catch (e2) {}
+        try { dibujarGraficaRMLive(tipo, 1); } catch (e2) {}
         return;
     }
     window.__simRM.raf = requestAnimationFrame(function(t2) { tickSimRM(tipo, t2); });
+}
+
+function dibujarGraficaRMLive(tipo, p) {
+    var canvas = document.getElementById('canvas-rm-live');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var W = canvas.width, H = canvas.height;
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, W, H);
+    var pad = 40;
+    ctx.strokeStyle = '#475569';
+    ctx.beginPath();
+    ctx.moveTo(pad, H - pad); ctx.lineTo(W - 16, H - pad);
+    ctx.moveTo(pad, H - pad); ctx.lineTo(pad, 16);
+    ctx.stroke();
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+
+    if (tipo === 'traccion') {
+        var d = window.__datosEnsayoRM.traccion || {};
+        var sy = d.sy || 285, su = d.su || 448, E = (d.E || 200) * 1000;
+        var epsY = sy / E, epsU = epsY + 0.12, epsB = epsU + 0.08;
+        function x(e) { return pad + (e / (epsB * 1.15)) * (W - pad - 20); }
+        function y(s) { return H - pad - (s / (su * 1.2)) * (H - pad - 20); }
+        ctx.strokeStyle = '#e8b84a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x(0), y(0));
+        var steps = Math.max(2, Math.floor(p * 40));
+        for (var i = 1; i <= steps; i++) {
+            var t = i / 40;
+            var eps, sig;
+            if (t < epsY / epsB) { eps = t * epsB; sig = E * eps; }
+            else if (t < epsU / epsB) {
+                eps = t * epsB;
+                var u = (eps - epsY) / (epsU - epsY);
+                sig = sy + (su - sy) * (1 - Math.pow(1 - u, 2));
+            } else {
+                eps = t * epsB;
+                var u2 = (eps - epsU) / (epsB - epsU);
+                sig = su * (1 - 0.28 * u2);
+            }
+            ctx.lineTo(x(eps), y(Math.max(0, sig)));
+        }
+        ctx.stroke();
+        ctx.fillText('ε', W - 24, H - 18);
+        ctx.fillText('σ', 8, 24);
+        if (p > 0.05) {
+            ctx.fillStyle = '#e8b84a';
+            ctx.fillText('Pico ≈ ' + su.toFixed(1) + ' MPa', pad + 8, 28);
+        }
+    } else if (tipo === 'compresion') {
+        var fc = (window.__datosEnsayoRM.compresion || {}).fc || 40;
+        ctx.strokeStyle = '#e8b84a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pad, H - pad);
+        for (var j = 1; j <= Math.floor(p * 30); j++) {
+            var tt = j / 30;
+            var xx = pad + tt * (W - pad - 20);
+            var yy = H - pad - Math.sin(tt * Math.PI * 0.85) * (H - pad - 30) * (fc / (fc + 10));
+            ctx.lineTo(xx, yy);
+        }
+        ctx.stroke();
+        ctx.fillText('ε', W - 24, H - 18);
+        ctx.fillText('fc', 8, 24);
+    } else if (tipo === 'torsion') {
+        var tau = (window.__datosEnsayoRM.torsion || {}).tau || 50;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pad, H - pad);
+        for (var k = 1; k <= Math.floor(p * 30); k++) {
+            var tk = k / 30;
+            ctx.lineTo(pad + tk * (W - pad - 20), H - pad - tk * (H - pad - 40) * 0.85);
+        }
+        ctx.stroke();
+        ctx.fillText('γ', W - 24, H - 18);
+        ctx.fillText('τ', 8, 24);
+        if (p > 0.2) ctx.fillText('τ ≈ ' + Number(tau).toFixed(1) + ' MPa', pad + 8, 28);
+    } else if (tipo === 'flexion') {
+        var Mr = (window.__datosEnsayoRM.flexion || {}).Mr || 20;
+        ctx.strokeStyle = '#a78bfa';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pad, H - pad);
+        for (var m = 1; m <= Math.floor(p * 30); m++) {
+            var tm = m / 30;
+            ctx.lineTo(pad + tm * (W - pad - 20), H - pad - tm * (H - pad - 40) * 0.9);
+        }
+        ctx.stroke();
+        ctx.fillText('δ', W - 24, H - 18);
+        ctx.fillText('P', 8, 24);
+    } else {
+        // dureza: barras de lecturas
+        var du = window.__datosEnsayoRM.dureza || {};
+        var lect = du.lecturas || [32, 33, 31.5];
+        var barW = 40;
+        lect.forEach(function(v, i) {
+            var bh = (v / 60) * (H - pad - 30) * p;
+            var bx = pad + 40 + i * 70;
+            ctx.fillStyle = '#e8b84a';
+            ctx.fillRect(bx, H - pad - bh, barW, bh);
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillText(String(v), bx + 8, H - pad - bh - 6);
+        });
+    }
 }
 
 /* ========== formularios ========== */
