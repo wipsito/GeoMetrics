@@ -67,6 +67,22 @@ function on(id, event, handler) {
     }, true);
 })();
 
+
+(function bindTabPersistence() {
+    if (window.__gmTabBound) return;
+    window.__gmTabBound = true;
+    document.addEventListener('click', function(e) {
+        var btn = e.target && e.target.closest ? e.target.closest('.tab-btn[data-tab]') : null;
+        if (!btn) return;
+        var root = btn.closest('[id^="pantalla"]');
+        if (!root || !root.id) return;
+        try {
+            sessionStorage.setItem('geometrics_last_tab_' + root.id, btn.getAttribute('data-tab'));
+            localStorage.setItem('geometrics_last_tab_' + root.id, btn.getAttribute('data-tab'));
+        } catch (err) {}
+    }, true);
+})();
+
 function inicializarApp() {
     // Si hay sesión, no forzar login (F5 mantiene la app y la última pantalla)
     var hasSession = false;
@@ -1399,7 +1415,13 @@ async function llamarIA(mensaje) {
     try { data = await response.json(); } catch (e) {}
     if (!response.ok) {
         chatHistory.pop();
-        throw new Error((data && data.error) ? data.error : ('Error HTTP ' + response.status));
+        var msg = (data && data.error) ? String(data.error) : ('Error HTTP ' + response.status);
+        if (/invalid api key/i.test(msg)) {
+            msg = 'API Key de Groq inválida o vencida en el Worker. '
+                + 'En tu PC ejecuta: wrangler secret put GROQ_API_KEY '
+                + '(pega una clave nueva de https://console.groq.com/keys) y vuelve a desplegar.';
+        }
+        throw new Error(msg);
     }
 
     var respuesta = (data && data.content) ? String(data.content) : '';
@@ -1436,11 +1458,35 @@ function mostrarPantalla(pantalla) {
     var targetId = 'pantalla' + capitalize(pantalla);
     var target = document.getElementById(targetId);
     if (target) {
-        // La pantalla de inicio usa flex para centrar el contenido
         target.style.display = (pantalla === 'inicio') ? 'flex' : 'block';
     }
     
     window.scrollTo(0, 0);
+    try { document.documentElement.classList.remove('gm-restoring'); } catch (e2) {}
+}
+
+/** Guarda pestaña activa de la sección actual (Teoría/Ensayos/Simuladores) */
+function guardarTabActiva(rootId) {
+    try {
+        var root = document.getElementById(rootId);
+        if (!root) return;
+        var act = root.querySelector('.tab-btn.active');
+        if (act && act.getAttribute('data-tab')) {
+            sessionStorage.setItem('geometrics_last_tab_' + rootId, act.getAttribute('data-tab'));
+            localStorage.setItem('geometrics_last_tab_' + rootId, act.getAttribute('data-tab'));
+        }
+    } catch (e) {}
+}
+function restaurarTabActiva(rootId) {
+    try {
+        var tab = sessionStorage.getItem('geometrics_last_tab_' + rootId)
+            || localStorage.getItem('geometrics_last_tab_' + rootId);
+        if (!tab) return;
+        var root = document.getElementById(rootId);
+        if (!root) return;
+        var btn = root.querySelector('.tab-btn[data-tab="' + tab + '"]');
+        if (btn) btn.click();
+    } catch (e) {}
 }
 
 function abrirSeccion(seccion) {
