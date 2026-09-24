@@ -510,10 +510,17 @@ function civixEmailActual() {
     try {
         if (typeof aulaGetSession === 'function') {
             var s = aulaGetSession();
-            if (s && s.email) return String(s.email).toLowerCase();
+            if (s && s.email) return String(s.email).trim().toLowerCase();
         }
     } catch (e) {}
-    return 'anonimo';
+    try {
+        var raw = sessionStorage.getItem('geometrics_session');
+        if (raw) {
+            var o = JSON.parse(raw);
+            if (o && o.email) return String(o.email).trim().toLowerCase();
+        }
+    } catch (e2) {}
+    return '';
 }
 
 function civixCargarTodos() {
@@ -526,17 +533,25 @@ function civixCargarTodos() {
 function civixGuardarTodos(all) {
     try {
         localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(all));
-        if (window.GeoCloud && GeoCloud.isOn() && GeoCloud.pushCivix) {
-            // subir solo el usuario actual (más rápido y seguro)
-            var email = civixEmailActual();
-            var partial = {};
-            if (email && all[email]) partial[email] = all[email];
-            else partial = all;
-            GeoCloud.pushCivix(partial).catch(function (err) {
-                console.warn('Civix sync up', err);
-            });
+    } catch (e) { console.warn('civix local save', e); }
+    try {
+        if (!window.GeoCloud || !GeoCloud.isOn() || !GeoCloud.pushCivix) {
+            console.warn('Civix: Firebase no disponible, solo local');
+            return;
         }
-    } catch (e) {}
+        var email = civixEmailActual();
+        if (!email) {
+            console.warn('Civix: sin sesión, no se sube a la nube');
+            return;
+        }
+        var partial = {};
+        partial[email] = all[email] || [];
+        GeoCloud.pushCivix(partial).then(function (ok) {
+            console.info('Civix: chats subidos para', email, ok);
+        }).catch(function (err) {
+            console.warn('Civix sync up', err);
+        });
+    } catch (e2) { console.warn('civix cloud save', e2); }
 }
 
 function civixSyncFromCloud() {
@@ -544,21 +559,25 @@ function civixSyncFromCloud() {
     return GeoCloud.pullCivix().then(function (remote) {
         if (!remote || typeof remote !== 'object') return;
         var local = civixCargarTodos();
+        var my = civixEmailActual();
         Object.keys(remote).forEach(function (email) {
+            email = String(email).trim().toLowerCase();
             var r = remote[email] || [];
             var l = local[email] || [];
             if (!Array.isArray(r)) r = [];
             if (!Array.isArray(l)) l = [];
             var map = {};
-            l.forEach(function (c) { if (c && c.id) map[c.id] = c; });
+            l.forEach(function (c) { if (c && c.id) map[String(c.id)] = c; });
             r.forEach(function (c) {
                 if (!c || !c.id) return;
-                var prev = map[c.id];
-                if (!prev || (c.updatedAt || 0) >= (prev.updatedAt || 0)) map[c.id] = c;
+                var id = String(c.id);
+                var prev = map[id];
+                if (!prev || (c.updatedAt || 0) >= (prev.updatedAt || 0)) map[id] = c;
             });
             local[email] = Object.keys(map).map(function (k) { return map[k]; });
         });
         try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(local)); } catch (e) {}
+        console.info('Civix: sync down OK. Usuario:', my, 'chats:', my ? (local[my] || []).length : 0);
         return local;
     }).catch(function (e) { console.warn('Civix sync down', e); });
 }
@@ -597,6 +616,7 @@ function civixStartRealtime() {
 
 function civixListaUsuario() {
     var email = civixEmailActual();
+    if (!email) return [];
     var all = civixCargarTodos();
     var list = all[email] || [];
     if (!Array.isArray(list)) list = [];

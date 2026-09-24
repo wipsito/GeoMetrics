@@ -1214,7 +1214,15 @@ function aulaEnterApp(user, opts) {
     }
     // si skipMenu: no tocar pantallas; el restore posterior hace mostrarPantalla(last)
     aulaUpdateMenuUser(user);
+    try {
+        if (typeof civixSyncFromCloud === 'function') {
+            civixSyncFromCloud().then(function () {
+                if (typeof civixStartRealtime === 'function') civixStartRealtime();
+            });
+        }
+    } catch (eCx) {}
 }
+
 
 function aulaUpdateMenuUser(user) {
     user = user || aulaGetSession();
