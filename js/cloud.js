@@ -389,6 +389,42 @@ function syncUpUsers() {
         });
     }
 
+    /** Borra un chat en la nube (definitivo en todos los dispositivos) */
+    function removeCivixChat(email, chatId) {
+        if (!email || !chatId) return Promise.resolve(false);
+        return init().then(function (d) {
+            if (!d) return false;
+            var path = 'civix/' + emailKey(email) + '/' + String(chatId);
+            return d.ref(path).remove()
+                .then(function () { return true; })
+                .catch(function (err) {
+                    console.warn('removeCivixChat', path, err);
+                    return false;
+                });
+        });
+    }
+
+    /** Reemplaza TODOS los chats de un usuario en la nube (tras borrar varios) */
+    function setCivixUserChats(email, list) {
+        if (!email) return Promise.resolve(false);
+        return init().then(function (d) {
+            if (!d) return false;
+            var ek = emailKey(email);
+            var map = {};
+            (list || []).forEach(function (chat) {
+                var slim = slimCivixChat(chat);
+                if (slim) map[slim.id] = slim;
+            });
+            // set() borra los que ya no están en la lista
+            return d.ref('civix/' + ek).set(map)
+                .then(function () { return true; })
+                .catch(function (err) {
+                    console.warn('setCivixUserChats', err);
+                    return false;
+                });
+        });
+    }
+
     function pullCivix() {
         return cloudGet('civix').then(function (val) {
             if (!val || typeof val !== 'object') return {};
@@ -472,6 +508,8 @@ function syncUpUsers() {
         pushPresentaciones: pushPresentaciones,
         pushEntregas: pushEntregas,
         pushCivix: pushCivix,
+        removeCivixChat: removeCivixChat,
+        setCivixUserChats: setCivixUserChats,
         pullCivix: pullCivix,
         listenCivix: listenCivix,
         listenChats: listenChats,

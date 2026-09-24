@@ -563,19 +563,37 @@ function civixSyncFromCloud() {
         Object.keys(remote).forEach(function (email) {
             email = String(email).trim().toLowerCase();
             var r = remote[email] || [];
-            var l = local[email] || [];
             if (!Array.isArray(r)) r = [];
+            var remoteMap = {};
+            r.forEach(function (c) {
+                if (c && c.id) remoteMap[String(c.id)] = c;
+            });
+            var l = local[email] || [];
             if (!Array.isArray(l)) l = [];
             var map = {};
-            l.forEach(function (c) { if (c && c.id) map[String(c.id)] = c; });
-            r.forEach(function (c) {
+            Object.keys(remoteMap).forEach(function (id) {
+                var rc = remoteMap[id];
+                var lc = null;
+                for (var i = 0; i < l.length; i++) {
+                    if (l[i] && String(l[i].id) === id) { lc = l[i]; break; }
+                }
+                if (lc && (lc.updatedAt || 0) > (rc.updatedAt || 0)) map[id] = lc;
+                else map[id] = rc;
+            });
+            // no reintroducir chats locales que ya no están en la nube (borrados)
+            var now = Date.now();
+            l.forEach(function (c) {
                 if (!c || !c.id) return;
                 var id = String(c.id);
-                var prev = map[id];
-                if (!prev || (c.updatedAt || 0) >= (prev.updatedAt || 0)) map[id] = c;
+                if (map[id]) return;
+                if (now - (c.updatedAt || 0) < 8000) map[id] = c;
             });
             local[email] = Object.keys(map).map(function (k) { return map[k]; });
         });
+        // Si mi usuario está en remote con lista vacía, limpiar local
+        if (my && Object.prototype.hasOwnProperty.call(remote, my)) {
+            // already merged above
+        }
         try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(local)); } catch (e) {}
         console.info('Civix: sync down OK. Usuario:', my, 'chats:', my ? (local[my] || []).length : 0);
         return local;
@@ -587,29 +605,63 @@ function civixStartRealtime() {
     if (window.__civixListening) return;
     window.__civixListening = true;
     GeoCloud.listenCivix(function (remote) {
-        if (!remote) return;
+        if (!remote || typeof remote !== 'object') return;
         var local = civixCargarTodos();
         var changed = false;
+        var my = civixEmailActual();
+        // Aplicar remotos; si un chat ya no está en la nube → borrarlo local
         Object.keys(remote).forEach(function (email) {
+            email = String(email).trim().toLowerCase();
             var r = remote[email] || [];
-            var l = local[email] || [];
             if (!Array.isArray(r)) r = [];
+            var remoteMap = {};
+            r.forEach(function (c) {
+                if (c && c.id) remoteMap[String(c.id)] = c;
+            });
+            var l = local[email] || [];
             if (!Array.isArray(l)) l = [];
             var map = {};
-            l.forEach(function (c) { if (c && c.id) map[c.id] = c; });
-            r.forEach(function (c) {
-                if (!c || !c.id) return;
-                var prev = map[c.id];
-                if (!prev || (c.updatedAt || 0) > (prev.updatedAt || 0)) {
-                    map[c.id] = c;
-                    changed = true;
+            // Base: lo que hay en la nube
+            Object.keys(remoteMap).forEach(function (id) {
+                var remoteChat = remoteMap[id];
+                var localChat = null;
+                for (var i = 0; i < l.length; i++) {
+                    if (l[i] && String(l[i].id) === id) { localChat = l[i]; break; }
+                }
+                if (localChat && (localChat.updatedAt || 0) > (remoteChat.updatedAt || 0)) {
+                    map[id] = localChat;
+                } else {
+                    map[id] = remoteChat;
                 }
             });
-            local[email] = Object.keys(map).map(function (k) { return map[k]; });
+            // Chats solo locales: mantener solo si son muy recientes (aún subiendo)
+            var now = Date.now();
+            l.forEach(function (c) {
+                if (!c || !c.id) return;
+                var id = String(c.id);
+                if (map[id]) return;
+                if (now - (c.updatedAt || 0) < 8000) {
+                    map[id] = c; // gracia por si el upload no terminó
+                } else {
+                    changed = true; // se elimina (borrado en otro dispositivo)
+                }
+            });
+            var merged = Object.keys(map).map(function (k) { return map[k]; });
+            if (JSON.stringify(merged) !== JSON.stringify(l)) changed = true;
+            local[email] = merged;
         });
         if (changed) {
             try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(local)); } catch (e) {}
             try { civixPintarHistorial(); } catch (e2) {}
+            // Si el chat abierto fue borrado en otro dispositivo, volver a bienvenida
+            if (my && civixChatActualId) {
+                var still = (local[my] || []).some(function (c) {
+                    return c && String(c.id) === String(civixChatActualId);
+                });
+                if (!still) {
+                    try { civixNuevaConversacion(); } catch (e3) {}
+                }
+            }
         }
     });
 }
@@ -773,11 +825,25 @@ function civixAbrirConversacion(id) {
 
 function civixEliminarConversacion(id) {
     var email = civixEmailActual();
+    if (!email || !id) return;
     var all = civixCargarTodos();
-    var list = (all[email] || []).filter(function(c) { return c.id !== id; });
+    var list = (all[email] || []).filter(function(c) { return String(c.id) !== String(id); });
     all[email] = list;
-    civixGuardarTodos(all);
-    if (civixChatActualId === id) civixNuevaConversacion();
+    try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(all)); } catch (e) {}
+    // Borrado definitivo en Firebase (todos los dispositivos)
+    if (window.GeoCloud && GeoCloud.isOn()) {
+        var p = GeoCloud.removeCivixChat
+            ? GeoCloud.removeCivixChat(email, id)
+            : Promise.resolve(false);
+        p.then(function () {
+            if (GeoCloud.setCivixUserChats) return GeoCloud.setCivixUserChats(email, list);
+        }).then(function () {
+            console.info('Civix: chat eliminado en la nube', id);
+        }).catch(function (err) {
+            console.warn('Civix delete cloud', err);
+        });
+    }
+    if (String(civixChatActualId) === String(id)) civixNuevaConversacion();
     civixPintarHistorial();
 }
 
