@@ -68,13 +68,22 @@ function on(id, event, handler) {
 })();
 
 function inicializarApp() {
-    // Si hay sesión, no forzar login (F5 mantiene la app)
+    // Si hay sesión, no forzar login (F5 mantiene la app y la última pantalla)
     var hasSession = false;
     try {
         hasSession = !!(typeof aulaGetSession === 'function' && aulaGetSession());
     } catch (e) {}
     if (!hasSession) {
         mostrarPantalla('inicio');
+    } else {
+        // Restauración la hace aulaInitLogin vía aulaEnterApp + last_pantalla
+        try {
+            var last = sessionStorage.getItem('geometrics_last_pantalla')
+                || localStorage.getItem('geometrics_last_pantalla');
+            if (last && last !== 'inicio' && typeof mostrarPantalla === 'function') {
+                // no forzar aquí; aula.js lo hará tras syncDown
+            }
+        } catch (e2) {}
     }
 
     // Navegación principal (login controla el acceso; btnComenzar ya no se usa)
@@ -494,7 +503,12 @@ function civixCargarTodos() {
 }
 
 function civixGuardarTodos(all) {
-    try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(all)); } catch (e) {}
+    try {
+        localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(all));
+        if (window.GeoCloud && GeoCloud.isOn() && GeoCloud.pushCivix) {
+            GeoCloud.pushCivix(all);
+        }
+    } catch (e) {}
 }
 
 function civixListaUsuario() {

@@ -44,12 +44,15 @@ function aulaLoad(key, fallback) {
 
 function aulaSave(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
-    // GeoCloud_SYNC_PATCH: subir a la nube claves compartidas
+    // Subir a Firebase lo compartido entre dispositivos
     try {
         if (window.GeoCloud && GeoCloud.isOn()) {
             if (key === 'geometrics_users') GeoCloud.syncUpUsers();
             else if (key === 'geometrics_docentes_extra') GeoCloud.pushDocentesExtra(value);
             else if (key === 'geometrics_admins') GeoCloud.pushAdmins(value);
+            else if (key === 'geometrics_tareas' && GeoCloud.pushTareas) GeoCloud.pushTareas(value);
+            else if (key === 'geometrics_presentaciones' && GeoCloud.pushPresentaciones) GeoCloud.pushPresentaciones(value);
+            else if (key === 'geometrics_entregas' && GeoCloud.pushEntregas) GeoCloud.pushEntregas(value);
         }
     } catch (e) {}
 }
@@ -135,28 +138,47 @@ function aulaLimpiarTodosLosResultados() {
 
 function aulaGetSession() {
     try {
-        return JSON.parse(localStorage.getItem(AULA_KEYS.session) || 'null');
+        // sessionStorage: sobrevive F5, se borra al cerrar la pestaña/ventana
+        var raw = sessionStorage.getItem(AULA_KEYS.session);
+        if (!raw) {
+            // migración puntual desde localStorage (solo si hay marca de pestaña activa)
+            try {
+                if (sessionStorage.getItem('geometrics_tab_alive') === '1') {
+                    raw = localStorage.getItem(AULA_KEYS.session);
+                }
+            } catch (e2) {}
+        }
+        return raw ? JSON.parse(raw) : null;
     } catch (e) {
         return null;
     }
 }
 
 function aulaSetSession(user) {
-    if (!user) {
-        localStorage.removeItem(AULA_KEYS.session);
-        return;
+    try {
+        if (!user) {
+            sessionStorage.removeItem(AULA_KEYS.session);
+            try { localStorage.removeItem(AULA_KEYS.session); } catch (e0) {}
+            return;
+        }
+        var payload = JSON.stringify({
+            id: user.id,
+            nombre: user.nombre,
+            email: user.email,
+            rol: user.rol,
+            codigo: user.codigo || '',
+            materia: user.materia || '',
+            grupo: user.grupo || '',
+            materias: user.materias || [],
+            foto: user.foto || ''
+        });
+        sessionStorage.setItem(AULA_KEYS.session, payload);
+        sessionStorage.setItem('geometrics_tab_alive', '1');
+        // no persistir sesión en localStorage → cerrar pestaña = fin de sesión
+        try { localStorage.removeItem(AULA_KEYS.session); } catch (e1) {}
+    } catch (e) {
+        console.warn('aulaSetSession', e);
     }
-    localStorage.setItem(AULA_KEYS.session, JSON.stringify({
-        id: user.id,
-        nombre: user.nombre,
-        email: user.email,
-        rol: user.rol,
-        codigo: user.codigo || '',
-        materia: user.materia || '',
-        grupo: user.grupo || '',
-        materias: user.materias || [],
-        foto: user.foto || ''
-    }));
 }
 
 function aulaRequireSession() {
@@ -3060,6 +3082,19 @@ function aulaInitUI() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    try { sessionStorage.setItem('geometrics_tab_alive', '1'); } catch (e) {}
+    // Cerrar pestaña/ventana → cerrar sesión (F5 no aplica: sessionStorage se mantiene)
+    window.addEventListener('pagehide', function(ev) {
+        try {
+            // Solo limpiar si la pestaña se cierra de verdad (persisted=false en bfcache a veces)
+            if (ev.persisted) return;
+            var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+            // en pagehide no sabemos si es reload fácilmente; sessionStorage basta
+        } catch (e) {}
+    });
+    window.addEventListener('beforeunload', function() {
+        // marca que la pestaña se va; sessionStorage se limpia solo al cerrar
+    });
     aulaInitUI();
 });
 

@@ -165,12 +165,16 @@
                 pullUsers(),
                 pullDocentesExtra(),
                 pullChats(),
-                pullAdmins()
+                pullAdmins(),
+                cloudGet('tareas'),
+                cloudGet('presentaciones'),
+                cloudGet('entregas'),
+                cloudGet('civix')
             ]).then(function (res) {
                 var users = res[0], docs = res[1], chats = res[2], admins = res[3];
+                var tareas = res[4], presentaciones = res[5], entregas = res[6], civix = res[7];
                 try {
                     if (users && users.length) {
-                        // Fusionar con local (no perder usuarios de este PC)
                         var localU = [];
                         try { localU = JSON.parse(localStorage.getItem('geometrics_users') || '[]') || []; } catch (e2) { localU = []; }
                         if (!Array.isArray(localU)) localU = [];
@@ -181,25 +185,52 @@
                         users.forEach(function (u) {
                             if (u && u.email) byE[String(u.email).toLowerCase()] = u;
                         });
-                        var mergedU = Object.keys(byE).map(function (k) { return byE[k]; });
-                        localStorage.setItem('geometrics_users', JSON.stringify(mergedU));
+                        localStorage.setItem('geometrics_users', JSON.stringify(Object.keys(byE).map(function (k) { return byE[k]; })));
                     }
-                    if (docs) {
-                        localStorage.setItem('geometrics_docentes_extra', JSON.stringify(docs));
-                    }
+                    if (docs) localStorage.setItem('geometrics_docentes_extra', JSON.stringify(docs));
                     if (chats && Array.isArray(chats)) {
-                        localStorage.setItem('gm_chats_v1', JSON.stringify(chats));
+                        var localC = [];
+                        try { localC = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]') || []; } catch (e3) { localC = []; }
+                        localStorage.setItem('gm_chats_v1', JSON.stringify(mergeById(localC, chats)));
                     }
-                    if (admins && admins.length) {
-                        localStorage.setItem('geometrics_admins', JSON.stringify(admins));
+                    if (admins && admins.length) localStorage.setItem('geometrics_admins', JSON.stringify(admins));
+                    if (tareas) {
+                        var localT = [];
+                        try { localT = JSON.parse(localStorage.getItem('geometrics_tareas') || '[]') || []; } catch (e4) { localT = []; }
+                        var arrT = Array.isArray(tareas) ? tareas : Object.keys(tareas).map(function (k) { return tareas[k]; });
+                        localStorage.setItem('geometrics_tareas', JSON.stringify(mergeById(localT, arrT)));
                     }
-                } catch (e) {}
+                    if (presentaciones) {
+                        var localP = [];
+                        try { localP = JSON.parse(localStorage.getItem('geometrics_presentaciones') || '[]') || []; } catch (e5) { localP = []; }
+                        var arrP = Array.isArray(presentaciones) ? presentaciones : Object.keys(presentaciones).map(function (k) { return presentaciones[k]; });
+                        localStorage.setItem('geometrics_presentaciones', JSON.stringify(mergeById(localP, arrP)));
+                    }
+                    if (entregas) {
+                        var localE = [];
+                        try { localE = JSON.parse(localStorage.getItem('geometrics_entregas') || '[]') || []; } catch (e6) { localE = []; }
+                        var arrE = Array.isArray(entregas) ? entregas : Object.keys(entregas).map(function (k) { return entregas[k]; });
+                        localStorage.setItem('geometrics_entregas', JSON.stringify(mergeById(localE, arrE)));
+                    }
+                    if (civix && typeof civix === 'object') {
+                        var localCx = {};
+                        try { localCx = JSON.parse(localStorage.getItem('geometrics_civix_conversations') || '{}') || {}; } catch (e7) { localCx = {}; }
+                        Object.keys(civix).forEach(function (email) {
+                            var remote = civix[email] || [];
+                            var local = localCx[email] || [];
+                            if (!Array.isArray(remote)) remote = [];
+                            if (!Array.isArray(local)) local = [];
+                            localCx[email] = mergeById(local, remote);
+                        });
+                        localStorage.setItem('geometrics_civix_conversations', JSON.stringify(localCx));
+                    }
+                } catch (e) { console.warn('syncDown apply', e); }
                 return true;
             });
         });
     }
 
-    function syncUpUsers() {
+function syncUpUsers() {
         if (!isOn()) return Promise.resolve(false);
         try {
             var users = JSON.parse(localStorage.getItem('geometrics_users') || '[]');
@@ -216,6 +247,11 @@
             var docs = JSON.parse(localStorage.getItem('geometrics_docentes_extra') || '[]');
             var chats = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]');
             var admins = JSON.parse(localStorage.getItem('geometrics_admins') || '[]');
+            var tareas = JSON.parse(localStorage.getItem('geometrics_tareas') || '[]');
+            var presentaciones = JSON.parse(localStorage.getItem('geometrics_presentaciones') || '[]');
+            var entregas = JSON.parse(localStorage.getItem('geometrics_entregas') || '[]');
+            var civix = {};
+            try { civix = JSON.parse(localStorage.getItem('geometrics_civix_conversations') || '{}'); } catch (eC) { civix = {}; }
             var umap = {};
             (users || []).forEach(function (u) {
                 if (u && u.email) umap[emailKey(u.email)] = u;
@@ -224,7 +260,11 @@
                 Promise.all(Object.keys(umap).map(function (k) { return cloudSet('users/' + k, umap[k]); })),
                 cloudSet('docentesExtra', docs || []),
                 pushChats(chats || []),
-                cloudSet('admins', admins || [])
+                cloudSet('admins', admins || []),
+                pushTareas(tareas || []),
+                pushPresentaciones(presentaciones || []),
+                pushEntregas(entregas || []),
+                pushCivix(civix || {})
             ]).then(function () { return true; });
         } catch (e) { return Promise.resolve(false); }
     }
@@ -248,6 +288,67 @@
         });
     }
 
+
+    function pushTareas(list) {
+        return cloudSet('tareas', list || []);
+    }
+    function pushPresentaciones(list) {
+        // evitar payloads enormes: quitar data URL si > 800KB
+        var slim = (list || []).map(function (p) {
+            if (!p) return p;
+            var o = {};
+            Object.keys(p).forEach(function (k) {
+                if (k === 'data' || k === 'archivo' || k === 'fileData') {
+                    var s = p[k];
+                    if (typeof s === 'string' && s.length > 800000) o[k] = null;
+                    else o[k] = s;
+                } else o[k] = p[k];
+            });
+            return o;
+        });
+        return cloudSet('presentaciones', slim);
+    }
+    function pushEntregas(list) {
+        var slim = (list || []).map(function (e) {
+            if (!e) return e;
+            var o = {};
+            Object.keys(e).forEach(function (k) {
+                if (k === 'data' || k === 'archivo' || k === 'fileData' || k === 'contenido') {
+                    var s = e[k];
+                    if (typeof s === 'string' && s.length > 800000) {
+                        o[k] = null;
+                        o._archivoOmitido = true;
+                        o.nombreArchivo = e.nombreArchivo || e.name || '';
+                    } else o[k] = s;
+                } else o[k] = e[k];
+            });
+            return o;
+        });
+        return cloudSet('entregas', slim);
+    }
+    function pushCivix(all) {
+        return cloudSet('civix', all || {});
+    }
+    function pullCivix() {
+        return cloudGet('civix');
+    }
+
+    function mergeById(localArr, cloudArr) {
+        var map = {};
+        (localArr || []).forEach(function (x) { if (x && x.id) map[x.id] = x; });
+        (cloudArr || []).forEach(function (x) {
+            if (!x || !x.id) return;
+            var prev = map[x.id];
+            if (!prev) map[x.id] = x;
+            else {
+                var tL = prev.updatedAt || prev.fecha || prev.createdAt || 0;
+                var tC = x.updatedAt || x.fecha || x.createdAt || 0;
+                if (tC >= tL) map[x.id] = x;
+            }
+        });
+        return Object.keys(map).map(function (k) { return map[k]; });
+    }
+
     global.GeoCloud = {
         isOn: isOn,
         init: init,
@@ -259,6 +360,11 @@
         pushChat: pushChat,
         pushChats: pushChats,
         pushAdmins: pushAdmins,
+        pushTareas: pushTareas,
+        pushPresentaciones: pushPresentaciones,
+        pushEntregas: pushEntregas,
+        pushCivix: pushCivix,
+        pullCivix: pullCivix,
         listenChats: listenChats,
         pullChats: pullChats,
         pullUsersAndApply: pullUsersAndApply
