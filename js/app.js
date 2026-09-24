@@ -84,6 +84,11 @@ function on(id, event, handler) {
 })();
 
 function inicializarApp() {
+    try {
+        if (window.GeoCloud && GeoCloud.isOn()) {
+            civixSyncFromCloud().then(function () { civixStartRealtime(); });
+        }
+    } catch (eCiv) {}
     // Si hay sesión, no forzar login (F5 mantiene la app y la última pantalla)
     var hasSession = false;
     try {
@@ -522,9 +527,72 @@ function civixGuardarTodos(all) {
     try {
         localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(all));
         if (window.GeoCloud && GeoCloud.isOn() && GeoCloud.pushCivix) {
-            GeoCloud.pushCivix(all);
+            // subir solo el usuario actual (más rápido y seguro)
+            var email = civixEmailActual();
+            var partial = {};
+            if (email && all[email]) partial[email] = all[email];
+            else partial = all;
+            GeoCloud.pushCivix(partial).catch(function (err) {
+                console.warn('Civix sync up', err);
+            });
         }
     } catch (e) {}
+}
+
+function civixSyncFromCloud() {
+    if (!window.GeoCloud || !GeoCloud.isOn()) return Promise.resolve();
+    return GeoCloud.pullCivix().then(function (remote) {
+        if (!remote || typeof remote !== 'object') return;
+        var local = civixCargarTodos();
+        Object.keys(remote).forEach(function (email) {
+            var r = remote[email] || [];
+            var l = local[email] || [];
+            if (!Array.isArray(r)) r = [];
+            if (!Array.isArray(l)) l = [];
+            var map = {};
+            l.forEach(function (c) { if (c && c.id) map[c.id] = c; });
+            r.forEach(function (c) {
+                if (!c || !c.id) return;
+                var prev = map[c.id];
+                if (!prev || (c.updatedAt || 0) >= (prev.updatedAt || 0)) map[c.id] = c;
+            });
+            local[email] = Object.keys(map).map(function (k) { return map[k]; });
+        });
+        try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(local)); } catch (e) {}
+        return local;
+    }).catch(function (e) { console.warn('Civix sync down', e); });
+}
+
+function civixStartRealtime() {
+    if (!window.GeoCloud || !GeoCloud.listenCivix) return;
+    if (window.__civixListening) return;
+    window.__civixListening = true;
+    GeoCloud.listenCivix(function (remote) {
+        if (!remote) return;
+        var local = civixCargarTodos();
+        var changed = false;
+        Object.keys(remote).forEach(function (email) {
+            var r = remote[email] || [];
+            var l = local[email] || [];
+            if (!Array.isArray(r)) r = [];
+            if (!Array.isArray(l)) l = [];
+            var map = {};
+            l.forEach(function (c) { if (c && c.id) map[c.id] = c; });
+            r.forEach(function (c) {
+                if (!c || !c.id) return;
+                var prev = map[c.id];
+                if (!prev || (c.updatedAt || 0) > (prev.updatedAt || 0)) {
+                    map[c.id] = c;
+                    changed = true;
+                }
+            });
+            local[email] = Object.keys(map).map(function (k) { return map[k]; });
+        });
+        if (changed) {
+            try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(local)); } catch (e) {}
+            try { civixPintarHistorial(); } catch (e2) {}
+        }
+    });
 }
 
 function civixListaUsuario() {
@@ -723,6 +791,16 @@ function civixPintarHistorial() {
     });
 }
 
+function abrirCivixModal() {
+    var modal = document.getElementById('asistenteModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
+    civixSyncFromCloud().then(function () {
+        try { civixPintarHistorial(); } catch (e) {}
+    });
+    civixStartRealtime();
+}
 function inicializarAsistenteAI() {
     var btnAsistente = document.getElementById('btnAsistenteAI');
     var modal = document.getElementById('asistenteModal');
@@ -740,8 +818,29 @@ function inicializarAsistenteAI() {
         btnAsistente.addEventListener('click', function() {
             modal.classList.add('active');
             if (input) input.focus();
+            try {
+                civixSyncFromCloud().then(function () {
+                    try { civixPintarHistorial(); } catch (e) {}
+                });
+                civixStartRealtime();
+            } catch (e) {}
         });
     }
+    // Tarjeta Civix del menú
+    document.querySelectorAll('.card-asistente, [data-seccion="asistente"]').forEach(function(card) {
+        card.addEventListener('click', function() {
+            if (modal) {
+                modal.classList.add('active');
+                if (input) input.focus();
+            }
+            try {
+                civixSyncFromCloud().then(function () {
+                    try { civixPintarHistorial(); } catch (e) {}
+                });
+                civixStartRealtime();
+            } catch (e) {}
+        });
+    });
     if (btnCerrar) {
         btnCerrar.addEventListener('click', function() {
             modal.classList.remove('active');

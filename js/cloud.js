@@ -215,10 +215,16 @@
                     if (civix && typeof civix === 'object') {
                         var localCx = {};
                         try { localCx = JSON.parse(localStorage.getItem('geometrics_civix_conversations') || '{}') || {}; } catch (e7) { localCx = {}; }
-                        Object.keys(civix).forEach(function (email) {
-                            var remote = civix[email] || [];
+                        Object.keys(civix).forEach(function (k) {
+                            var email = (k.indexOf('_at_') >= 0 || k.indexOf(',') >= 0)
+                                ? emailKeyToEmail(k) : String(k).toLowerCase();
+                            var remote = civix[k];
+                            if (!Array.isArray(remote)) {
+                                if (remote && typeof remote === 'object') {
+                                    remote = Object.keys(remote).map(function (id) { return remote[id]; });
+                                } else remote = [];
+                            }
                             var local = localCx[email] || [];
-                            if (!Array.isArray(remote)) remote = [];
                             if (!Array.isArray(local)) local = [];
                             localCx[email] = mergeById(local, remote);
                         });
@@ -326,12 +332,72 @@ function syncUpUsers() {
         });
         return cloudSet('entregas', slim);
     }
-    function pushCivix(all) {
-        return cloudSet('civix', all || {});
+        function pushCivix(all) {
+        // Firebase no admite "." en keys: guardar por emailKey
+        all = all || {};
+        var jobs = [];
+        Object.keys(all).forEach(function (email) {
+            var list = all[email];
+            if (!Array.isArray(list)) list = [];
+            // slim: limitar mensajes muy largos
+            var slim = list.map(function (chat) {
+                if (!chat || !chat.id) return null;
+                var msgs = (chat.messages || []).slice(-80).map(function (m) {
+                    var content = m && m.content != null ? String(m.content) : '';
+                    if (content.length > 12000) content = content.slice(0, 12000) + '\n...[truncado]';
+                    return { role: m.role, content: content };
+                });
+                return {
+                    id: chat.id,
+                    title: chat.title || 'Chat',
+                    updatedAt: chat.updatedAt || Date.now(),
+                    messages: msgs
+                };
+            }).filter(Boolean);
+            jobs.push(cloudSet('civix/' + emailKey(email), slim));
+        });
+        if (!jobs.length) return Promise.resolve(true);
+        return Promise.all(jobs).then(function () { return true; });
     }
     function pullCivix() {
-        return cloudGet('civix');
+        return cloudGet('civix').then(function (val) {
+            if (!val || typeof val !== 'object') return {};
+            var out = {};
+            Object.keys(val).forEach(function (k) {
+                var email = emailKeyToEmail(k);
+                var list = val[k];
+                if (Array.isArray(list)) out[email] = list;
+                else if (list && typeof list === 'object') {
+                    out[email] = Object.keys(list).map(function (id) { return list[id]; });
+                } else out[email] = [];
+            });
+            return out;
+        });
     }
+    /** Invierte emailKey aproximado: "user_at_domain,com" → "user@domain.com" */
+    function emailKeyToEmail(k) {
+        var s = String(k || '');
+        // nuestro emailKey: lower, . → ,, @ → _at_
+        s = s.replace(/_at_/g, '@').replace(/,/g, '.');
+        return s.toLowerCase();
+    }
+    function listenCivix(cb) {
+        return cloudListen('civix', function (val) {
+            var out = {};
+            if (val && typeof val === 'object') {
+                Object.keys(val).forEach(function (k) {
+                    var email = emailKeyToEmail(k);
+                    var list = val[k];
+                    if (Array.isArray(list)) out[email] = list;
+                    else if (list && typeof list === 'object') {
+                        out[email] = Object.keys(list).map(function (id) { return list[id]; });
+                    }
+                });
+            }
+            try { cb(out); } catch (e) {}
+        });
+    }
+
 
     function mergeById(localArr, cloudArr) {
         var map = {};
@@ -365,6 +431,7 @@ function syncUpUsers() {
         pushEntregas: pushEntregas,
         pushCivix: pushCivix,
         pullCivix: pullCivix,
+        listenCivix: listenCivix,
         listenChats: listenChats,
         pullChats: pullChats,
         pullUsersAndApply: pullUsersAndApply
