@@ -1446,46 +1446,29 @@ function mostrarPantalla(pantalla) {
 function abrirSeccion(seccion) {
     switch(seccion) {
         case 'mecanica-suelos':
-            mostrarPantalla('menu');
-            document.getElementById('pantallaMenu').style.display = 'none';
-            document.getElementById('pantallaSuelos').style.display = 'block';
+            mostrarPantalla('suelos');
             activarTabsSeccion('pantallaSuelos');
             break;
         case 'mecanica-suelos-2':
-            mostrarPantalla('menu');
-            document.getElementById('pantallaMenu').style.display = 'none';
-            document.getElementById('pantallaSuelos2').style.display = 'block';
+            mostrarPantalla('suelos2');
             activarTabsSeccion('pantallaSuelos2');
             break;
         case 'resistencia-materiales':
-            mostrarPantalla('menu');
-            document.getElementById('pantallaMenu').style.display = 'none';
-            document.getElementById('pantallaResistencia').style.display = 'block';
+            mostrarPantalla('resistencia');
             activarTabsSeccion('pantallaResistencia');
             break;
         case 'simuladores':
-            mostrarPantalla('menu');
-            var menu = document.getElementById('pantallaMenu');
-            var sim = document.getElementById('pantallaSimuladores');
-            if (menu) menu.style.display = 'none';
-            if (sim) {
-                sim.style.display = 'block';
-                setTimeout(actualizarSimFlujo, 100);
-            } else {
-                alert('Sección de simuladores no disponible en esta versión.');
-                mostrarPantalla('menu');
-            }
+            mostrarPantalla('simuladores');
+            setTimeout(function() {
+                if (typeof actualizarSimFlujo === 'function') actualizarSimFlujo();
+            }, 100);
             break;
         case 'recursos':
-            mostrarPantalla('menu');
-            document.getElementById('pantallaMenu').style.display = 'none';
-            document.getElementById('pantallaRecursos').style.display = 'block';
+            mostrarPantalla('recursos');
             break;
         case 'resultados':
-            mostrarPantalla('menu');
-            document.getElementById('pantallaMenu').style.display = 'none';
-            document.getElementById('pantallaResultados').style.display = 'block';
-            cargarHistorial();
+            mostrarPantalla('resultados');
+            if (typeof cargarHistorial === 'function') cargarHistorial();
             break;
         default:
             mostrarPantalla('menu');

@@ -1141,28 +1141,40 @@ function aulaInitLogin() {
         if (session && session.email) {
             var go = function() {
                 var full = typeof aulaUsuarioCompleto === 'function' ? (aulaUsuarioCompleto(session) || session) : session;
-                // Reafirmar sesión completa
                 if (typeof aulaSetSession === 'function') aulaSetSession(full);
-                if (typeof aulaEnterApp === 'function') aulaEnterApp(full);
+                var last = null;
+                try {
+                    last = sessionStorage.getItem('geometrics_last_pantalla')
+                        || localStorage.getItem('geometrics_last_pantalla');
+                } catch (e2) {}
+                // Restaurar UI de usuario (header, etc.) sin pisar la pantalla guardada
+                if (typeof aulaEnterApp === 'function') {
+                    // entrar sin forzar menú si hay última pantalla válida
+                    aulaEnterApp(full, { skipMenu: !!(last && last !== 'inicio' && last !== 'menu') });
+                }
                 setTimeout(function() {
-                    var last = null;
                     try {
                         last = sessionStorage.getItem('geometrics_last_pantalla')
                             || localStorage.getItem('geometrics_last_pantalla');
-                    } catch (e2) {}
-                    if (!last || last === 'inicio') return;
+                    } catch (e3) {}
+                    if (!last || last === 'inicio') {
+                        if (typeof mostrarPantalla === 'function') mostrarPantalla('menu');
+                        return;
+                    }
                     if (last === 'docente' || last === 'estudiante') {
+                        if (typeof mostrarPantalla === 'function') mostrarPantalla(last);
                         if (typeof aulaOpenPanel === 'function') aulaOpenPanel();
                         return;
                     }
                     if (typeof mostrarPantalla === 'function') {
                         mostrarPantalla(last);
-                        // mostrarPantalla capitaliza; paneles especiales
-                        if (last === 'docente' || last === 'estudiante') {
-                            if (typeof aulaOpenPanel === 'function') aulaOpenPanel();
-                        }
+                        if (last === 'suelos') activarTabsSeccion && activarTabsSeccion('pantallaSuelos');
+                        if (last === 'suelos2') activarTabsSeccion && activarTabsSeccion('pantallaSuelos2');
+                        if (last === 'resistencia') activarTabsSeccion && activarTabsSeccion('pantallaResistencia');
+                        if (last === 'resultados' && typeof cargarHistorial === 'function') cargarHistorial();
+                        if (last === 'simuladores' && typeof actualizarSimFlujo === 'function') setTimeout(actualizarSimFlujo, 80);
                     }
-                }, 120);
+                }, 80);
             };
             if (window.GeoCloud && GeoCloud.isOn()) {
                 GeoCloud.syncDown().then(go).catch(go);
@@ -1173,13 +1185,21 @@ function aulaInitLogin() {
     } catch (e) {}
 }
 
-function aulaEnterApp(user) {
-    if (typeof mostrarPantalla === 'function') {
-        mostrarPantalla('menu');
-    } else {
-        document.getElementById('pantallaInicio').style.display = 'none';
-        document.getElementById('pantallaMenu').style.display = 'block';
+function aulaEnterApp(user, opts) {
+    opts = opts || {};
+    try {
+        var ini = document.getElementById('pantallaInicio');
+        if (ini) ini.style.display = 'none';
+    } catch (e) {}
+    if (!opts.skipMenu) {
+        if (typeof mostrarPantalla === 'function') {
+            mostrarPantalla('menu');
+        } else {
+            var menu = document.getElementById('pantallaMenu');
+            if (menu) menu.style.display = 'block';
+        }
     }
+    // si skipMenu: no tocar pantallas; el restore posterior hace mostrarPantalla(last)
     aulaUpdateMenuUser(user);
 }
 
