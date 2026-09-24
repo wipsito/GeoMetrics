@@ -14,13 +14,29 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
     <script src="js/cloud.js"></script>
+
+  <script>
+  /* Evitar flash de login: si hay sesión, no mostrar inicio antes de JS */
+  (function () {
+    try {
+      var has = !!sessionStorage.getItem('geometrics_session');
+      if (has) document.documentElement.classList.add('gm-restoring');
+    } catch (e) {}
+  })();
+  </script>
+  <style>
+    html.gm-restoring #pantallaInicio { display: none !important; }
+    /* pantalla intermedia suave */
+    body.gm-booting #pantallaInicio { display: none !important; }
+  </style>
+
 </head>
 <body>
 
     <!-- ============================================
          PANTALLA DE INICIO - GEOMETRICS
     ============================================= -->
-    <main class="inicio" id="pantallaInicio">
+    <main class="inicio" id="pantallaInicio" style="display:none">
 
         <!-- Franja superior: Uni izquierda / Civil derecha -->
         <header class="inicio-topbar">
