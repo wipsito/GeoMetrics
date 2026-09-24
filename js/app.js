@@ -5037,18 +5037,16 @@ function clasificarSueloCorte(c, phi) {
 /** Catálogo de ensayos para informes PDF */
 /** Esquema obligatorio de informes descargables (GeoMetrics) */
 var ESQUEMA_INFORME_ACADEMICO = [
-    { id: 'portada', nombre: 'Portada', desc: 'Institución, logos, título del ensayo, estudiante, código, docente, grupo, asignatura, fecha.' },
-    { id: 'resumen', nombre: 'Resumen', desc: 'Síntesis del objetivo, método y principales resultados (máx. media página).' },
-    { id: 'introduccion', nombre: 'Introducción', desc: 'Contexto del ensayo, importancia en ingeniería civil y alcance del informe.' },
-    { id: 'objetivos', nombre: 'Objetivos', desc: 'Objetivo general y específicos del laboratorio.' },
-    { id: 'marco', nombre: 'Marco teórico', desc: 'Fundamentos y fórmulas según textos guía de la asignatura (sin mezclar materias).' },
-    { id: 'materiales', nombre: 'Materiales y equipos', desc: 'Listado de equipos, instrumentos y muestras utilizadas.' },
-    { id: 'procedimiento', nombre: 'Procedimiento', desc: 'Pasos del ensayo en tiempo pasado, de forma impersonal y reproducible.' },
-    { id: 'resultados', nombre: 'Resultados', desc: 'Datos con unidades, tablas, gráficos y cifras significativas coherentes.' },
-    { id: 'discusion', nombre: 'Discusión', desc: 'Análisis crítico de resultados, fuentes de error y comparación con la teoría.' },
-    { id: 'conclusiones', nombre: 'Conclusiones', desc: 'Hallazgos alineados con objetivos; no introducir datos nuevos.' },
-    { id: 'referencias', nombre: 'Referencias', desc: 'Fuentes autorizadas (guías FLA-23, Beer/Hibbeler, Das, NSR-10 según materia).' },
-    { id: 'anexos', nombre: 'Anexos', desc: 'Cálculos extendidos, capturas de gráficas y datos brutos si aplica.' }
+    { id: 'portada', nombre: 'Portada', desc: 'Institución, logos, título, estudiante, código, docente, grupo, asignatura, fecha.' },
+    { id: 'introduccion', nombre: '1. Introducción', desc: 'Contexto, fenómeno, importancia, aplicación, qué se hizo y alcance (sin fórmulas extensas).' },
+    { id: 'objetivos', nombre: '2. Objetivos', desc: 'Objetivo general (infinitivo) y específicos verificables.' },
+    { id: 'marco', nombre: '3. Marco teórico', desc: 'Definiciones, variables, ecuaciones numeradas y normas del ensayo.' },
+    { id: 'metodos', nombre: '4. Materiales y métodos', desc: '4.1 Materiales/equipos (tabla) y 4.2 Procedimiento experimental (impersonal).' },
+    { id: 'resultados', nombre: '5. Resultados', desc: 'Datos, cálculos verificables, tablas y figuras (sin interpretación profunda).' },
+    { id: 'discusion', nombre: '6. Discusión de resultados', desc: 'Significado, comparación teórica, errores e incertidumbre.' },
+    { id: 'conclusiones', nombre: '7. Conclusiones', desc: 'Respuesta a objetivos; sin datos nuevos ni apreciaciones personales.' },
+    { id: 'referencias', nombre: '8. Referencias bibliográficas', desc: 'Fuentes citadas (FLA-23, ASTM/NTC/INVIAS, Das, etc.) en un solo estilo.' },
+    { id: 'anexos', nombre: '9. Anexos', desc: 'Datos originales, gráficas y cálculos complementarios.' }
 ];
 
 /** Normas de ensayo alineadas con NSR-10 Título H (H.2.6), NTC/ASTM e INVIAS */
@@ -5131,14 +5129,30 @@ var NORMA_ENSAYO_NSR10 = {
 var TEXTO_INFORME_ENSAYO = {
     humedad: {
         tituloFLA: 'Determinación del contenido de agua (humedad)',
-        intro: 'El contenido de humedad (w) expresa la relación entre la masa de agua y la masa de sólidos del suelo. Es una propiedad índice fundamental: interviene en la resistencia, la compactación, la consolidación y el estado de consistencia. Se determina secando la muestra en horno a 110 ± 5 °C hasta masa constante (ASTM D 2216 / INV E-122 / FLA-23).',
-        objetivoGeneral: 'Determinar el contenido de humedad de la muestra de suelo mediante el método de secado en horno.',
+        intro: 'El contenido de humedad constituye una propiedad fundamental para la caracterización de los suelos, debido a su influencia sobre parámetros como la consistencia, la compactación y el comportamiento mecánico. El presente ensayo tiene como finalidad determinar experimentalmente la relación entre la masa de agua y la masa de suelo seco presente en una muestra, mediante el método de secado en horno. La determinación de w es habitual en investigación del subsuelo y en control de obra (NSR-10 Título H; ASTM D 2216; INV E-122; guía FLA-23). El alcance de este laboratorio se limita a la obtención e interpretación de w (%) sobre la muestra registrada en GeoMetrics, sin extenderse a un análisis geotécnico completo del perfil.',
+        objetivoGeneral: 'Determinar el contenido de humedad de una muestra de suelo mediante el procedimiento de secado en horno, con el fin de caracterizar su condición física.',
         objetivosEspecificos: [
-            'Registrar las masas del recipiente, del suelo húmedo y del suelo seco.',
-            'Calcular la masa de agua y el contenido de humedad w en porcentaje.',
-            'Interpretar el resultado según el contexto de la muestra (estado natural / laboratorio).'
+            'Determinar la masa del recipiente vacío y de la muestra en estado húmedo.',
+            'Obtener la masa seca después del proceso de secado en horno.',
+            'Calcular la masa de agua presente en la muestra.',
+            'Determinar el contenido de humedad w en porcentaje.',
+            'Analizar el resultado obtenido en función de las características del suelo y del contexto del ensayo.'
         ],
-        materiales: 'Balanza de precisión, recipientes o cápsulas, horno a 110 ± 5 °C, espátula y muestra de suelo representativa.',
+        marcoTeorico: [
+            'El contenido de humedad representa la relación entre la masa de agua presente en una muestra y la masa de sólidos secos. Es una propiedad índice: no describe por sí sola la resistencia, pero condiciona la consistencia, la compactación y gran parte del comportamiento mecánico.',
+            'La expresión utilizada es w = (Mw / Ms) × 100 %, donde w es el contenido de humedad, Mw la masa del agua y Ms la masa de suelo seco.',
+            'Además, Mw = Mh − Ms, siendo Mh la masa de suelo húmedo. En el laboratorio, las masas se obtienen por diferencia respecto a la masa del recipiente (Mr).',
+            'El secado se realiza en horno a 110 ± 5 °C hasta masa constante, conforme a ASTM D 2216, INV E-122 y la guía FLA-23 de la Universidad de Pamplona.'
+        ],
+        materialesTabla: [
+            ['Material / equipo', 'Cantidad', 'Característica'],
+            ['Balanza', '1', 'Precisión ≥ 0,01 g'],
+            ['Recipiente / cápsula', '1', 'Metálico, limpio y seco'],
+            ['Horno', '1', '110 ± 5 °C, temperatura controlada'],
+            ['Espátula', '1', 'Manipulación de la muestra'],
+            ['Muestra de suelo', '1', 'Suelo natural o de laboratorio']
+        ],
+        materiales: 'Balanza de precisión (≥ 0,01 g), recipientes o cápsulas metálicas, horno a 110 ± 5 °C, espátula y muestra de suelo representativa.',
         proc: '1) Pesar el recipiente limpio y seco (Mr). 2) Colocar la muestra húmeda y pesar (Mr+h). 3) Secar en horno a 110 ± 5 °C hasta peso constante. 4) Enfriar y pesar (Mr+s). 5) Calcular Mw = (Mr+h) − (Mr+s), Ms = (Mr+s) − Mr y w = (Mw/Ms)×100.',
         formulas: [
             { eq: 'Mw = Mh − Ms', desc: 'Masa de agua (g): diferencia entre masa húmeda y masa seca de suelo.' },
@@ -6171,51 +6185,82 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
         var txtE = (typeof TEXTO_INFORME_ENSAYO !== 'undefined' && TEXTO_INFORME_ENSAYO[tipoEnsayo])
             ? TEXTO_INFORME_ENSAYO[tipoEnsayo] : null;
 
-        // ========== 2. INTRODUCCIÓN ==========
+
+        // ========== 1. INTRODUCCIÓN ==========
         addHeading('1. Introducción');
         if (txtE && txtE.intro) {
             addParagraph(txtE.intro);
         } else {
             addParagraph(
-                'Este informe presenta los resultados del ensayo de laboratorio «' + metaInf.tituloCorto +
-                '», realizado en la asignatura ' + asig + ' con la plataforma GeoMetrics (Universidad de Pamplona).'
+                'El ensayo de laboratorio «' + metaInf.tituloCorto +
+                '» se realizó en la asignatura ' + asig +
+                ' con la plataforma GeoMetrics (Universidad de Pamplona). ' +
+                'La introducción contextualiza el fenómeno estudiado, su importancia en ingeniería civil y el alcance de la práctica, sin desarrollar aún el marco teórico detallado.'
             );
         }
         addParagraph(
-            'La base teórica se limita a lo necesario para entender el ensayo, justificar los cálculos y interpretar los resultados. ' +
-            'No se desarrolla un tratado general de mecánica de suelos ajeno a esta práctica.'
+            'El alcance de este informe se limita a la ejecución del procedimiento, el registro de datos, los cálculos propios del ensayo y la interpretación de los resultados obtenidos en la sesión de laboratorio.'
         );
 
-        // ========== 3. OBJETIVOS ==========
+        // ========== 2. OBJETIVOS ==========
         addHeading('2. Objetivos');
         addHeading('2.1. Objetivo general');
         addParagraph((txtE && txtE.objetivoGeneral)
             ? txtE.objetivoGeneral
-            : ('Aplicar el procedimiento del ensayo «' + metaInf.tituloCorto + '» y analizar los resultados obtenidos.'));
+            : ('Determinar los parámetros característicos del ensayo «' + metaInf.tituloCorto + '» conforme al protocolo de laboratorio.'));
         addHeading('2.2. Objetivos específicos');
         var objs = (txtE && txtE.objetivosEspecificos) ? txtE.objetivosEspecificos : [
-            'Registrar los datos de laboratorio con unidades coherentes.',
+            'Registrar los datos experimentales con unidades coherentes.',
             'Aplicar las ecuaciones propias del ensayo.',
             'Presentar resultados en tablas y figuras.',
-            'Interpretar los valores y formular conclusiones.'
+            'Analizar los valores obtenidos y formular conclusiones verificables.'
         ];
         objs.forEach(function(o) { addParagraph('• ' + o); });
 
-        // ========== 4. MATERIALES ==========
-        addHeading('3. Materiales y equipos');
-        addParagraph((txtE && txtE.materiales)
-            ? txtE.materiales
-            : ('Equipos del ensayo «' + metaInf.tituloCorto + '» conforme a la guía FLA-23 y al protocolo del curso.'));
-        addParagraph('El registro de datos y los cálculos se realizaron en GeoMetrics.');
+        // ========== 3. MARCO TEÓRICO ==========
+        addHeading('3. Marco teórico');
+        if (txtE && txtE.marcoTeorico && txtE.marcoTeorico.length) {
+            txtE.marcoTeorico.forEach(function(p) { addParagraph(p); });
+        } else {
+            addParagraph(
+                'El marco teórico se limita a los conocimientos necesarios para comprender el ensayo «' +
+                metaInf.tituloCorto + '», las variables involucradas y las ecuaciones que permiten obtener los resultados.'
+            );
+        }
+        if (txtE && txtE.formulas && txtE.formulas.length) {
+            addParagraph('Las ecuaciones fundamentales del ensayo se presentan a continuación.');
+            txtE.formulas.forEach(function(f, idx) {
+                var n = idx + 1;
+                if (f.eq) addEq('(' + n + ')  ' + f.eq);
+                if (f.desc) addParagraph(f.desc);
+            });
+        }
+        var normaM = (typeof NORMA_ENSAYO_NSR10 !== 'undefined' && NORMA_ENSAYO_NSR10[tipoEnsayo]) ? NORMA_ENSAYO_NSR10[tipoEnsayo] : null;
+        if (normaM) {
+            addParagraph('Normativa de referencia: ' +
+                [normaM.astm, normaM.ntc, normaM.invias].filter(Boolean).join('; ') + '.');
+        }
 
-        // ========== 5. PROCEDIMIENTO ==========
-        addHeading('4. Procedimiento');
+        // ========== 4. MATERIALES Y MÉTODOS ==========
+        addHeading('4. Materiales y métodos');
+        addHeading('4.1. Materiales y equipos');
+        if (txtE && txtE.materialesTabla && txtE.materialesTabla.length > 1) {
+            addTablaColor(txtE.materialesTabla[0], txtE.materialesTabla.slice(1), 'Tabla. Materiales y equipos utilizados');
+        } else {
+            addParagraph((txtE && txtE.materiales)
+                ? txtE.materiales
+                : ('Equipos e instrumentos del ensayo «' + metaInf.tituloCorto + '» conforme a la guía FLA-23 y al protocolo del curso.'));
+        }
+        addParagraph('El registro de datos y los cálculos se realizaron en la plataforma GeoMetrics.');
+        addHeading('4.2. Procedimiento experimental');
         if (txtE && txtE.proc) addParagraph(txtE.proc);
-        else addParagraph('Se siguió el procedimiento de la guía de laboratorio correspondiente al ensayo.');
+        else addParagraph('Se siguió el procedimiento de la guía de laboratorio correspondiente al ensayo, en orden lógico y de forma reproducible.');
         addParagraph('Las lecturas y resultados quedaron registrados en la sesión de GeoMetrics del estudiante.');
 
-        // ========== 5. DATOS / 6. CÁLCULOS / 7. RESULTADOS (técnicos por ensayo) ==========
-        addHeading('5. Datos obtenidos');
+        // ========== 5. RESULTADOS ==========
+        addHeading('5. Resultados');
+        addParagraph('En esta sección se presentan los datos experimentales y los cálculos realizados, sin interpretar aún su significado geotécnico profundo.');
+        addHeading('5.1. Datos experimentales');
         var datosOk = construirDatosYCalculosInforme(tipoEnsayo, {
             addParagraph: addParagraph,
             addHeading: addHeading,
@@ -6233,85 +6278,83 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             txtE: txtE
         });
 
-        addHeading('6. Cálculos');
+
+        addHeading('5.2. Cálculos y resultados numéricos');
+        addParagraph('Los cálculos se desarrollan a partir de los datos experimentales, con unidades del Sistema Internacional o las habituales de laboratorio, de modo que el lector pueda verificar cada etapa.');
+        if (typeof construirCalculosNumericosInforme === 'function') {
+            construirCalculosNumericosInforme(tipoEnsayo, {
+                addParagraph: addParagraph,
+                addHeading: addHeading,
+                addTablaColor: addTablaColor,
+                addEq: addEq,
+                resumen: resumen
+            });
+        }
         if (txtE && txtE.formulas && txtE.formulas.length) {
             txtE.formulas.forEach(function(f, idx) {
-                addEq(String(idx + 1), f.eq, f.desc);
+                if (f.eq) addEq(f.eq);
+                if (f.desc) addParagraph(f.desc);
             });
-        } else {
-            addParagraph('Las expresiones de cálculo se aplicaron según la norma del ensayo.');
         }
-        // cálculos numéricos específicos
-        construirCalculosNumericosInforme(tipoEnsayo, {
-            addParagraph: addParagraph,
-            addHeading: addHeading,
-            addTablaColor: addTablaColor,
-            addEq: addEq
-        });
 
-        addHeading('7. Resultados');
-        construirResultadosInforme(tipoEnsayo, {
-            addParagraph: addParagraph,
-            addHeading: addHeading,
-            addTablaColor: addTablaColor,
-            ensureSpace: ensureSpace,
-            doc: doc,
-            pageW: pageW,
-            marginL: marginL,
-            getY: function() { return y; },
-            setY: function(v) { y = v; },
-            resumen: resumen,
-            metaInf: metaInf,
-            txtE: txtE
-        });
-
-        // Figura si hay canvas
+        // Figura si existe canvas
         var canvasIdFig = (txtE && txtE.canvasId) ? txtE.canvasId : null;
-        if (tipoEnsayo === 'corte') canvasIdFig = 'canvas-corte';
-        if (canvasIdFig) {
-            var canvasEl = document.getElementById(canvasIdFig);
-            if (canvasEl && canvasEl.width) {
-                try {
-                    ensureSpace(90);
-                    addHeading('7.1. Figura del ensayo');
-                    var imgData = canvasEl.toDataURL('image/png');
-                    var figW = Math.min(pageW - marginL - marginR, 160);
-                    var figH = figW * (canvasEl.height / canvasEl.width);
-                    if (figH > 100) { figH = 100; figW = figH * (canvasEl.width / canvasEl.height); }
-                    doc.addImage(imgData, 'PNG', marginL, y, figW, figH);
-                    y += figH + 6;
-                    addParagraph('Figura. ' + ((txtE && txtE.grafica) ? txtE.grafica : ('Gráfica del ensayo «' + metaInf.tituloCorto + '» generada en GeoMetrics.')));
-                } catch (eFig) {
-                    addParagraph('Nota: genere la gráfica en pantalla (GENERAR GRÁFICA) antes de descargar el informe para incluir la figura.');
-                }
-            } else {
-                addParagraph('Nota: para incluir la figura, genere la gráfica en pantalla antes de descargar el informe.');
+        var canvasEl = canvasIdFig ? document.getElementById(canvasIdFig) : null;
+        if (!canvasEl) {
+            var posibles = document.querySelectorAll('canvas[id^="canvas"]');
+            // no forzar
+        }
+        if (canvasEl && canvasEl.width > 0) {
+            addHeading('5.3. Figuras');
+            try {
+                ensureSpace(110);
+                var imgData = canvasEl.toDataURL('image/png');
+                var figW = Math.min(pageW - marginL - marginR, 160);
+                var figH = figW * (canvasEl.height / canvasEl.width);
+                if (figH > 100) { figH = 100; figW = figH * (canvasEl.width / canvasEl.height); }
+                doc.addImage(imgData, 'PNG', marginL, y, figW, figH);
+                y += figH + 6;
+                addParagraph('Figura 1. ' + ((txtE && txtE.grafica) ? txtE.grafica : ('Gráfica del ensayo «' + metaInf.tituloCorto + '» generada en GeoMetrics.')));
+            } catch (eFig) {
+                addParagraph('Nota: genere la gráfica en pantalla antes de descargar el informe para incluir la figura.');
             }
         }
 
-        // ========== 8. ANÁLISIS ==========
-        addHeading('8. Análisis de resultados');
+        // ========== 6. DISCUSIÓN ==========
+        addHeading('6. Discusión de resultados');
+        addParagraph(
+            'La discusión interpreta los resultados a la luz del marco teórico y del procedimiento empleado: no se limita a repetir los valores numéricos.'
+        );
         if (txtE && txtE.analisisGuia) addParagraph(txtE.analisisGuia);
         construirAnalisisEspecifico(tipoEnsayo, { addParagraph: addParagraph, addTablaColor: addTablaColor });
+        addParagraph(
+            'Entre las posibles fuentes de error experimental se consideran la resolución y calibración de los instrumentos, la manipulación y homogeneidad de la muestra, las condiciones ambientales y las desviaciones respecto al procedimiento normalizado. ' +
+            'Conviene distinguir el mecanismo del error (por ejemplo, pérdida de material al transferir la muestra) de explicaciones genéricas de «error humano».'
+        );
 
-        // ========== 9. CONCLUSIONES ==========
-        addHeading('9. Conclusiones');
+        // ========== 7. CONCLUSIONES ==========
+        addHeading('7. Conclusiones');
         if (txtE && txtE.conclusionesGuia) addParagraph(txtE.conclusionesGuia);
         construirConclusionesEspecificas(tipoEnsayo, { addParagraph: addParagraph, resumen: resumen });
+        addParagraph(
+            'Las conclusiones se limitan a lo sustentado por los datos y cálculos presentados; no se introducen resultados experimentales nuevos ni apreciaciones personales ajenas al ensayo.'
+        );
 
-        // ========== 10. REFERENCIAS ==========
-        addHeading('10. Referencias');
+        // ========== 8. REFERENCIAS ==========
+        addHeading('8. Referencias bibliográficas');
         var refs = (txtE && txtE.referencias) ? txtE.referencias : [
-            'Guía Unificada de Laboratorios FLA-23 — Mecánica de Suelos (Universidad de Pamplona).',
-            'Normas ASTM / NTC / INVIAS aplicables al ensayo.'
+            'Universidad de Pamplona. (2023). Guía unificada de laboratorios FLA-23 — Mecánica de suelos.',
+            'ASTM International. Normas de ensayo aplicables (ASTM D 2216 y afines según el ensayo).',
+            'Instituto Nacional de Vías (INVIAS). Especificaciones y normas de ensayo INV E aplicables.',
+            'Das, B. M., & Sobhan, K. Principles of geotechnical engineering (edición de consulta del curso).'
         ];
         refs.forEach(function(r, i) { addParagraph('[' + (i + 1) + '] ' + r); });
 
-        // ========== 11. ANEXOS ==========
-        addHeading('11. Anexos');
-        addParagraph('Anexo A. Datos brutos registrados en GeoMetrics.');
-        addParagraph('Anexo B. Gráficas del ensayo (cuando se generen en pantalla).');
-        addParagraph('Anexo C. Memoria de cálculo auxiliar, si el docente la solicita.');
+        // ========== 9. ANEXOS ==========
+        addHeading('9. Anexos');
+        addParagraph('Anexo A. Registro de datos experimentales en GeoMetrics.');
+        addParagraph('Anexo B. Gráficas y figuras del ensayo (cuando se generen en pantalla).');
+        addParagraph('Anexo C. Cálculos complementarios o memoria de cálculo, si el docente lo solicita.');
 
         var safeName = String(metaInf.tituloCorto || 'ensayo').replace(/\s+/g, '_');
         doc.save('Informe_' + safeName + '_GeoMetrics.pdf');
