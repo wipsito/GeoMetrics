@@ -3060,7 +3060,11 @@ function getTamicesSeleccionados() {
     document.querySelectorAll('.g-tamiz-opt:checked').forEach(function(cb) {
         ids.push(cb.value);
     });
-    // ordenar de grueso a fino según catálogo
+    // Si no hay checkboxes (form no montado) o ninguno marcado, usar predeterminados
+    if (!ids.length) {
+        var any = document.querySelectorAll('.g-tamiz-opt');
+        if (!any.length) ids = TAMICES_DEFAULT.slice();
+    }
     return TAMICES_ASTM.filter(function(t) { return ids.indexOf(t.id) >= 0; });
 }
 
@@ -3080,6 +3084,59 @@ function aplicarTamicesSeleccionados() {
     if (panel) panel.hidden = true;
     var b = document.getElementById('btnToggleTamices');
     if (b) b.textContent = '▾ Elegir tamices de la práctica (' + list.length + ' activos)';
+}
+
+
+// =========================================
+// FUNCIONES DE CÁLCULO (helpers)
+// =========================================
+
+function parse(id) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    var val = parseFloat(String(el.value).replace(',', '.'));
+    return isNaN(val) ? null : val;
+}
+
+function setError(id, msg) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = msg || '';
+}
+
+function limpiarCampo(pref) {
+    document.querySelectorAll('[id^="' + pref + '-"]').forEach(function(el) {
+        if (el.tagName === 'INPUT') el.value = '';
+        else if (el.tagName === 'STRONG') el.textContent = '—';
+        else if (el.tagName === 'P') el.textContent = 'Ingresa los datos para obtener el resultado.';
+    });
+    // campos dinámicos de granulometría
+    if (pref === 'g') {
+        document.querySelectorAll('.g-ret-input').forEach(function(el) { el.value = ''; });
+    }
+    setError(pref + '-error', '');
+    window.__datosEnsayo = window.__datosEnsayo || {};
+    window.__datosEnsayo[pref] = null;
+}
+
+window.__datosEnsayo = window.__datosEnsayo || {};
+
+function calcularHumedad() {
+    window.__datosEnsayo = window.__datosEnsayo || {};
+    var r = parse('h-recipiente'), h = parse('h-humeda'), s = parse('h-seca');
+    setError('h-error', '');
+    if (r == null || h == null || s == null) { setError('h-error', 'Completa todos los campos'); return; }
+    if (h <= r || s <= r || h < s) { setError('h-error', 'Revisa los datos'); return; }
+    var agua = h - s, sueloSeco = s - r, w = (agua / sueloSeco) * 100;
+    var elRes = document.getElementById('h-resultado');
+    var elAgua = document.getElementById('h-agua');
+    var elSuelo = document.getElementById('h-suelo');
+    var elInterp = document.getElementById('h-interpretacion');
+    if (elRes) elRes.textContent = w.toFixed(2) + ' %';
+    if (elAgua) elAgua.textContent = agua.toFixed(2);
+    if (elSuelo) elSuelo.textContent = sueloSeco.toFixed(2);
+    var interp = w < 10 ? 'Humedad baja' : (w < 25 ? 'Humedad media' : 'Humedad alta');
+    if (elInterp) elInterp.textContent = interp + '. w = ' + w.toFixed(2) + '%';
+    window.__datosEnsayo.h = { recipiente: r, humeda: h, seca: s, agua: agua, suelo: sueloSeco, w: w };
 }
 
 function calcularGranulometria() {
@@ -3194,19 +3251,20 @@ function calcularGranulometria() {
         if (v >= 0.1) return v.toFixed(3);
         return v.toFixed(4);
     }
-    document.getElementById('g-grava').textContent = gPct.toFixed(1);
-    document.getElementById('g-arena').textContent = aPct.toFixed(1);
-    document.getElementById('g-finos').textContent = fPct.toFixed(1);
-    var elD10 = document.getElementById('g-d10');
-    var elD30 = document.getElementById('g-d30');
-    var elD60 = document.getElementById('g-d60');
-    var elCc = document.getElementById('g-cc');
-    if (elD10) elD10.textContent = fmtD(D10);
-    if (elD30) elD30.textContent = fmtD(D30);
-    if (elD60) elD60.textContent = fmtD(D60);
-    document.getElementById('g-cu').textContent = Cu != null ? Cu.toFixed(2) : '—';
-    if (elCc) elCc.textContent = Cc != null ? Cc.toFixed(2) : '—';
-    document.getElementById('g-tipo').textContent = tipo;
+    function setTxt(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = val;
+    }
+    setTxt('g-grava', gPct.toFixed(1));
+    setTxt('g-arena', aPct.toFixed(1));
+    setTxt('g-finos', fPct.toFixed(1));
+    setTxt('g-d10', fmtD(D10));
+    setTxt('g-d30', fmtD(D30));
+    setTxt('g-d60', fmtD(D60));
+    setTxt('g-cu', Cu != null ? Cu.toFixed(2) : '—');
+    setTxt('g-cc', Cc != null ? Cc.toFixed(2) : '—');
+    setTxt('g-tipo', tipo);
+    setError('g-error', '');
 
     window.__datosEnsayo.g = {
         curva: curva,
