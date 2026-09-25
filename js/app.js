@@ -1625,6 +1625,12 @@ async function llamarIA(mensaje) {
 // NAVEGACIÓN
 // =========================================
 
+function capitalize(str) {
+    if (str == null || str === '') return '';
+    str = String(str);
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 function mostrarPantalla(pantalla) {
     try {
         if (pantalla && pantalla !== 'inicio') {
@@ -1644,10 +1650,16 @@ function mostrarPantalla(pantalla) {
     var target = document.getElementById(targetId);
     if (target) {
         target.style.display = (pantalla === 'inicio') ? 'flex' : 'block';
+    } else if (pantalla === 'inicio') {
+        var ini = document.getElementById('pantallaInicio');
+        if (ini) ini.style.display = 'flex';
     }
     
     window.scrollTo(0, 0);
-    try { document.documentElement.classList.remove('gm-restoring'); } catch (e2) {}
+    try {
+        document.documentElement.classList.remove('gm-restoring');
+        document.body.classList.remove('gm-booting');
+    } catch (e2) {}
 }
 
 /** Guarda pestaña activa de la sección actual (Teoría/Ensayos/Simuladores) */
@@ -2307,6 +2319,9 @@ function dibujarFlexion(ctx, W, H, p) {
 function dibujarTorsion(ctx, W, H, p) {
     // Viga rectangular: p=0 recta (como diagrama teórico);
     // p→1 se retuerce a lo largo de L (torsión visible).
+    // Guard: a veces se invoca por error con números (inicializarSimuladores antiguo)
+    if (!ctx || typeof ctx.fillRect !== 'function') return;
+    if (typeof W !== 'number' || typeof H !== 'number') return;
     p = Math.max(0, Math.min(1, p || 0));
 
     var cx = W * 0.5;
@@ -4188,12 +4203,8 @@ function graficaPermeabilidad() {
 // =========================================
 
 function inicializarSimuladores() {
-    setTimeout(function() {
-        dibujarCirculoMohr(100, 50, 30);
-        dibujarDiagramaEsfDef(200, 250, 400);
-        dibujarVigaSimple(5, 20);
-        dibujarTorsion(50, 2);
-    }, 200);
+    // Los canvas de simuladores se dibujan al abrir cada ensayo/simulador.
+    // No invocar dibujos con firmas incorrectas al cargar.
 }
 
 function simMohr() {
