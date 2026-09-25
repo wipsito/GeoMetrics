@@ -4659,3 +4659,45 @@ div.ai-detect-result[hidden] {
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.12);
 }
+
+.tamices-selector { margin: 12px 0; }
+.tamices-opts {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.1);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.tamices-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+}
+.tamiz-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #d5e0d8;
+  cursor: pointer;
+}
+.tamiz-check input { accent-color: #c9a227; }
+.g-campos-tamices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+}
+.btn-secundario {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #f0e6c8;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.btn-secundario:hover { background: rgba(255,255,255,0.14); }
