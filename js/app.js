@@ -3675,9 +3675,9 @@ function graficaGranulometria() {
     var plotW = w - pad.l - pad.r;
     var plotH = h - pad.t - pad.b;
 
-    // Eje X: papel log completo como la carta de referencia (10 → 0.0001 mm)
-    // Los DATOS solo se grafican hasta el tamiz #200 (0.075 mm).
-    var dMax = 10;
+    // Eje X: papel log con GRAVA (hasta ~100 mm) → finos (0.0001 mm)
+    // Los DATOS de la curva terminan en el tamiz #200 (0.075 mm).
+    var dMax = 100;
     var dMin = 0.0001;
     var minLog = Math.log10(dMin);
     var maxLog = Math.log10(dMax);
@@ -3700,6 +3700,11 @@ function graficaGranulometria() {
     ctx.strokeRect(pad.l, bandTop, plotW, bandH);
 
     var zones = [
+        { label: 'Grava', sub: [
+            { name: 'Gruesa', d0: 75, d1: 19 },
+            { name: 'Media', d0: 19, d1: 4.75 },
+            { name: 'Fina', d0: 4.75, d1: 2.0 }
+        ]},
         { label: 'Arena', sub: [
             { name: 'Gruesa', d0: 2.0, d1: 0.6 },
             { name: 'Media', d0: 0.6, d1: 0.2 },
@@ -3785,7 +3790,7 @@ function graficaGranulometria() {
     }
 
     // Rejilla vertical logarítmica (papel log)
-    var decades = [10, 1, 0.1, 0.01, 0.001, 0.0001];
+    var decades = [100, 10, 1, 0.1, 0.01, 0.001, 0.0001];
     decades.forEach(function(dec) {
         for (var m = 1; m <= 9; m++) {
             var diam = dec * m;
@@ -3802,7 +3807,7 @@ function graficaGranulometria() {
     });
 
     // Separadores Arena/Limo/Arcilla
-    [2, 0.075, 0.002].forEach(function(dm) {
+    [19, 4.75, 2, 0.075, 0.002].forEach(function(dm) {
         var xx = xOf(dm);
         if (xx < pad.l || xx > pad.l + plotW) return;
         ctx.strokeStyle = '#333';
@@ -3824,8 +3829,9 @@ function graficaGranulometria() {
 
     // Etiquetas eje X (como la carta)
     var xLabels = [
-        { d: 10, t: '10' }, { d: 1, t: '1.0' }, { d: 0.1, t: '0.1' },
-        { d: 0.01, t: '0.01' }, { d: 0.001, t: '0.001' }, { d: 0.0001, t: '0.0001' }
+        { d: 100, t: '100' }, { d: 10, t: '10' }, { d: 1, t: '1.0' },
+        { d: 0.1, t: '0.1' }, { d: 0.01, t: '0.01' },
+        { d: 0.001, t: '0.001' }, { d: 0.0001, t: '0.0001' }
     ];
     ctx.fillStyle = '#222';
     ctx.font = '10px Arial';
