@@ -1770,6 +1770,7 @@ function abrirEnsayoSuelos(nombre) {
             break;
         case 'granulometria':
             panel.innerHTML += crearFormularioGranulometria();
+            setTimeout(function(){ try { aplicarTamicesSeleccionados(); } catch (e) {} }, 30);
             break;
         case 'limites':
             panel.innerHTML += crearFormularioLimites();
@@ -2924,30 +2925,71 @@ function crearFormularioHumedad() {
         </div>`;
 }
 
+
+/** Catálogo ASTM E11 / uso geotécnico (abertura nominal mm) */
+var TAMICES_ASTM = [
+    { id: '3in', name: '3"', d: 75.0 },
+    { id: '2_5in', name: '2½"', d: 63.0 },
+    { id: '2in', name: '2"', d: 50.8 },
+    { id: '1_5in', name: '1½"', d: 38.1 },
+    { id: '1in', name: '1"', d: 25.4 },
+    { id: '3_4in', name: '¾"', d: 19.1 },
+    { id: '1_2in', name: '½"', d: 12.7 },
+    { id: '3_8in', name: '⅜"', d: 9.52 },
+    { id: 'n4', name: 'N.º 4', d: 4.75 },
+    { id: 'n8', name: 'N.º 8', d: 2.36 },
+    { id: 'n10', name: 'N.º 10', d: 2.00 },
+    { id: 'n16', name: 'N.º 16', d: 1.18 },
+    { id: 'n20', name: 'N.º 20', d: 0.850 },
+    { id: 'n30', name: 'N.º 30', d: 0.600 },
+    { id: 'n40', name: 'N.º 40', d: 0.425 },
+    { id: 'n50', name: 'N.º 50', d: 0.300 },
+    { id: 'n60', name: 'N.º 60', d: 0.250 },
+    { id: 'n80', name: 'N.º 80', d: 0.180 },
+    { id: 'n100', name: 'N.º 100', d: 0.150 },
+    { id: 'n140', name: 'N.º 140', d: 0.106 },
+    { id: 'n200', name: 'N.º 200', d: 0.075 }
+];
+
+/** Selección por defecto (práctica habitual de suelos) */
+var TAMICES_DEFAULT = ['2in', '3_4in', 'n4', 'n10', 'n20', 'n40', 'n60', 'n100', 'n200'];
+
 function crearFormularioGranulometria() {
+    var checks = TAMICES_ASTM.map(function(t) {
+        var sel = TAMICES_DEFAULT.indexOf(t.id) >= 0 ? ' checked' : '';
+        return '<label class="tamiz-check"><input type="checkbox" class="g-tamiz-opt" value="' + t.id + '"' + sel + '> ' +
+            t.name + ' <small>(' + t.d + ' mm)</small></label>';
+    }).join('');
     return `
         <h3>Granulometría</h3>
         <div class="laboratorio-panel">
             <div class="datos-panel">
                 <h4>Datos del tamizado</h4>
                 <label>Masa total de la muestra (g):</label>
-                <input type="number" id="g-total" placeholder="Ej. 500" step="0.1">
-                <label>Tamiz 2" (g):</label><input type="number" id="g-2" step="0.01">
-                <label>Tamiz 3/4" (g):</label><input type="number" id="g-34" step="0.01">
-                <label>Tamiz #4 (g):</label><input type="number" id="g-4" step="0.01">
-                <label>Tamiz #10 (g):</label><input type="number" id="g-10" step="0.01">
-                <label>Tamiz #20 (g):</label><input type="number" id="g-20" step="0.01">
-                <label>Tamiz #40 (g):</label><input type="number" id="g-40" step="0.01">
-                <label>Tamiz #60 (g):</label><input type="number" id="g-60" step="0.01">
-                <label>Tamiz #100 (g):</label><input type="number" id="g-100" step="0.01">
-                <label>Tamiz #200 (g):</label><input type="number" id="g-200" step="0.01">
-                <label>Pasante #200 (g):</label><input type="number" id="g-p200" step="0.01">
+                <input type="number" id="g-total" placeholder="Ej. 1000" step="0.1">
+
+                <div class="tamices-selector">
+                    <button type="button" class="btn-secundario" id="btnToggleTamices" onclick="toggleSelectorTamices()">
+                        ▾ Elegir tamices de la práctica
+                    </button>
+                    <div id="panelTamicesOpts" class="tamices-opts" hidden>
+                        <p class="login-hint">Marca solo los tamices que usarás. Luego pulsa <strong>Aplicar tamices</strong>.</p>
+                        <div class="tamices-grid">` + checks + `</div>
+                        <div class="botones-calculo" style="margin-top:8px">
+                            <button type="button" class="btn-calcular" onclick="aplicarTamicesSeleccionados()">Aplicar tamices</button>
+                            <button type="button" class="btn-limpiar" onclick="seleccionarTamicesDefault()">Predeterminados</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="g-campos-tamices" class="g-campos-tamices"></div>
+                <label>Pasante / fondo (g) <small>opcional</small>:</label>
+                <input type="number" id="g-p200" step="0.01" placeholder="Masa que pasa el último tamiz">
+
                 <div class="botones-calculo">
                     <button class="btn-calcular" onclick="calcularGranulometria()">CALCULAR</button>
                     <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('granulometria')">GUARDAR DATOS</button>
-        <div class="botones-calculo" style="margin-top:10px">
-          <button type="button" class="btn-informe-pdf" id="btnInforme-granulometria" onclick="generarInformeEnsayoPDF('granulometria')">Descargar informe</button>
-        </div>
+                    <button type="button" class="btn-informe-pdf" id="btnInforme-granulometria" onclick="generarInformeEnsayoPDF('granulometria')">Descargar informe</button>
                     <button class="btn-limpiar" onclick="limpiarCampo('g')">LIMPIAR</button>
                 </div>
                 <div class="mensaje-error" id="g-error"></div>
@@ -2979,429 +3021,148 @@ function crearFormularioGranulometria() {
                 <button type="button" class="btn-grafica" onclick="graficaGranulometria()">GENERAR GRÁFICA</button>
             </div>
             <canvas id="canvas-granulo" width="900" height="480"></canvas>
-            <p class="grafica-hint" id="hint-granulo">Calcula primero y luego pulsa GENERAR GRÁFICA.</p>
+            <p class="grafica-hint" id="hint-granulo">Elige tamices, calcula y luego pulsa GENERAR GRÁFICA.</p>
         </div>`;
 }
 
-function crearFormularioLimites() {
-    return `
-        <h3>Límites de Atterberg</h3>
-        <div class="laboratorio-panel">
-            <div class="datos-panel">
-                <h4>Límite Líquido - Ensayos de golpes</h4>
-                <label>Ensayo 1 - Golpes:</label><input type="number" id="l-g1" placeholder="Ej. 25">
-                <label>Ensayo 1 - Humedad (%):</label><input type="number" id="l-h1" placeholder="Ej. 32.5" step="0.1">
-                <label>Ensayo 2 - Golpes:</label><input type="number" id="l-g2" placeholder="Ej. 30">
-                <label>Ensayo 2 - Humedad (%):</label><input type="number" id="l-h2" placeholder="Ej. 30.2" step="0.1">
-                <label>Ensayo 3 - Golpes:</label><input type="number" id="l-g3" placeholder="Ej. 35">
-                <label>Ensayo 3 - Humedad (%):</label><input type="number" id="l-h3" placeholder="Ej. 28.5" step="0.1">
-                <h4 style="margin-top:20px">Límite Plástico</h4>
-                <label>LP (%) - Promedio de rollitos:</label>
-                <input type="number" id="l-lp" placeholder="Ej. 22" step="0.1">
-                <div class="botones-calculo">
-                    <button class="btn-calcular" onclick="calcularLimites()">CALCULAR</button>
-                    <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('limites')">GUARDAR DATOS</button>
-        <div class="botones-calculo" style="margin-top:10px">
-          <button type="button" class="btn-informe-pdf" id="btnInforme-limites" onclick="generarInformeEnsayoPDF('limites')">Descargar informe</button>
-        </div>
-                    <button class="btn-limpiar" onclick="limpiarCampo('l')">LIMPIAR</button>
-                </div>
-                <div class="mensaje-error" id="l-error"></div>
-            </div>
-            <div class="resultado-panel">
-                <h4>Resultados</h4>
-                <div class="resultado-principal">
-                    <span>ÍNDICE DE PLASTICIDAD (IP)</span>
-                    <strong id="l-ip">—</strong>
-                </div>
-                <div class="resultados-secundarios">
-                    <div><span>Límite Líquido (LL)</span><strong id="l-ll">—</strong><small>%</small></div>
-                    <div><span>Límite Plástico (LP)</span><strong id="l-lpres">—</strong><small>%</small></div>
-                    <div><span>Clasificación</span><strong id="l-clasif">—</strong></div>
-                    <div><span>Tipo</span><strong id="l-tipo">—</strong></div>
-                </div>
-            </div>
-        </div>
-        <div class="grafica-panel">
-            <div class="grafica-header">
-                <h4>Gráfica — Curva de fluidez y carta de plasticidad</h4>
-                <button type="button" class="btn-grafica" onclick="graficaLimites()">GENERAR GRÁFICA</button>
-            </div>
-            <canvas id="canvas-limites" width="640" height="360"></canvas>
-            <p class="grafica-hint" id="hint-limites">Calcula primero y luego pulsa GENERAR GRÁFICA.</p>
-        </div>`;
+function toggleSelectorTamices() {
+    var p = document.getElementById('panelTamicesOpts');
+    var b = document.getElementById('btnToggleTamices');
+    if (!p) return;
+    var open = p.hidden;
+    p.hidden = !open;
+    if (b) b.textContent = open ? '▴ Ocultar lista de tamices' : '▾ Elegir tamices de la práctica';
 }
 
-function crearFormularioGravedad() {
-    return `
-        <h3>Gravedad Específica</h3>
-        <div class="laboratorio-panel">
-            <div class="datos-panel">
-                <h4>Datos del Picnómetro</h4>
-                <label>Masa del picnómetro vacío (g):</label>
-                <input type="number" id="ge-pic" placeholder="Ej. 125.40" step="0.01">
-                <label>Masa picnómetro + suelo seco (g):</label>
-                <input type="number" id="ge-picsuelo" placeholder="Ej. 150.80" step="0.01">
-                <label>Masa picnómetro + agua + suelo (g):</label>
-                <input type="number" id="ge-paguasuelo" placeholder="Ej. 685.20" step="0.01">
-                <label>Masa picnómetro lleno de agua (g):</label>
-                <input type="number" id="ge-pagua" placeholder="Ej. 660.50" step="0.01">
-                <div class="botones-calculo">
-                    <button class="btn-calcular" onclick="calcularGravedad()">CALCULAR</button>
-                    <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('gravedad')">GUARDAR DATOS</button>
-        <div class="botones-calculo" style="margin-top:10px">
-          <button type="button" class="btn-informe-pdf" id="btnInforme-gravedad" onclick="generarInformeEnsayoPDF('gravedad')">Descargar informe</button>
-        </div>
-                    <button class="btn-limpiar" onclick="limpiarCampo('ge')">LIMPIAR</button>
-                </div>
-                <div class="mensaje-error" id="ge-error"></div>
-            </div>
-            <div class="resultado-panel">
-                <h4>Resultados</h4>
-                <div class="resultado-principal">
-                    <span>GRAVEDAD ESPECÍFICA (Gs)</span>
-                    <strong id="ge-gs">—</strong>
-                </div>
-                <div class="resultados-secundarios">
-                    <div><span>Masa del suelo seco</span><strong id="ge-ms">—</strong><small>g</small></div>
-                    <div><span>Volumen de sólidos</span><strong id="ge-vs">—</strong><small>cm³</small></div>
-                    <div><span>Tipo de suelo</span><strong id="ge-tipo">—</strong></div>
-                    <div><span>Rango típico</span><strong id="ge-rango">—</strong></div>
-                </div>
-            </div>
-        </div>
-        <div class="grafica-panel">
-            <div class="grafica-header">
-                <h4>Gráfica — Gs vs rangos típicos</h4>
-                <button type="button" class="btn-grafica" onclick="graficaGravedad()">GENERAR GRÁFICA</button>
-            </div>
-            <canvas id="canvas-gravedad" width="640" height="360"></canvas>
-            <p class="grafica-hint" id="hint-gravedad">Calcula primero y luego pulsa GENERAR GRÁFICA.</p>
-        </div>`;
-}
-
-function crearFormularioCompactacion() {
-    return `
-        <h3>Compactación Proctor Estándar</h3>
-        <div class="laboratorio-panel">
-            <div class="datos-panel">
-                <h4>Datos del Molde</h4>
-                <label>Masa del molde (g):</label>
-                <input type="number" id="cp-molde" placeholder="Ej. 4500" step="0.1">
-                <label>Volumen del molde (cm³):</label>
-                <input type="number" id="cp-vol" placeholder="Ej. 2120" step="0.1">
-                <h4>Datos de Ensayos</h4>
-                <div class="proctor-inputs">
-                    <div><label>Punto 1 - Masa+hoy+mold (g):</label><input type="number" id="cp-h1" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w1" step="0.1"></div>
-                    <div><label>Punto 2 - Masa+hoy+mold (g):</label><input type="number" id="cp-h2" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w2" step="0.1"></div>
-                    <div><label>Punto 3 - Masa+hoy+mold (g):</label><input type="number" id="cp-h3" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w3" step="0.1"></div>
-                    <div><label>Punto 4 - Masa+hoy+mold (g):</label><input type="number" id="cp-h4" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w4" step="0.1"></div>
-                    <div><label>Punto 5 - Masa+hoy+mold (g):</label><input type="number" id="cp-h5" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w5" step="0.1"></div>
-                </div>
-                <div class="botones-calculo">
-                    <button class="btn-calcular" onclick="calcularCompactacion()">CALCULAR</button>
-                    <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('compactacion')">GUARDAR DATOS</button>
-        <div class="botones-calculo" style="margin-top:10px">
-          <button type="button" class="btn-informe-pdf" id="btnInforme-compactacion" onclick="generarInformeEnsayoPDF('compactacion')">Descargar informe</button>
-        </div>
-                    <button class="btn-limpiar" onclick="limpiarCampo('cp')">LIMPIAR</button>
-                </div>
-                <div class="mensaje-error" id="cp-error"></div>
-            </div>
-            <div class="resultado-panel">
-                <h4>Resultados</h4>
-                <div class="resultado-principal">
-                    <span>HUMEDAD ÓPTIMA</span>
-                    <strong id="cp-wopt">—</strong>
-                </div>
-                <div class="resultados-secundarios">
-                    <div><span>Densidad seca máx.</span><strong id="cp-gdmax">—</strong><small>g/cm³</small></div>
-                    <div><span>En kN/m³</span><strong id="cp-gdmaxkn">—</strong><small>kN/m³</small></div>
-                </div>
-                <div class="interpretacion">
-                    <span>INTERPRETACIÓN</span>
-                    <p id="cp-interpretacion">Ingresa los datos para obtener el resultado.</p>
-                </div>
-            </div>
-        </div>
-        <div class="grafica-panel">
-            <div class="grafica-header">
-                <h4>Gráfica — Curva de compactación Proctor</h4>
-                <button type="button" class="btn-grafica" onclick="graficaCompactacion()">GENERAR GRÁFICA</button>
-            </div>
-            <canvas id="canvas-proctor" width="640" height="360"></canvas>
-            <p class="grafica-hint" id="hint-proctor">Calcula primero y luego pulsa GENERAR GRÁFICA.</p>
-        </div>`;
-}
-
-function crearFormularioDensidad() {
-    return `
-        <h3>Densidad de Campo (Cono de Arena)</h3>
-        <div class="laboratorio-panel">
-            <div class="datos-panel">
-                <h4>Datos del Ensayo</h4>
-                <label>Masa del cono con arena (g):</label>
-                <input type="number" id="d-cono" placeholder="Ej. 1500" step="0.1">
-                <label>Masa del cono con arena restante (g):</label>
-                <input type="number" id="d-rest" placeholder="Ej. 750" step="0.1">
-                <label>Densidad de la arena patrón (g/cm³):</label>
-                <input type="number" id="d-darena" placeholder="Ej. 1.45" step="0.01">
-                <label>Masa del suelo húmedo extraído (g):</label>
-                <input type="number" id="d-suelo" placeholder="Ej. 1200" step="0.1">
-                <label>Contenido de humedad (%):</label>
-                <input type="number" id="d-w" placeholder="Ej. 12.5" step="0.1">
-                <div class="botones-calculo">
-                    <button class="btn-calcular" onclick="calcularDensidad()">CALCULAR</button>
-                    <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('densidad')">GUARDAR DATOS</button>
-        <div class="botones-calculo" style="margin-top:10px">
-          <button type="button" class="btn-informe-pdf" id="btnInforme-densidad" onclick="generarInformeEnsayoPDF('densidad')">Descargar informe</button>
-        </div>
-                    <button class="btn-limpiar" onclick="limpiarCampo('d')">LIMPIAR</button>
-                </div>
-                <div class="mensaje-error" id="d-error"></div>
-            </div>
-            <div class="resultado-panel">
-                <h4>Resultados</h4>
-                <div class="resultado-principal">
-                    <span>DENSIDAD SECA</span>
-                    <strong id="d-gd">—</strong>
-                </div>
-                <div class="resultados-secundarios">
-                    <div><span>Volumen del hoyo</span><strong id="d-vol">—</strong><small>cm³</small></div>
-                    <div><span>Densidad húmeda</span><strong id="d-gh">—</strong><small>g/cm³</small></div>
-                    <div><span>En kN/m³</span><strong id="d-gdkn">—</strong><small>kN/m³</small></div>
-                    <div><span>Grado compactación</span><strong id="d-gc">—</strong><small>%</small></div>
-                </div>
-            </div>
-        </div>
-        <div class="grafica-panel">
-            <div class="grafica-header">
-                <h4>Gráfica — Densidades de campo</h4>
-                <button type="button" class="btn-grafica" onclick="graficaDensidad()">GENERAR GRÁFICA</button>
-            </div>
-            <canvas id="canvas-densidad" width="640" height="360"></canvas>
-            <p class="grafica-hint" id="hint-densidad">Calcula primero y luego pulsa GENERAR GRÁFICA.</p>
-        </div>`;
-}
-
-function crearFormularioClasificacion() {
-    return `
-        <h3>Clasificación SUCS</h3>
-        <div class="laboratorio-panel">
-            <div class="datos-panel">
-                <h4>Datos para Clasificación</h4>
-                <label>% Pasante tamiz #200:</label>
-                <input type="number" id="c-p200" placeholder="Ej. 35" step="0.1">
-                <label>Límite Líquido (LL) %:</label>
-                <input type="number" id="c-ll" placeholder="Ej. 45" step="0.1">
-                <label>Índice de Plasticidad (IP) %:</label>
-                <input type="number" id="c-ip" placeholder="Ej. 20" step="0.1">
-                <label>% Retenido tamiz #4:</label>
-                <input type="number" id="c-p4" placeholder="Ej. 10" step="0.1">
-                <div class="botones-calculo">
-                    <button class="btn-calcular" onclick="clasificarSUCS()">CLASIFICAR</button>
-                    <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('clasificacion')">GUARDAR DATOS</button>
-        <div class="botones-calculo" style="margin-top:10px">
-          <button type="button" class="btn-informe-pdf" id="btnInforme-clasificacion" onclick="generarInformeEnsayoPDF('clasificacion')">Descargar informe</button>
-        </div>
-                    <button class="btn-limpiar" onclick="limpiarCampo('c')">LIMPIAR</button>
-                </div>
-                <div class="mensaje-error" id="c-error"></div>
-            </div>
-            <div class="resultado-panel">
-                <h4>Resultados</h4>
-                <div class="resultado-principal">
-                    <span>GRUPO SUCS</span>
-                    <strong id="c-grupo">—</strong>
-                </div>
-                <div class="resultados-secundarios">
-                    <div><span>Símbolo</span><strong id="c-sim">—</strong></div>
-                    <div><span>Tipo</span><strong id="c-tipo">—</strong></div>
-                    <div><span>Clasificación</span><strong id="c-clasif">—</strong></div>
-                    <div><span>Descripción</span><strong id="c-num">—</strong></div>
-                </div>
-            </div>
-        </div>
-        <div class="grafica-panel">
-            <div class="grafica-header">
-                <h4>Gráfica — Carta de plasticidad SUCS</h4>
-                <button type="button" class="btn-grafica" onclick="graficaClasificacion()">GENERAR GRÁFICA</button>
-            </div>
-            <canvas id="canvas-sucs" width="640" height="360"></canvas>
-            <p class="grafica-hint" id="hint-sucs">Clasifica primero y luego pulsa GENERAR GRÁFICA.</p>
-        </div>`;
-}
-
-function crearFormularioPermeabilidad() {
-    return `
-        <h3>Permeabilidad (Ley de Darcy)</h3>
-        <div class="laboratorio-panel">
-            <div class="datos-panel">
-                <h4>Datos del Ensayo</h4>
-                <label>Volumen de agua (cm³):</label>
-                <input type="number" id="p-vol" placeholder="Ej. 500" step="0.1">
-                <label>Tiempo de recolección (s):</label>
-                <input type="number" id="p-t" placeholder="Ej. 120" step="0.1">
-                <label>Área de la muestra (cm²):</label>
-                <input type="number" id="p-a" placeholder="Ej. 100" step="0.1">
-                <label>Longitud de la muestra (cm):</label>
-                <input type="number" id="p-l" placeholder="Ej. 15" step="0.1">
-                <label>Carga hidráulica (cm):</label>
-                <input type="number" id="p-h" placeholder="Ej. 50" step="0.1">
-                <div class="botones-calculo">
-                    <button class="btn-calcular" onclick="calcularPermeabilidad()">CALCULAR</button>
-                    <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('permeabilidad')">GUARDAR DATOS</button>
-        <div class="botones-calculo" style="margin-top:10px">
-          <button type="button" class="btn-informe-pdf" id="btnInforme-permeabilidad" onclick="generarInformeEnsayoPDF('permeabilidad')">Descargar informe</button>
-        </div>
-                    <button class="btn-limpiar" onclick="limpiarCampo('p')">LIMPIAR</button>
-                </div>
-                <div class="mensaje-error" id="p-error"></div>
-            </div>
-            <div class="resultado-panel">
-                <h4>Resultados</h4>
-                <div class="resultado-principal">
-                    <span>COEFICIENTE k</span>
-                    <strong id="p-k">—</strong>
-                </div>
-                <div class="resultados-secundarios">
-                    <div><span>Caudal Q</span><strong id="p-q">—</strong><small>cm³/s</small></div>
-                    <div><span>Gradiente i</span><strong id="p-i">—</strong></div>
-                    <div><span>Velocidad v</span><strong id="p-v">—</strong><small>cm/s</small></div>
-                    <div><span>Clasificación</span><strong id="p-tipo">—</strong></div>
-                </div>
-            </div>
-        </div>
-        <div class="grafica-panel">
-            <div class="grafica-header">
-                <h4>Gráfica — Flujo según Darcy (v vs i)</h4>
-                <button type="button" class="btn-grafica" onclick="graficaPermeabilidad()">GENERAR GRÁFICA</button>
-            </div>
-            <canvas id="canvas-perm" width="640" height="360"></canvas>
-            <p class="grafica-hint" id="hint-perm">Calcula primero y luego pulsa GENERAR GRÁFICA.</p>
-        </div>`;
-}
-
-// =========================================
-// FUNCIONES DE CÁLCULO
-// =========================================
-
-function parse(id) {
-    var el = document.getElementById(id);
-    if (!el) return null;
-    var val = parseFloat(el.value);
-    return isNaN(val) ? null : val;
-}
-
-function setError(id, msg) {
-    var el = document.getElementById(id);
-    if (el) el.textContent = msg;
-}
-
-function capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
-
-function limpiarCampo(pref) {
-    document.querySelectorAll('[id^="' + pref + '-"]').forEach(function(el) {
-        if (el.tagName === 'INPUT') el.value = '';
-        else if (el.tagName === 'STRONG') el.textContent = '—';
-        else if (el.tagName === 'P' && el.className === '') el.textContent = 'Ingresa los datos para obtener el resultado.';
+function seleccionarTamicesDefault() {
+    document.querySelectorAll('.g-tamiz-opt').forEach(function(cb) {
+        cb.checked = TAMICES_DEFAULT.indexOf(cb.value) >= 0;
     });
-    setError(pref + '-error', '');
-    window.__datosEnsayo = window.__datosEnsayo || {};
-    window.__datosEnsayo[pref] = null;
 }
 
-// Datos del último cálculo (para gráficas)
-window.__datosEnsayo = window.__datosEnsayo || {};
+function getTamicesSeleccionados() {
+    var ids = [];
+    document.querySelectorAll('.g-tamiz-opt:checked').forEach(function(cb) {
+        ids.push(cb.value);
+    });
+    // ordenar de grueso a fino según catálogo
+    return TAMICES_ASTM.filter(function(t) { return ids.indexOf(t.id) >= 0; });
+}
 
-// CÁLCULOS DE SUELOS
-function calcularHumedad() {
-    var r = parse('h-recipiente'), h = parse('h-humeda'), s = parse('h-seca');
-    setError('h-error', '');
-    if (!r || !h || !s) { setError('h-error', 'Completa todos los campos'); return; }
-    if (h <= r || s <= r || h < s) { setError('h-error', 'Revisa los datos'); return; }
-    var agua = h - s, sueloSeco = s - r, w = (agua / sueloSeco) * 100;
-    document.getElementById('h-resultado').textContent = w.toFixed(2) + ' %';
-    document.getElementById('h-agua').textContent = agua.toFixed(2);
-    document.getElementById('h-suelo').textContent = sueloSeco.toFixed(2);
-    var interp = w < 10 ? 'Humedad baja' : w < 25 ? 'Humedad intermedia' : w < 40 ? 'Humedad alta' : 'Humedad muy alta';
-    document.getElementById('h-interpretacion').textContent = interp + '. w = ' + w.toFixed(2) + '%';
-    window.__datosEnsayo = window.__datosEnsayo || {};
-    window.__datosEnsayo.h = { agua: agua, suelo: sueloSeco, w: w, texto: 'w = ' + w.toFixed(2) + '%' };
+function aplicarTamicesSeleccionados() {
+    var list = getTamicesSeleccionados();
+    var box = document.getElementById('g-campos-tamices');
+    if (!box) return;
+    if (!list.length) {
+        box.innerHTML = '<p class="login-hint">Selecciona al menos un tamiz.</p>';
+        return;
+    }
+    box.innerHTML = list.map(function(t) {
+        return '<label>Tamiz ' + t.name + ' — ' + t.d + ' mm (g):</label>' +
+            '<input type="number" id="g-ret-' + t.id + '" class="g-ret-input" data-tid="' + t.id + '" step="0.01" placeholder="Masa retenida">';
+    }).join('');
+    var panel = document.getElementById('panelTamicesOpts');
+    if (panel) panel.hidden = true;
+    var b = document.getElementById('btnToggleTamices');
+    if (b) b.textContent = '▾ Elegir tamices de la práctica (' + list.length + ' activos)';
 }
 
 function calcularGranulometria() {
     var total = parse('g-total');
     setError('g-error', '');
     if (!total || total <= 0) { setError('g-error', 'Ingresa la masa total'); return; }
-    // Aberturas estándar (mm) — nombres de laboratorio
-    var sieves = [
-        { id: 'g-2', d: 50.8, name: '2"' },
-        { id: 'g-34', d: 19.1, name: '3/4"' },
-        { id: 'g-4', d: 4.75, name: 'N.º 4' },
-        { id: 'g-10', d: 2.00, name: 'N.º 10' },
-        { id: 'g-20', d: 0.850, name: 'N.º 20' },
-        { id: 'g-40', d: 0.425, name: 'N.º 40' },
-        { id: 'g-60', d: 0.250, name: 'N.º 60' },
-        { id: 'g-100', d: 0.150, name: 'N.º 100' },
-        { id: 'g-200', d: 0.075, name: 'N.º 200' }
-    ];
+
+    var sieves = getTamicesSeleccionados();
+    // Si aún no aplicó campos, generarlos
+    if (!document.querySelector('.g-ret-input') && sieves.length) {
+        aplicarTamicesSeleccionados();
+    }
+    sieves = getTamicesSeleccionados();
+    if (!sieves.length) {
+        setError('g-error', 'Elige y aplica al menos un tamiz');
+        return;
+    }
+
     var tabla = [];
     var acumMasa = 0;
     var acumPct = 0;
     sieves.forEach(function(sv) {
-        var m = parse(sv.id) || 0;
+        var el = document.getElementById('g-ret-' + sv.id);
+        var m = el ? (parseFloat(el.value) || 0) : 0;
         acumMasa += m;
         var pctRet = (m / total) * 100;
         acumPct += pctRet;
         tabla.push({
             name: sv.name,
+            id: sv.id,
             d: sv.d,
-            dLabel: sv.d.toFixed(sv.d >= 1 ? 2 : 3),
+            dLabel: sv.d >= 1 ? sv.d.toFixed(2) : sv.d.toFixed(3),
             ret: m,
             pctRet: pctRet,
             pctAcum: acumPct,
             pctPasa: Math.max(0, 100 - acumPct)
         });
     });
+
     var pass200 = parse('g-p200');
     if (pass200 == null || isNaN(pass200)) {
         pass200 = Math.max(0, total - acumMasa);
     }
     var pctFondo = (pass200 / total) * 100;
     acumPct += pctFondo;
-    acumMasa += pass200;
     tabla.push({
         name: 'Fondo',
+        id: 'fondo',
         d: 0.001,
-        dLabel: '< 0.075',
+        dLabel: '< último',
         ret: pass200,
         pctRet: pctFondo,
         pctAcum: Math.min(100, acumPct),
         pctPasa: 0
     });
-    // Curva: solo puntos de tamiz con abertura numérica (sin fondo forzado a 0 si no hay finos)
+
     var curva = tabla.filter(function(r) { return r.name !== 'Fondo'; }).map(function(r) {
         return { d: r.d, name: r.name, pasa: r.pctPasa, ret: r.ret, pctRet: r.pctRet, pctAcum: r.pctAcum };
     });
-    // punto final en finos
-    curva.push({ d: 0.001, name: 'Fondo', pasa: 0, ret: pass200, pctRet: pctFondo, pctAcum: Math.min(100, acumPct) });
+    // último punto de curva = tamiz más fino seleccionado (idealmente #200)
+    // no añadir fondo a la curva
 
-    var grava = (parse('g-2')||0) + (parse('g-34')||0) + (parse('g-4')||0);
-    var arena = (parse('g-10')||0) + (parse('g-20')||0) + (parse('g-40')||0) + (parse('g-60')||0) + (parse('g-100')||0) + (parse('g-200')||0);
-    var finos = pass200;
-    var gPct = (grava/total)*100, aPct = (arena/total)*100, fPct = (finos/total)*100;
-    var tipo = fPct > 50 ? 'Suelo fino' : aPct > gPct ? 'Suelo grueso (arena)' : 'Suelo grueso (grava)';
+    var grava = 0, arena = 0, finos = pass200;
+    tabla.forEach(function(r) {
+        if (r.name === 'Fondo') return;
+        if (r.d > 4.75) grava += r.ret;
+        else if (r.d >= 0.075) arena += r.ret;
+        else finos += r.ret;
+    });
+    // grava: d > 4.75; between 4.75 and 2 often called gravel fine - ASTM: gravel > 4.75mm
+    grava = 0; arena = 0;
+    tabla.forEach(function(r) {
+        if (r.name === 'Fondo') return;
+        if (r.d >= 4.75) grava += r.ret; // retained on #4 and coarser
+        else if (r.d >= 0.075) arena += r.ret;
+    });
+    // actually retained ON 4.75 means particles larger than 4.75 = gravel portion retained
+    // standard: % gravel = retained on #4; % sand = passing #4 retained on #200; % fines = pass #200
+    var ret4 = 0, pass4ret200 = 0;
+    var seen4 = false;
+    tabla.forEach(function(r) {
+        if (r.name === 'Fondo') return;
+        if (r.d >= 4.75) ret4 += r.ret;
+        else if (r.d >= 0.075) pass4ret200 += r.ret;
+    });
+    var gPct = (ret4 / total) * 100;
+    var aPct = (pass4ret200 / total) * 100;
+    var fPct = (pass200 / total) * 100;
+    var tipo = fPct > 50 ? 'Suelo fino' : aPct >= gPct ? 'Suelo grueso (arena)' : 'Suelo grueso (grava)';
 
-    // D10, D30, D60 por interpolación log en la curva
     function diametroParaPasa(pct) {
-        var pts = curva.slice().sort(function(a,b){ return b.d - a.d; });
+        var pts = curva.slice().sort(function(a, b) { return b.d - a.d; });
         for (var i = 0; i < pts.length - 1; i++) {
-            var p1 = pts[i].pasa, p2 = pts[i+1].pasa;
+            var p1 = pts[i].pasa, p2 = pts[i + 1].pasa;
             if ((p1 >= pct && p2 <= pct) || (p1 <= pct && p2 >= pct)) {
                 if (Math.abs(p1 - p2) < 1e-9) return pts[i].d;
                 var t = (pct - p1) / (p2 - p1);
-                var logD = Math.log10(pts[i].d) + t * (Math.log10(pts[i+1].d) - Math.log10(pts[i].d));
+                var logD = Math.log10(pts[i].d) + t * (Math.log10(pts[i + 1].d) - Math.log10(pts[i].d));
                 return Math.pow(10, logD);
             }
         }
@@ -3411,15 +3172,15 @@ function calcularGranulometria() {
     var Cu = (D10 && D60) ? (D60 / D10) : null;
     var Cc = (D10 && D30 && D60) ? ((D30 * D30) / (D10 * D60)) : null;
 
-    document.getElementById('g-grava').textContent = gPct.toFixed(1);
-    document.getElementById('g-arena').textContent = aPct.toFixed(1);
-    document.getElementById('g-finos').textContent = fPct.toFixed(1);
     function fmtD(v) {
         if (v == null || isNaN(v)) return '—';
         if (v >= 1) return v.toFixed(2);
         if (v >= 0.1) return v.toFixed(3);
         return v.toFixed(4);
     }
+    document.getElementById('g-grava').textContent = gPct.toFixed(1);
+    document.getElementById('g-arena').textContent = aPct.toFixed(1);
+    document.getElementById('g-finos').textContent = fPct.toFixed(1);
     var elD10 = document.getElementById('g-d10');
     var elD30 = document.getElementById('g-d30');
     var elD60 = document.getElementById('g-d60');
@@ -3430,13 +3191,15 @@ function calcularGranulometria() {
     document.getElementById('g-cu').textContent = Cu != null ? Cu.toFixed(2) : '—';
     if (elCc) elCc.textContent = Cc != null ? Cc.toFixed(2) : '—';
     document.getElementById('g-tipo').textContent = tipo;
+
     window.__datosEnsayo.g = {
         curva: curva,
         tabla: tabla,
         total: total,
         gPct: gPct, aPct: aPct, fPct: fPct,
         D10: D10, D30: D30, D60: D60, Cu: Cu, Cc: Cc,
-        tipo: tipo
+        tipo: tipo,
+        tamicesIds: sieves.map(function(s) { return s.id; })
     };
 }
 
