@@ -6111,19 +6111,41 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             setF(false, 11);
         }
         function addEq(num, formula, meaning) {
+            // Acepta: addEq('fórmula'), addEq('fórmula', 'significado'), addEq(1, 'fórmula', 'significado')
+            var textoEq, textoDesc;
+            if (formula == null && meaning == null) {
+                textoEq = String(num || '');
+                textoDesc = '';
+            } else if (meaning == null && (typeof formula === 'string' || formula == null)) {
+                // addEq('(1) eq', desc) o addEq(eq, desc)
+                if (typeof num === 'number') {
+                    textoEq = '(' + num + ')  ' + String(formula || '');
+                    textoDesc = '';
+                } else {
+                    textoEq = String(num || '');
+                    textoDesc = formula != null ? String(formula) : '';
+                }
+            } else {
+                textoEq = '(' + num + ')  ' + String(formula || '');
+                textoDesc = meaning != null ? String(meaning) : '';
+            }
+            if (!textoEq || textoEq === 'undefined' || textoEq === 'null') return;
+            if (textoDesc === 'undefined' || textoDesc === 'null') textoDesc = '';
             ensureSpace(lineH * 3 + 4);
             setF(true, 11);
             doc.setTextColor(20, 50, 100);
-            doc.text(sym('(' + num + ')  ' + formula), marginL + 4, y);
+            doc.text(sym(textoEq), marginL + 4, y);
             y += lineH;
-            setF(false, 10);
-            doc.setTextColor(60, 60, 60);
-            var ml = wrapText(meaning, maxW - 8, 10);
-            ml.forEach(function(ln) {
-                ensureSpace(lineH);
-                doc.text(ln, marginL + 6, y);
-                y += lineH * 0.95;
-            });
+            if (textoDesc) {
+                setF(false, 10);
+                doc.setTextColor(60, 60, 60);
+                var ml = wrapText(textoDesc, maxW - 8, 10);
+                ml.forEach(function(ln) {
+                    ensureSpace(lineH);
+                    doc.text(ln, marginL + 6, y);
+                    y += lineH * 0.95;
+                });
+            }
             y += 3;
             doc.setTextColor(0, 0, 0);
             setF(false, 11);
@@ -6250,8 +6272,8 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             addParagraph('Las ecuaciones fundamentales del ensayo se presentan a continuación.');
             txtE.formulas.forEach(function(f, idx) {
                 var n = idx + 1;
-                if (f.eq) addEq('(' + n + ')  ' + f.eq);
-                if (f.desc) addParagraph(f.desc);
+                if (f.eq) addEq(n, f.eq, f.desc || '');
+                else if (f.desc) addParagraph(f.desc);
             });
         }
         var normaM = (typeof NORMA_ENSAYO_NSR10 !== 'undefined' && NORMA_ENSAYO_NSR10[tipoEnsayo]) ? NORMA_ENSAYO_NSR10[tipoEnsayo] : null;
@@ -6311,19 +6333,47 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
         }
         if (txtE && txtE.formulas && txtE.formulas.length) {
             txtE.formulas.forEach(function(f, idx) {
-                if (f.eq) addEq(f.eq);
-                if (f.desc) addParagraph(f.desc);
+                if (f.eq) addEq(idx + 1, f.eq, f.desc || '');
+                else if (f.desc) addParagraph(f.desc);
             });
         }
 
-        // Figura si existe canvas
+        // 5.3 Figuras — SOLO si el estudiante generó la gráfica (canvas con dibujo real)
+        function canvasTieneGraficaReal(cv) {
+            if (!cv || !cv.width || !cv.height) return false;
+            try {
+                var ctx = cv.getContext('2d');
+                if (!ctx) return false;
+                // Muestreo: si hay píxeles no transparentes y no solo fondo oscuro/vacío dibujado
+                var step = Math.max(1, Math.floor(Math.min(cv.width, cv.height) / 40));
+                var painted = 0;
+                for (var yy = 0; yy < cv.height; yy += step) {
+                    for (var xx = 0; xx < cv.width; xx += step) {
+                        var p = ctx.getImageData(xx, yy, 1, 1).data;
+                        if (p[3] > 20) {
+                            // cuenta como dibujo si no es casi negro puro de fondo vacío
+                            if (p[0] > 15 || p[1] > 15 || p[2] > 15) painted++;
+                        }
+                    }
+                }
+                return painted >= 8;
+            } catch (e) {
+                return false;
+            }
+        }
         var canvasIdFig = (txtE && txtE.canvasId) ? txtE.canvasId : null;
         var canvasEl = canvasIdFig ? document.getElementById(canvasIdFig) : null;
-        if (!canvasEl) {
-            var posibles = document.querySelectorAll('canvas[id^="canvas"]');
-            // no forzar
-        }
-        if (canvasEl && canvasEl.width > 0) {
+        var hayFigura = canvasTieneGraficaReal(canvasEl);
+        // Flag opcional si al generar gráfica se marcó
+        try {
+            if (!hayFigura && window.__graficaGenerada && canvasIdFig && window.__graficaGenerada[canvasIdFig]) {
+                hayFigura = !!(canvasEl && canvasEl.width > 0);
+            }
+            if (!hayFigura && window.__graficaGenerada && tipoEnsayo && window.__graficaGenerada[tipoEnsayo]) {
+                hayFigura = !!(canvasEl && canvasEl.width > 0);
+            }
+        } catch (eFlag) {}
+        if (hayFigura && canvasEl) {
             addHeading('5.3. Figuras');
             try {
                 ensureSpace(110);
@@ -6335,7 +6385,7 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
                 y += figH + 6;
                 addParagraph('Figura 1. ' + ((txtE && txtE.grafica) ? txtE.grafica : ('Gráfica del ensayo «' + metaInf.tituloCorto + '» generada en GeoMetrics.')));
             } catch (eFig) {
-                addParagraph('Nota: genere la gráfica en pantalla antes de descargar el informe para incluir la figura.');
+                // Si falla la imagen, no dejar el apartado vacío
             }
         }
 
