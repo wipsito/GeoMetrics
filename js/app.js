@@ -3336,6 +3336,219 @@ window.__datosEnsayo = window.__datosEnsayo || {};
 
 // CÁLCULOS DE SUELOS
 
+
+function toggleSelectorTamices() {
+    var p = document.getElementById('panelTamicesOpts');
+    var b = document.getElementById('btnToggleTamices');
+    if (!p) return;
+    var open = p.hidden;
+    p.hidden = !open;
+    if (b) b.textContent = open ? '▴ Ocultar lista de tamices' : '▾ Elegir tamices de la práctica';
+}
+
+function seleccionarTamicesDefault() {
+    document.querySelectorAll('.g-tamiz-opt').forEach(function(cb) {
+        cb.checked = TAMICES_DEFAULT.indexOf(cb.value) >= 0;
+    });
+}
+
+function getTamicesSeleccionados() {
+    var ids = [];
+    document.querySelectorAll('.g-tamiz-opt:checked').forEach(function(cb) {
+        ids.push(cb.value);
+    });
+    if (!ids.length) {
+        var any = document.querySelectorAll('.g-tamiz-opt');
+        if (!any.length && typeof TAMICES_DEFAULT !== 'undefined') ids = TAMICES_DEFAULT.slice();
+    }
+    return (typeof TAMICES_ASTM !== 'undefined' ? TAMICES_ASTM : []).filter(function(t) {
+        return ids.indexOf(t.id) >= 0;
+    });
+}
+
+function aplicarTamicesSeleccionados() {
+    var list = getTamicesSeleccionados();
+    var box = document.getElementById('g-campos-tamices');
+    if (!box) return;
+    if (!list.length) {
+        box.innerHTML = '<p class="login-hint">Selecciona al menos un tamiz.</p>';
+        return;
+    }
+    box.innerHTML = list.map(function(t) {
+        return '<label>Tamiz ' + t.name + ' — ' + t.d + ' mm (g):</label>' +
+            '<input type="number" id="g-ret-' + t.id + '" class="g-ret-input" data-tid="' + t.id + '" step="0.01" placeholder="Masa retenida">';
+    }).join('');
+    var panel = document.getElementById('panelTamicesOpts');
+    if (panel) panel.hidden = true;
+    var b = document.getElementById('btnToggleTamices');
+    if (b) b.textContent = '▾ Elegir tamices de la práctica (' + list.length + ' activos)';
+}
+
+function calcularHumedad() {
+    window.__datosEnsayo = window.__datosEnsayo || {};
+    var r = parse('h-recipiente'), h = parse('h-humeda'), s = parse('h-seca');
+    setError('h-error', '');
+    if (r == null || h == null || s == null) { setError('h-error', 'Completa todos los campos'); return; }
+    if (h <= r || s <= r || h < s) { setError('h-error', 'Revisa los datos'); return; }
+    var agua = h - s, sueloSeco = s - r, w = (agua / sueloSeco) * 100;
+    function setTxt(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
+    setTxt('h-resultado', w.toFixed(2) + ' %');
+    setTxt('h-agua', agua.toFixed(2));
+    setTxt('h-suelo', sueloSeco.toFixed(2));
+    var interp = w < 10 ? 'Humedad baja' : (w < 25 ? 'Humedad media' : 'Humedad alta');
+    setTxt('h-interpretacion', interp + '. w = ' + w.toFixed(2) + '%');
+    window.__datosEnsayo.h = { recipiente: r, humeda: h, seca: s, agua: agua, suelo: sueloSeco, w: w };
+}
+
+function calcularGranulometria() {
+    window.__datosEnsayo = window.__datosEnsayo || {};
+    var total = parse('g-total');
+    setError('g-error', '');
+    if (!total || total <= 0) { setError('g-error', 'Ingresa la masa total'); return; }
+
+    var sieves = getTamicesSeleccionados();
+    if (!document.querySelector('.g-ret-input') && sieves.length) {
+        aplicarTamicesSeleccionados();
+        sieves = getTamicesSeleccionados();
+    }
+    if (!sieves.length) {
+        setError('g-error', 'Elige y aplica al menos un tamiz');
+        return;
+    }
+
+    var tabla = [];
+    var acumMasa = 0;
+    var acumPct = 0;
+    sieves.forEach(function(sv) {
+        var el = document.getElementById('g-ret-' + sv.id);
+        var m = el ? (parseFloat(String(el.value).replace(',', '.')) || 0) : 0;
+        acumMasa += m;
+        var pctRet = (m / total) * 100;
+        acumPct += pctRet;
+        tabla.push({
+            name: sv.name,
+            id: sv.id,
+            d: sv.d,
+            dLabel: sv.d >= 1 ? sv.d.toFixed(2) : sv.d.toFixed(3),
+            ret: m,
+            pctRet: pctRet,
+            pctAcum: acumPct,
+            pctPasa: Math.max(0, 100 - acumPct)
+        });
+    });
+
+    var pass200 = parse('g-p200');
+    if (pass200 == null || isNaN(pass200)) {
+        pass200 = Math.max(0, total - acumMasa);
+    }
+    var pctFondo = (pass200 / total) * 100;
+    acumPct += pctFondo;
+    tabla.push({
+        name: 'Fondo',
+        id: 'fondo',
+        d: 0.001,
+        dLabel: '< último',
+        ret: pass200,
+        pctRet: pctFondo,
+        pctAcum: Math.min(100, acumPct),
+        pctPasa: 0
+    });
+
+    var curva = tabla.filter(function(r) { return r.name !== 'Fondo'; }).map(function(r) {
+        return { d: r.d, name: r.name, pasa: r.pctPasa, ret: r.ret, pctRet: r.pctRet, pctAcum: r.pctAcum };
+    });
+
+    var ret4 = 0, pass4ret200 = 0;
+    tabla.forEach(function(r) {
+        if (r.name === 'Fondo') return;
+        if (r.d >= 4.75) ret4 += r.ret;
+        else if (r.d >= 0.075) pass4ret200 += r.ret;
+    });
+    var gPct = (ret4 / total) * 100;
+    var aPct = (pass4ret200 / total) * 100;
+    var fPct = (pass200 / total) * 100;
+    var tipo = fPct > 50 ? 'Suelo fino' : aPct >= gPct ? 'Suelo grueso (arena)' : 'Suelo grueso (grava)';
+
+    function diametroParaPasa(pct) {
+        var pts = curva.filter(function(p) {
+            return p && p.d > 0 && p.pasa != null && !isNaN(p.pasa);
+        }).slice().sort(function(a, b) { return b.d - a.d; });
+        if (!pts.length) return null;
+        if (pts.length === 1) {
+            return Math.abs(pts[0].pasa - pct) < 1e-6 ? pts[0].d : null;
+        }
+        function logInterp(d1, p1, d2, p2, pTarget) {
+            if (Math.abs(p1 - p2) < 1e-12) return d1;
+            var t = (pTarget - p1) / (p2 - p1);
+            var logD = Math.log10(d1) + t * (Math.log10(d2) - Math.log10(d1));
+            var d = Math.pow(10, logD);
+            if (!isFinite(d) || d <= 0) return null;
+            return d;
+        }
+        for (var k = 0; k < pts.length; k++) {
+            if (Math.abs(pts[k].pasa - pct) < 1e-6) return pts[k].d;
+        }
+        for (var i = 0; i < pts.length - 1; i++) {
+            var p1 = pts[i].pasa, p2 = pts[i + 1].pasa;
+            var d1 = pts[i].d, d2 = pts[i + 1].d;
+            var hi = Math.max(p1, p2), lo = Math.min(p1, p2);
+            if (pct <= hi && pct >= lo) return logInterp(d1, p1, d2, p2, pct);
+        }
+        var maxP = pts[0].pasa, minP = pts[pts.length - 1].pasa;
+        pts.forEach(function(p) {
+            if (p.pasa > maxP) maxP = p.pasa;
+            if (p.pasa < minP) minP = p.pasa;
+        });
+        if (pct > maxP) {
+            return logInterp(pts[0].d, pts[0].pasa, pts[1].d, pts[1].pasa, pct);
+        }
+        if (pct < minP) {
+            var n = pts.length;
+            var dExt = logInterp(pts[n - 2].d, pts[n - 2].pasa, pts[n - 1].d, pts[n - 1].pasa, pct);
+            if (dExt != null && dExt < 1e-5) dExt = 1e-5;
+            return dExt;
+        }
+        return null;
+    }
+
+    var D10 = diametroParaPasa(10);
+    var D30 = diametroParaPasa(30);
+    var D60 = diametroParaPasa(60);
+    var Cu = (D10 && D60 && D10 > 0) ? (D60 / D10) : null;
+    var Cc = (D10 && D30 && D60 && D10 > 0) ? ((D30 * D30) / (D10 * D60)) : null;
+
+    function fmtD(v) {
+        if (v == null || isNaN(v)) return '—';
+        if (v >= 1) return v.toFixed(2);
+        if (v >= 0.1) return v.toFixed(3);
+        return v.toFixed(4);
+    }
+    function setTxt(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = val;
+    }
+    setTxt('g-grava', gPct.toFixed(1));
+    setTxt('g-arena', aPct.toFixed(1));
+    setTxt('g-finos', fPct.toFixed(1));
+    setTxt('g-d10', fmtD(D10));
+    setTxt('g-d30', fmtD(D30));
+    setTxt('g-d60', fmtD(D60));
+    setTxt('g-cu', Cu != null ? Cu.toFixed(2) : '—');
+    setTxt('g-cc', Cc != null ? Cc.toFixed(2) : '—');
+    setTxt('g-tipo', tipo);
+    setError('g-error', '');
+
+    window.__datosEnsayo.g = {
+        curva: curva,
+        tabla: tabla,
+        total: total,
+        gPct: gPct, aPct: aPct, fPct: fPct,
+        D10: D10, D30: D30, D60: D60, Cu: Cu, Cc: Cc,
+        tipo: tipo,
+        tamicesIds: sieves.map(function(s) { return s.id; })
+    };
+}
+
 function calcularLimites() {
     var g1=parse('l-g1'), h1=parse('l-h1'), g2=parse('l-g2'), h2=parse('l-h2'), g3=parse('l-g3'), h3=parse('l-h3'), lp=parse('l-lp');
     setError('l-error', '');
