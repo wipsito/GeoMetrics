@@ -2971,7 +2971,7 @@ function crearFormularioGranulometria() {
                 <h4>Gráfica — Curva granulométrica</h4>
                 <button type="button" class="btn-grafica" onclick="graficaGranulometria()">GENERAR GRÁFICA</button>
             </div>
-            <canvas id="canvas-granulo" width="640" height="360"></canvas>
+            <canvas id="canvas-granulo" width="900" height="480"></canvas>
             <p class="grafica-hint" id="hint-granulo">Calcula primero y luego pulsa GENERAR GRÁFICA.</p>
         </div>`;
 }
@@ -3581,48 +3581,265 @@ function graficaGranulometria() {
         if (hint) hint.textContent = 'Primero pulsa CALCULAR.';
         return;
     }
-    var g = _prepCanvas('canvas-granulo', 'hint-granulo');
-    if (!g) return;
-    var ctx = g.ctx, w = g.w, h = g.h;
-    var pad = { l: 55, r: 20, t: 40, b: 50 };
-    _axes(ctx, pad, w, h, 'Curva granulométrica (% que pasa)');
-    var pts = d.curva.filter(function(p) { return p.d > 0; }).slice().sort(function(a,b){ return b.d - a.d; });
-    var minLog = Math.log10(0.001), maxLog = Math.log10(100);
+    var canvas = document.getElementById('canvas-granulo');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    var cssW = Math.max(canvas.clientWidth || 900, 720);
+    var cssH = 520;
+    canvas.width = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var w = cssW, h = cssH;
+
+    // Fondo claro estilo hoja de laboratorio
+    ctx.fillStyle = '#f7f5f0';
+    ctx.fillRect(0, 0, w, h);
+
+    var pad = { l: 62, r: 28, t: 78, b: 58 };
+    var plotW = w - pad.l - pad.r;
+    var plotH = h - pad.t - pad.b;
+
+    // Eje X log: diámetro grande a la izquierda → fino a la derecha (como carta ASTM)
+    var dMax = 100;   // mm
+    var dMin = 0.001; // mm
+    var minLog = Math.log10(dMin);
+    var maxLog = Math.log10(dMax);
     function xOf(diam) {
-        return pad.l + ((Math.log10(Math.max(diam, 0.001)) - minLog) / (maxLog - minLog)) * (w - pad.l - pad.r);
+        var dd = Math.max(Math.min(diam, dMax), dMin);
+        // izquierda = grueso, derecha = fino
+        return pad.l + ((maxLog - Math.log10(dd)) / (maxLog - minLog)) * plotW;
     }
     function yOf(pasa) {
-        return h - pad.b - (pasa / 100) * (h - pad.t - pad.b);
+        var p = Math.max(0, Math.min(100, pasa));
+        return pad.t + plotH - (p / 100) * plotH;
     }
-    // grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    [0.001, 0.01, 0.075, 0.425, 2, 4.75, 19, 50].forEach(function(dmm) {
-        var x = xOf(dmm);
-        ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, h - pad.b); ctx.stroke();
+
+    // —— Banda superior de clasificación (Arena / Limo / Arcilla) ——
+    var bandTop = 18;
+    var bandH = 44;
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(pad.l, bandTop, plotW, bandH);
+    ctx.strokeRect(pad.l, bandTop, plotW, bandH);
+
+    // Límites ITM aproximados (mm): Arena 2–0.075, Limo 0.075–0.002, Arcilla <0.002
+    // Subdivisiones arena: gruesa 2–0.425, media 0.425–0.075? Standard often:
+    // Grava >2, Arena 2-0.075, Silt 0.075-0.002, Clay <0.002
+    // Sub: Arena G 2-0.6, M 0.6-0.2, F 0.2-0.075; Limo G 0.075-0.02, M 0.02-0.006, F 0.006-0.002
+    var zones = [
+        { label: 'Arena', sub: [
+            { name: 'Gruesa', d0: 2.0, d1: 0.6 },
+            { name: 'Media', d0: 0.6, d1: 0.2 },
+            { name: 'Fina', d0: 0.2, d1: 0.075 }
+        ]},
+        { label: 'Limo', sub: [
+            { name: 'Grueso', d0: 0.075, d1: 0.02 },
+            { name: 'Medio', d0: 0.02, d1: 0.006 },
+            { name: 'Fino', d0: 0.006, d1: 0.002 }
+        ]},
+        { label: 'Arcilla', sub: [
+            { name: 'Gruesa', d0: 0.002, d1: 0.0006 },
+            { name: 'Media', d0: 0.0006, d1: 0.0002 },
+            { name: 'Fina', d0: 0.0002, d1: 0.0001 }
+        ]}
+    ];
+    // Solo dibujar bandas dentro del rango visible
+    function drawBandLabel(text, x0, x1, y, font) {
+        var mid = (x0 + x1) / 2;
+        if (x1 - x0 < 12) return;
+        ctx.fillStyle = '#111';
+        ctx.font = font || 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, mid, y);
+    }
+    zones.forEach(function(z) {
+        var xs = z.sub.map(function(s) { return [xOf(s.d0), xOf(s.d1)]; });
+        var xL = Math.min.apply(null, xs.map(function(p){ return p[0]; }));
+        var xR = Math.max.apply(null, xs.map(function(p){ return p[1]; }));
+        xL = Math.max(xL, pad.l);
+        xR = Math.min(xR, pad.l + plotW);
+        if (xR > xL) {
+            ctx.strokeStyle = '#333';
+            ctx.beginPath();
+            ctx.moveTo(xL, bandTop);
+            ctx.lineTo(xL, bandTop + bandH);
+            ctx.stroke();
+            drawBandLabel(z.label, xL, xR, bandTop + 12, 'bold 12px Arial');
+            z.sub.forEach(function(s) {
+                var a = xOf(s.d0), b = xOf(s.d1);
+                var lo = Math.min(a, b), hi = Math.max(a, b);
+                lo = Math.max(lo, pad.l);
+                hi = Math.min(hi, pad.l + plotW);
+                if (hi - lo > 8) {
+                    ctx.beginPath();
+                    ctx.moveTo(lo, bandTop + bandH * 0.45);
+                    ctx.lineTo(lo, bandTop + bandH);
+                    ctx.stroke();
+                    drawBandLabel(s.name, lo, hi, bandTop + 32, '9px Arial');
+                }
+            });
+        }
     });
-    ctx.strokeStyle = '#ffcc00';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    pts.forEach(function(p, i) {
-        var x = xOf(p.d), y = yOf(p.pasa);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-    ctx.fillStyle = '#ffcc00';
-    pts.forEach(function(p) {
+    // Etiqueta lateral
+    ctx.save();
+    ctx.translate(pad.l - 14, bandTop + bandH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = '#222';
+    ctx.font = '9px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Clasificación I.T.M.', 0, 0);
+    ctx.restore();
+
+    // —— Área de gráfica ——
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(pad.l, pad.t, plotW, plotH);
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(pad.l, pad.t, plotW, plotH);
+
+    // Rejilla horizontal cada 10 %
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (var p = 0; p <= 100; p += 10) {
+        var yy = yOf(p);
+        ctx.strokeStyle = p === 0 || p === 100 ? '#111' : '#c8c8c8';
+        ctx.lineWidth = p % 50 === 0 ? 1.1 : 0.6;
         ctx.beginPath();
-        ctx.arc(xOf(p.d), yOf(p.pasa), 4, 0, Math.PI * 2);
+        ctx.moveTo(pad.l, yy);
+        ctx.lineTo(pad.l + plotW, yy);
+        ctx.stroke();
+        ctx.fillStyle = '#222';
+        ctx.fillText(String(p), pad.l - 8, yy);
+    }
+
+    // Rejilla vertical logarítmica (décadas + subdivisiones)
+    var decades = [100, 10, 1, 0.1, 0.01, 0.001];
+    decades.forEach(function(dec) {
+        for (var m = 1; m <= 9; m++) {
+            var diam = dec * m;
+            if (diam > dMax || diam < dMin) continue;
+            var xx = xOf(diam);
+            if (xx < pad.l - 1 || xx > pad.l + plotW + 1) continue;
+            ctx.strokeStyle = m === 1 ? '#555' : '#d0d0d0';
+            ctx.lineWidth = m === 1 ? 0.9 : 0.5;
+            ctx.beginPath();
+            ctx.moveTo(xx, pad.t);
+            ctx.lineTo(xx, pad.t + plotH);
+            ctx.stroke();
+        }
+    });
+
+    // Separadores granulométricos principales (flechas tipo carta)
+    var marks = [2, 0.075, 0.002];
+    marks.forEach(function(dm) {
+        var xx = xOf(dm);
+        if (xx < pad.l || xx > pad.l + plotW) return;
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(xx, pad.t);
+        ctx.lineTo(xx, pad.t + plotH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // flecha arriba
+        ctx.beginPath();
+        ctx.moveTo(xx, bandTop + bandH);
+        ctx.lineTo(xx - 4, bandTop + bandH - 8);
+        ctx.lineTo(xx + 4, bandTop + bandH - 8);
+        ctx.closePath();
+        ctx.fillStyle = '#222';
         ctx.fill();
     });
-    ctx.fillStyle = '#b9c8c0';
-    ctx.font = '11px Arial';
+
+    // Etiquetas eje X
+    var xLabels = [
+        { d: 10, t: '10' }, { d: 1, t: '1.0' }, { d: 0.1, t: '0.1' },
+        { d: 0.01, t: '0.01' }, { d: 0.001, t: '0.001' }
+    ];
+    ctx.fillStyle = '#222';
+    ctx.font = '10px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Diámetro (mm) — escala log', w / 2, h - 12);
+    ctx.textBaseline = 'top';
+    xLabels.forEach(function(lb) {
+        ctx.fillText(lb.t, xOf(lb.d), pad.t + plotH + 6);
+    });
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText('Diámetro (mm)', pad.l + plotW / 2, h - 18);
+
+    // Etiqueta eje Y
     ctx.save();
-    ctx.translate(16, h / 2);
+    ctx.translate(16, pad.t + plotH / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillText('% que pasa', 0, 0);
+    ctx.fillStyle = '#222';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Porcentaje de tamaño inferior, en peso', 0, 0);
     ctx.restore();
+
+    // Puntos de la curva (tamices)
+    var pts = d.curva.filter(function(p) { return p.d > 0 && p.pasa != null; })
+        .slice().sort(function(a, b) { return b.d - a.d; });
+
+    // Curva suave
+    if (pts.length) {
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        pts.forEach(function(p, i) {
+            var x = xOf(p.d), y = yOf(p.pasa);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // Círculos abiertos (estilo tamices)
+        pts.forEach(function(p) {
+            var x = xOf(p.d), y = yOf(p.pasa);
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+        });
+    }
+
+    // Leyenda
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.fillRect(pad.l + 12, pad.t + plotH - 58, 168, 46);
+    ctx.strokeRect(pad.l + 12, pad.t + plotH - 58, 168, 46);
+    ctx.beginPath();
+    ctx.arc(pad.l + 28, pad.t + plotH - 40, 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+    ctx.strokeStyle = '#111';
+    ctx.stroke();
+    ctx.fillStyle = '#111';
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Por mallas o tamices', pad.l + 40, pad.t + plotH - 40);
+    ctx.beginPath();
+    ctx.moveTo(pad.l + 22, pad.t + plotH - 22);
+    ctx.lineTo(pad.l + 34, pad.t + plotH - 22);
+    ctx.stroke();
+    ctx.fillText('Curva granulométrica', pad.l + 40, pad.t + plotH - 22);
+
+    try {
+        window.__graficaGenerada = window.__graficaGenerada || {};
+        window.__graficaGenerada['canvas-granulo'] = true;
+        window.__graficaGenerada['granulometria'] = true;
+    } catch (eG) {}
+    var hint = document.getElementById('hint-granulo');
+    if (hint) hint.textContent = 'Curva granulométrica generada (escala logarítmica).';
 }
 
 function graficaLimites() {
