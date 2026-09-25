@@ -3327,42 +3327,96 @@ function calcularGranulometria() {
     var total = parse('g-total');
     setError('g-error', '');
     if (!total || total <= 0) { setError('g-error', 'Ingresa la masa total'); return; }
-    // Aberturas aproximadas (mm)
+    // Aberturas estándar (mm) — nombres de laboratorio
     var sieves = [
         { id: 'g-2', d: 50.8, name: '2"' },
         { id: 'g-34', d: 19.1, name: '3/4"' },
-        { id: 'g-4', d: 4.75, name: '#4' },
-        { id: 'g-10', d: 2.0, name: '#10' },
-        { id: 'g-20', d: 0.85, name: '#20' },
-        { id: 'g-40', d: 0.425, name: '#40' },
-        { id: 'g-60', d: 0.25, name: '#60' },
-        { id: 'g-100', d: 0.15, name: '#100' },
-        { id: 'g-200', d: 0.075, name: '#200' }
+        { id: 'g-4', d: 4.75, name: 'N.º 4' },
+        { id: 'g-10', d: 2.00, name: 'N.º 10' },
+        { id: 'g-20', d: 0.850, name: 'N.º 20' },
+        { id: 'g-40', d: 0.425, name: 'N.º 40' },
+        { id: 'g-60', d: 0.250, name: 'N.º 60' },
+        { id: 'g-100', d: 0.150, name: 'N.º 100' },
+        { id: 'g-200', d: 0.075, name: 'N.º 200' }
     ];
-    var retained = [];
-    var acum = 0;
+    var tabla = [];
+    var acumMasa = 0;
+    var acumPct = 0;
     sieves.forEach(function(sv) {
         var m = parse(sv.id) || 0;
-        acum += m;
-        retained.push({ d: sv.d, name: sv.name, ret: m, acumRet: acum });
+        acumMasa += m;
+        var pctRet = (m / total) * 100;
+        acumPct += pctRet;
+        tabla.push({
+            name: sv.name,
+            d: sv.d,
+            dLabel: sv.d.toFixed(sv.d >= 1 ? 2 : 3),
+            ret: m,
+            pctRet: pctRet,
+            pctAcum: acumPct,
+            pctPasa: Math.max(0, 100 - acumPct)
+        });
     });
-    var pass200 = parse('g-p200') || 0;
+    var pass200 = parse('g-p200');
+    if (pass200 == null || isNaN(pass200)) {
+        pass200 = Math.max(0, total - acumMasa);
+    }
+    var pctFondo = (pass200 / total) * 100;
+    acumPct += pctFondo;
+    acumMasa += pass200;
+    tabla.push({
+        name: 'Fondo',
+        d: 0.001,
+        dLabel: '< 0.075',
+        ret: pass200,
+        pctRet: pctFondo,
+        pctAcum: Math.min(100, acumPct),
+        pctPasa: 0
+    });
+    // Curva: solo puntos de tamiz con abertura numérica (sin fondo forzado a 0 si no hay finos)
+    var curva = tabla.filter(function(r) { return r.name !== 'Fondo'; }).map(function(r) {
+        return { d: r.d, name: r.name, pasa: r.pctPasa, ret: r.ret, pctRet: r.pctRet, pctAcum: r.pctAcum };
+    });
+    // punto final en finos
+    curva.push({ d: 0.001, name: 'Fondo', pasa: 0, ret: pass200, pctRet: pctFondo, pctAcum: Math.min(100, acumPct) });
+
     var grava = (parse('g-2')||0) + (parse('g-34')||0) + (parse('g-4')||0);
     var arena = (parse('g-10')||0) + (parse('g-20')||0) + (parse('g-40')||0) + (parse('g-60')||0) + (parse('g-100')||0) + (parse('g-200')||0);
     var finos = pass200;
     var gPct = (grava/total)*100, aPct = (arena/total)*100, fPct = (finos/total)*100;
     var tipo = fPct > 50 ? 'Suelo fino' : aPct > gPct ? 'Suelo grueso (arena)' : 'Suelo grueso (grava)';
-    // % que pasa
-    var curva = retained.map(function(sv) {
-        return { d: sv.d, name: sv.name, pasa: Math.max(0, 100 - (sv.acumRet / total) * 100) };
-    });
-    curva.push({ d: 0.001, name: 'finos', pasa: 0 });
+
+    // D10, D30, D60 por interpolación log en la curva
+    function diametroParaPasa(pct) {
+        var pts = curva.slice().sort(function(a,b){ return b.d - a.d; });
+        for (var i = 0; i < pts.length - 1; i++) {
+            var p1 = pts[i].pasa, p2 = pts[i+1].pasa;
+            if ((p1 >= pct && p2 <= pct) || (p1 <= pct && p2 >= pct)) {
+                if (Math.abs(p1 - p2) < 1e-9) return pts[i].d;
+                var t = (pct - p1) / (p2 - p1);
+                var logD = Math.log10(pts[i].d) + t * (Math.log10(pts[i+1].d) - Math.log10(pts[i].d));
+                return Math.pow(10, logD);
+            }
+        }
+        return null;
+    }
+    var D10 = diametroParaPasa(10), D30 = diametroParaPasa(30), D60 = diametroParaPasa(60);
+    var Cu = (D10 && D60) ? (D60 / D10) : null;
+    var Cc = (D10 && D30 && D60) ? ((D30 * D30) / (D10 * D60)) : null;
+
     document.getElementById('g-grava').textContent = gPct.toFixed(1);
     document.getElementById('g-arena').textContent = aPct.toFixed(1);
     document.getElementById('g-finos').textContent = fPct.toFixed(1);
-    document.getElementById('g-cu').textContent = '—';
+    document.getElementById('g-cu').textContent = Cu != null ? Cu.toFixed(2) : '—';
     document.getElementById('g-tipo').textContent = tipo;
-    window.__datosEnsayo.g = { curva: curva, gPct: gPct, aPct: aPct, fPct: fPct, total: total };
+    window.__datosEnsayo.g = {
+        curva: curva,
+        tabla: tabla,
+        total: total,
+        gPct: gPct, aPct: aPct, fPct: fPct,
+        D10: D10, D30: D30, D60: D60, Cu: Cu, Cc: Cc,
+        tipo: tipo
+    };
 }
 
 function calcularLimites() {
@@ -3785,27 +3839,63 @@ function graficaGranulometria() {
     var pts = d.curva.filter(function(p) { return p.d > 0 && p.pasa != null; })
         .slice().sort(function(a, b) { return b.d - a.d; });
 
-    // Curva suave
+    // Interpolación suave en espacio log(d) — Catmull-Rom densa
+    function curvaSuaveXY(points) {
+        if (points.length < 2) return points.map(function(p){ return { x: xOf(p.d), y: yOf(p.pasa) }; });
+        var logPts = points.map(function(p) {
+            return { lx: Math.log10(Math.max(p.d, 1e-4)), py: p.pasa };
+        });
+        var out = [];
+        var segs = 28;
+        for (var i = 0; i < logPts.length - 1; i++) {
+            var p0 = logPts[Math.max(0, i - 1)];
+            var p1 = logPts[i];
+            var p2 = logPts[i + 1];
+            var p3 = logPts[Math.min(logPts.length - 1, i + 2)];
+            for (var s = 0; s < segs; s++) {
+                var t = s / segs;
+                var t2 = t * t, t3 = t2 * t;
+                // Catmull-Rom
+                var lx = 0.5 * ((2 * p1.lx) + (-p0.lx + p2.lx) * t +
+                    (2 * p0.lx - 5 * p1.lx + 4 * p2.lx - p3.lx) * t2 +
+                    (-p0.lx + 3 * p1.lx - 3 * p2.lx + p3.lx) * t3);
+                var py = 0.5 * ((2 * p1.py) + (-p0.py + p2.py) * t +
+                    (2 * p0.py - 5 * p1.py + 4 * p2.py - p3.py) * t2 +
+                    (-p0.py + 3 * p1.py - 3 * p2.py + p3.py) * t3);
+                py = Math.max(0, Math.min(100, py));
+                var diam = Math.pow(10, lx);
+                out.push({ x: xOf(diam), y: yOf(py) });
+            }
+        }
+        // último punto exacto
+        var last = points[points.length - 1];
+        out.push({ x: xOf(last.d), y: yOf(last.pasa) });
+        return out;
+    }
+
     if (pts.length) {
+        var smooth = curvaSuaveXY(pts);
         ctx.strokeStyle = '#111';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        pts.forEach(function(p, i) {
-            var x = xOf(p.d), y = yOf(p.pasa);
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+        smooth.forEach(function(pt, i) {
+            if (i === 0) ctx.moveTo(pt.x, pt.y);
+            else ctx.lineTo(pt.x, pt.y);
         });
         ctx.stroke();
 
-        // Círculos abiertos (estilo tamices)
+        // Círculos abiertos solo en datos medidos (tamices)
         pts.forEach(function(p) {
+            if (p.name === 'Fondo' || p.name === 'finos') return;
             var x = xOf(p.d), y = yOf(p.pasa);
             ctx.beginPath();
-            ctx.arc(x, y, 5, 0, Math.PI * 2);
+            ctx.arc(x, y, 5.5, 0, Math.PI * 2);
             ctx.fillStyle = '#fff';
             ctx.fill();
             ctx.strokeStyle = '#111';
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = 1.6;
             ctx.stroke();
         });
     }
@@ -5841,7 +5931,45 @@ function aulaDatosInformeEnsayo(materiaPreferida) {
 /** Datos de entrada / tablas según tipo de ensayo */
 function construirDatosYCalculosInforme(tipo, api) {
     var addP = api.addParagraph, addH = api.addHeading, addT = api.addTablaColor;
+    if (tipo === 'granulometria') {
+        var dg = (window.__datosEnsayo && window.__datosEnsayo.g) || {};
+        var tabla = dg.tabla || [];
+        addP('Los datos del tamizado se resumen en la siguiente tabla. Las masas están en gramos y los porcentajes se calculan respecto a la masa total de la muestra.');
+        if (tabla.length) {
+            var headers = ['Tamiz', 'Abertura (mm)', 'Masa retenida (g)', '% retenido', '% ret. acum.', '% que pasa'];
+            var rows = tabla.map(function(r) {
+                return [
+                    r.name,
+                    r.dLabel != null ? r.dLabel : (typeof r.d === 'number' ? r.d.toFixed(3) : r.d),
+                    Number(r.ret).toFixed(1),
+                    Number(r.pctRet).toFixed(1),
+                    Number(r.pctAcum).toFixed(1),
+                    Number(r.pctPasa).toFixed(1)
+                ];
+            });
+            rows.push([
+                'Total',
+                '—',
+                Number(dg.total || 0).toFixed(1),
+                '100.0',
+                '100.0',
+                '—'
+            ]);
+            addT(headers, rows);
+        } else {
+            addP('Complete el ensayo de granulometría (CALCULAR) para poblar la tabla de tamices.');
+        }
+        if (dg.D10 != null || dg.Cu != null) {
+            addP('Parámetros de la curva: D₁₀ = ' + (dg.D10 != null ? Number(dg.D10).toFixed(4) + ' mm' : '—') +
+                '; D₃₀ = ' + (dg.D30 != null ? Number(dg.D30).toFixed(4) + ' mm' : '—') +
+                '; D₆₀ = ' + (dg.D60 != null ? Number(dg.D60).toFixed(4) + ' mm' : '—') +
+                '; Cu = ' + (dg.Cu != null ? Number(dg.Cu).toFixed(2) : '—') +
+                '; Cc = ' + (dg.Cc != null ? Number(dg.Cc).toFixed(2) : '—') + '.');
+        }
+        return tabla.length > 0;
+    }
     if (tipo === 'humedad') {
+
         var dh = (window.__datosEnsayo && (window.__datosEnsayo.h || window.__datosEnsayo.humedad)) || {};
         addP('Se registran las masas del ensayo de contenido de humedad (unidades: g).');
         var filas = [];
@@ -5890,6 +6018,57 @@ function construirDatosYCalculosInforme(tipo, api) {
 
 function construirCalculosNumericosInforme(tipo, api) {
     var addP = api.addParagraph;
+    if (tipo === 'granulometria') {
+        var dg = (window.__datosEnsayo && window.__datosEnsayo.g) || {};
+        var tabla = dg.tabla || [];
+        var total = dg.total || 0;
+        if (!tabla.length || !total) {
+            addP('No hay datos suficientes para desarrollar el ejemplo de cálculo.');
+            return;
+        }
+        // Elegir un tamiz intermedio con masa > 0 (p. ej. N.º 40)
+        var ej = null;
+        for (var i = 0; i < tabla.length; i++) {
+            if (tabla[i].name && /40|N\.º 40|#40/i.test(tabla[i].name) && tabla[i].ret > 0) {
+                ej = tabla[i];
+                break;
+            }
+        }
+        if (!ej) {
+            for (var j = 0; j < tabla.length; j++) {
+                if (tabla[j].name !== 'Fondo' && tabla[j].ret > 0) { ej = tabla[j]; break; }
+            }
+        }
+        if (!ej) { addP('No hay masas retenidas para el ejemplo de cálculo.'); return; }
+
+        addP('Ejemplo de cálculo (tamiz ' + ej.name + '):');
+        addP('% retenido = (masa retenida / masa total) × 100');
+        addP('% retenido = (' + Number(ej.ret).toFixed(1) + ' g / ' + Number(total).toFixed(1) + ' g) × 100 = ' + Number(ej.pctRet).toFixed(1) + ' %');
+
+        // acumular nombres previos
+        var prev = [];
+        var suma = 0;
+        for (var k = 0; k < tabla.length; k++) {
+            if (tabla[k].name === 'Fondo') break;
+            suma += tabla[k].pctRet;
+            prev.push(Number(tabla[k].pctRet).toFixed(1));
+            if (tabla[k].name === ej.name) break;
+        }
+        addP('% retenido acumulado = suma de los % retenidos hasta este tamiz');
+        if (prev.length > 1) {
+            addP('% retenido acumulado = ' + prev.join(' + ') + ' = ' + Number(ej.pctAcum).toFixed(1) + ' %');
+        } else {
+            addP('% retenido acumulado = ' + Number(ej.pctAcum).toFixed(1) + ' %');
+        }
+        addP('% que pasa = 100 − % retenido acumulado');
+        addP('% que pasa = 100 − ' + Number(ej.pctAcum).toFixed(1) + ' = ' + Number(ej.pctPasa).toFixed(1) + ' %');
+        addP('El mismo procedimiento se aplica a cada fila de la tabla de resultados.');
+        if (dg.Cu != null) {
+            addP('Coeficiente de uniformidad: Cu = D₆₀ / D₁₀ = ' + Number(dg.Cu).toFixed(2) +
+                (dg.Cc != null ? ('; Coeficiente de curvatura: Cc = (D₃₀)² / (D₁₀·D₆₀) = ' + Number(dg.Cc).toFixed(2)) : '') + '.');
+        }
+        return;
+    }
     if (tipo === 'humedad') {
         var dh = (window.__datosEnsayo && (window.__datosEnsayo.h || window.__datosEnsayo.humedad)) || {};
         if (dh.agua != null && dh.suelo != null) {
