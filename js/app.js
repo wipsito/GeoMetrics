@@ -3667,7 +3667,7 @@ function graficaGranulometria() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     var w = cssW, h = cssH;
 
-    // Fondo claro estilo hoja de laboratorio
+    // Papel logarítmico clásico (fondo claro)
     ctx.fillStyle = '#f7f5f0';
     ctx.fillRect(0, 0, w, h);
 
@@ -3675,25 +3675,14 @@ function graficaGranulometria() {
     var plotW = w - pad.l - pad.r;
     var plotH = h - pad.t - pad.b;
 
-    // Solo datos de tamices (NO fondo). El ÚLTIMO punto graficado es siempre el N.º 200 (0.075 mm).
-    var ptsRaw = (d.curva || []).filter(function(p) {
-        return p.d > 0 && p.pasa != null && p.name !== 'Fondo' && p.name !== 'finos';
-    }).slice().sort(function(a, b) { return b.d - a.d; });
-    // Asegurar punto #200 si existe en tabla
-    var has200 = ptsRaw.some(function(p) { return Math.abs(p.d - 0.075) < 1e-6; });
-    // Rango del eje: del mayor diámetro de los datos hasta el tamiz #200 (último valor graficado)
-    var dMax = 100;
-    var dMin = 0.075; // extremo derecho = abertura del #200
-    if (ptsRaw.length) {
-        dMax = Math.max(ptsRaw[0].d * 1.25, 2);
-        // margen pequeño a la derecha del #200 para que el punto no quede pegado al borde
-        dMin = 0.075 / 1.15;
-    }
+    // Eje X: papel log completo como la carta de referencia (10 → 0.0001 mm)
+    // Los DATOS solo se grafican hasta el tamiz #200 (0.075 mm).
+    var dMax = 10;
+    var dMin = 0.0001;
     var minLog = Math.log10(dMin);
     var maxLog = Math.log10(dMax);
     function xOf(diam) {
         var dd = Math.max(Math.min(diam, dMax), dMin);
-        // izquierda = grueso, derecha = fino
         return pad.l + ((maxLog - Math.log10(dd)) / (maxLog - minLog)) * plotW;
     }
     function yOf(pasa) {
@@ -3701,19 +3690,15 @@ function graficaGranulometria() {
         return pad.t + plotH - (p / 100) * plotH;
     }
 
-    // —— Banda superior de clasificación (Arena / Limo / Arcilla) ——
+    // —— Banda superior Clasificación I.T.M. ——
     var bandTop = 18;
     var bandH = 44;
+    ctx.fillStyle = '#fff';
     ctx.strokeStyle = '#222';
     ctx.lineWidth = 1;
-    ctx.fillStyle = '#fff';
     ctx.fillRect(pad.l, bandTop, plotW, bandH);
     ctx.strokeRect(pad.l, bandTop, plotW, bandH);
 
-    // Límites ITM aproximados (mm): Arena 2–0.075, Limo 0.075–0.002, Arcilla <0.002
-    // Subdivisiones arena: gruesa 2–0.425, media 0.425–0.075? Standard often:
-    // Grava >2, Arena 2-0.075, Silt 0.075-0.002, Clay <0.002
-    // Sub: Arena G 2-0.6, M 0.6-0.2, F 0.2-0.075; Limo G 0.075-0.02, M 0.02-0.006, F 0.006-0.002
     var zones = [
         { label: 'Arena', sub: [
             { name: 'Gruesa', d0: 2.0, d1: 0.6 },
@@ -3731,10 +3716,9 @@ function graficaGranulometria() {
             { name: 'Fina', d0: 0.0002, d1: 0.0001 }
         ]}
     ];
-    // Solo dibujar bandas dentro del rango visible
     function drawBandLabel(text, x0, x1, y, font) {
         var mid = (x0 + x1) / 2;
-        if (x1 - x0 < 12) return;
+        if (x1 - x0 < 10) return;
         ctx.fillStyle = '#111';
         ctx.font = font || 'bold 11px Arial';
         ctx.textAlign = 'center';
@@ -3756,9 +3740,8 @@ function graficaGranulometria() {
             drawBandLabel(z.label, xL, xR, bandTop + 12, 'bold 12px Arial');
             z.sub.forEach(function(s) {
                 var a = xOf(s.d0), b = xOf(s.d1);
-                var lo = Math.min(a, b), hi = Math.max(a, b);
-                lo = Math.max(lo, pad.l);
-                hi = Math.min(hi, pad.l + plotW);
+                var lo = Math.max(Math.min(a, b), pad.l);
+                var hi = Math.min(Math.max(a, b), pad.l + plotW);
                 if (hi - lo > 8) {
                     ctx.beginPath();
                     ctx.moveTo(lo, bandTop + bandH * 0.45);
@@ -3769,7 +3752,6 @@ function graficaGranulometria() {
             });
         }
     });
-    // Etiqueta lateral
     ctx.save();
     ctx.translate(pad.l - 14, bandTop + bandH / 2);
     ctx.rotate(-Math.PI / 2);
@@ -3786,14 +3768,14 @@ function graficaGranulometria() {
     ctx.lineWidth = 1.4;
     ctx.strokeRect(pad.l, pad.t, plotW, plotH);
 
-    // Rejilla horizontal cada 10 %
+    // Rejilla horizontal 0–100
     ctx.font = '10px Arial';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     for (var p = 0; p <= 100; p += 10) {
         var yy = yOf(p);
-        ctx.strokeStyle = p === 0 || p === 100 ? '#111' : '#c8c8c8';
-        ctx.lineWidth = p % 50 === 0 ? 1.1 : 0.6;
+        ctx.strokeStyle = (p === 0 || p === 100) ? '#111' : '#c8c8c8';
+        ctx.lineWidth = (p % 50 === 0) ? 1.1 : 0.55;
         ctx.beginPath();
         ctx.moveTo(pad.l, yy);
         ctx.lineTo(pad.l + plotW, yy);
@@ -3802,16 +3784,16 @@ function graficaGranulometria() {
         ctx.fillText(String(p), pad.l - 8, yy);
     }
 
-    // Rejilla vertical logarítmica (décadas + subdivisiones)
-    var decades = [100, 10, 1, 0.1];
+    // Rejilla vertical logarítmica (papel log)
+    var decades = [10, 1, 0.1, 0.01, 0.001, 0.0001];
     decades.forEach(function(dec) {
         for (var m = 1; m <= 9; m++) {
             var diam = dec * m;
             if (diam > dMax || diam < dMin) continue;
             var xx = xOf(diam);
             if (xx < pad.l - 1 || xx > pad.l + plotW + 1) continue;
-            ctx.strokeStyle = m === 1 ? '#555' : '#d0d0d0';
-            ctx.lineWidth = m === 1 ? 0.9 : 0.5;
+            ctx.strokeStyle = m === 1 ? '#666' : '#d4d4d4';
+            ctx.lineWidth = m === 1 ? 0.85 : 0.45;
             ctx.beginPath();
             ctx.moveTo(xx, pad.t);
             ctx.lineTo(xx, pad.t + plotH);
@@ -3819,9 +3801,8 @@ function graficaGranulometria() {
         }
     });
 
-    // Separadores granulométricos principales (flechas tipo carta)
-    var marks = [2, 0.075];
-    marks.forEach(function(dm) {
+    // Separadores Arena/Limo/Arcilla
+    [2, 0.075, 0.002].forEach(function(dm) {
         var xx = xOf(dm);
         if (xx < pad.l || xx > pad.l + plotW) return;
         ctx.strokeStyle = '#333';
@@ -3832,7 +3813,6 @@ function graficaGranulometria() {
         ctx.lineTo(xx, pad.t + plotH);
         ctx.stroke();
         ctx.setLineDash([]);
-        // flecha arriba
         ctx.beginPath();
         ctx.moveTo(xx, bandTop + bandH);
         ctx.lineTo(xx - 4, bandTop + bandH - 8);
@@ -3842,11 +3822,10 @@ function graficaGranulometria() {
         ctx.fill();
     });
 
-    // Etiquetas eje X
+    // Etiquetas eje X (como la carta)
     var xLabels = [
-        { d: 50, t: '50' }, { d: 10, t: '10' }, { d: 4.75, t: '#4' },
-        { d: 2, t: '#10' }, { d: 0.425, t: '#40' }, { d: 0.15, t: '#100' },
-        { d: 0.075, t: '#200' }
+        { d: 10, t: '10' }, { d: 1, t: '1.0' }, { d: 0.1, t: '0.1' },
+        { d: 0.01, t: '0.01' }, { d: 0.001, t: '0.001' }, { d: 0.0001, t: '0.0001' }
     ];
     ctx.fillStyle = '#222';
     ctx.font = '10px Arial';
@@ -3858,7 +3837,6 @@ function graficaGranulometria() {
     ctx.font = 'bold 12px Arial';
     ctx.fillText('Diámetro (mm)', pad.l + plotW / 2, h - 18);
 
-    // Etiqueta eje Y
     ctx.save();
     ctx.translate(16, pad.t + plotH / 2);
     ctx.rotate(-Math.PI / 2);
@@ -3868,19 +3846,20 @@ function graficaGranulometria() {
     ctx.fillText('Porcentaje de tamaño inferior, en peso', 0, 0);
     ctx.restore();
 
-    // Curva: solo tamices; el punto más fino es el #200 (0.075 mm). No se grafica el fondo.
-    var pts = ptsRaw.filter(function(p) { return p.d >= 0.075 - 1e-9; })
-        .sort(function(a, b) { return b.d - a.d; });
-    if (!pts.length) pts = ptsRaw.slice();
+    // —— DATOS: solo tamices; ÚLTIMO punto = #200 (0.075 mm). No hidrómetro/fondo ——
+    var pts = (d.curva || []).filter(function(p) {
+        return p.d > 0 && p.pasa != null && p.name !== 'Fondo' && p.name !== 'finos' && p.d >= 0.075 - 1e-9;
+    }).slice().sort(function(a, b) { return b.d - a.d; });
 
-    // Interpolación muy suave en log(d) — Catmull-Rom densa + suavizado extra
     function curvaSuaveXY(points) {
-        if (points.length < 2) return points.map(function(p){ return { x: xOf(p.d), y: yOf(p.pasa) }; });
+        if (points.length < 2) {
+            return points.map(function(p) { return { x: xOf(p.d), y: yOf(p.pasa) }; });
+        }
         var logPts = points.map(function(p) {
             return { lx: Math.log10(Math.max(p.d, 0.075)), py: p.pasa };
         });
         var out = [];
-        var segs = 48;
+        var segs = 56;
         for (var i = 0; i < logPts.length - 1; i++) {
             var p0 = logPts[Math.max(0, i - 1)];
             var p1 = logPts[i];
@@ -3889,7 +3868,6 @@ function graficaGranulometria() {
             for (var s = 0; s < segs; s++) {
                 var t = s / segs;
                 var t2 = t * t, t3 = t2 * t;
-                // Catmull-Rom
                 var lx = 0.5 * ((2 * p1.lx) + (-p0.lx + p2.lx) * t +
                     (2 * p0.lx - 5 * p1.lx + 4 * p2.lx - p3.lx) * t2 +
                     (-p0.lx + 3 * p1.lx - 3 * p2.lx + p3.lx) * t3);
@@ -3897,27 +3875,24 @@ function graficaGranulometria() {
                     (2 * p0.py - 5 * p1.py + 4 * p2.py - p3.py) * t2 +
                     (-p0.py + 3 * p1.py - 3 * p2.py + p3.py) * t3);
                 py = Math.max(0, Math.min(100, py));
-                var diam = Math.pow(10, lx);
-                out.push({ x: xOf(diam), y: yOf(py) });
+                out.push({ x: xOf(Math.pow(10, lx)), y: yOf(py) });
             }
         }
-        // último punto exacto
         var last = points[points.length - 1];
         out.push({ x: xOf(last.d), y: yOf(last.pasa) });
-        // Pase de suavizado (media móvil) para eliminar dientes
+        // suavizado adicional
         if (out.length > 6) {
             var sm = out.slice();
-            for (var pass = 0; pass < 3; pass++) {
+            for (var pass = 0; pass < 4; pass++) {
                 var tmp = sm.slice();
-                for (var i = 2; i < sm.length - 2; i++) {
-                    tmp[i] = {
-                        x: (sm[i-2].x + sm[i-1].x + sm[i].x + sm[i+1].x + sm[i+2].x) / 5,
-                        y: (sm[i-2].y + sm[i-1].y + sm[i].y + sm[i+1].y + sm[i+2].y) / 5
+                for (var i2 = 2; i2 < sm.length - 2; i2++) {
+                    tmp[i2] = {
+                        x: (sm[i2-2].x + sm[i2-1].x + sm[i2].x + sm[i2+1].x + sm[i2+2].x) / 5,
+                        y: (sm[i2-2].y + sm[i2-1].y + sm[i2].y + sm[i2+1].y + sm[i2+2].y) / 5
                     };
                 }
                 sm = tmp;
             }
-            // Anclar extremos a datos reales
             sm[0] = out[0];
             sm[sm.length - 1] = out[out.length - 1];
             return sm;
@@ -3938,29 +3913,28 @@ function graficaGranulometria() {
         });
         ctx.stroke();
 
-        // Círculos abiertos en cada tamiz; el más a la derecha es el #200
+        // Círculos abiertos = mallas/tamices (último = #200)
         pts.forEach(function(p, idx) {
-            if (p.name === 'Fondo' || p.name === 'finos') return;
             var x = xOf(p.d), y = yOf(p.pasa);
-            var es200 = Math.abs(p.d - 0.075) < 1e-6 || idx === pts.length - 1;
+            var esUltimo = idx === pts.length - 1;
             ctx.beginPath();
-            ctx.arc(x, y, es200 ? 6.5 : 5.5, 0, Math.PI * 2);
+            ctx.arc(x, y, esUltimo ? 6.5 : 5.5, 0, Math.PI * 2);
             ctx.fillStyle = '#fff';
             ctx.fill();
             ctx.strokeStyle = '#111';
-            ctx.lineWidth = es200 ? 2 : 1.6;
+            ctx.lineWidth = esUltimo ? 2 : 1.6;
             ctx.stroke();
         });
     }
 
     // Leyenda
-    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 1;
-    ctx.fillRect(pad.l + 12, pad.t + plotH - 58, 168, 46);
-    ctx.strokeRect(pad.l + 12, pad.t + plotH - 58, 168, 46);
+    ctx.fillRect(pad.l + 12, pad.t + plotH - 52, 175, 40);
+    ctx.strokeRect(pad.l + 12, pad.t + plotH - 52, 175, 40);
     ctx.beginPath();
-    ctx.arc(pad.l + 28, pad.t + plotH - 40, 5, 0, Math.PI * 2);
+    ctx.arc(pad.l + 28, pad.t + plotH - 32, 5, 0, Math.PI * 2);
     ctx.fillStyle = '#fff';
     ctx.fill();
     ctx.strokeStyle = '#111';
@@ -3969,20 +3943,18 @@ function graficaGranulometria() {
     ctx.font = '11px Arial';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Por mallas o tamices', pad.l + 40, pad.t + plotH - 40);
-    ctx.beginPath();
-    ctx.moveTo(pad.l + 22, pad.t + plotH - 22);
-    ctx.lineTo(pad.l + 34, pad.t + plotH - 22);
-    ctx.stroke();
-    ctx.fillText('Curva granulométrica', pad.l + 40, pad.t + plotH - 22);
+    ctx.fillText('Por mallas o tamices', pad.l + 40, pad.t + plotH - 32);
+    ctx.font = '10px Arial';
+    ctx.fillStyle = '#444';
+    ctx.fillText('Último punto: tamiz N.º 200', pad.l + 40, pad.t + plotH - 18);
 
     try {
         window.__graficaGenerada = window.__graficaGenerada || {};
         window.__graficaGenerada['canvas-granulo'] = true;
         window.__graficaGenerada['granulometria'] = true;
     } catch (eG) {}
-    var hint = document.getElementById('hint-granulo');
-    if (hint) hint.textContent = 'Curva granulométrica generada (escala logarítmica).';
+    var hintEl = document.getElementById('hint-granulo');
+    if (hintEl) hintEl.textContent = 'Papel logarítmico · curva hasta tamiz N.º 200 (0.075 mm).';
 }
 
 function graficaLimites() {
