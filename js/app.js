@@ -3194,30 +3194,13 @@ function calcularGranulometria() {
         pctPasa: 0
     });
 
+    // Curva de tamices (para gráfica): sin fondo
     var curva = tabla.filter(function(r) { return r.name !== 'Fondo'; }).map(function(r) {
         return { d: r.d, name: r.name, pasa: r.pctPasa, ret: r.ret, pctRet: r.pctRet, pctAcum: r.pctAcum };
     });
-    // último punto de curva = tamiz más fino seleccionado (idealmente #200)
-    // no añadir fondo a la curva
 
-    var grava = 0, arena = 0, finos = pass200;
-    tabla.forEach(function(r) {
-        if (r.name === 'Fondo') return;
-        if (r.d > 4.75) grava += r.ret;
-        else if (r.d >= 0.075) arena += r.ret;
-        else finos += r.ret;
-    });
-    // grava: d > 4.75; between 4.75 and 2 often called gravel fine - ASTM: gravel > 4.75mm
-    grava = 0; arena = 0;
-    tabla.forEach(function(r) {
-        if (r.name === 'Fondo') return;
-        if (r.d >= 4.75) grava += r.ret; // retained on #4 and coarser
-        else if (r.d >= 0.075) arena += r.ret;
-    });
-    // actually retained ON 4.75 means particles larger than 4.75 = gravel portion retained
-    // standard: % gravel = retained on #4; % sand = passing #4 retained on #200; % fines = pass #200
+    // % grava / arena / finos (ASTM práctico)
     var ret4 = 0, pass4ret200 = 0;
-    var seen4 = false;
     tabla.forEach(function(r) {
         if (r.name === 'Fondo') return;
         if (r.d >= 4.75) ret4 += r.ret;
@@ -3228,22 +3211,88 @@ function calcularGranulometria() {
     var fPct = (pass200 / total) * 100;
     var tipo = fPct > 50 ? 'Suelo fino' : aPct >= gPct ? 'Suelo grueso (arena)' : 'Suelo grueso (grava)';
 
+    /**
+     * Diámetro Dx (mm) para un porcentaje que pasa "pct".
+     * 1) Interpolación log-lineal entre tamices si el % está entre dos puntos.
+     * 2) Si el % queda fuera de la curva (p. ej. D10 con finos > 10 %):
+     *    extrapolación log-lineal usando el tramo más cercano (grueso o fino).
+     * Solo usa puntos de tamiz medidos (curva); no altera la gráfica.
+     */
     function diametroParaPasa(pct) {
-        var pts = curva.slice().sort(function(a, b) { return b.d - a.d; });
+        var pts = curva.filter(function(p) {
+            return p && p.d > 0 && p.pasa != null && !isNaN(p.pasa);
+        }).slice().sort(function(a, b) { return b.d - a.d; }); // grueso → fino
+        if (!pts.length) return null;
+        if (pts.length === 1) {
+            // un solo punto: no se puede interpolar con rigor
+            return Math.abs(pts[0].pasa - pct) < 1e-6 ? pts[0].d : null;
+        }
+
+        function logInterp(d1, p1, d2, p2, pTarget) {
+            if (Math.abs(p1 - p2) < 1e-12) return d1;
+            var t = (pTarget - p1) / (p2 - p1);
+            var logD = Math.log10(d1) + t * (Math.log10(d2) - Math.log10(d1));
+            var d = Math.pow(10, logD);
+            // límites físicos razonables
+            if (!isFinite(d) || d <= 0) return null;
+            return d;
+        }
+
+        // coincidencia exacta
+        for (var k = 0; k < pts.length; k++) {
+            if (Math.abs(pts[k].pasa - pct) < 1e-6) return pts[k].d;
+        }
+
+        // 1) Interpolación entre segmentos
         for (var i = 0; i < pts.length - 1; i++) {
             var p1 = pts[i].pasa, p2 = pts[i + 1].pasa;
-            if ((p1 >= pct && p2 <= pct) || (p1 <= pct && p2 >= pct)) {
-                if (Math.abs(p1 - p2) < 1e-9) return pts[i].d;
-                var t = (pct - p1) / (p2 - p1);
-                var logD = Math.log10(pts[i].d) + t * (Math.log10(pts[i + 1].d) - Math.log10(pts[i].d));
-                return Math.pow(10, logD);
+            var d1 = pts[i].d, d2 = pts[i + 1].d;
+            var hi = Math.max(p1, p2), lo = Math.min(p1, p2);
+            if (pct <= hi && pct >= lo) {
+                return logInterp(d1, p1, d2, p2, pct);
             }
         }
+
+        // 2) Extrapolación: % mayor que el máximo de la curva (más grueso)
+        var maxP = pts[0].pasa, minP = pts[pts.length - 1].pasa;
+        // asegurar max/min reales
+        pts.forEach(function(p) {
+            if (p.pasa > maxP) maxP = p.pasa;
+            if (p.pasa < minP) minP = p.pasa;
+        });
+
+        if (pct > maxP) {
+            // tramo grueso: primeros dos puntos (o el de mayor % y su vecino)
+            var a = pts[0], b = pts[1];
+            // buscar el par con mayor % que pasa
+            for (var j = 0; j < pts.length - 1; j++) {
+                if (pts[j].pasa >= pts[j + 1].pasa) { a = pts[j]; b = pts[j + 1]; break; }
+            }
+            return logInterp(a.d, a.pasa, b.d, b.pasa, pct);
+        }
+
+        if (pct < minP) {
+            // tramo fino: últimos dos puntos de tamiz → extrapola hacia finos
+            var n = pts.length;
+            var c = pts[n - 2], e = pts[n - 1];
+            var dExt = logInterp(c.d, c.pasa, e.d, e.pasa, pct);
+            // si la extrapolación da valor absurdo, limitar a un mínimo de laboratorio
+            if (dExt != null && dExt < 1e-5) dExt = 1e-5;
+            if (dExt != null && dExt > e.d * 5) {
+                // pendiente invertida rara: usar proporción simple
+                dExt = e.d * Math.max(0.05, pct / Math.max(minP, 0.01));
+            }
+            return dExt;
+        }
+
         return null;
     }
-    var D10 = diametroParaPasa(10), D30 = diametroParaPasa(30), D60 = diametroParaPasa(60);
-    var Cu = (D10 && D60) ? (D60 / D10) : null;
-    var Cc = (D10 && D30 && D60) ? ((D30 * D30) / (D10 * D60)) : null;
+
+    var D10 = diametroParaPasa(10);
+    var D30 = diametroParaPasa(30);
+    var D60 = diametroParaPasa(60);
+    var Cu = (D10 && D60 && D10 > 0) ? (D60 / D10) : null;
+    var Cc = (D10 && D30 && D60 && D10 > 0) ? ((D30 * D30) / (D10 * D60)) : null;
 
     function fmtD(v) {
         if (v == null || isNaN(v)) return '—';
