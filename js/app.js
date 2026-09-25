@@ -3675,16 +3675,19 @@ function graficaGranulometria() {
     var plotW = w - pad.l - pad.r;
     var plotH = h - pad.t - pad.b;
 
-    // Eje X log: grueso a la izquierda → fino a la derecha; último punto útil = tamiz #200 (0.075 mm)
+    // Solo datos de tamices (NO fondo). El ÚLTIMO punto graficado es siempre el N.º 200 (0.075 mm).
     var ptsRaw = (d.curva || []).filter(function(p) {
         return p.d > 0 && p.pasa != null && p.name !== 'Fondo' && p.name !== 'finos';
     }).slice().sort(function(a, b) { return b.d - a.d; });
+    // Asegurar punto #200 si existe en tabla
+    var has200 = ptsRaw.some(function(p) { return Math.abs(p.d - 0.075) < 1e-6; });
+    // Rango del eje: del mayor diámetro de los datos hasta el tamiz #200 (último valor graficado)
     var dMax = 100;
-    var dMin = 0.075; // tamiz N.º 200 — último punto de la gráfica de tamices
+    var dMin = 0.075; // extremo derecho = abertura del #200
     if (ptsRaw.length) {
-        dMax = Math.max(ptsRaw[0].d * 1.15, 4.75);
-        // no bajar de 0.075
-        dMin = 0.075;
+        dMax = Math.max(ptsRaw[0].d * 1.25, 2);
+        // margen pequeño a la derecha del #200 para que el punto no quede pegado al borde
+        dMin = 0.075 / 1.15;
     }
     var minLog = Math.log10(dMin);
     var maxLog = Math.log10(dMax);
@@ -3841,9 +3844,9 @@ function graficaGranulometria() {
 
     // Etiquetas eje X
     var xLabels = [
-        { d: 50, t: '50' }, { d: 10, t: '10' }, { d: 4.75, t: '4.75' },
-        { d: 2, t: '2' }, { d: 0.425, t: '0.425' }, { d: 0.15, t: '0.15' },
-        { d: 0.075, t: '0.075' }
+        { d: 50, t: '50' }, { d: 10, t: '10' }, { d: 4.75, t: '#4' },
+        { d: 2, t: '#10' }, { d: 0.425, t: '#40' }, { d: 0.15, t: '#100' },
+        { d: 0.075, t: '#200' }
     ];
     ctx.fillStyle = '#222';
     ctx.font = '10px Arial';
@@ -3865,9 +3868,10 @@ function graficaGranulometria() {
     ctx.fillText('Porcentaje de tamaño inferior, en peso', 0, 0);
     ctx.restore();
 
-    // Solo puntos de tamiz hasta #200 (sin fondo/hidrómetro)
-    var pts = ptsRaw.filter(function(p) { return p.d >= 0.075 - 1e-9; });
-    if (!pts.length) pts = ptsRaw;
+    // Curva: solo tamices; el punto más fino es el #200 (0.075 mm). No se grafica el fondo.
+    var pts = ptsRaw.filter(function(p) { return p.d >= 0.075 - 1e-9; })
+        .sort(function(a, b) { return b.d - a.d; });
+    if (!pts.length) pts = ptsRaw.slice();
 
     // Interpolación muy suave en log(d) — Catmull-Rom densa + suavizado extra
     function curvaSuaveXY(points) {
@@ -3934,16 +3938,17 @@ function graficaGranulometria() {
         });
         ctx.stroke();
 
-        // Círculos abiertos solo en datos medidos (tamices)
-        pts.forEach(function(p) {
+        // Círculos abiertos en cada tamiz; el más a la derecha es el #200
+        pts.forEach(function(p, idx) {
             if (p.name === 'Fondo' || p.name === 'finos') return;
             var x = xOf(p.d), y = yOf(p.pasa);
+            var es200 = Math.abs(p.d - 0.075) < 1e-6 || idx === pts.length - 1;
             ctx.beginPath();
-            ctx.arc(x, y, 5.5, 0, Math.PI * 2);
+            ctx.arc(x, y, es200 ? 6.5 : 5.5, 0, Math.PI * 2);
             ctx.fillStyle = '#fff';
             ctx.fill();
             ctx.strokeStyle = '#111';
-            ctx.lineWidth = 1.6;
+            ctx.lineWidth = es200 ? 2 : 1.6;
             ctx.stroke();
         });
     }
