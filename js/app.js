@@ -3022,6 +3022,14 @@ function crearFormularioGranulometria() {
                     <strong>Cu</strong> (uniformidad): amplitud de tamaños. <strong>Cc</strong> (curvatura): forma de la zona intermedia de la curva.
                 </p>
             </div>
+        </div>
+        <div class="grafica-panel">
+            <div class="grafica-header">
+                <h4>Gráfica — Curva granulométrica</h4>
+                <button type="button" class="btn-grafica" onclick="graficaGranulometria()">GENERAR GRÁFICA</button>
+            </div>
+            <canvas id="canvas-granulo" width="900" height="480"></canvas>
+            <p class="grafica-hint" id="hint-granulo">Elige tamices, calcula y luego pulsa GENERAR GRÁFICA.</p>
         </div>`;
 }
 
@@ -3909,17 +3917,30 @@ function graficaCompactacion() {
     var plotH = h - pad.t - pad.b;
 
     var pts = d.puntos.slice().sort(function(a, b) { return a.w - b.w; });
-    // Escala: humedad 0–12 % (o ampliar si hace falta); densidad 1.0–2.2 g/cm³
+    // Escala X: humedad (plantilla 0–12, se amplía si hace falta)
     var minW = 0, maxW = 12;
-    var minD = 1.0, maxD = 2.2;
     pts.forEach(function(p) {
         if (p.w > maxW) maxW = Math.ceil(p.w + 1);
-        if (p.ds > maxD) maxD = Math.ceil((p.ds + 0.1) * 10) / 10;
-        if (p.ds < minD) minD = Math.floor((p.ds - 0.1) * 10) / 10;
     });
-    if (d.max) {
-        if (d.max.w > maxW) maxW = Math.ceil(d.max.w + 1);
-        if (d.max.ds > maxD) maxD = Math.ceil((d.max.ds + 0.1) * 10) / 10;
+    if (d.max && d.max.w > maxW) maxW = Math.ceil(d.max.w + 1);
+
+    // Escala Y: densidad seca típica 1.0–2.2 g/cm³; se ajusta a los datos
+    var dsVals = pts.map(function(p) { return p.ds; });
+    if (d.max) dsVals.push(d.max.ds);
+    var dsMinData = Math.min.apply(null, dsVals);
+    var dsMaxData = Math.max.apply(null, dsVals);
+    // Si el valor es absurdo (> 3.5 g/cm³), probable error de unidades de volumen
+    var minD, maxD;
+    if (dsMaxData > 3.5) {
+        // Escala automática con margen, pero etiquetas limitadas
+        minD = Math.max(0, Math.floor(dsMinData * 0.9 * 10) / 10);
+        maxD = Math.ceil(dsMaxData * 1.05 * 10) / 10;
+        if (maxD <= minD) maxD = minD + 1;
+    } else {
+        minD = 1.0;
+        maxD = 2.2;
+        if (dsMinData < minD) minD = Math.floor((dsMinData - 0.05) * 20) / 20;
+        if (dsMaxData > maxD) maxD = Math.ceil((dsMaxData + 0.05) * 20) / 20;
     }
 
     function xW(wv) { return pad.l + ((wv - minW) / (maxW - minW)) * plotW; }
@@ -3942,12 +3963,18 @@ function graficaCompactacion() {
         ctx.lineTo(xx, pad.t + plotH);
         ctx.stroke();
     }
-    for (var dd = minD; dd <= maxD + 1e-9; dd += stepD) {
-        var yy = yD(dd);
-        var majorD = Math.abs(dd * 20 - Math.round(dd * 20)) < 1e-6; // cada 0.05
-        var labelD = Math.abs(dd * 10 - Math.round(dd * 10)) < 1e-6; // cada 0.1
-        ctx.strokeStyle = labelD ? '#999' : '#d8d8d8';
-        ctx.lineWidth = labelD ? 0.8 : 0.4;
+    // Rejilla Y: paso fino adaptado al rango
+    var rangeD = maxD - minD;
+    stepD = rangeD > 5 ? 0.5 : (rangeD > 2 ? 0.1 : 0.05);
+    var stepDMajor = rangeD > 5 ? 1 : (rangeD > 2 ? 0.2 : 0.1);
+    var dStart = Math.floor(minD / stepD) * stepD;
+    for (var dd = dStart; dd <= maxD + 1e-9; dd += stepD) {
+        var dv2 = Math.round(dd / stepD) * stepD;
+        var yy = yD(dv2);
+        if (yy < pad.t - 1 || yy > pad.t + plotH + 1) continue;
+        var majorD = Math.abs(dv2 / stepDMajor - Math.round(dv2 / stepDMajor)) < 1e-6;
+        ctx.strokeStyle = majorD ? '#999' : '#e0e0e0';
+        ctx.lineWidth = majorD ? 0.75 : 0.35;
         ctx.beginPath();
         ctx.moveTo(pad.l, yy);
         ctx.lineTo(pad.l + plotW, yy);
@@ -3968,8 +3995,21 @@ function graficaCompactacion() {
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     ctx.font = '11px Arial';
-    for (var di = minD; di <= maxD + 1e-9; di += 0.1) {
-        ctx.fillText(di.toFixed(3).replace('.', ','), pad.l - 8, yD(di));
+    // Etiquetas Y limpias: máximo ~8 valores (evita amontonamiento)
+    var nLabels = 7;
+    var stepLabel = (maxD - minD) / nLabels;
+    // redondear step a 0.05 / 0.1 / 0.2 / 0.5 / 1
+    var nice = [0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10];
+    var stepY = nice[nice.length - 1];
+    for (var ni = 0; ni < nice.length; ni++) {
+        if (nice[ni] >= stepLabel * 0.9) { stepY = nice[ni]; break; }
+    }
+    var y0 = Math.ceil(minD / stepY) * stepY;
+    for (var di = y0; di <= maxD + 1e-9; di += stepY) {
+        // evitar error de coma flotante
+        var dv = Math.round(di / stepY) * stepY;
+        var txt = (stepY >= 1) ? dv.toFixed(0) : (stepY >= 0.1 ? dv.toFixed(2) : dv.toFixed(3));
+        ctx.fillText(txt.replace('.', ','), pad.l - 8, yD(dv));
     }
     ctx.save();
     ctx.translate(16, pad.t + plotH / 2);
