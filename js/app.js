@@ -5984,10 +5984,29 @@ function generarInformeEnsayoPDF(tipoEnsayo) {
             return paletas[Math.floor(Math.random() * paletas.length)];
         }
         function addTablaColor(headers, rows, headerRGB, bodyRGB) {
-            if (!headerRGB || !bodyRGB) {
+            // Si el 3er argumento es un título (string), no es un color
+            var tituloTabla = null;
+            if (typeof headerRGB === 'string') {
+                tituloTabla = headerRGB;
+                headerRGB = null;
+                bodyRGB = null;
+            }
+            function rgbOk(c) {
+                return Array.isArray(c) && c.length >= 3 &&
+                    typeof c[0] === 'number' && typeof c[1] === 'number' && typeof c[2] === 'number';
+            }
+            if (!rgbOk(headerRGB) || !rgbOk(bodyRGB)) {
                 var pal = colorAleatorioTabla();
-                headerRGB = headerRGB || pal.h;
-                bodyRGB = bodyRGB || pal.b;
+                if (!rgbOk(headerRGB)) headerRGB = pal.h;
+                if (!rgbOk(bodyRGB)) bodyRGB = pal.b;
+            }
+            if (tituloTabla) {
+                ensureSpace(lineH + 4);
+                setF(true, 10);
+                doc.setTextColor(40, 60, 100);
+                doc.text(sym(tituloTabla), marginL, y);
+                y += lineH + 2;
+                doc.setTextColor(0, 0, 0);
             }
             var cols = headers.length;
             var colW = maxW / cols;
