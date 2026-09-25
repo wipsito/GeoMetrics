@@ -2930,14 +2930,7 @@ function crearFormularioHumedad() {
                 </div>
             </div>
         </div>
-        <div class="grafica-panel">
-            <div class="grafica-header">
-                <h4>Gráfica — Composición de la muestra</h4>
-                <button type="button" class="btn-grafica" onclick="graficaHumedad()">GENERAR GRÁFICA</button>
-            </div>
-            <canvas id="canvas-humedad" width="640" height="360"></canvas>
-            <p class="grafica-hint" id="hint-humedad">Calcula primero y luego pulsa GENERAR GRÁFICA.</p>
-        </div>`;
+`;
 }
 
 
@@ -3029,302 +3022,10 @@ function crearFormularioGranulometria() {
                     <strong>Cu</strong> (uniformidad): amplitud de tamaños. <strong>Cc</strong> (curvatura): forma de la zona intermedia de la curva.
                 </p>
             </div>
-        </div>
-        <div class="grafica-panel">
-            <div class="grafica-header">
-                <h4>Gráfica — Curva granulométrica</h4>
-                <button type="button" class="btn-grafica" onclick="graficaGranulometria()">GENERAR GRÁFICA</button>
-            </div>
-            <canvas id="canvas-granulo" width="900" height="480"></canvas>
-            <p class="grafica-hint" id="hint-granulo">Elige tamices, calcula y luego pulsa GENERAR GRÁFICA.</p>
         </div>`;
 }
 
-function toggleSelectorTamices() {
-    var p = document.getElementById('panelTamicesOpts');
-    var b = document.getElementById('btnToggleTamices');
-    if (!p) return;
-    var open = p.hidden;
-    p.hidden = !open;
-    if (b) b.textContent = open ? '▴ Ocultar lista de tamices' : '▾ Elegir tamices de la práctica';
-}
 
-function seleccionarTamicesDefault() {
-    document.querySelectorAll('.g-tamiz-opt').forEach(function(cb) {
-        cb.checked = TAMICES_DEFAULT.indexOf(cb.value) >= 0;
-    });
-}
-
-function getTamicesSeleccionados() {
-    var ids = [];
-    document.querySelectorAll('.g-tamiz-opt:checked').forEach(function(cb) {
-        ids.push(cb.value);
-    });
-    // Si no hay checkboxes (form no montado) o ninguno marcado, usar predeterminados
-    if (!ids.length) {
-        var any = document.querySelectorAll('.g-tamiz-opt');
-        if (!any.length) ids = TAMICES_DEFAULT.slice();
-    }
-    return TAMICES_ASTM.filter(function(t) { return ids.indexOf(t.id) >= 0; });
-}
-
-function aplicarTamicesSeleccionados() {
-    var list = getTamicesSeleccionados();
-    var box = document.getElementById('g-campos-tamices');
-    if (!box) return;
-    if (!list.length) {
-        box.innerHTML = '<p class="login-hint">Selecciona al menos un tamiz.</p>';
-        return;
-    }
-    box.innerHTML = list.map(function(t) {
-        return '<label>Tamiz ' + t.name + ' — ' + t.d + ' mm (g):</label>' +
-            '<input type="number" id="g-ret-' + t.id + '" class="g-ret-input" data-tid="' + t.id + '" step="0.01" placeholder="Masa retenida">';
-    }).join('');
-    var panel = document.getElementById('panelTamicesOpts');
-    if (panel) panel.hidden = true;
-    var b = document.getElementById('btnToggleTamices');
-    if (b) b.textContent = '▾ Elegir tamices de la práctica (' + list.length + ' activos)';
-}
-
-
-// =========================================
-// FUNCIONES DE CÁLCULO (helpers)
-// =========================================
-
-function parse(id) {
-    var el = document.getElementById(id);
-    if (!el) return null;
-    var val = parseFloat(String(el.value).replace(',', '.'));
-    return isNaN(val) ? null : val;
-}
-
-function setError(id, msg) {
-    var el = document.getElementById(id);
-    if (el) el.textContent = msg || '';
-}
-
-function limpiarCampo(pref) {
-    document.querySelectorAll('[id^="' + pref + '-"]').forEach(function(el) {
-        if (el.tagName === 'INPUT') el.value = '';
-        else if (el.tagName === 'STRONG') el.textContent = '—';
-        else if (el.tagName === 'P') el.textContent = 'Ingresa los datos para obtener el resultado.';
-    });
-    // campos dinámicos de granulometría
-    if (pref === 'g') {
-        document.querySelectorAll('.g-ret-input').forEach(function(el) { el.value = ''; });
-    }
-    setError(pref + '-error', '');
-    window.__datosEnsayo = window.__datosEnsayo || {};
-    window.__datosEnsayo[pref] = null;
-}
-
-window.__datosEnsayo = window.__datosEnsayo || {};
-
-function calcularHumedad() {
-    window.__datosEnsayo = window.__datosEnsayo || {};
-    var r = parse('h-recipiente'), h = parse('h-humeda'), s = parse('h-seca');
-    setError('h-error', '');
-    if (r == null || h == null || s == null) { setError('h-error', 'Completa todos los campos'); return; }
-    if (h <= r || s <= r || h < s) { setError('h-error', 'Revisa los datos'); return; }
-    var agua = h - s, sueloSeco = s - r, w = (agua / sueloSeco) * 100;
-    var elRes = document.getElementById('h-resultado');
-    var elAgua = document.getElementById('h-agua');
-    var elSuelo = document.getElementById('h-suelo');
-    var elInterp = document.getElementById('h-interpretacion');
-    if (elRes) elRes.textContent = w.toFixed(2) + ' %';
-    if (elAgua) elAgua.textContent = agua.toFixed(2);
-    if (elSuelo) elSuelo.textContent = sueloSeco.toFixed(2);
-    var interp = w < 10 ? 'Humedad baja' : (w < 25 ? 'Humedad media' : 'Humedad alta');
-    if (elInterp) elInterp.textContent = interp + '. w = ' + w.toFixed(2) + '%';
-    window.__datosEnsayo.h = { recipiente: r, humeda: h, seca: s, agua: agua, suelo: sueloSeco, w: w };
-}
-
-function calcularGranulometria() {
-    window.__datosEnsayo = window.__datosEnsayo || {};
-    var total = parse('g-total');
-    setError('g-error', '');
-    if (!total || total <= 0) { setError('g-error', 'Ingresa la masa total'); return; }
-
-    var sieves = getTamicesSeleccionados();
-    // Si aún no aplicó campos, generarlos
-    if (!document.querySelector('.g-ret-input') && sieves.length) {
-        aplicarTamicesSeleccionados();
-    }
-    sieves = getTamicesSeleccionados();
-    if (!sieves.length) {
-        setError('g-error', 'Elige y aplica al menos un tamiz');
-        return;
-    }
-
-    var tabla = [];
-    var acumMasa = 0;
-    var acumPct = 0;
-    sieves.forEach(function(sv) {
-        var el = document.getElementById('g-ret-' + sv.id);
-        var m = el ? (parseFloat(el.value) || 0) : 0;
-        acumMasa += m;
-        var pctRet = (m / total) * 100;
-        acumPct += pctRet;
-        tabla.push({
-            name: sv.name,
-            id: sv.id,
-            d: sv.d,
-            dLabel: sv.d >= 1 ? sv.d.toFixed(2) : sv.d.toFixed(3),
-            ret: m,
-            pctRet: pctRet,
-            pctAcum: acumPct,
-            pctPasa: Math.max(0, 100 - acumPct)
-        });
-    });
-
-    var pass200 = parse('g-p200');
-    if (pass200 == null || isNaN(pass200)) {
-        pass200 = Math.max(0, total - acumMasa);
-    }
-    var pctFondo = (pass200 / total) * 100;
-    acumPct += pctFondo;
-    tabla.push({
-        name: 'Fondo',
-        id: 'fondo',
-        d: 0.001,
-        dLabel: '< último',
-        ret: pass200,
-        pctRet: pctFondo,
-        pctAcum: Math.min(100, acumPct),
-        pctPasa: 0
-    });
-
-    // Curva de tamices (para gráfica): sin fondo
-    var curva = tabla.filter(function(r) { return r.name !== 'Fondo'; }).map(function(r) {
-        return { d: r.d, name: r.name, pasa: r.pctPasa, ret: r.ret, pctRet: r.pctRet, pctAcum: r.pctAcum };
-    });
-
-    // % grava / arena / finos (ASTM práctico)
-    var ret4 = 0, pass4ret200 = 0;
-    tabla.forEach(function(r) {
-        if (r.name === 'Fondo') return;
-        if (r.d >= 4.75) ret4 += r.ret;
-        else if (r.d >= 0.075) pass4ret200 += r.ret;
-    });
-    var gPct = (ret4 / total) * 100;
-    var aPct = (pass4ret200 / total) * 100;
-    var fPct = (pass200 / total) * 100;
-    var tipo = fPct > 50 ? 'Suelo fino' : aPct >= gPct ? 'Suelo grueso (arena)' : 'Suelo grueso (grava)';
-
-    /**
-     * Diámetro Dx (mm) para un porcentaje que pasa "pct".
-     * 1) Interpolación log-lineal entre tamices si el % está entre dos puntos.
-     * 2) Si el % queda fuera de la curva (p. ej. D10 con finos > 10 %):
-     *    extrapolación log-lineal usando el tramo más cercano (grueso o fino).
-     * Solo usa puntos de tamiz medidos (curva); no altera la gráfica.
-     */
-    function diametroParaPasa(pct) {
-        var pts = curva.filter(function(p) {
-            return p && p.d > 0 && p.pasa != null && !isNaN(p.pasa);
-        }).slice().sort(function(a, b) { return b.d - a.d; }); // grueso → fino
-        if (!pts.length) return null;
-        if (pts.length === 1) {
-            // un solo punto: no se puede interpolar con rigor
-            return Math.abs(pts[0].pasa - pct) < 1e-6 ? pts[0].d : null;
-        }
-
-        function logInterp(d1, p1, d2, p2, pTarget) {
-            if (Math.abs(p1 - p2) < 1e-12) return d1;
-            var t = (pTarget - p1) / (p2 - p1);
-            var logD = Math.log10(d1) + t * (Math.log10(d2) - Math.log10(d1));
-            var d = Math.pow(10, logD);
-            // límites físicos razonables
-            if (!isFinite(d) || d <= 0) return null;
-            return d;
-        }
-
-        // coincidencia exacta
-        for (var k = 0; k < pts.length; k++) {
-            if (Math.abs(pts[k].pasa - pct) < 1e-6) return pts[k].d;
-        }
-
-        // 1) Interpolación entre segmentos
-        for (var i = 0; i < pts.length - 1; i++) {
-            var p1 = pts[i].pasa, p2 = pts[i + 1].pasa;
-            var d1 = pts[i].d, d2 = pts[i + 1].d;
-            var hi = Math.max(p1, p2), lo = Math.min(p1, p2);
-            if (pct <= hi && pct >= lo) {
-                return logInterp(d1, p1, d2, p2, pct);
-            }
-        }
-
-        // 2) Extrapolación: % mayor que el máximo de la curva (más grueso)
-        var maxP = pts[0].pasa, minP = pts[pts.length - 1].pasa;
-        // asegurar max/min reales
-        pts.forEach(function(p) {
-            if (p.pasa > maxP) maxP = p.pasa;
-            if (p.pasa < minP) minP = p.pasa;
-        });
-
-        if (pct > maxP) {
-            // tramo grueso: primeros dos puntos (o el de mayor % y su vecino)
-            var a = pts[0], b = pts[1];
-            // buscar el par con mayor % que pasa
-            for (var j = 0; j < pts.length - 1; j++) {
-                if (pts[j].pasa >= pts[j + 1].pasa) { a = pts[j]; b = pts[j + 1]; break; }
-            }
-            return logInterp(a.d, a.pasa, b.d, b.pasa, pct);
-        }
-
-        if (pct < minP) {
-            // tramo fino: últimos dos puntos de tamiz → extrapola hacia finos
-            var n = pts.length;
-            var c = pts[n - 2], e = pts[n - 1];
-            var dExt = logInterp(c.d, c.pasa, e.d, e.pasa, pct);
-            // si la extrapolación da valor absurdo, limitar a un mínimo de laboratorio
-            if (dExt != null && dExt < 1e-5) dExt = 1e-5;
-            if (dExt != null && dExt > e.d * 5) {
-                // pendiente invertida rara: usar proporción simple
-                dExt = e.d * Math.max(0.05, pct / Math.max(minP, 0.01));
-            }
-            return dExt;
-        }
-
-        return null;
-    }
-
-    var D10 = diametroParaPasa(10);
-    var D30 = diametroParaPasa(30);
-    var D60 = diametroParaPasa(60);
-    var Cu = (D10 && D60 && D10 > 0) ? (D60 / D10) : null;
-    var Cc = (D10 && D30 && D60 && D10 > 0) ? ((D30 * D30) / (D10 * D60)) : null;
-
-    function fmtD(v) {
-        if (v == null || isNaN(v)) return '—';
-        if (v >= 1) return v.toFixed(2);
-        if (v >= 0.1) return v.toFixed(3);
-        return v.toFixed(4);
-    }
-    function setTxt(id, val) {
-        var el = document.getElementById(id);
-        if (el) el.textContent = val;
-    }
-    setTxt('g-grava', gPct.toFixed(1));
-    setTxt('g-arena', aPct.toFixed(1));
-    setTxt('g-finos', fPct.toFixed(1));
-    setTxt('g-d10', fmtD(D10));
-    setTxt('g-d30', fmtD(D30));
-    setTxt('g-d60', fmtD(D60));
-    setTxt('g-cu', Cu != null ? Cu.toFixed(2) : '—');
-    setTxt('g-cc', Cc != null ? Cc.toFixed(2) : '—');
-    setTxt('g-tipo', tipo);
-    setError('g-error', '');
-
-    window.__datosEnsayo.g = {
-        curva: curva,
-        tabla: tabla,
-        total: total,
-        gPct: gPct, aPct: aPct, fPct: fPct,
-        D10: D10, D30: D30, D60: D60, Cu: Cu, Cc: Cc,
-        tipo: tipo,
-        tamicesIds: sieves.map(function(s) { return s.id; })
-    };
-}
 
 function crearFormularioLimites() {
     return `
@@ -3407,14 +3108,7 @@ function crearFormularioGravedad() {
                 </div>
             </div>
         </div>
-        <div class="grafica-panel">
-            <div class="grafica-header">
-                <h4>Gráfica — Gs vs rangos típicos</h4>
-                <button type="button" class="btn-grafica" onclick="graficaGravedad()">GENERAR GRÁFICA</button>
-            </div>
-            <canvas id="canvas-gravedad" width="640" height="360"></canvas>
-            <p class="grafica-hint" id="hint-gravedad">Calcula primero y luego pulsa GENERAR GRÁFICA.</p>
-        </div>`;
+`;
 }
 
 function crearFormularioCompactacion() {
@@ -3463,7 +3157,7 @@ function crearFormularioCompactacion() {
                 <h4>Gráfica — Curva de compactación Proctor</h4>
                 <button type="button" class="btn-grafica" onclick="graficaCompactacion()">GENERAR GRÁFICA</button>
             </div>
-            <canvas id="canvas-proctor" width="640" height="360"></canvas>
+            <canvas id="canvas-proctor" width="900" height="480"></canvas>
             <p class="grafica-hint" id="hint-proctor">Calcula primero y luego pulsa GENERAR GRÁFICA.</p>
         </div>`;
 }
@@ -3505,14 +3199,7 @@ function crearFormularioDensidad() {
                 </div>
             </div>
         </div>
-        <div class="grafica-panel">
-            <div class="grafica-header">
-                <h4>Gráfica — Densidades de campo</h4>
-                <button type="button" class="btn-grafica" onclick="graficaDensidad()">GENERAR GRÁFICA</button>
-            </div>
-            <canvas id="canvas-densidad" width="640" height="360"></canvas>
-            <p class="grafica-hint" id="hint-densidad">Calcula primero y luego pulsa GENERAR GRÁFICA.</p>
-        </div>`;
+`;
 }
 
 function crearFormularioClasificacion() {
@@ -3610,6 +3297,36 @@ function crearFormularioPermeabilidad() {
 // =========================================
 // FUNCIONES DE CÁLCULO
 // =========================================
+
+function parse(id) {
+    var el = document.getElementById(id);
+    if (!el) return null;
+    var val = parseFloat(el.value);
+    return isNaN(val) ? null : val;
+}
+
+function setError(id, msg) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = msg;
+}
+
+function capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
+
+function limpiarCampo(pref) {
+    document.querySelectorAll('[id^="' + pref + '-"]').forEach(function(el) {
+        if (el.tagName === 'INPUT') el.value = '';
+        else if (el.tagName === 'STRONG') el.textContent = '—';
+        else if (el.tagName === 'P' && el.className === '') el.textContent = 'Ingresa los datos para obtener el resultado.';
+    });
+    setError(pref + '-error', '');
+    window.__datosEnsayo = window.__datosEnsayo || {};
+    window.__datosEnsayo[pref] = null;
+}
+
+// Datos del último cálculo (para gráficas)
+window.__datosEnsayo = window.__datosEnsayo || {};
+
+// CÁLCULOS DE SUELOS
 
 function calcularLimites() {
     var g1=parse('l-g1'), h1=parse('l-h1'), g2=parse('l-g2'), h2=parse('l-h2'), g3=parse('l-g3'), h3=parse('l-h3'), lp=parse('l-lp');
@@ -4167,42 +3884,144 @@ function graficaCompactacion() {
         if (hint) hint.textContent = 'Primero pulsa CALCULAR.';
         return;
     }
-    var g = _prepCanvas('canvas-proctor', 'hint-proctor');
-    if (!g) return;
-    var ctx = g.ctx, w = g.w, h = g.h;
-    var pad = { l: 55, r: 20, t: 40, b: 50 };
-    _axes(ctx, pad, w, h, 'Curva de compactación Proctor');
-    var pts = d.puntos;
-    var minW = pts[0].w - 1, maxW = pts[pts.length - 1].w + 1;
-    var minD = Math.min.apply(null, pts.map(function(p){ return p.ds; })) - 0.05;
-    var maxD = Math.max.apply(null, pts.map(function(p){ return p.ds; })) + 0.05;
-    function xW(wv) { return pad.l + ((wv - minW) / (maxW - minW)) * (w - pad.l - pad.r); }
-    function yD(dv) { return h - pad.b - ((dv - minD) / (maxD - minD)) * (h - pad.t - pad.b); }
-    ctx.strokeStyle = '#ffcc00';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    pts.forEach(function(p, i) {
-        var x = xW(p.w), y = yD(p.ds);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    var canvas = document.getElementById('canvas-proctor');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    var cssW = Math.max(canvas.clientWidth || 720, 640);
+    var cssH = 480;
+    canvas.width = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var w = cssW, h = cssH;
+
+    // Plantilla tipo papel milimetrado
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('CURVA DE COMPACTACIÓN', w / 2, 22);
+
+    var pad = { l: 70, r: 24, t: 48, b: 55 };
+    var plotW = w - pad.l - pad.r;
+    var plotH = h - pad.t - pad.b;
+
+    var pts = d.puntos.slice().sort(function(a, b) { return a.w - b.w; });
+    // Escala: humedad 0–12 % (o ampliar si hace falta); densidad 1.0–2.2 g/cm³
+    var minW = 0, maxW = 12;
+    var minD = 1.0, maxD = 2.2;
+    pts.forEach(function(p) {
+        if (p.w > maxW) maxW = Math.ceil(p.w + 1);
+        if (p.ds > maxD) maxD = Math.ceil((p.ds + 0.1) * 10) / 10;
+        if (p.ds < minD) minD = Math.floor((p.ds - 0.1) * 10) / 10;
     });
-    ctx.stroke();
-    ctx.fillStyle = '#08783a';
+    if (d.max) {
+        if (d.max.w > maxW) maxW = Math.ceil(d.max.w + 1);
+        if (d.max.ds > maxD) maxD = Math.ceil((d.max.ds + 0.1) * 10) / 10;
+    }
+
+    function xW(wv) { return pad.l + ((wv - minW) / (maxW - minW)) * plotW; }
+    function yD(dv) { return pad.t + plotH - ((dv - minD) / (maxD - minD)) * plotH; }
+
+    // Marco
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1.4;
+    ctx.strokeRect(pad.l, pad.t, plotW, plotH);
+
+    // Rejilla fina y gruesa (como plantilla)
+    var stepW = 0.5, stepD = 0.05;
+    for (var ww = minW; ww <= maxW + 1e-9; ww += stepW) {
+        var xx = xW(ww);
+        var major = Math.abs(ww - Math.round(ww)) < 1e-6;
+        ctx.strokeStyle = major ? '#999' : '#d8d8d8';
+        ctx.lineWidth = major ? 0.8 : 0.4;
+        ctx.beginPath();
+        ctx.moveTo(xx, pad.t);
+        ctx.lineTo(xx, pad.t + plotH);
+        ctx.stroke();
+    }
+    for (var dd = minD; dd <= maxD + 1e-9; dd += stepD) {
+        var yy = yD(dd);
+        var majorD = Math.abs(dd * 20 - Math.round(dd * 20)) < 1e-6; // cada 0.05
+        var labelD = Math.abs(dd * 10 - Math.round(dd * 10)) < 1e-6; // cada 0.1
+        ctx.strokeStyle = labelD ? '#999' : '#d8d8d8';
+        ctx.lineWidth = labelD ? 0.8 : 0.4;
+        ctx.beginPath();
+        ctx.moveTo(pad.l, yy);
+        ctx.lineTo(pad.l + plotW, yy);
+        ctx.stroke();
+    }
+
+    // Etiquetas ejes
+    ctx.fillStyle = '#222';
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (var wi = Math.ceil(minW); wi <= maxW; wi++) {
+        ctx.fillText(wi.toFixed(2).replace('.', ','), xW(wi), pad.t + plotH + 6);
+    }
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText('Contenido de humedad w%', pad.l + plotW / 2, h - 20);
+
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.font = '11px Arial';
+    for (var di = minD; di <= maxD + 1e-9; di += 0.1) {
+        ctx.fillText(di.toFixed(3).replace('.', ','), pad.l - 8, yD(di));
+    }
+    ctx.save();
+    ctx.translate(16, pad.t + plotH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Densidad seca gr/cm³', 0, 0);
+    ctx.restore();
+
+    // Curva suave
+    if (pts.length >= 2) {
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        pts.forEach(function(p, i) {
+            var x = xW(p.w), y = yD(p.ds);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+    }
     pts.forEach(function(p) {
         ctx.beginPath();
         ctx.arc(xW(p.w), yD(p.ds), 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
         ctx.fill();
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
     });
-    // optimum
-    ctx.fillStyle = '#ffcc00';
-    ctx.beginPath();
-    ctx.arc(xW(d.max.w), yD(d.max.ds), 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.font = '12px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('wópt=' + d.max.w.toFixed(1) + '%  γd=' + d.max.ds.toFixed(3), xW(d.max.w) + 8, yD(d.max.ds) - 8);
-    ctx.fillStyle = '#b9c8c0';
-    ctx.textAlign = 'center';
-    ctx.fillText('Humedad w (%)', w / 2, h - 12);
+    if (d.max) {
+        ctx.beginPath();
+        ctx.arc(xW(d.max.w), yD(d.max.ds), 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#c9a227';
+        ctx.fill();
+        ctx.strokeStyle = '#111';
+        ctx.stroke();
+        ctx.fillStyle = '#111';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('wópt = ' + d.max.w.toFixed(1) + ' %   γd,máx = ' + d.max.ds.toFixed(3) + ' g/cm³',
+            Math.min(xW(d.max.w) + 10, pad.l + plotW - 200), yD(d.max.ds) - 8);
+    }
+
+    try {
+        window.__graficaGenerada = window.__graficaGenerada || {};
+        window.__graficaGenerada['canvas-proctor'] = true;
+        window.__graficaGenerada['compactacion'] = true;
+    } catch (e) {}
+    var hint = document.getElementById('hint-proctor');
+    if (hint) hint.textContent = 'Curva de compactación generada.';
 }
 
 function graficaDensidad() {
@@ -5592,7 +5411,7 @@ var TEXTO_INFORME_ENSAYO = {
             'ASTM D 2216 — Laboratory determination of water (moisture) content.',
             'INV E-122 — Contenido de agua (humedad).'
         ],
-        canvasId: 'canvas-humedad'
+        canvasId: null
     },
     granulometria: {
         tituloFLA: 'Determinación de los tamaños de las partículas de los suelos',
@@ -5659,7 +5478,7 @@ var TEXTO_INFORME_ENSAYO = {
         analisisGuia: 'Comparar Gs con valores típicos (p. ej. 2,65–2,70 para muchos minerales). Discutir aire atrapado, temperatura y humedad residual.',
         conclusionesGuia: 'Reportar Gs y su utilidad en cálculos posteriores de fase.',
         referencias: ['ASTM D 854 / NTC 1974', 'Guía FLA-23'],
-        canvasId: 'canvas-gravedad'
+        canvasId: null
     },
     compactacion: {
         tituloFLA: 'Compactación Proctor — relaciones humedad–peso unitario seco',
@@ -5699,7 +5518,7 @@ var TEXTO_INFORME_ENSAYO = {
         analisisGuia: 'Comparar el grado de compactación con el porcentaje exigido por el proyecto o la especificación.',
         conclusionesGuia: 'Reportar γd de campo y GC, e indicar si cumple el criterio de obra.',
         referencias: ['ASTM D 1556', 'Guía FLA-23'],
-        canvasId: 'canvas-densidad'
+        canvasId: null
     },
     clasificacion: {
         tituloFLA: 'Clasificación de suelos (SUCS)',
