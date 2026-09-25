@@ -2962,8 +2962,15 @@ function crearFormularioGranulometria() {
                     <div><span>Grava</span><strong id="g-grava">—</strong><small>%</small></div>
                     <div><span>Arena</span><strong id="g-arena">—</strong><small>%</small></div>
                     <div><span>Finos</span><strong id="g-finos">—</strong><small>%</small></div>
-                    <div><span>Cu</span><strong id="g-cu">—</strong></div>
+                    <div><span>D₁₀</span><strong id="g-d10">—</strong><small>mm</small></div>
+                    <div><span>D₃₀</span><strong id="g-d30">—</strong><small>mm</small></div>
+                    <div><span>D₆₀</span><strong id="g-d60">—</strong><small>mm</small></div>
+                    <div><span>Cu = D₆₀/D₁₀</span><strong id="g-cu">—</strong></div>
+                    <div><span>Cc = (D₃₀)²/(D₁₀·D₆₀)</span><strong id="g-cc">—</strong></div>
                 </div>
+                <p class="login-hint" style="margin-top:10px;font-size:0.78rem;line-height:1.35">
+                    <strong>Cu</strong> (uniformidad): amplitud de tamaños. <strong>Cc</strong> (curvatura): forma de la zona intermedia de la curva.
+                </p>
             </div>
         </div>
         <div class="grafica-panel">
@@ -3407,7 +3414,21 @@ function calcularGranulometria() {
     document.getElementById('g-grava').textContent = gPct.toFixed(1);
     document.getElementById('g-arena').textContent = aPct.toFixed(1);
     document.getElementById('g-finos').textContent = fPct.toFixed(1);
+    function fmtD(v) {
+        if (v == null || isNaN(v)) return '—';
+        if (v >= 1) return v.toFixed(2);
+        if (v >= 0.1) return v.toFixed(3);
+        return v.toFixed(4);
+    }
+    var elD10 = document.getElementById('g-d10');
+    var elD30 = document.getElementById('g-d30');
+    var elD60 = document.getElementById('g-d60');
+    var elCc = document.getElementById('g-cc');
+    if (elD10) elD10.textContent = fmtD(D10);
+    if (elD30) elD30.textContent = fmtD(D30);
+    if (elD60) elD60.textContent = fmtD(D60);
     document.getElementById('g-cu').textContent = Cu != null ? Cu.toFixed(2) : '—';
+    if (elCc) elCc.textContent = Cc != null ? Cc.toFixed(2) : '—';
     document.getElementById('g-tipo').textContent = tipo;
     window.__datosEnsayo.g = {
         curva: curva,
@@ -3654,9 +3675,17 @@ function graficaGranulometria() {
     var plotW = w - pad.l - pad.r;
     var plotH = h - pad.t - pad.b;
 
-    // Eje X log: diámetro grande a la izquierda → fino a la derecha (como carta ASTM)
-    var dMax = 100;   // mm
-    var dMin = 0.001; // mm
+    // Eje X log: grueso a la izquierda → fino a la derecha; último punto útil = tamiz #200 (0.075 mm)
+    var ptsRaw = (d.curva || []).filter(function(p) {
+        return p.d > 0 && p.pasa != null && p.name !== 'Fondo' && p.name !== 'finos';
+    }).slice().sort(function(a, b) { return b.d - a.d; });
+    var dMax = 100;
+    var dMin = 0.075; // tamiz N.º 200 — último punto de la gráfica de tamices
+    if (ptsRaw.length) {
+        dMax = Math.max(ptsRaw[0].d * 1.15, 4.75);
+        // no bajar de 0.075
+        dMin = 0.075;
+    }
     var minLog = Math.log10(dMin);
     var maxLog = Math.log10(dMax);
     function xOf(diam) {
@@ -3771,7 +3800,7 @@ function graficaGranulometria() {
     }
 
     // Rejilla vertical logarítmica (décadas + subdivisiones)
-    var decades = [100, 10, 1, 0.1, 0.01, 0.001];
+    var decades = [100, 10, 1, 0.1];
     decades.forEach(function(dec) {
         for (var m = 1; m <= 9; m++) {
             var diam = dec * m;
@@ -3788,7 +3817,7 @@ function graficaGranulometria() {
     });
 
     // Separadores granulométricos principales (flechas tipo carta)
-    var marks = [2, 0.075, 0.002];
+    var marks = [2, 0.075];
     marks.forEach(function(dm) {
         var xx = xOf(dm);
         if (xx < pad.l || xx > pad.l + plotW) return;
@@ -3812,8 +3841,9 @@ function graficaGranulometria() {
 
     // Etiquetas eje X
     var xLabels = [
-        { d: 10, t: '10' }, { d: 1, t: '1.0' }, { d: 0.1, t: '0.1' },
-        { d: 0.01, t: '0.01' }, { d: 0.001, t: '0.001' }
+        { d: 50, t: '50' }, { d: 10, t: '10' }, { d: 4.75, t: '4.75' },
+        { d: 2, t: '2' }, { d: 0.425, t: '0.425' }, { d: 0.15, t: '0.15' },
+        { d: 0.075, t: '0.075' }
     ];
     ctx.fillStyle = '#222';
     ctx.font = '10px Arial';
@@ -3835,18 +3865,18 @@ function graficaGranulometria() {
     ctx.fillText('Porcentaje de tamaño inferior, en peso', 0, 0);
     ctx.restore();
 
-    // Puntos de la curva (tamices)
-    var pts = d.curva.filter(function(p) { return p.d > 0 && p.pasa != null; })
-        .slice().sort(function(a, b) { return b.d - a.d; });
+    // Solo puntos de tamiz hasta #200 (sin fondo/hidrómetro)
+    var pts = ptsRaw.filter(function(p) { return p.d >= 0.075 - 1e-9; });
+    if (!pts.length) pts = ptsRaw;
 
-    // Interpolación suave en espacio log(d) — Catmull-Rom densa
+    // Interpolación muy suave en log(d) — Catmull-Rom densa + suavizado extra
     function curvaSuaveXY(points) {
         if (points.length < 2) return points.map(function(p){ return { x: xOf(p.d), y: yOf(p.pasa) }; });
         var logPts = points.map(function(p) {
-            return { lx: Math.log10(Math.max(p.d, 1e-4)), py: p.pasa };
+            return { lx: Math.log10(Math.max(p.d, 0.075)), py: p.pasa };
         });
         var out = [];
-        var segs = 28;
+        var segs = 48;
         for (var i = 0; i < logPts.length - 1; i++) {
             var p0 = logPts[Math.max(0, i - 1)];
             var p1 = logPts[i];
@@ -3870,6 +3900,24 @@ function graficaGranulometria() {
         // último punto exacto
         var last = points[points.length - 1];
         out.push({ x: xOf(last.d), y: yOf(last.pasa) });
+        // Pase de suavizado (media móvil) para eliminar dientes
+        if (out.length > 6) {
+            var sm = out.slice();
+            for (var pass = 0; pass < 3; pass++) {
+                var tmp = sm.slice();
+                for (var i = 2; i < sm.length - 2; i++) {
+                    tmp[i] = {
+                        x: (sm[i-2].x + sm[i-1].x + sm[i].x + sm[i+1].x + sm[i+2].x) / 5,
+                        y: (sm[i-2].y + sm[i-1].y + sm[i].y + sm[i+1].y + sm[i+2].y) / 5
+                    };
+                }
+                sm = tmp;
+            }
+            // Anclar extremos a datos reales
+            sm[0] = out[0];
+            sm[sm.length - 1] = out[out.length - 1];
+            return sm;
+        }
         return out;
     }
 
