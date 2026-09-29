@@ -715,6 +715,13 @@
                     <p>Carga Excel e isobaras: puntual, circular o lineal.</p>
                     <button type="button" class="btn-calcular btn-abrir-sim" data-sim="bulbos">ABRIR MÓDULO</button>
                 </div>
+
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">📊</div>
+                    <h3>Incrementos de esfuerzo</h3>
+                    <p>Carga Excel con P, X, Y y factor Λ vs profundidad z.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="incrementos">ABRIR MÓDULO</button>
+                </div>
             </div>
         </section>
 </main>
@@ -1696,6 +1703,73 @@
                         <div class="bulbos-tabla-scroll">
                             <table class="bulbos-tabla" id="bulbosTabla">
                                 <thead><tr><th>Isobara</th><th>z</th><th>r</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="aula-card sim-maquina-card bulbos-card" id="card-sim-incrementos" hidden>
+                <h3 id="incTitulo">Incrementos de esfuerzo</h3>
+                <p class="grafica-hint">Cargue un Excel con parámetros (P, X, Y, paso) y la tabla de profundidad z frente al factor Λ. El eje z aumenta hacia abajo.</p>
+
+                <div class="bulbos-paso">
+                    <h4 class="bulbos-step-title">1. Cargar archivo de datos</h4>
+                    <div class="bulbos-upload">
+                        <label class="bulbos-file-label" for="incFileInput">
+                            <span>📁 Cargar archivo Excel (.xlsx / .xls)</span>
+                        </label>
+                        <input type="file" id="incFileInput" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden>
+                        <p id="incFileName" class="bulbos-file-name">Ningún archivo seleccionado</p>
+                        <p id="incMsg" class="mensaje-error" style="margin-top:8px"></p>
+                    </div>
+                </div>
+
+                <div id="incPasoMapa" class="bulbos-paso" hidden>
+                    <h4 class="bulbos-step-title">2. Seleccionar columnas</h4>
+                    <p class="login-hint">Asigne las columnas de profundidad z y del factor Λ:</p>
+                    <div class="bulbos-map-grid">
+                        <label>Profundidad z<select id="incColZ"></select></label>
+                        <label>Factor Λ (o Δσ)<select id="incColLam"></select></label>
+                    </div>
+                    <button type="button" class="btn-calcular" id="btnIncAplicarMapa">Aplicar y graficar</button>
+                </div>
+
+                <div id="incResultados" class="bulbos-paso" hidden>
+                    <div class="bulbos-layout">
+                        <div class="bulbos-chart-wrap">
+                            <div id="incPlot" class="bulbos-plot"></div>
+                        </div>
+                        <div class="bulbos-side">
+                            <div class="bulbos-info">
+                                <div><span>Archivo</span><strong id="incInfoFile">—</strong></div>
+                                <div><span>P</span><strong id="incInfoP">—</strong></div>
+                                <div><span>X</span><strong id="incInfoX">—</strong></div>
+                                <div><span>Y</span><strong id="incInfoY">—</strong></div>
+                                <div><span>Paso</span><strong id="incInfoPaso">—</strong></div>
+                                <div><span>Puntos</span><strong id="incInfoN">—</strong></div>
+                                <div><span>Λ máx</span><strong id="incInfoLamMax">—</strong></div>
+                                <div><span>z en Λ máx</span><strong id="incInfoZatMax">—</strong></div>
+                            </div>
+                            <div class="bulbos-controles">
+                                <label class="bulbos-check"><input type="checkbox" id="incChkPuntos" checked> Mostrar puntos</label>
+                                <label class="bulbos-check"><input type="checkbox" id="incChkGrid" checked> Cuadrícula</label>
+                                <label class="bulbos-check"><input type="checkbox" id="incChkCurva" checked> Curva suavizada</label>
+                            </div>
+                            <div class="botones-calculo" style="flex-direction:column;gap:8px;margin-top:12px">
+                                <button type="button" class="btn-calcular" id="btnIncDescargar">Descargar gráfica PNG</button>
+                                <button type="button" class="btn-limpiar" id="btnIncCambiar">Cambiar archivo</button>
+                                <button type="button" class="btn-limpiar" id="btnIncReiniciar">Reiniciar</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bulbos-tabla-wrap">
+                        <h4>Datos procesados</h4>
+                        <div class="bulbos-tabla-scroll">
+                            <table class="bulbos-tabla" id="incTabla">
+                                <thead><tr><th>z (m)</th><th>Λ</th></tr></thead>
                                 <tbody></tbody>
                             </table>
                         </div>
