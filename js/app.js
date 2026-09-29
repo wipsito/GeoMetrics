@@ -8658,18 +8658,46 @@ function bulbosCargarArchivo(file) {
         try {
             var data = new Uint8Array(ev.target.result);
             var wb = XLSX.read(data, { type: 'array' });
-            var sheetName = wb.SheetNames[0];
-            var sheet = wb.Sheets[sheetName];
-            var json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
-            // quitar filas totalmente vacías
-            json = json.filter(function(row) {
+            var sheet = wb.Sheets[wb.SheetNames[0]];
+            var matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true });
+
+            // 1) Formato en bloques horizontales (isobara | valor | vacío | isobara | …)
+            var blockPts = bulbosParseBloques(matrix);
+            if (blockPts && blockPts.length >= 3) {
+                __bulbosState.points = blockPts;
+                __bulbosState.headers = ['Isobara', 'z', 'r'];
+                __bulbosState.rows = blockPts.map(function(p) {
+                    return { Isobara: p.iso, z: p.z, r: p.r };
+                });
+                __bulbosState.map = { iso: 'Isobara', z: 'z', r: 'r', zmax: null };
+                var groups = {};
+                blockPts.forEach(function(p) {
+                    var key = String(p.iso);
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(p);
+                });
+                Object.keys(groups).forEach(function(k) {
+                    groups[k].sort(function(a, b) { return a.z - b.z; });
+                });
+                __bulbosState.groups = groups;
+                document.getElementById('bulbosPasoMapa').hidden = true;
+                document.getElementById('bulbosResultados').hidden = false;
+                bulbosMsg('');
+                bulbosActualizarInfo();
+                bulbosRenderTabla();
+                bulbosRenderEsquema();
+                bulbosRenderGrafica();
+                return;
+            }
+
+            // 2) Formato tabular clásico (columnas Isobara | z | r)
+            var json = matrix.filter(function(row) {
                 return row && row.some(function(c) { return String(c).trim() !== ''; });
             });
             if (!json.length) {
                 bulbosMsg('El archivo no contiene datos legibles.');
                 return;
             }
-            // primera fila con texto = encabezados
             var headerRow = json[0];
             var headers = headerRow.map(function(h, i) {
                 var t = String(h == null ? '' : h).trim();
@@ -8689,28 +8717,17 @@ function bulbosCargarArchivo(file) {
             __bulbosState.headers = headers;
             __bulbosState.rows = rows;
 
-            // auto-detect
-            var iso = bulbosDetectCol(headers, ['isobara', 'isobar', 'delta sigma', 'dsigma', 'sigma_z/q', 'sz/q', 'i']);
-            var z = bulbosDetectCol(headers, ['profundidad', 'depth', 'z (', ' z', 'z']);
-            // prefer exact z
+            var iso = bulbosDetectCol(headers, ['isobara', 'isobar']);
+            var z = null;
+            var rCol = null;
             headers.forEach(function(h) {
                 var n = bulbosNormHeader(h);
-                if (n === 'z' || n === 'z (m)' || n === 'z(m)') z = h;
-                if (n === 'r' || n === 'r (m)' || n === 'r(m)') iso && (void 0);
+                if (n === 'z' || n === 'z (m)' || n === 'z(m)' || n === 'profundidad') z = h;
+                if (n === 'r' || n === 'r (m)' || n === 'r(m)' || n === 'radio' || n === 'distancia radial') rCol = h;
             });
-            var rCol = bulbosDetectCol(headers, ['distancia radial', 'radio', 'radius', 'r (', ' r']);
-            headers.forEach(function(h) {
-                var n = bulbosNormHeader(h);
-                if (n === 'r' || n === 'r (m)' || n === 'r(m)') rCol = h;
-            });
-            var zmax = bulbosDetectCol(headers, ['zmax', 'z_max', 'z max', 'profundidad max']);
-
-            // refine isobara if too ambiguous
-            headers.forEach(function(h) {
-                var n = bulbosNormHeader(h);
-                if (n === 'isobara' || n === 'isobar') iso = h;
-            });
-
+            if (!z) z = bulbosDetectCol(headers, ['profundidad', 'depth']);
+            if (!rCol) rCol = bulbosDetectCol(headers, ['distancia radial', 'radio', 'radius']);
+            var zmax = bulbosDetectCol(headers, ['zmax', 'z_max', 'z max']);
             __bulbosState.map = { iso: iso, z: z, r: rCol, zmax: zmax };
 
             if (iso && z && rCol) {
@@ -8724,17 +8741,88 @@ function bulbosCargarArchivo(file) {
                 if (!iso) faltan.push('isobara');
                 if (!z) faltan.push('profundidad z');
                 if (!rCol) faltan.push('distancia r');
-                bulbosMsg('GeoMetrics no pudo identificar automáticamente: ' + faltan.join(', ') + '. Seleccione las columnas manualmente.');
+                bulbosMsg('GeoMetrics no reconoció la estructura del Excel. Formato esperado: bloques (isobara | valor, z | r) o columnas Isobara, z, r. Faltan: ' + faltan.join(', ') + '.');
             }
         } catch (err) {
             console.error(err);
-            bulbosMsg('No se pudo leer el Excel. Verifique que el archivo no esté dañado y tenga una hoja con datos.');
+            bulbosMsg('No se pudo leer el Excel. Verifique que el archivo no esté dañado.');
         }
     };
     reader.onerror = function() {
         bulbosMsg('Error al leer el archivo en el navegador.');
     };
     reader.readAsArrayBuffer(file);
+}
+
+/**
+ * Parsea Excel tipo:
+ * isobara | 0.9 |  | isobara | 0.8 | …
+ * Zmax    | 0.73|  | Zmax    | 0.77| …
+ * z       | r   |  | z       | r   | …
+ * 0.1     | 0.2 |  | 0.1     | 0.2 | …
+ */
+function bulbosParseBloques(matrix) {
+    if (!matrix || !matrix.length) return null;
+    var norm = function(v) {
+        return String(v == null ? '' : v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    };
+    var num = bulbosToNum;
+    // Buscar fila de "isobara"
+    var isoRowIdx = -1;
+    var zHeaderRow = -1;
+    for (var i = 0; i < Math.min(matrix.length, 15); i++) {
+        var row = matrix[i] || [];
+        for (var c = 0; c < row.length; c++) {
+            if (norm(row[c]) === 'isobara') isoRowIdx = i;
+            if (norm(row[c]) === 'z') zHeaderRow = i;
+        }
+    }
+    if (isoRowIdx < 0 || zHeaderRow < 0) return null;
+
+    var isoRow = matrix[isoRowIdx] || [];
+    // pares de columnas: etiqueta isobara en col j, valor en j+1; luego z en j, r en j+1
+    var blocks = [];
+    for (var j = 0; j < isoRow.length; j++) {
+        if (norm(isoRow[j]) === 'isobara') {
+            var isoVal = num(isoRow[j + 1]);
+            if (isoVal == null) continue;
+            // confirmar fila de encabezados z/r
+            var hdr = matrix[zHeaderRow] || [];
+            if (norm(hdr[j]) !== 'z' && norm(hdr[j]) !== 'r') {
+                // a veces z/r están en j y j+1
+            }
+            var colZ = j;
+            var colR = j + 1;
+            // si hdr[j] es r y hdr[j+1] es z, intercambiar
+            if (norm(hdr[j]) === 'r' && norm(hdr[j + 1]) === 'z') {
+                colZ = j + 1;
+                colR = j;
+            }
+            var zmax = null;
+            // buscar Zmax en filas cercanas misma columna de valor
+            for (var k = 0; k < Math.min(matrix.length, 10); k++) {
+                var rk = matrix[k] || [];
+                if (norm(rk[j]) === 'zmax' || norm(rk[j]) === 'z max') {
+                    zmax = num(rk[j + 1]);
+                }
+            }
+            blocks.push({ iso: isoVal, colZ: colZ, colR: colR, zmax: zmax, dataStart: zHeaderRow + 1 });
+        }
+    }
+    if (!blocks.length) return null;
+
+    var points = [];
+    blocks.forEach(function(b) {
+        for (var r = b.dataStart; r < matrix.length; r++) {
+            var row = matrix[r] || [];
+            var z = num(row[b.colZ]);
+            var rv = num(row[b.colR]);
+            if (z == null && rv == null) continue;
+            if (z == null || rv == null) continue;
+            points.push({ iso: b.iso, z: z, r: Math.abs(rv), zmax: b.zmax });
+        }
+    });
+    return points.length ? points : null;
 }
 
 function bulbosLlenarSelects() {
