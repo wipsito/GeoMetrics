@@ -8928,6 +8928,46 @@ function bulbosRenderEsquema() {
     }
 }
 
+
+/** Suavizado Catmull-Rom denso para contornos de isobaras (solo visualización) */
+function bulbosSuavizarXY(xs, ys, segmentsPerSpan) {
+    segmentsPerSpan = segmentsPerSpan || 12;
+    if (!xs || xs.length < 3) return { x: xs || [], y: ys || [] };
+    var n = xs.length;
+    var outX = [], outY = [];
+    function pt(i) {
+        // índices cíclicos si el contorno está cerrado
+        var closed = Math.abs(xs[0] - xs[n - 1]) < 1e-9 && Math.abs(ys[0] - ys[n - 1]) < 1e-9;
+        if (closed) {
+            var k = ((i % (n - 1)) + (n - 1)) % (n - 1);
+            return { x: xs[k], y: ys[k] };
+        }
+        var j = Math.max(0, Math.min(n - 1, i));
+        return { x: xs[j], y: ys[j] };
+    }
+    var closed = Math.abs(xs[0] - xs[n - 1]) < 1e-9 && Math.abs(ys[0] - ys[n - 1]) < 1e-9;
+    var last = closed ? n - 2 : n - 1;
+    for (var i = 0; i < last; i++) {
+        var p0 = pt(i - 1), p1 = pt(i), p2 = pt(i + 1), p3 = pt(i + 2);
+        for (var s = 0; s < segmentsPerSpan; s++) {
+            var t = s / segmentsPerSpan;
+            var t2 = t * t, t3 = t2 * t;
+            var x = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t +
+                (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+                (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+            var y = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t +
+                (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+                (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
+            outX.push(x);
+            outY.push(y);
+        }
+    }
+    // último punto
+    outX.push(xs[closed ? 0 : n - 1]);
+    outY.push(ys[closed ? 0 : n - 1]);
+    return { x: outX, y: outY };
+}
+
 function bulbosRenderGrafica() {
     if (typeof Plotly === 'undefined') {
         bulbosMsg('No se pudo cargar Plotly para graficar. Revise su conexión.');
@@ -9026,20 +9066,39 @@ function bulbosRenderGrafica() {
         }
 
         if (showCurvas) {
+            // Suavizado fuerte solo para visualización (los puntos originales se mantienen en la tabla)
+            var smooth = bulbosSuavizarXY(xs, ys, 16);
             traces.push({
-                x: xs,
-                y: ys,
-                mode: showPts ? 'lines+markers' : 'lines',
+                x: smooth.x,
+                y: smooth.y,
+                mode: 'lines',
                 name: 'Isobara ' + k,
                 line: {
                     color: color,
-                    width: 2.4,
+                    width: 2.6,
                     shape: 'spline',
-                    smoothing: 0.85
+                    smoothing: 1.3
                 },
-                marker: showPts ? { size: 5, color: color, line: { width: 0 } } : undefined,
                 hovertemplate: 'r=%{x:.4f}<br>z=%{y:.4f}<br>Δσ/q = ' + k + '<extra></extra>'
             });
+            // Puntos experimentales encima (sin unir en zigzag)
+            if (showPts) {
+                var pxs = simetria
+                    ? pts.map(function(p) { return -p.r; }).concat(pts.map(function(p) { return p.r; }))
+                    : pts.map(function(p) { return p.r; });
+                var pys = simetria
+                    ? pts.map(function(p) { return p.z; }).concat(pts.map(function(p) { return p.z; }))
+                    : pts.map(function(p) { return p.z; });
+                traces.push({
+                    x: pxs,
+                    y: pys,
+                    mode: 'markers',
+                    name: 'Isobara ' + k + ' (datos)',
+                    marker: { size: 5, color: color, line: { width: 0.5, color: '#0f1612' } },
+                    showlegend: false,
+                    hovertemplate: 'r=%{x:.4f}<br>z=%{y:.4f}<br>Δσ/q = ' + k + ' (dato)<extra></extra>'
+                });
+            }
         } else if (showPts) {
             var px = simetria
                 ? pts.map(function(p) { return p.r; }).concat(pts.map(function(p) { return -p.r; }))
