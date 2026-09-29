@@ -8504,3 +8504,465 @@ function simularTriaxial() {
     var c = document.getElementById('sim-tx-s3-val'); if (c) c.textContent = p.s3.toFixed(0);
     dibujarCamaraTX(0, p.s3, p.s3);
 }
+
+
+
+// =========================================
+// BULBOS DE PRESIÓN (Mecánica de Suelos II)
+// =========================================
+
+var __bulbosState = {
+    tipo: null,
+    fileName: '',
+    headers: [],
+    rows: [],
+    map: { iso: null, z: null, r: null, zmax: null },
+    points: [],
+    groups: {},
+    bound: false
+};
+
+function bulbosPresionInit() {
+    var card = document.getElementById('card-sim-bulbos');
+    if (!card) return;
+    if (!__bulbosState.bound) {
+        __bulbosState.bound = true;
+        document.querySelectorAll('.bulbos-tipo-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.bulbos-tipo-btn').forEach(function(b) { b.classList.remove('selected'); });
+                btn.classList.add('selected');
+                __bulbosState.tipo = btn.getAttribute('data-carga');
+                var paso = document.getElementById('bulbosPasoArchivo');
+                if (paso) paso.hidden = false;
+                var tit = document.getElementById('bulbosTitulo');
+                if (tit) tit.textContent = 'Bulbos de presión — Carga ' + __bulbosState.tipo;
+                bulbosMsg('');
+            });
+        });
+        var fin = document.getElementById('bulbosFileInput');
+        if (fin) {
+            fin.addEventListener('change', function(e) {
+                var f = e.target.files && e.target.files[0];
+                if (f) bulbosCargarArchivo(f);
+            });
+        }
+        var btnMap = document.getElementById('btnBulbosAplicarMapa');
+        if (btnMap) btnMap.addEventListener('click', function() {
+            __bulbosState.map.iso = document.getElementById('bulbosColIso').value;
+            __bulbosState.map.z = document.getElementById('bulbosColZ').value;
+            __bulbosState.map.r = document.getElementById('bulbosColR').value;
+            var zm = document.getElementById('bulbosColZmax');
+            __bulbosState.map.zmax = zm && zm.value ? zm.value : null;
+            if (!__bulbosState.map.iso || !__bulbosState.map.z || !__bulbosState.map.r) {
+                bulbosMsg('Seleccione las columnas de isobara, profundidad z y distancia r.');
+                return;
+            }
+            bulbosProcesarYGraficar();
+        });
+        ['bulbosChkPuntos','bulbosChkEtiquetas','bulbosChkGrid','bulbosChkCurvas','bulbosChkSimetria'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('change', function() {
+                if (__bulbosState.points.length) bulbosRenderGrafica();
+            });
+        });
+        var btnDl = document.getElementById('btnBulbosDescargar');
+        if (btnDl) btnDl.addEventListener('click', bulbosDescargarPNG);
+        var btnCh = document.getElementById('btnBulbosCambiar');
+        if (btnCh) btnCh.addEventListener('click', function() {
+            document.getElementById('bulbosResultados').hidden = true;
+            document.getElementById('bulbosPasoMapa').hidden = true;
+            document.getElementById('bulbosPasoArchivo').hidden = false;
+            var fi = document.getElementById('bulbosFileInput');
+            if (fi) fi.value = '';
+            document.getElementById('bulbosFileName').textContent = 'Ningún archivo seleccionado';
+            bulbosMsg('');
+        });
+        var btnRe = document.getElementById('btnBulbosReiniciar');
+        if (btnRe) btnRe.addEventListener('click', bulbosReiniciar);
+    }
+    // refresh title if tipo already set
+    if (__bulbosState.tipo) {
+        var tit2 = document.getElementById('bulbosTitulo');
+        if (tit2) tit2.textContent = 'Bulbos de presión — Carga ' + __bulbosState.tipo;
+    }
+}
+
+function bulbosMsg(t) {
+    var el = document.getElementById('bulbosMsg');
+    if (el) el.textContent = t || '';
+}
+
+function bulbosReiniciar() {
+    __bulbosState.tipo = null;
+    __bulbosState.fileName = '';
+    __bulbosState.headers = [];
+    __bulbosState.rows = [];
+    __bulbosState.points = [];
+    __bulbosState.groups = {};
+    document.querySelectorAll('.bulbos-tipo-btn').forEach(function(b) { b.classList.remove('selected'); });
+    document.getElementById('bulbosPasoArchivo').hidden = true;
+    document.getElementById('bulbosPasoMapa').hidden = true;
+    document.getElementById('bulbosResultados').hidden = true;
+    var fi = document.getElementById('bulbosFileInput');
+    if (fi) fi.value = '';
+    document.getElementById('bulbosFileName').textContent = 'Ningún archivo seleccionado';
+    document.getElementById('bulbosTitulo').textContent = 'Bulbos de presión';
+    bulbosMsg('');
+    if (window.Plotly && document.getElementById('bulbosPlot')) {
+        try { Plotly.purge('bulbosPlot'); } catch (e) {}
+    }
+}
+
+function bulbosNormHeader(h) {
+    return String(h == null ? '' : h)
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function bulbosDetectCol(headers, patterns) {
+    for (var i = 0; i < headers.length; i++) {
+        var h = bulbosNormHeader(headers[i]);
+        for (var p = 0; p < patterns.length; p++) {
+            if (h === patterns[p] || h.indexOf(patterns[p]) !== -1) return headers[i];
+        }
+    }
+    return null;
+}
+
+function bulbosToNum(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+    var s = String(v).trim().replace(',', '.');
+    if (!s) return null;
+    var n = parseFloat(s);
+    return isNaN(n) ? null : n;
+}
+
+function bulbosCargarArchivo(file) {
+    if (!__bulbosState.tipo) {
+        bulbosMsg('Primero seleccione el tipo de carga (puntual, circular o lineal).');
+        return;
+    }
+    if (typeof XLSX === 'undefined') {
+        bulbosMsg('No se pudo cargar la librería de Excel. Revise su conexión e intente de nuevo.');
+        return;
+    }
+    __bulbosState.fileName = file.name || 'datos.xlsx';
+    document.getElementById('bulbosFileName').textContent = 'Archivo: ' + __bulbosState.fileName;
+    bulbosMsg('Leyendo archivo…');
+
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        try {
+            var data = new Uint8Array(ev.target.result);
+            var wb = XLSX.read(data, { type: 'array' });
+            var sheetName = wb.SheetNames[0];
+            var sheet = wb.Sheets[sheetName];
+            var json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+            // quitar filas totalmente vacías
+            json = json.filter(function(row) {
+                return row && row.some(function(c) { return String(c).trim() !== ''; });
+            });
+            if (!json.length) {
+                bulbosMsg('El archivo no contiene datos legibles.');
+                return;
+            }
+            // primera fila con texto = encabezados
+            var headerRow = json[0];
+            var headers = headerRow.map(function(h, i) {
+                var t = String(h == null ? '' : h).trim();
+                return t || ('Columna_' + (i + 1));
+            });
+            var rows = [];
+            for (var r = 1; r < json.length; r++) {
+                var obj = {};
+                var empty = true;
+                headers.forEach(function(h, i) {
+                    var val = json[r][i];
+                    obj[h] = val;
+                    if (val !== '' && val != null) empty = false;
+                });
+                if (!empty) rows.push(obj);
+            }
+            __bulbosState.headers = headers;
+            __bulbosState.rows = rows;
+
+            // auto-detect
+            var iso = bulbosDetectCol(headers, ['isobara', 'isobar', 'delta sigma', 'dsigma', 'sigma_z/q', 'sz/q', 'i']);
+            var z = bulbosDetectCol(headers, ['profundidad', 'depth', 'z (', ' z', 'z']);
+            // prefer exact z
+            headers.forEach(function(h) {
+                var n = bulbosNormHeader(h);
+                if (n === 'z' || n === 'z (m)' || n === 'z(m)') z = h;
+                if (n === 'r' || n === 'r (m)' || n === 'r(m)') iso && (void 0);
+            });
+            var rCol = bulbosDetectCol(headers, ['distancia radial', 'radio', 'radius', 'r (', ' r']);
+            headers.forEach(function(h) {
+                var n = bulbosNormHeader(h);
+                if (n === 'r' || n === 'r (m)' || n === 'r(m)') rCol = h;
+            });
+            var zmax = bulbosDetectCol(headers, ['zmax', 'z_max', 'z max', 'profundidad max']);
+
+            // refine isobara if too ambiguous
+            headers.forEach(function(h) {
+                var n = bulbosNormHeader(h);
+                if (n === 'isobara' || n === 'isobar') iso = h;
+            });
+
+            __bulbosState.map = { iso: iso, z: z, r: rCol, zmax: zmax };
+
+            if (iso && z && rCol) {
+                document.getElementById('bulbosPasoMapa').hidden = true;
+                bulbosProcesarYGraficar();
+            } else {
+                bulbosLlenarSelects();
+                document.getElementById('bulbosPasoMapa').hidden = false;
+                document.getElementById('bulbosResultados').hidden = true;
+                var faltan = [];
+                if (!iso) faltan.push('isobara');
+                if (!z) faltan.push('profundidad z');
+                if (!rCol) faltan.push('distancia r');
+                bulbosMsg('GeoMetrics no pudo identificar automáticamente: ' + faltan.join(', ') + '. Seleccione las columnas manualmente.');
+            }
+        } catch (err) {
+            console.error(err);
+            bulbosMsg('No se pudo leer el Excel. Verifique que el archivo no esté dañado y tenga una hoja con datos.');
+        }
+    };
+    reader.onerror = function() {
+        bulbosMsg('Error al leer el archivo en el navegador.');
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function bulbosLlenarSelects() {
+    var headers = __bulbosState.headers;
+    function fill(selId, preferred, optional) {
+        var sel = document.getElementById(selId);
+        if (!sel) return;
+        sel.innerHTML = optional ? '<option value="">—</option>' : '';
+        headers.forEach(function(h) {
+            var opt = document.createElement('option');
+            opt.value = h;
+            opt.textContent = h;
+            if (preferred && h === preferred) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+    fill('bulbosColIso', __bulbosState.map.iso, false);
+    fill('bulbosColZ', __bulbosState.map.z, false);
+    fill('bulbosColR', __bulbosState.map.r, false);
+    fill('bulbosColZmax', __bulbosState.map.zmax, true);
+}
+
+function bulbosProcesarYGraficar() {
+    var map = __bulbosState.map;
+    var rows = __bulbosState.rows;
+    if (!map.iso || !map.z || !map.r) {
+        bulbosMsg('Faltan columnas obligatorias (isobara, z, r).');
+        return;
+    }
+    var points = [];
+    rows.forEach(function(row) {
+        var iso = bulbosToNum(row[map.iso]);
+        var z = bulbosToNum(row[map.z]);
+        var r = bulbosToNum(row[map.r]);
+        if (iso == null || z == null || r == null) return;
+        points.push({ iso: iso, z: z, r: Math.abs(r) });
+    });
+    if (points.length < 3) {
+        bulbosMsg('No hay suficientes puntos numéricos válidos (se necesitan al menos 3 filas con isobara, z y r).');
+        return;
+    }
+    // group by isobara
+    var groups = {};
+    points.forEach(function(p) {
+        var key = String(p.iso);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(p);
+    });
+    Object.keys(groups).forEach(function(k) {
+        groups[k].sort(function(a, b) { return a.z - b.z; });
+    });
+    __bulbosState.points = points;
+    __bulbosState.groups = groups;
+
+    document.getElementById('bulbosPasoMapa').hidden = true;
+    document.getElementById('bulbosResultados').hidden = false;
+    bulbosMsg('');
+    bulbosActualizarInfo();
+    bulbosRenderTabla();
+    bulbosRenderEsquema();
+    bulbosRenderGrafica();
+}
+
+function bulbosActualizarInfo() {
+    var tipoLabels = { puntual: 'Carga puntual', circular: 'Carga circular', lineal: 'Carga lineal' };
+    var set = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+    set('bulbosInfoTipo', tipoLabels[__bulbosState.tipo] || __bulbosState.tipo || '—');
+    set('bulbosInfoFile', __bulbosState.fileName || '—');
+    var keys = Object.keys(__bulbosState.groups);
+    set('bulbosInfoNiso', String(keys.length));
+    var zs = __bulbosState.points.map(function(p) { return p.z; });
+    var rs = __bulbosState.points.map(function(p) { return p.r; });
+    set('bulbosInfoZmax', zs.length ? Math.max.apply(null, zs).toFixed(3) : '—');
+    set('bulbosInfoRmax', rs.length ? Math.max.apply(null, rs).toFixed(3) : '—');
+    set('bulbosInfoNpts', String(__bulbosState.points.length));
+}
+
+function bulbosRenderTabla() {
+    var tbody = document.querySelector('#bulbosTabla tbody');
+    if (!tbody) return;
+    var pts = __bulbosState.points.slice().sort(function(a, b) {
+        if (a.iso !== b.iso) return b.iso - a.iso;
+        return a.z - b.z;
+    });
+    var html = pts.map(function(p) {
+        return '<tr><td>' + p.iso + '</td><td>' + p.z + '</td><td>' + p.r + '</td></tr>';
+    }).join('');
+    tbody.innerHTML = html || '<tr><td colspan="3">Sin datos</td></tr>';
+}
+
+function bulbosRenderEsquema() {
+    var el = document.getElementById('bulbosEsquema');
+    if (!el) return;
+    var t = __bulbosState.tipo;
+    if (t === 'puntual') {
+        el.textContent = '        ↓\n        ●  carga puntual\n  ────────────────────\n         suelo';
+    } else if (t === 'circular') {
+        el.textContent = '     ↓ ↓ ↓ ↓\n    ┌─────────┐\n    │  CARGA  │  circular\n    └─────────┘\n  ────────────────────\n         suelo';
+    } else if (t === 'lineal') {
+        el.textContent = '  ↓ ↓ ↓ ↓ ↓ ↓ ↓ ↓\n  ────────────────────\n       CARGA LINEAL\n  ────────────────────\n         suelo';
+    } else {
+        el.textContent = '';
+    }
+}
+
+function bulbosRenderGrafica() {
+    if (typeof Plotly === 'undefined') {
+        bulbosMsg('No se pudo cargar Plotly para graficar. Revise su conexión.');
+        return;
+    }
+    var groups = __bulbosState.groups;
+    var keys = Object.keys(groups).sort(function(a, b) { return parseFloat(b) - parseFloat(a); });
+    var showPts = document.getElementById('bulbosChkPuntos').checked;
+    var showLab = document.getElementById('bulbosChkEtiquetas').checked;
+    var showGrid = document.getElementById('bulbosChkGrid').checked;
+    var showCurvas = document.getElementById('bulbosChkCurvas').checked;
+    var simetria = document.getElementById('bulbosChkSimetria').checked &&
+        (__bulbosState.tipo === 'puntual' || __bulbosState.tipo === 'circular');
+
+    var colors = ['#FFCC00', '#4ade80', '#38bdf8', '#f472b6', '#a78bfa', '#fb923c', '#2dd4bf', '#f87171'];
+    var traces = [];
+
+    keys.forEach(function(k, idx) {
+        var pts = groups[k];
+        var xs = pts.map(function(p) { return p.r; });
+        var ys = pts.map(function(p) { return p.z; });
+        var color = colors[idx % colors.length];
+
+        if (simetria) {
+            // mirror: -r then +r (avoid double zero)
+            var xsM = [];
+            var ysM = [];
+            for (var i = pts.length - 1; i >= 0; i--) {
+                xsM.push(-pts[i].r);
+                ysM.push(pts[i].z);
+            }
+            for (var j = 0; j < pts.length; j++) {
+                if (pts[j].r === 0 && xsM.length) continue;
+                xsM.push(pts[j].r);
+                ysM.push(pts[j].z);
+            }
+            xs = xsM;
+            ys = ysM;
+        }
+
+        if (showCurvas) {
+            traces.push({
+                x: xs,
+                y: ys,
+                mode: showPts ? 'lines+markers' : 'lines',
+                name: 'Isobara ' + k,
+                line: { color: color, width: 2.2 },
+                marker: { size: 6, color: color },
+                hovertemplate: 'r=%{x:.4f}<br>z=%{y:.4f}<br>isobara=' + k + '<extra></extra>'
+            });
+        } else if (showPts) {
+            traces.push({
+                x: xs,
+                y: ys,
+                mode: 'markers',
+                name: 'Isobara ' + k,
+                marker: { size: 7, color: color },
+                hovertemplate: 'r=%{x:.4f}<br>z=%{y:.4f}<br>isobara=' + k + '<extra></extra>'
+            });
+        }
+
+        if (showLab && pts.length) {
+            // label near deepest or mid point of positive side
+            var mid = pts[Math.floor(pts.length / 2)];
+            traces.push({
+                x: [simetria ? mid.r : mid.r],
+                y: [mid.z],
+                mode: 'text',
+                text: [String(k)],
+                textposition: 'middle right',
+                textfont: { color: color, size: 12 },
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+        }
+    });
+
+    var tipoLabels = { puntual: 'Carga puntual', circular: 'Carga circular', lineal: 'Carga lineal' };
+    var title = 'Bulbo de presión — ' + (tipoLabels[__bulbosState.tipo] || '');
+
+    var layout = {
+        title: { text: title, font: { color: '#FFCC00', size: 16 } },
+        paper_bgcolor: '#0f1612',
+        plot_bgcolor: '#121a16',
+        font: { color: '#d5e0d8' },
+        xaxis: {
+            title: 'r — distancia radial',
+            gridcolor: showGrid ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0)',
+            zeroline: true,
+            zerolinecolor: 'rgba(255,204,0,0.5)',
+            color: '#d5e0d8'
+        },
+        yaxis: {
+            title: 'z — profundidad',
+            autorange: 'reversed',
+            gridcolor: showGrid ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0)',
+            zeroline: true,
+            zerolinecolor: 'rgba(255,204,0,0.5)',
+            color: '#d5e0d8'
+        },
+        legend: { orientation: 'h', y: -0.18, font: { size: 11 } },
+        margin: { t: 50, r: 20, b: 70, l: 60 },
+        hovermode: 'closest'
+    };
+
+    Plotly.newPlot('bulbosPlot', traces, layout, {
+        responsive: true,
+        displayModeBar: true,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+        displaylogo: false
+    });
+}
+
+function bulbosDescargarPNG() {
+    if (typeof Plotly === 'undefined' || !__bulbosState.points.length) {
+        bulbosMsg('Genere la gráfica antes de descargar.');
+        return;
+    }
+    Plotly.downloadImage('bulbosPlot', {
+        format: 'png',
+        width: 1200,
+        height: 800,
+        filename: 'bulbo_presion_' + (__bulbosState.tipo || 'geometrics')
+    });
+}
+
