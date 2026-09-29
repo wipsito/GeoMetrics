@@ -3508,6 +3508,8 @@ function aulaChatAbrirCompanero(peerEmail, materia, grupo) {
     var btn = document.getElementById('btnEstChatEnviar');
     if (inp) { inp.disabled = false; try { inp.focus(); } catch (e) {} }
     if (btn) btn.disabled = false;
+    var delBtn = document.getElementById('btnEstChatEliminar');
+    if (delBtn) { delBtn.hidden = false; delBtn.dataset.chatId = c.id; }
 
     // 4) Pintar mensajes y lista (resaltar chat activo)
     c = aulaChatLoad().find(function(x) { return x.id === c.id; }) || c;
@@ -3566,6 +3568,39 @@ function aulaChatSaveOne(chat) {
         }
     } catch (e) {}
 }
+
+function aulaChatEliminar(chatId) {
+    if (!chatId) return false;
+    var list = aulaChatLoad().filter(function(c) { return c && c.id !== chatId; });
+    aulaChatSave(list);
+    if (window.__chatActivoId === chatId) {
+        window.__chatActivoId = null;
+        var hdr = document.getElementById('estChatHeader');
+        if (hdr) hdr.textContent = 'Selecciona un chat';
+        var box = document.getElementById('estChatMsgs');
+        if (box) box.innerHTML = '<p class="login-hint" style="text-align:center;margin-top:40px;">Chat eliminado. Elige otra conversación.</p>';
+        var inp = document.getElementById('estChatInput');
+        var btn = document.getElementById('btnEstChatEnviar');
+        var delBtn = document.getElementById('btnEstChatEliminar');
+        if (inp) { inp.value = ''; inp.disabled = true; }
+        if (btn) btn.disabled = true;
+        if (delBtn) delBtn.hidden = true;
+    }
+    // Cloud: intentar borrar nodo si existe API
+    try {
+        if (window.GeoCloud && GeoCloud.isOn() && typeof GeoCloud.removeChat === 'function') {
+            GeoCloud.removeChat(chatId);
+        } else if (window.GeoCloud && GeoCloud.isOn() && window.firebase && firebase.database) {
+            // best-effort path used by cloud chats
+            try {
+                var db = firebase.database();
+                db.ref('chats/' + chatId).remove();
+            } catch (e2) {}
+        }
+    } catch (e) {}
+    return true;
+}
+
 function aulaChatId() {
     return 'c_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
 }
@@ -3964,7 +3999,7 @@ function aulaChatRenderListaEstudiante() {
             var lastP = c && c.messages && c.messages.length ? c.messages[c.messages.length - 1].text : 'Toca para chatear';
             var unP = c ? aulaChatUnread(c, user.email) : 0;
             var actP = c && window.__chatActivoId === c.id ? ' active' : '';
-            return '<button type="button" class="chat-aula-item' + actP + '" data-peer="1" data-peer-email="' +
+            var peerBtn = '<button type="button" class="chat-aula-item' + actP + '" data-peer="1" data-peer-email="' +
                 escHtml(it.peerEmail || '') + '" data-chat-mat="' + escHtml((c && c.materia) || it.chatMateria || '') +
                 '" data-chat-grp="' + escHtml(it.grupo) + '"' + (c ? ' data-chat-id="' + c.id + '"' : '') + '>' +
                 '<strong>' + escHtml(it.materia) + '</strong>' +
@@ -3972,22 +4007,44 @@ function aulaChatRenderListaEstudiante() {
                 '<span class="chat-preview">' + escHtml(lastP) + '</span>' +
                 (unP ? '<span class="chat-unread">' + unP + '</span>' : '') +
                 '</button>';
+            var peerDel = c ? '<button type="button" class="chat-item-del" data-del-chat="' + escHtml(c.id) + '" title="Eliminar chat">×</button>' : '';
+            return '<div class="chat-aula-item-wrap">' + peerBtn + peerDel + '</div>';
         }
-        return '<button type="button" class="chat-aula-item' + act + '" data-chat-mat="' + escHtml(it.materia) + '" data-chat-grp="' + escHtml(it.grupo) + '"' +
+        var docBtn = '<button type="button" class="chat-aula-item' + act + '" data-chat-mat="' + escHtml(it.materia) + '" data-chat-grp="' + escHtml(it.grupo) + '"' +
             (c ? ' data-chat-id="' + c.id + '"' : '') + '>' +
             '<strong>' + escHtml(it.materia) + '</strong>' +
-            '<span>Grupo ' + escHtml(it.grupo || '—') + ' · ' + escHtml(tName) + '</span>' +
+            '<span>Docente · Grupo ' + escHtml(it.grupo || '—') + ' · ' + escHtml(tName) + '</span>' +
             '<span class="chat-preview">' + escHtml(last) + '</span>' +
             (un ? '<span class="chat-unread">' + un + ' nuevo' + (un > 1 ? 's' : '') + '</span>' : '') +
             '</button>';
+        var docDel = c ? '<button type="button" class="chat-item-del" data-del-chat="' + escHtml(c.id) + '" title="Eliminar chat">×</button>' : '';
+        return '<div class="chat-aula-item-wrap">' + docBtn + docDel + '</div>';
     }).join('');
     el.querySelectorAll('.chat-aula-item').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            // Cambiar de chat de forma fiable
             if (btn.getAttribute('data-peer') === '1') {
-                aulaChatAbrirCompanero(btn.getAttribute('data-peer-email'), btn.getAttribute('data-chat-mat'), btn.getAttribute('data-chat-grp') || '');
+                aulaChatAbrirCompanero(
+                    btn.getAttribute('data-peer-email'),
+                    btn.getAttribute('data-chat-mat'),
+                    btn.getAttribute('data-chat-grp') || ''
+                );
                 return;
             }
             aulaChatAbrirEstudiante(btn.getAttribute('data-chat-mat'), btn.getAttribute('data-chat-grp') || '');
+        });
+    });
+    el.querySelectorAll('.chat-item-del').forEach(function(btn) {
+        btn.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var id = btn.getAttribute('data-del-chat');
+            if (!id) return;
+            if (!confirm('¿Eliminar esta conversación? No se podrá recuperar.')) return;
+            aulaChatEliminar(id);
+            aulaChatRenderListaEstudiante();
         });
     });
     aulaChatUpdateBadges();
@@ -4017,8 +4074,10 @@ function aulaChatAbrirEstudiante(materia, grupo) {
     }
     var inp = document.getElementById('estChatInput');
     var btn = document.getElementById('btnEstChatEnviar');
-    if (inp) { inp.disabled = false; inp.focus(); }
+    if (inp) { inp.disabled = false; try { inp.focus(); } catch (eF) {} }
     if (btn) btn.disabled = false;
+    var delBtnE = document.getElementById('btnEstChatEliminar');
+    if (delBtnE) { delBtnE.hidden = false; delBtnE.dataset.chatId = c.id; }
     // reload chat after find
     c = aulaChatLoad().find(function(x) { return x.id === c.id; }) || c;
     aulaChatRenderMsgs('estChatMsgs', c, user.email);
@@ -4124,6 +4183,17 @@ function aulaChatBind() {
     var fDoc = document.getElementById('btnDocChatFiltro');
     if (fDoc) fDoc.addEventListener('click', aulaChatRenderListaDocente);
 
+    var btnEstDel = document.getElementById('btnEstChatEliminar');
+    if (btnEstDel && !btnEstDel._boundDel) {
+        btnEstDel._boundDel = true;
+        btnEstDel.addEventListener('click', function() {
+            var id = btnEstDel.dataset.chatId || window.__chatActivoId;
+            if (!id) return;
+            if (!confirm('¿Eliminar esta conversación? No se podrá recuperar.')) return;
+            aulaChatEliminar(id);
+            if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+        });
+    }
     var btnEst = document.getElementById('btnEstChatEnviar');
     var inpEst = document.getElementById('estChatInput');
     function sendEst() {
