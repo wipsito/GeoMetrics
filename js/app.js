@@ -8942,30 +8942,87 @@ function bulbosRenderGrafica() {
     var simetria = document.getElementById('bulbosChkSimetria').checked &&
         (__bulbosState.tipo === 'puntual' || __bulbosState.tipo === 'circular');
 
-    var colors = ['#FFCC00', '#4ade80', '#38bdf8', '#f472b6', '#a78bfa', '#fb923c', '#2dd4bf', '#f87171'];
+    // Colores tipo diagrama académico (más claros sobre fondo oscuro)
+    var colors = ['#FFCC00', '#5eead4', '#38bdf8', '#c4b5fd', '#fb923c', '#4ade80', '#f472b6', '#f87171'];
     var traces = [];
 
+    // Línea de superficie del terreno
+    var allR = __bulbosState.points.map(function(p) { return p.r; });
+    var rMax = allR.length ? Math.max.apply(null, allR) : 1;
+    var rLim = simetria ? rMax * 1.15 : rMax * 1.1;
+    if (rLim < 0.1) rLim = 1;
+
+    traces.push({
+        x: simetria ? [-rLim, rLim] : [0, rLim],
+        y: [0, 0],
+        mode: 'lines',
+        name: 'Superficie',
+        line: { color: 'rgba(255,255,255,0.55)', width: 2, dash: 'solid' },
+        hoverinfo: 'skip',
+        showlegend: false
+    });
+
+    // Marcador de carga Q en superficie (centro)
+    if (__bulbosState.tipo === 'puntual' || __bulbosState.tipo === 'circular') {
+        traces.push({
+            x: [0],
+            y: [0],
+            mode: 'markers+text',
+            text: ['Q'],
+            textposition: 'top center',
+            textfont: { color: '#FFCC00', size: 14, family: 'Arial Black' },
+            marker: { size: 12, color: '#FFCC00', symbol: 'triangle-down' },
+            name: 'Carga Q',
+            hoverinfo: 'skip',
+            showlegend: false
+        });
+    }
+
     keys.forEach(function(k, idx) {
-        var pts = groups[k];
-        var xs = pts.map(function(p) { return p.r; });
-        var ys = pts.map(function(p) { return p.z; });
+        var pts = groups[k].slice();
+        // Orden geotécnico: por profundidad (z creciente = hacia abajo)
+        pts.sort(function(a, b) {
+            if (a.z !== b.z) return a.z - b.z;
+            return a.r - b.r;
+        });
+        // Si hay varios r al mismo z, quedarse con el máximo r (borde del bulbo)
+        var cleaned = [];
+        pts.forEach(function(p) {
+            if (!cleaned.length) { cleaned.push({ z: p.z, r: p.r, iso: p.iso }); return; }
+            var last = cleaned[cleaned.length - 1];
+            if (Math.abs(last.z - p.z) < 1e-9) {
+                if (p.r > last.r) last.r = p.r;
+            } else {
+                cleaned.push({ z: p.z, r: p.r, iso: p.iso });
+            }
+        });
+        pts = cleaned;
         var color = colors[idx % colors.length];
 
+        var xs, ys;
         if (simetria) {
-            // mirror: -r then +r (avoid double zero)
-            var xsM = [];
-            var ysM = [];
+            // Contorno cerrado clásico del bulbo:
+            // centro profundo (0, zmax) → sube lado izquierdo → superficie → baja lado derecho → vuelve al centro
+            var xsL = [], ysL = [], xsR = [], ysR = [];
             for (var i = pts.length - 1; i >= 0; i--) {
-                xsM.push(-pts[i].r);
-                ysM.push(pts[i].z);
+                xsL.push(-pts[i].r);
+                ysL.push(pts[i].z);
             }
             for (var j = 0; j < pts.length; j++) {
-                if (pts[j].r === 0 && xsM.length) continue;
-                xsM.push(pts[j].r);
-                ysM.push(pts[j].z);
+                xsR.push(pts[j].r);
+                ysR.push(pts[j].z);
             }
-            xs = xsM;
-            ys = ysM;
+            // unir: izq (de profundo a superficial) + der (de superficial a profundo)
+            xs = xsL.concat(xsR);
+            ys = ysL.concat(ysR);
+            // cerrar en el fondo si ambos extremos están cerca de r=0
+            if (xs.length >= 2) {
+                xs.push(xs[0]);
+                ys.push(ys[0]);
+            }
+        } else {
+            xs = pts.map(function(p) { return p.r; });
+            ys = pts.map(function(p) { return p.z; });
         }
 
         if (showCurvas) {
@@ -8974,27 +9031,36 @@ function bulbosRenderGrafica() {
                 y: ys,
                 mode: showPts ? 'lines+markers' : 'lines',
                 name: 'Isobara ' + k,
-                line: { color: color, width: 2.2 },
-                marker: { size: 6, color: color },
-                hovertemplate: 'r=%{x:.4f}<br>z=%{y:.4f}<br>isobara=' + k + '<extra></extra>'
+                line: {
+                    color: color,
+                    width: 2.4,
+                    shape: 'spline',
+                    smoothing: 0.85
+                },
+                marker: showPts ? { size: 5, color: color, line: { width: 0 } } : undefined,
+                hovertemplate: 'r=%{x:.4f}<br>z=%{y:.4f}<br>Δσ/q = ' + k + '<extra></extra>'
             });
         } else if (showPts) {
+            var px = simetria
+                ? pts.map(function(p) { return p.r; }).concat(pts.map(function(p) { return -p.r; }))
+                : pts.map(function(p) { return p.r; });
+            var py = simetria
+                ? pts.map(function(p) { return p.z; }).concat(pts.map(function(p) { return p.z; }))
+                : pts.map(function(p) { return p.z; });
             traces.push({
-                x: xs,
-                y: ys,
-                mode: 'markers',
-                name: 'Isobara ' + k,
-                marker: { size: 7, color: color },
-                hovertemplate: 'r=%{x:.4f}<br>z=%{y:.4f}<br>isobara=' + k + '<extra></extra>'
+                x: px, y: py, mode: 'markers', name: 'Isobara ' + k,
+                marker: { size: 6, color: color },
+                hovertemplate: 'r=%{x:.4f}<br>z=%{y:.4f}<br>Δσ/q = ' + k + '<extra></extra>'
             });
         }
 
         if (showLab && pts.length) {
-            // label near deepest or mid point of positive side
-            var mid = pts[Math.floor(pts.length / 2)];
+            // etiqueta en el punto de máximo radio (costado del bulbo)
+            var wide = pts[0];
+            pts.forEach(function(p) { if (p.r > wide.r) wide = p; });
             traces.push({
-                x: [simetria ? mid.r : mid.r],
-                y: [mid.z],
+                x: [wide.r * (simetria ? 1 : 1)],
+                y: [wide.z],
                 mode: 'text',
                 text: [String(k)],
                 textposition: 'middle right',
@@ -9011,27 +9077,40 @@ function bulbosRenderGrafica() {
     var layout = {
         title: { text: title, font: { color: '#FFCC00', size: 16 } },
         paper_bgcolor: '#0f1612',
-        plot_bgcolor: '#121a16',
+        plot_bgcolor: '#0c1210',
         font: { color: '#d5e0d8' },
         xaxis: {
             title: 'r — distancia radial',
-            gridcolor: showGrid ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0)',
+            gridcolor: showGrid ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0)',
             zeroline: true,
-            zerolinecolor: 'rgba(255,204,0,0.5)',
-            color: '#d5e0d8'
+            zerolinecolor: 'rgba(255,204,0,0.65)',
+            zerolinewidth: 1.5,
+            color: '#d5e0d8',
+            scaleanchor: 'y',
+            scaleratio: 1
         },
         yaxis: {
             title: 'z — profundidad',
             autorange: 'reversed',
-            gridcolor: showGrid ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0)',
+            gridcolor: showGrid ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0)',
             zeroline: true,
-            zerolinecolor: 'rgba(255,204,0,0.5)',
+            zerolinecolor: 'rgba(255,255,255,0.4)',
             color: '#d5e0d8'
         },
-        legend: { orientation: 'h', y: -0.18, font: { size: 11 } },
-        margin: { t: 50, r: 20, b: 70, l: 60 },
-        hovermode: 'closest'
+        legend: { orientation: 'h', y: -0.2, font: { size: 11 } },
+        margin: { t: 50, r: 24, b: 80, l: 60 },
+        hovermode: 'closest',
+        annotations: [{
+            x: 0, y: 0, xref: 'x', yref: 'y',
+            text: __bulbosState.tipo === 'lineal' ? '' : '',
+            showarrow: false
+        }]
     };
+    // scaleanchor can distort if ranges differ a lot — only for puntual/circular
+    if (__bulbosState.tipo === 'lineal') {
+        delete layout.xaxis.scaleanchor;
+        delete layout.xaxis.scaleratio;
+    }
 
     Plotly.newPlot('bulbosPlot', traces, layout, {
         responsive: true,
