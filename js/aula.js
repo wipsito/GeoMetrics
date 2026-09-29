@@ -2853,7 +2853,7 @@ function aulaAbrirSimulador(tipo, origenId) {
         var allCardIds = [
             'card-sim-mohr', 'card-sim-esfdef', 'card-sim-flujo',
             'card-sim-consolidacion', 'card-sim-consolidacion-ms2',
-            'card-sim-corte', 'card-sim-inconfinada', 'card-sim-triaxial', 'card-sim-bulbos'
+            'card-sim-corte', 'card-sim-inconfinada', 'card-sim-triaxial', 'card-sim-bulbos', 'card-sim-incrementos'
         ];
         allCardIds.forEach(function(id) {
             var el = document.getElementById(id);
@@ -2867,7 +2867,8 @@ function aulaAbrirSimulador(tipo, origenId) {
             corte: 'card-sim-corte',
             inconfinada: 'card-sim-inconfinada',
             triaxial: 'card-sim-triaxial',
-            bulbos: 'card-sim-bulbos'
+            bulbos: 'card-sim-bulbos',
+            incrementos: 'card-sim-incrementos', 'card-sim-incrementos'
         };
         // Suelos I: canvas genérico U-t (si aún se usa)
         if (tipo === 'consolidacion' && origenId === 'pantallaSuelos') {
@@ -2898,6 +2899,7 @@ function aulaAbrirSimulador(tipo, origenId) {
         if (tipo === 'consolidacion' && typeof simularConsolidacionMaquina === 'function' && origenId !== 'pantallaSuelos') simularConsolidacionMaquina();
         if (tipo === 'triaxial' && typeof simularTriaxial === 'function') simularTriaxial();
         if (tipo === 'bulbos' && typeof bulbosPresionInit === 'function') bulbosPresionInit();
+        if (tipo === 'incrementos' && typeof incrementosEsfuerzoInit === 'function') incrementosEsfuerzoInit();
     }, 80);
     window.scrollTo(0, 0);
 }

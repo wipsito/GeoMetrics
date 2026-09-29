@@ -9192,3 +9192,350 @@ function bulbosDescargarPNG() {
     });
 }
 
+
+
+
+// =========================================
+// INCREMENTOS DE ESFUERZO (MS2)
+// =========================================
+
+var __incState = {
+    fileName: '',
+    params: { P: null, X: null, Y: null, paso: null, zRango: null },
+    points: [],
+    headers: [],
+    rows: [],
+    map: { z: null, lam: null },
+    bound: false
+};
+
+function incrementosEsfuerzoInit() {
+    if (__incState.bound) return;
+    __incState.bound = true;
+    var fin = document.getElementById('incFileInput');
+    if (fin) fin.addEventListener('change', function(e) {
+        var f = e.target.files && e.target.files[0];
+        if (f) incCargarArchivo(f);
+    });
+    var btnMap = document.getElementById('btnIncAplicarMapa');
+    if (btnMap) btnMap.addEventListener('click', function() {
+        __incState.map.z = document.getElementById('incColZ').value;
+        __incState.map.lam = document.getElementById('incColLam').value;
+        if (!__incState.map.z || !__incState.map.lam) {
+            incMsg('Seleccione las columnas de z y Λ.');
+            return;
+        }
+        incProcesarYGraficar();
+    });
+    ['incChkPuntos', 'incChkGrid', 'incChkCurva'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', function() {
+            if (__incState.points.length) incRenderGrafica();
+        });
+    });
+    var btnDl = document.getElementById('btnIncDescargar');
+    if (btnDl) btnDl.addEventListener('click', incDescargarPNG);
+    var btnCh = document.getElementById('btnIncCambiar');
+    if (btnCh) btnCh.addEventListener('click', function() {
+        document.getElementById('incResultados').hidden = true;
+        document.getElementById('incPasoMapa').hidden = true;
+        var fi = document.getElementById('incFileInput');
+        if (fi) fi.value = '';
+        document.getElementById('incFileName').textContent = 'Ningún archivo seleccionado';
+        incMsg('');
+    });
+    var btnRe = document.getElementById('btnIncReiniciar');
+    if (btnRe) btnRe.addEventListener('click', function() {
+        __incState.points = [];
+        __incState.params = { P: null, X: null, Y: null, paso: null, zRango: null };
+        document.getElementById('incResultados').hidden = true;
+        document.getElementById('incPasoMapa').hidden = true;
+        var fi = document.getElementById('incFileInput');
+        if (fi) fi.value = '';
+        document.getElementById('incFileName').textContent = 'Ningún archivo seleccionado';
+        incMsg('');
+        if (window.Plotly && document.getElementById('incPlot')) {
+            try { Plotly.purge('incPlot'); } catch (e) {}
+        }
+    });
+}
+
+function incMsg(t) {
+    var el = document.getElementById('incMsg');
+    if (el) el.textContent = t || '';
+}
+
+function incCargarArchivo(file) {
+    if (typeof XLSX === 'undefined') {
+        incMsg('No se pudo cargar la librería de Excel.');
+        return;
+    }
+    __incState.fileName = file.name || 'datos.xlsx';
+    document.getElementById('incFileName').textContent = 'Archivo: ' + __incState.fileName;
+    incMsg('Leyendo archivo…');
+
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        try {
+            var data = new Uint8Array(ev.target.result);
+            var wb = XLSX.read(data, { type: 'array' });
+            var sheet = wb.Sheets[wb.SheetNames[0]];
+            var matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: true });
+
+            // Parámetros en cabecera (P, X, Y, PASO, Z rango)
+            var params = { P: null, X: null, Y: null, paso: null, zRango: null };
+            var dataStart = -1;
+            for (var i = 0; i < Math.min(matrix.length, 25); i++) {
+                var row = matrix[i] || [];
+                var a = String(row[0] == null ? '' : row[0]).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                var b = row[1];
+                if (a.indexOf('p [') === 0 || a === 'p' || a.indexOf('p [kn') === 0 || a.replace(/\s/g, '').indexOf('p[kn') === 0) {
+                    params.P = bulbosToNum(b);
+                } else if (a.indexOf('x[') === 0 || a === 'x' || a.indexOf('x [') === 0) {
+                    params.X = bulbosToNum(b);
+                } else if (a.indexOf('y[') === 0 || a === 'y' || a.indexOf('y [') === 0) {
+                    params.Y = bulbosToNum(b);
+                } else if (a.indexOf('paso') === 0) {
+                    params.paso = bulbosToNum(b);
+                } else if (a.indexOf('z[') === 0 || a.indexOf('z [') === 0) {
+                    if (typeof b === 'string' && b.indexOf('-') >= 0) params.zRango = String(b);
+                    else if (bulbosToNum(b) != null && dataStart < 0) { /* could be data */ }
+                }
+                // Fila de encabezados de tabla: Z | Λ
+                var c0 = String(row[0] == null ? '' : row[0]).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+                var c1 = String(row[1] == null ? '' : row[1]).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+                if ((c0 === 'z' || c0.indexOf('z [') === 0 || c0 === 'z [m]') &&
+                    (c1 === 'l' || c1 === 'λ' || c1 === 'Λ'.toLowerCase() || c1.indexOf('lambda') >= 0 || c1 === 'i' || c1.indexOf('delta') >= 0 || c1 === 'Λ' || row[1] === 'Λ')) {
+                    dataStart = i + 1;
+                }
+                // Also match if B is literally Λ character
+                if ((c0 === 'z' || c0.indexOf('z [') === 0) && row[1] != null && String(row[1]).trim() !== '' && isNaN(Number(row[1])) && dataStart < 0) {
+                    // header-like second col
+                    if (c1.length <= 6) dataStart = i + 1;
+                }
+            }
+            // Fallback: find first row where both cols are numeric after a header row
+            if (dataStart < 0) {
+                for (var k = 0; k < matrix.length - 1; k++) {
+                    var r0 = matrix[k] || [];
+                    var r1 = matrix[k + 1] || [];
+                    var h0 = String(r0[0] || '').toLowerCase();
+                    if (h0.indexOf('z') === 0 && bulbosToNum(r1[0]) != null && bulbosToNum(r1[1]) != null) {
+                        dataStart = k + 1;
+                        break;
+                    }
+                }
+            }
+
+            __incState.params = params;
+
+            if (dataStart >= 0) {
+                var points = [];
+                for (var r = dataStart; r < matrix.length; r++) {
+                    var rr = matrix[r] || [];
+                    var z = bulbosToNum(rr[0]);
+                    var lam = bulbosToNum(rr[1]);
+                    if (z == null || lam == null) continue;
+                    points.push({ z: z, lam: lam });
+                }
+                if (points.length >= 2) {
+                    points.sort(function(a, b) { return a.z - b.z; });
+                    __incState.points = points;
+                    document.getElementById('incPasoMapa').hidden = true;
+                    document.getElementById('incResultados').hidden = false;
+                    incMsg('');
+                    incActualizarInfo();
+                    incRenderTabla();
+                    incRenderGrafica();
+                    return;
+                }
+            }
+
+            // Formato tabular genérico
+            var json = matrix.filter(function(row) {
+                return row && row.some(function(c) { return String(c).trim() !== ''; });
+            });
+            var headers = (json[0] || []).map(function(h, i) {
+                var t = String(h == null ? '' : h).trim();
+                return t || ('Columna_' + (i + 1));
+            });
+            var rows = [];
+            for (var ri = 1; ri < json.length; ri++) {
+                var obj = {};
+                headers.forEach(function(h, i) { obj[h] = json[ri][i]; });
+                rows.push(obj);
+            }
+            __incState.headers = headers;
+            __incState.rows = rows;
+            var zCol = null, lamCol = null;
+            headers.forEach(function(h) {
+                var n = bulbosNormHeader(h);
+                if (n === 'z' || n.indexOf('z [') === 0 || n === 'profundidad') zCol = h;
+                if (n === 'l' || n === 'lambda' || n.indexOf('lambda') >= 0 || n === 'i' || n.indexOf('delta') >= 0) lamCol = h;
+            });
+            __incState.map = { z: zCol, lam: lamCol };
+            if (zCol && lamCol) {
+                incProcesarYGraficar();
+            } else {
+                var selZ = document.getElementById('incColZ');
+                var selL = document.getElementById('incColLam');
+                if (selZ && selL) {
+                    selZ.innerHTML = '';
+                    selL.innerHTML = '';
+                    headers.forEach(function(h) {
+                        var o1 = document.createElement('option'); o1.value = h; o1.textContent = h; selZ.appendChild(o1);
+                        var o2 = document.createElement('option'); o2.value = h; o2.textContent = h; selL.appendChild(o2);
+                    });
+                }
+                document.getElementById('incPasoMapa').hidden = false;
+                document.getElementById('incResultados').hidden = true;
+                incMsg('Seleccione manualmente las columnas de z y Λ.');
+            }
+        } catch (err) {
+            console.error(err);
+            incMsg('No se pudo leer el Excel.');
+        }
+    };
+    reader.onerror = function() { incMsg('Error al leer el archivo.'); };
+    reader.readAsArrayBuffer(file);
+}
+
+function incProcesarYGraficar() {
+    var map = __incState.map;
+    var points = [];
+    __incState.rows.forEach(function(row) {
+        var z = bulbosToNum(row[map.z]);
+        var lam = bulbosToNum(row[map.lam]);
+        if (z == null || lam == null) return;
+        points.push({ z: z, lam: lam });
+    });
+    if (points.length < 2) {
+        incMsg('Se necesitan al menos 2 puntos numéricos (z, Λ).');
+        return;
+    }
+    points.sort(function(a, b) { return a.z - b.z; });
+    __incState.points = points;
+    document.getElementById('incPasoMapa').hidden = true;
+    document.getElementById('incResultados').hidden = false;
+    incMsg('');
+    incActualizarInfo();
+    incRenderTabla();
+    incRenderGrafica();
+}
+
+function incActualizarInfo() {
+    var p = __incState.params;
+    var set = function(id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+    set('incInfoFile', __incState.fileName || '—');
+    set('incInfoP', p.P != null ? p.P + ' kN' : '—');
+    set('incInfoX', p.X != null ? p.X + ' m' : '—');
+    set('incInfoY', p.Y != null ? p.Y + ' m' : '—');
+    set('incInfoPaso', p.paso != null ? p.paso + ' m' : '—');
+    set('incInfoN', String(__incState.points.length));
+    var maxP = __incState.points[0];
+    __incState.points.forEach(function(pt) { if (pt.lam > maxP.lam) maxP = pt; });
+    set('incInfoLamMax', maxP ? maxP.lam.toFixed(3) : '—');
+    set('incInfoZatMax', maxP ? maxP.z.toFixed(2) + ' m' : '—');
+}
+
+function incRenderTabla() {
+    var tbody = document.querySelector('#incTabla tbody');
+    if (!tbody) return;
+    tbody.innerHTML = __incState.points.map(function(p) {
+        return '<tr><td>' + p.z + '</td><td>' + p.lam + '</td></tr>';
+    }).join('');
+}
+
+function incRenderGrafica() {
+    if (typeof Plotly === 'undefined') {
+        incMsg('No se pudo cargar Plotly.');
+        return;
+    }
+    var pts = __incState.points;
+    var showPts = document.getElementById('incChkPuntos').checked;
+    var showGrid = document.getElementById('incChkGrid').checked;
+    var showCurva = document.getElementById('incChkCurva').checked;
+
+    var zs = pts.map(function(p) { return p.z; });
+    var ls = pts.map(function(p) { return p.lam; });
+    var traces = [];
+
+    if (showCurva) {
+        var smooth = (typeof bulbosSuavizarXY === 'function')
+            ? bulbosSuavizarXY(ls, zs, 14)
+            : { x: ls, y: zs };
+        // bulbosSuavizarXY takes (xs, ys) — we want x=Λ, y=z
+        traces.push({
+            x: smooth.x,
+            y: smooth.y,
+            mode: 'lines',
+            name: 'Λ(z)',
+            line: { color: '#FFCC00', width: 2.8, shape: 'spline', smoothing: 1.2 },
+            hovertemplate: 'Λ=%{x:.4f}<br>z=%{y:.3f} m<extra></extra>'
+        });
+    }
+    if (showPts || !showCurva) {
+        traces.push({
+            x: ls,
+            y: zs,
+            mode: 'markers',
+            name: 'Datos',
+            marker: { size: 8, color: '#4ade80', line: { width: 1, color: '#0f1612' } },
+            hovertemplate: 'Λ=%{x:.4f}<br>z=%{y:.3f} m<extra></extra>'
+        });
+    }
+
+    var p = __incState.params;
+    var sub = [];
+    if (p.P != null) sub.push('P = ' + p.P + ' kN');
+    if (p.X != null) sub.push('X = ' + p.X + ' m');
+    if (p.Y != null) sub.push('Y = ' + p.Y + ' m');
+
+    var layout = {
+        title: {
+            text: 'Incremento de esfuerzo — Λ vs profundidad' + (sub.length ? '<br><span style="font-size:12px;color:#a8b8ae">' + sub.join(' · ') + '</span>' : ''),
+            font: { color: '#FFCC00', size: 15 }
+        },
+        paper_bgcolor: '#0f1612',
+        plot_bgcolor: '#0c1210',
+        font: { color: '#d5e0d8' },
+        xaxis: {
+            title: 'Λ (factor / valor del Excel)',
+            gridcolor: showGrid ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0)',
+            zeroline: true,
+            zerolinecolor: 'rgba(255,204,0,0.4)',
+            color: '#d5e0d8'
+        },
+        yaxis: {
+            title: 'z — profundidad (m)',
+            autorange: 'reversed',
+            gridcolor: showGrid ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0)',
+            zeroline: true,
+            color: '#d5e0d8'
+        },
+        legend: { orientation: 'h', y: -0.18 },
+        margin: { t: 60, r: 20, b: 60, l: 60 },
+        hovermode: 'closest'
+    };
+
+    Plotly.newPlot('incPlot', traces, layout, {
+        responsive: true,
+        displayModeBar: true,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+        displaylogo: false
+    });
+}
+
+function incDescargarPNG() {
+    if (typeof Plotly === 'undefined' || !__incState.points.length) {
+        incMsg('Genere la gráfica antes de descargar.');
+        return;
+    }
+    Plotly.downloadImage('incPlot', {
+        format: 'png',
+        width: 1200,
+        height: 800,
+        filename: 'incremento_esfuerzo_geometrics'
+    });
+}
+
