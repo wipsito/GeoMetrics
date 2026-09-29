@@ -2424,6 +2424,11 @@ function aulaRenderEstudiante() {
     var user = aulaUsuarioCompleto(aulaGetSession());
     if (!user) return;
     aulaSetSession(user); // mantener materias actualizadas en sesión
+    // Reset filtro de integrantes para forzar recarga de materias/grupos
+    try {
+        var _intSel = document.getElementById('intFiltroMateria');
+        if (_intSel) delete _intSel.dataset.filled;
+    } catch (eInt) {}
 
     var filtroMat = document.getElementById('estFiltroMateria');
     var filtroGrp = document.getElementById('estFiltroGrupo');
@@ -2447,6 +2452,11 @@ function aulaRenderEstudiante() {
         filtroMat.value = '';
         filtroMat.dataset.iniciado = '1';
     }
+
+    // Integrantes del curso (siempre refrescar al entrar al aula)
+    try {
+        if (typeof aulaRenderIntegrantes === 'function') aulaRenderIntegrantes(true);
+    } catch (eInt2) {}
 
     var materiaSel = filtroMat ? filtroMat.value : '';
     var grupoSel = '';
@@ -3147,22 +3157,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ---------- Integrantes del curso + chat entre compañeros ----------
 function aulaIntegrantesDe(materia, grupo) {
-    var users = aulaLoad(AULA_KEYS.users, []);
+    var users = [];
+    try { users = aulaLoad(AULA_KEYS.users, []) || []; } catch (e) { users = []; }
+    if (!Array.isArray(users)) users = [];
+    var mat = String(materia || '').trim();
+    var grp = String(grupo || '').trim();
+
     var docentes = users.filter(function(u) {
-        return u && u.rol === 'docente' && typeof aulaDocenteDicta === 'function'
-            && aulaDocenteDicta(u, materia, grupo);
+        if (!u || u.rol !== 'docente') return false;
+        if (typeof aulaDocenteDicta === 'function') {
+            return aulaDocenteDicta(u, mat, grp) || (!grp && aulaDocenteDicta(u, mat, ''));
+        }
+        // fallback: materias del docente
+        var ms = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(u) : [];
+        return ms.some(function(m) { return m.nombre === mat; });
     });
     var estudiantes = users.filter(function(u) {
-        return u && u.rol === 'estudiante' && typeof aulaUsuarioCoincideMateriaGrupo === 'function'
-            && aulaUsuarioCoincideMateriaGrupo(u, materia, grupo);
+        if (!u || u.rol !== 'estudiante') return false;
+        if (typeof aulaUsuarioCoincideMateriaGrupo === 'function') {
+            return aulaUsuarioCoincideMateriaGrupo(u, mat, grp);
+        }
+        var ms = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(u) : [];
+        return ms.some(function(m) {
+            if (m.nombre !== mat) return false;
+            if (!grp) return true;
+            return String(m.grupo || '').toUpperCase().split(/[,;]/).map(function(x) {
+                return x.trim();
+            }).indexOf(grp.toUpperCase()) >= 0 || String(m.grupo || '').trim().toUpperCase() === grp.toUpperCase();
+        });
     });
     // Docente siempre primero (comanda el curso)
     var lista = [];
-    docentes.forEach(function(d) { lista.push(d); });
+    var seen = {};
+    docentes.forEach(function(d) {
+        var k = String(d.email || d.id || '').toLowerCase();
+        if (seen[k]) return;
+        seen[k] = true;
+        lista.push(d);
+    });
     estudiantes.sort(function(a, b) {
         return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
     });
-    estudiantes.forEach(function(s) { lista.push(s); });
+    estudiantes.forEach(function(s) {
+        var k = String(s.email || s.id || '').toLowerCase();
+        if (seen[k]) return;
+        seen[k] = true;
+        lista.push(s);
+    });
     return lista;
 }
 
@@ -3272,37 +3313,67 @@ function aulaRenderIntegrantesDocente() {
     }
 }
 
-function aulaRenderIntegrantes() {
+function aulaRenderIntegrantes(forceRefill) {
     var box = document.getElementById('listaIntegrantes');
     if (!box) return;
     var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
-    if (!user) return;
+    if (!user) {
+        box.innerHTML = '<p class="aula-vacio">Inicia sesión para ver los integrantes.</p>';
+        return;
+    }
     var full = typeof aulaUsuarioCompleto === 'function' ? (aulaUsuarioCompleto(user) || user) : user;
     var sel = document.getElementById('intFiltroMateria');
-    var materia = sel ? sel.value : '';
     var mats = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(full) : [];
-    if (sel && !sel.dataset.filled) {
-        sel.innerHTML = mats.map(function(m) {
-            return '<option value="' + escHtml(m.nombre) + '" data-grupo="' + escHtml(m.grupo || '') + '">' +
-                escHtml(m.nombre) + (m.grupo ? ' · Grupo ' + escHtml(m.grupo) : '') + '</option>';
-        }).join('') || '<option value="">Sin materias</option>';
+
+    // Rellenar selector de materia/grupo del estudiante
+    if (sel && (forceRefill || !sel.dataset.filled || !sel.options.length)) {
+        if (!mats.length) {
+            sel.innerHTML = '<option value="">Sin materias registradas</option>';
+        } else {
+            sel.innerHTML = mats.map(function(m) {
+                var nom = String(m.nombre || '');
+                var grp = String(m.grupo || '');
+                // value = materia|||grupo para no perder el grupo
+                var val = nom + '|||' + grp;
+                return '<option value="' + val.replace(/"/g, '&quot;') + '">' +
+                    nom.replace(/</g, '&lt;') + (grp ? ' · Grupo ' + grp.replace(/</g, '&lt;') : '') +
+                    '</option>';
+            }).join('');
+        }
         sel.dataset.filled = '1';
-        if (!materia && sel.options.length) {
-            sel.selectedIndex = 0;
-            materia = sel.value;
+        if (!sel._boundIntegrantes) {
+            sel._boundIntegrantes = true;
+            sel.addEventListener('change', function() {
+                aulaRenderIntegrantes(false);
+            });
         }
     }
-    if (!materia && sel) materia = sel.value;
+
+    var materia = '';
     var grupo = '';
-    if (sel && sel.selectedIndex >= 0 && sel.options[sel.selectedIndex]) {
-        grupo = sel.options[sel.selectedIndex].getAttribute('data-grupo') || '';
+    if (sel && sel.value) {
+        var parts = String(sel.value).split('|||');
+        materia = parts[0] || '';
+        grupo = (parts[1] || '').trim();
     }
-    if (!grupo) grupo = typeof aulaGrupoDeMateria === 'function' ? aulaGrupoDeMateria(full, materia) : '';
+    if (!materia && mats.length) {
+        materia = mats[0].nombre || '';
+        grupo = String(mats[0].grupo || '').trim();
+    }
+    if (!grupo && materia) {
+        grupo = typeof aulaGrupoDeMateria === 'function' ? (aulaGrupoDeMateria(full, materia) || '') : '';
+    }
 
     function pintar(lista) {
+        if (!materia) {
+            box.innerHTML = '<p class="aula-vacio">No tienes materias registradas. Edita tu perfil o vuelve a registrarte con al menos una materia y grupo.</p>';
+            return;
+        }
         if (!lista.length) {
-            box.innerHTML = '<p class="aula-vacio">No hay integrantes para ' + escHtml(materia || 'esta materia') +
-                (grupo ? ' · Grupo ' + escHtml(grupo) : '') + '.</p>';
+            box.innerHTML = '<p class="aula-vacio">No hay integrantes para <strong>' +
+                (materia || '').replace(/</g, '&lt;') +
+                (grupo ? ' · Grupo ' + grupo.replace(/</g, '&lt;') : '') +
+                '</strong>. Cuando el docente y compañeros se registren en el mismo grupo, aparecerán aquí.</p>';
             return;
         }
         var me = aulaNormalizarEmail(full.email);
@@ -3311,48 +3382,59 @@ function aulaRenderIntegrantes() {
             var isMe = aulaNormalizarEmail(u.email) === me;
             var foto = u.foto
                 ? '<img class="tabla-foto" src="' + u.foto + '" alt="">'
-                : '<span class="tabla-foto tabla-foto-ini">' + escHtml(aulaIniciales(u.nombre)) + '</span>';
+                : '<span class="tabla-foto tabla-foto-ini">' +
+                    (typeof aulaIniciales === 'function' ? aulaIniciales(u.nombre) : '?') + '</span>';
             var btn = '';
             if (!isMe && rol === 'estudiante') {
                 btn = '<button type="button" class="btn-secundario btn-chat-comp" data-peer="' +
-                    escHtml(u.email) + '" data-mat="' + escHtml(materia) + '" data-grp="' + escHtml(grupo) +
+                    String(u.email).replace(/"/g, '&quot;') + '" data-mat="' +
+                    String(materia).replace(/"/g, '&quot;') + '" data-grp="' +
+                    String(grupo).replace(/"/g, '&quot;') +
                     '">Chatear</button>';
             } else if (!isMe && rol === 'docente') {
-                btn = '<button type="button" class="btn-secundario btn-chat-comp" data-peer-doc="1" data-mat="' +
-                    escHtml(materia) + '" data-grp="' + escHtml(grupo) + '">Chatear</button>';
+                btn = '<button type="button" class="btn-secundario btn-chat-comp" data-peer="' +
+                    String(u.email).replace(/"/g, '&quot;') + '" data-mat="' +
+                    String(materia).replace(/"/g, '&quot;') + '" data-grp="' +
+                    String(grupo).replace(/"/g, '&quot;') +
+                    '">Mensaje al docente</button>';
             }
-            return '<li class="integrante-item' + (rol === 'docente' ? ' es-docente' : '') + (isMe ? ' es-yo' : '') + '">' +
+            var yo = isMe ? ' <span class="login-hint">(tú)</span>' : '';
+            return '<li class="integrante-item">' +
                 foto +
-                '<div class="integrante-info"><strong>' + escHtml(u.nombre || u.email) + '</strong>' +
-                '<span class="integrante-rol">' + rol + (isMe ? ' · tú' : '') + '</span></div>' +
-                btn + '</li>';
+                '<div class="integrante-info">' +
+                '<strong>' + String(u.nombre || u.email || '').replace(/</g, '&lt;') + yo + '</strong>' +
+                '<span class="integrante-rol">' + rol + '</span>' +
+                '</div>' + btn + '</li>';
         }).join('') + '</ul>';
+
         box.querySelectorAll('.btn-chat-comp').forEach(function(btn) {
             btn.addEventListener('click', function() {
-                var mat = btn.getAttribute('data-mat');
-                var grp = btn.getAttribute('data-grp') || '';
-                if (btn.getAttribute('data-peer-doc')) {
-                    // chat con docente de la materia
-                    if (typeof aulaChatAbrirEstudiante === 'function') {
-                        // switch to chat tab
-                        var tab = document.querySelector('#pantallaEstudiante .tab-btn[data-tab="est-chat"]');
-                        if (tab) tab.click();
-                        setTimeout(function() { aulaChatAbrirEstudiante(mat, grp); }, 50);
-                    }
-                    return;
-                }
                 var peer = btn.getAttribute('data-peer');
-                aulaChatAbrirCompanero(peer, mat, grp);
+                var mat = btn.getAttribute('data-mat');
+                var grp = btn.getAttribute('data-grp');
+                if (typeof aulaAbrirChatCompanero === 'function') {
+                    aulaAbrirChatCompanero(peer, mat, grp);
+                } else if (typeof aulaChatAbrirCon === 'function') {
+                    aulaChatAbrirCon(peer, mat, grp);
+                } else {
+                    // fallback: ir a pestaña chat
+                    var tab = document.querySelector('#pantallaEstudiante .tab-btn[data-tab="est-chat"]');
+                    if (tab) tab.click();
+                }
             });
         });
     }
 
-    if (window.GeoCloud && GeoCloud.isOn() && typeof GeoCloud.pullUsersAndApply === 'function') {
-        GeoCloud.pullUsersAndApply().then(function() {
-            pintar(aulaIntegrantesDe(materia, grupo));
-        }).catch(function() { pintar(aulaIntegrantesDe(materia, grupo)); });
-    } else {
+    box.innerHTML = '<p class="login-hint">Cargando integrantes…</p>';
+
+    function listar() {
         pintar(aulaIntegrantesDe(materia, grupo));
+    }
+
+    if (window.GeoCloud && GeoCloud.isOn() && typeof GeoCloud.pullUsersAndApply === 'function') {
+        GeoCloud.pullUsersAndApply().then(listar).catch(listar);
+    } else {
+        listar();
     }
 }
 
@@ -4049,6 +4131,14 @@ function aulaChatBind() {
                     var sel = document.getElementById('estChatMateria');
                     if (sel) sel.dataset.filled = '';
                     aulaChatRenderListaEstudiante();
+                }
+                if (tab === 'est-integrantes') {
+                    document.querySelectorAll('main').forEach(function(m) {
+                        if (m.id !== 'pantallaEstudiante') m.style.display = 'none';
+                    });
+                    var pei = document.getElementById('pantallaEstudiante');
+                    if (pei) pei.style.display = 'block';
+                    if (typeof aulaRenderIntegrantes === 'function') aulaRenderIntegrantes(true);
                 }
             }, 50);
         });
