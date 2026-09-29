@@ -9222,7 +9222,7 @@ function incrementosEsfuerzoInit() {
         __incState.map.z = document.getElementById('incColZ').value;
         __incState.map.lam = document.getElementById('incColLam').value;
         if (!__incState.map.z || !__incState.map.lam) {
-            incMsg('Seleccione las columnas de z y Λ.');
+            incMsg('Seleccione las columnas de z y Δσz.');
             return;
         }
         incProcesarYGraficar();
@@ -9304,8 +9304,12 @@ function incCargarArchivo(file) {
                 // Fila de encabezados de tabla: Z | Λ
                 var c0 = String(row[0] == null ? '' : row[0]).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
                 var c1 = String(row[1] == null ? '' : row[1]).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-                if ((c0 === 'z' || c0.indexOf('z [') === 0 || c0 === 'z [m]') &&
-                    (c1 === 'l' || c1 === 'λ' || c1 === 'Λ'.toLowerCase() || c1.indexOf('lambda') >= 0 || c1 === 'i' || c1.indexOf('delta') >= 0 || c1 === 'Λ' || row[1] === 'Λ')) {
+                if ((c0 === 'z' || c0.indexOf('z [') === 0 || c0 === 'z [m]' || c0 === 'z [m]') &&
+                    (c1 === 'l' || c1 === 'λ' || c1 === 'Λ'.toLowerCase() || c1.indexOf('lambda') >= 0 ||
+                     c1 === 'i' || c1.indexOf('delta') >= 0 || c1 === 'Λ' || row[1] === 'Λ' ||
+                     c1.indexOf('sigma') >= 0 || c1.indexOf('dsigma') >= 0 || c1.indexOf('Δσ') >= 0 ||
+                     c1.indexOf('dsz') >= 0 || c1 === 'Δσz' || String(row[1]).indexOf('Δσ') >= 0 ||
+                     String(row[1]).indexOf('σ') >= 0)) {
                     dataStart = i + 1;
                 }
                 // Also match if B is literally Λ character
@@ -9371,7 +9375,9 @@ function incCargarArchivo(file) {
             headers.forEach(function(h) {
                 var n = bulbosNormHeader(h);
                 if (n === 'z' || n.indexOf('z [') === 0 || n === 'profundidad') zCol = h;
-                if (n === 'l' || n === 'lambda' || n.indexOf('lambda') >= 0 || n === 'i' || n.indexOf('delta') >= 0) lamCol = h;
+                if (n === 'l' || n === 'lambda' || n.indexOf('lambda') >= 0 || n === 'i' || n.indexOf('delta') >= 0 ||
+                    n.indexOf('sigma') >= 0 || n.indexOf('dsigma') >= 0 || n.indexOf('Δσ') >= 0 ||
+                    n === 'Δσz' || n.indexOf('dsz') >= 0 || h.indexOf('Δσ') >= 0 || h.indexOf('σ') >= 0) lamCol = h;
             });
             __incState.map = { z: zCol, lam: lamCol };
             if (zCol && lamCol) {
@@ -9389,7 +9395,7 @@ function incCargarArchivo(file) {
                 }
                 document.getElementById('incPasoMapa').hidden = false;
                 document.getElementById('incResultados').hidden = true;
-                incMsg('Seleccione manualmente las columnas de z y Λ.');
+                incMsg('Seleccione manualmente las columnas de z y Δσz.');
             }
         } catch (err) {
             console.error(err);
@@ -9410,7 +9416,7 @@ function incProcesarYGraficar() {
         points.push({ z: z, lam: lam });
     });
     if (points.length < 2) {
-        incMsg('Se necesitan al menos 2 puntos numéricos (z, Λ).');
+        incMsg('Se necesitan al menos 2 puntos numéricos (z, Δσz).');
         return;
     }
     points.sort(function(a, b) { return a.z - b.z; });
@@ -9469,9 +9475,9 @@ function incRenderGrafica() {
             x: smooth.x,
             y: smooth.y,
             mode: 'lines',
-            name: 'Λ(z)',
+            name: 'Δσz(z)',
             line: { color: '#FFCC00', width: 2.8, shape: 'spline', smoothing: 1.2 },
-            hovertemplate: 'Λ=%{x:.4f}<br>z=%{y:.3f} m<extra></extra>'
+            hovertemplate: 'Δσz=%{x:.4f}<br>z=%{y:.3f} m<extra></extra>'
         });
     }
     if (showPts || !showCurva) {
@@ -9481,7 +9487,7 @@ function incRenderGrafica() {
             mode: 'markers',
             name: 'Datos',
             marker: { size: 8, color: '#4ade80', line: { width: 1, color: '#0f1612' } },
-            hovertemplate: 'Λ=%{x:.4f}<br>z=%{y:.3f} m<extra></extra>'
+            hovertemplate: 'Δσz=%{x:.4f}<br>z=%{y:.3f} m<extra></extra>'
         });
     }
 
@@ -9493,14 +9499,14 @@ function incRenderGrafica() {
 
     var layout = {
         title: {
-            text: 'Incremento de esfuerzo — Λ vs profundidad' + (sub.length ? '<br><span style="font-size:12px;color:#a8b8ae">' + sub.join(' · ') + '</span>' : ''),
+            text: 'Incremento de esfuerzo — Δσz vs profundidad' + (sub.length ? '<br><span style="font-size:12px;color:#a8b8ae">' + sub.join(' · ') + '</span>' : ''),
             font: { color: '#FFCC00', size: 15 }
         },
         paper_bgcolor: '#0f1612',
         plot_bgcolor: '#0c1210',
         font: { color: '#d5e0d8' },
         xaxis: {
-            title: 'Λ (factor / valor del Excel)',
+            title: 'Δσz — incremento de esfuerzo vertical',
             gridcolor: showGrid ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0)',
             zeroline: true,
             zerolinecolor: 'rgba(255,204,0,0.4)',
