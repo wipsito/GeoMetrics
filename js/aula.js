@@ -3408,18 +3408,17 @@ function aulaRenderIntegrantes(forceRefill) {
         }).join('') + '</ul>';
 
         box.querySelectorAll('.btn-chat-comp').forEach(function(btn) {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
                 var peer = btn.getAttribute('data-peer');
-                var mat = btn.getAttribute('data-mat');
-                var grp = btn.getAttribute('data-grp');
-                if (typeof aulaAbrirChatCompanero === 'function') {
-                    aulaAbrirChatCompanero(peer, mat, grp);
-                } else if (typeof aulaChatAbrirCon === 'function') {
-                    aulaChatAbrirCon(peer, mat, grp);
-                } else {
-                    // fallback: ir a pestaña chat
-                    var tab = document.querySelector('#pantallaEstudiante .tab-btn[data-tab="est-chat"]');
-                    if (tab) tab.click();
+                var mat = btn.getAttribute('data-mat') || '';
+                var grp = btn.getAttribute('data-grp') || '';
+                if (!peer) return;
+                if (typeof aulaChatAbrirCompanero === 'function') {
+                    aulaChatAbrirCompanero(peer, mat, grp);
+                } else if (typeof window.aulaAbrirChatCompanero === 'function') {
+                    window.aulaAbrirChatCompanero(peer, mat, grp);
                 }
             });
         });
@@ -3477,24 +3476,52 @@ function aulaChatFindOrCreatePeer(myEmail, peerEmail, materia, grupo) {
 function aulaChatAbrirCompanero(peerEmail, materia, grupo) {
     var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
     if (!user || !peerEmail) return;
-    // Activar pestaña chat
-    var tab = document.querySelector('#pantallaEstudiante .tab-btn[data-tab="est-chat"]');
-    if (tab) tab.click();
-    var c = aulaChatFindOrCreatePeer(user.email, peerEmail, materia, grupo || '');
+
+    // 1) Mostrar panel estudiante
+    document.querySelectorAll('main').forEach(function(m) { m.style.display = 'none'; });
+    var pe = document.getElementById('pantallaEstudiante');
+    if (pe) pe.style.display = 'block';
+
+    // 2) Activar pestaña Chat de forma síncrona (sin depender solo de .click)
+    var root = document.getElementById('pantallaEstudiante');
+    if (root) {
+        root.querySelectorAll('.tab-btn').forEach(function(t) {
+            t.classList.toggle('active', t.getAttribute('data-tab') === 'est-chat');
+        });
+        root.querySelectorAll('.tab-content').forEach(function(c) {
+            c.classList.toggle('active', c.id === 'est-chat');
+        });
+    }
+
+    // 3) Crear/abrir conversación peer
+    var full = typeof aulaUsuarioCompleto === 'function' ? (aulaUsuarioCompleto(user) || user) : user;
+    var c = aulaChatFindOrCreatePeer(full.email, peerEmail, materia, grupo || '');
     window.__chatActivoId = c.id;
+    aulaChatMarkRead(c.id, full.email);
+
     var hdr = document.getElementById('estChatHeader');
     if (hdr) {
-        hdr.textContent = (c.peerName || peerEmail) + ' · compañero · ' + materia +
+        hdr.textContent = (c.peerName || peerEmail) + ' · compañero · ' + (materia || '') +
             (c.grupo ? ' · Grupo ' + c.grupo : '');
     }
     var inp = document.getElementById('estChatInput');
     var btn = document.getElementById('btnEstChatEnviar');
-    if (inp) { inp.disabled = false; inp.focus(); }
+    if (inp) { inp.disabled = false; try { inp.focus(); } catch (e) {} }
     if (btn) btn.disabled = false;
-    aulaChatMarkRead(c.id, user.email);
-    aulaChatRenderMsgs('estChatMsgs', c, user.email);
+
+    // 4) Pintar mensajes y lista (resaltar chat activo)
+    c = aulaChatLoad().find(function(x) { return x.id === c.id; }) || c;
+    aulaChatRenderMsgs('estChatMsgs', c, full.email);
     if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+
+    window.scrollTo(0, 0);
 }
+// Alias por si algún botón antiguo usa otro nombre
+function aulaAbrirChatCompanero(peerEmail, materia, grupo) {
+    return aulaChatAbrirCompanero(peerEmail, materia, grupo);
+}
+window.aulaAbrirChatCompanero = aulaAbrirChatCompanero;
+window.aulaChatAbrirCompanero = aulaChatAbrirCompanero;
 
 
 // =========================================
@@ -3855,8 +3882,15 @@ function aulaChatRenderListaEstudiante() {
             mats = aulaMateriasUsuario(u2);
         }
     }
+    var myE = aulaNormalizarEmail(user.email);
     var list = aulaChatLoad().filter(function(c) {
-        return aulaNormalizarEmail(c.studentEmail) === aulaNormalizarEmail(user.email);
+        if (!c) return false;
+        if (c.type === 'peer') {
+            var mem = c.members || [];
+            if (mem.some(function(m) { return aulaNormalizarEmail(m) === myE; })) return true;
+            return aulaNormalizarEmail(c.studentEmail) === myE || aulaNormalizarEmail(c.peerEmail) === myE;
+        }
+        return aulaNormalizarEmail(c.studentEmail) === myE;
     }).sort(function(a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
     var el = document.getElementById('estChatLista');
     if (!el) return;
@@ -3868,17 +3902,27 @@ function aulaChatRenderListaEstudiante() {
         var key = m.nombre + '||' + (m.grupo || '');
         return { materia: m.nombre, grupo: m.grupo || '', chat: byMat[key] || null, peer: false };
     });
-    // Chats con compañeros
+    // Chats con compañeros (ambos lados de la conversación)
     list.forEach(function(c) {
-        if (c.type === 'peer' && c.members && c.members.indexOf(aulaNormalizarEmail(user.email)) >= 0) {
-            items.push({
-                materia: c.peerName || c.peerEmail || 'Compañero',
-                grupo: c.grupo || '',
-                chat: c,
-                peer: true,
-                peerEmail: c.peerEmail
-            });
-        }
+        if (c.type !== 'peer') return;
+        var mem = c.members || [];
+        var soy = mem.some(function(m) { return aulaNormalizarEmail(m) === myE; }) ||
+            aulaNormalizarEmail(c.studentEmail) === myE ||
+            aulaNormalizarEmail(c.peerEmail) === myE;
+        if (!soy) return;
+        // Nombre del otro
+        var otroEmail = aulaNormalizarEmail(c.peerEmail) === myE ? c.studentEmail : c.peerEmail;
+        var otroNombre = aulaNormalizarEmail(c.peerEmail) === myE
+            ? (c.studentName || c.studentEmail)
+            : (c.peerName || c.peerEmail);
+        items.push({
+            materia: otroNombre || 'Compañero',
+            grupo: c.grupo || '',
+            chat: c,
+            peer: true,
+            peerEmail: otroEmail,
+            chatMateria: c.materia || ''
+        });
     });
     // Siempre rellenar el select con TODAS las materias
     var sel = document.getElementById('estChatMateria');
@@ -3921,10 +3965,10 @@ function aulaChatRenderListaEstudiante() {
             var unP = c ? aulaChatUnread(c, user.email) : 0;
             var actP = c && window.__chatActivoId === c.id ? ' active' : '';
             return '<button type="button" class="chat-aula-item' + actP + '" data-peer="1" data-peer-email="' +
-                escHtml(it.peerEmail || '') + '" data-chat-mat="' + escHtml(c ? c.materia : '') +
+                escHtml(it.peerEmail || '') + '" data-chat-mat="' + escHtml((c && c.materia) || it.chatMateria || '') +
                 '" data-chat-grp="' + escHtml(it.grupo) + '"' + (c ? ' data-chat-id="' + c.id + '"' : '') + '>' +
                 '<strong>' + escHtml(it.materia) + '</strong>' +
-                '<span>Compañero · Grupo ' + escHtml(it.grupo || '—') + '</span>' +
+                '<span>Compañero · ' + escHtml((c && c.materia) || '') + (it.grupo ? ' · Grupo ' + escHtml(it.grupo) : '') + '</span>' +
                 '<span class="chat-preview">' + escHtml(lastP) + '</span>' +
                 (unP ? '<span class="chat-unread">' + unP + '</span>' : '') +
                 '</button>';
@@ -3994,8 +4038,15 @@ function aulaChatUpdateBadges() {
             else b.hidden = true;
         }
     } else {
-        list.filter(function(c) { return c.studentEmail === user.email; })
-            .forEach(function(c) { total += aulaChatUnread(c, user.email); });
+        list.filter(function(c) {
+            if (!c) return false;
+            var me = aulaNormalizarEmail(user.email);
+            if (c.type === 'peer') {
+                return (c.members || []).some(function(m) { return aulaNormalizarEmail(m) === me; }) ||
+                    aulaNormalizarEmail(c.studentEmail) === me || aulaNormalizarEmail(c.peerEmail) === me;
+            }
+            return aulaNormalizarEmail(c.studentEmail) === me;
+        }).forEach(function(c) { total += aulaChatUnread(c, user.email); });
         var b2 = document.getElementById('badgeChatEst');
         if (b2) {
             if (total > 0) { b2.hidden = false; b2.textContent = String(total); }
