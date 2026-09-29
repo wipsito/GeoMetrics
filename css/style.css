@@ -4870,3 +4870,48 @@ div.ai-detect-result[hidden] {
   color: #e2ebe5;
 }
 .bulbos-tabla tr:nth-child(even) td { background: rgba(0,88,38,0.15); }
+
+.chat-aula-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.chat-aula-header-row .chat-aula-header {
+  flex: 1;
+  margin: 0;
+}
+.btn-chat-eliminar {
+  font-size: 0.8rem !important;
+  padding: 6px 12px !important;
+  border-color: rgba(248,113,113,0.5) !important;
+  color: #fca5a5 !important;
+}
+.btn-chat-eliminar:hover {
+  background: rgba(248,113,113,0.2) !important;
+  border-color: #f87171 !important;
+}
+.chat-aula-item-wrap {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.chat-aula-item-wrap .chat-aula-item { flex: 1; }
+.chat-item-del {
+  background: transparent;
+  border: 1px solid rgba(248,113,113,0.35);
+  color: #fca5a5;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0 10px;
+  font-size: 1rem;
+  line-height: 1;
+}
+.chat-item-del:hover { background: rgba(248,113,113,0.2); }
+.chat-aula-item.active {
+  border-color: #FFCC00 !important;
+  box-shadow: 0 0 0 1px #FFCC00;
+}
