@@ -18,6 +18,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
     <script src="js/cloud.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
 
   <script>
   /* Evitar flash de login: si hay sesión, no mostrar inicio antes de JS */
@@ -704,6 +707,13 @@
                     <h3>Simulador Triaxial</h3>
                     <p>Cámara triaxial: presión de celda σ₃ y carga axial.</p>
                     <button type="button" class="btn-calcular btn-abrir-sim" data-sim="triaxial">ABRIR SIMULADOR</button>
+                </div>
+
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">📉</div>
+                    <h3>Bulbos de presión</h3>
+                    <p>Carga Excel e isobaras: puntual, circular o lineal.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="bulbos">ABRIR MÓDULO</button>
                 </div>
             </div>
         </section>
@@ -1598,6 +1608,101 @@
                     </div>
                 </div>
             </div>
+
+            <div class="aula-card sim-maquina-card bulbos-card" id="card-sim-bulbos" hidden>
+                <h3 id="bulbosTitulo">Bulbos de presión</h3>
+                <p class="grafica-hint">Carga un archivo Excel con isobaras (z, r) y genera el diagrama geotécnico. El eje de profundidad aumenta hacia abajo.</p>
+
+                <!-- Paso 1: tipo de carga -->
+                <div id="bulbosPasoTipo" class="bulbos-paso">
+                    <h4 class="bulbos-step-title">1. Seleccione el tipo de carga</h4>
+                    <div class="bulbos-tipos">
+                        <button type="button" class="bulbos-tipo-btn" data-carga="puntual">
+                            <span class="bulbos-tipo-icon">●</span>
+                            <strong>Puntual</strong>
+                            <small>Carga concentrada</small>
+                        </button>
+                        <button type="button" class="bulbos-tipo-btn" data-carga="circular">
+                            <span class="bulbos-tipo-icon">◯</span>
+                            <strong>Circular</strong>
+                            <small>Área circular</small>
+                        </button>
+                        <button type="button" class="bulbos-tipo-btn" data-carga="lineal">
+                            <span class="bulbos-tipo-icon">━</span>
+                            <strong>Lineal</strong>
+                            <small>Carga en franja</small>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Paso 2: archivo -->
+                <div id="bulbosPasoArchivo" class="bulbos-paso" hidden>
+                    <h4 class="bulbos-step-title">2. Cargar archivo de datos</h4>
+                    <div class="bulbos-upload">
+                        <label class="bulbos-file-label" for="bulbosFileInput">
+                            <span>📁 Cargar archivo Excel (.xlsx / .xls)</span>
+                        </label>
+                        <input type="file" id="bulbosFileInput" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden>
+                        <p id="bulbosFileName" class="bulbos-file-name">Ningún archivo seleccionado</p>
+                        <p id="bulbosMsg" class="mensaje-error" style="margin-top:8px"></p>
+                    </div>
+                </div>
+
+                <!-- Paso 3: mapeo manual -->
+                <div id="bulbosPasoMapa" class="bulbos-paso" hidden>
+                    <h4 class="bulbos-step-title">3. Seleccionar columnas</h4>
+                    <p class="login-hint">GeoMetrics no pudo detectar automáticamente algunas columnas. Asígnelas manualmente:</p>
+                    <div class="bulbos-map-grid">
+                        <label>Isobara<select id="bulbosColIso"></select></label>
+                        <label>Profundidad z<select id="bulbosColZ"></select></label>
+                        <label>Distancia radial r<select id="bulbosColR"></select></label>
+                        <label>Zmax <small>(opcional)</small><select id="bulbosColZmax"><option value="">—</option></select></label>
+                    </div>
+                    <button type="button" class="btn-calcular" id="btnBulbosAplicarMapa">Aplicar columnas y graficar</button>
+                </div>
+
+                <!-- Resultados -->
+                <div id="bulbosResultados" class="bulbos-paso" hidden>
+                    <div class="bulbos-layout">
+                        <div class="bulbos-chart-wrap">
+                            <div id="bulbosPlot" class="bulbos-plot"></div>
+                            <div class="bulbos-esquema" id="bulbosEsquema"></div>
+                        </div>
+                        <div class="bulbos-side">
+                            <div class="bulbos-info">
+                                <div><span>Tipo de carga</span><strong id="bulbosInfoTipo">—</strong></div>
+                                <div><span>Archivo</span><strong id="bulbosInfoFile">—</strong></div>
+                                <div><span>N.º isobaras</span><strong id="bulbosInfoNiso">—</strong></div>
+                                <div><span>Profundidad máx.</span><strong id="bulbosInfoZmax">—</strong></div>
+                                <div><span>Radio máx.</span><strong id="bulbosInfoRmax">—</strong></div>
+                                <div><span>Puntos</span><strong id="bulbosInfoNpts">—</strong></div>
+                            </div>
+                            <div class="bulbos-controles">
+                                <label class="bulbos-check"><input type="checkbox" id="bulbosChkPuntos" checked> Mostrar puntos originales</label>
+                                <label class="bulbos-check"><input type="checkbox" id="bulbosChkEtiquetas" checked> Mostrar etiquetas de isobaras</label>
+                                <label class="bulbos-check"><input type="checkbox" id="bulbosChkGrid" checked> Mostrar cuadrícula</label>
+                                <label class="bulbos-check"><input type="checkbox" id="bulbosChkCurvas" checked> Mostrar curvas</label>
+                                <label class="bulbos-check"><input type="checkbox" id="bulbosChkSimetria" checked> Simetría ±r (puntual/circular)</label>
+                            </div>
+                            <div class="botones-calculo" style="flex-direction:column;gap:8px;margin-top:12px">
+                                <button type="button" class="btn-calcular" id="btnBulbosDescargar">Descargar gráfica PNG</button>
+                                <button type="button" class="btn-limpiar" id="btnBulbosCambiar">Cambiar archivo</button>
+                                <button type="button" class="btn-limpiar" id="btnBulbosReiniciar">Reiniciar módulo</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bulbos-tabla-wrap">
+                        <h4>Datos procesados</h4>
+                        <div class="bulbos-tabla-scroll">
+                            <table class="bulbos-tabla" id="bulbosTabla">
+                                <thead><tr><th>Isobara</th><th>z</th><th>r</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </section>
     </main>
 
