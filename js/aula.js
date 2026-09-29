@@ -2868,7 +2868,7 @@ function aulaAbrirSimulador(tipo, origenId) {
             inconfinada: 'card-sim-inconfinada',
             triaxial: 'card-sim-triaxial',
             bulbos: 'card-sim-bulbos',
-            incrementos: 'card-sim-incrementos', 'card-sim-incrementos'
+            incrementos: 'card-sim-incrementos'
         };
         // Suelos I: canvas genérico U-t (si aún se usa)
         if (tipo === 'consolidacion' && origenId === 'pantallaSuelos') {
