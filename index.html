@@ -1331,8 +1331,8 @@
     
         <section class="tab-content" id="est-chat">
             <div class="aula-card aula-card-wide chat-aula-wrap">
-                <h3>Chat con el docente</h3>
-                <p class="login-hint">Escribe al docente de cada materia en la que estás registrado.</p>
+                <h3>Chat con el Docente — Compañer@s</h3>
+                <p class="login-hint">Chatea con el docente de cada materia o con tus compañer@s del mismo grupo. Toca un chat de la lista para cambiar de conversación.</p>
                 <div class="filtros-aula">
                     <label>Materia</label>
                     <select id="estChatMateria"></select>
@@ -1343,7 +1343,10 @@
                         <p class="login-hint">Elige una materia para chatear.</p>
                     </div>
                     <div class="chat-aula-panel">
-                        <div class="chat-aula-header" id="estChatHeader">Selecciona una materia</div>
+                        <div class="chat-aula-header-row">
+                            <div class="chat-aula-header" id="estChatHeader">Selecciona un chat</div>
+                            <button type="button" class="btn-limpiar btn-chat-eliminar" id="btnEstChatEliminar" hidden title="Eliminar este chat">Eliminar chat</button>
+                        </div>
                         <div class="chat-aula-mensajes" id="estChatMsgs"></div>
                         <div class="chat-aula-input-row">
                             <input type="text" id="estChatInput" placeholder="Escribe un mensaje…" disabled>
