@@ -135,6 +135,16 @@
             .then(function () { return true; });
     }
 
+    function listenTareas(cb) {
+        return cloudListen('tareas', function (val) {
+            var arr = [];
+            if (!val) { cb(arr); return; }
+            if (Array.isArray(val)) arr = val;
+            else Object.keys(val).forEach(function (k) { if (val[k]) arr.push(val[k]); });
+            cb(arr);
+        });
+    }
+
     function listenChats(cb) {
         return cloudListen('chats', function (val) {
             var arr = [];
@@ -169,10 +179,11 @@
                 cloudGet('tareas'),
                 cloudGet('presentaciones'),
                 cloudGet('entregas'),
-                cloudGet('civix')
+                cloudGet('civix'),
+                cloudGet('quices')
             ]).then(function (res) {
                 var users = res[0], docs = res[1], chats = res[2], admins = res[3];
-                var tareas = res[4], presentaciones = res[5], entregas = res[6], civix = res[7];
+                var tareas = res[4], presentaciones = res[5], entregas = res[6], civix = res[7], quices = res[8];
                 try {
                     if (users && users.length) {
                         var localU = [];
@@ -211,6 +222,13 @@
                         try { localE = JSON.parse(localStorage.getItem('geometrics_entregas') || '[]') || []; } catch (e6) { localE = []; }
                         var arrE = Array.isArray(entregas) ? entregas : Object.keys(entregas).map(function (k) { return entregas[k]; });
                         localStorage.setItem('geometrics_entregas', JSON.stringify(mergeById(localE, arrE)));
+                    }
+                    
+                    if (quices) {
+                        var localQ = [];
+                        try { localQ = JSON.parse(localStorage.getItem('geometrics_quices') || '[]') || []; } catch (eQ) { localQ = []; }
+                        var arrQ = Array.isArray(quices) ? quices : Object.keys(quices).map(function (k) { return quices[k]; });
+                        localStorage.setItem('geometrics_quices', JSON.stringify(mergeById(localQ, arrQ.filter(Boolean))));
                     }
                     if (civix && typeof civix === 'object') {
                         var localCx = {};
@@ -298,6 +316,9 @@ function syncUpUsers() {
 
     function pushTareas(list) {
         return cloudSet('tareas', list || []);
+    }
+    function pushQuices(list) {
+        return cloudSet('quices', list || []);
     }
     function pushPresentaciones(list) {
         var slim = (list || []).map(function (p) {
@@ -426,7 +447,8 @@ function syncUpUsers() {
     }
 
     function pullCivix() {
-        return cloudGet('civix').then(function (val) {
+        return cloudGet('civix'),
+                cloudGet('quices').then(function (val) {
             if (!val || typeof val !== 'object') return {};
             var out = {};
             Object.keys(val).forEach(function (k) {
@@ -505,6 +527,7 @@ function syncUpUsers() {
         pushChats: pushChats,
         pushAdmins: pushAdmins,
         pushTareas: pushTareas,
+        pushQuices: pushQuices,
         pushPresentaciones: pushPresentaciones,
         pushEntregas: pushEntregas,
         pushCivix: pushCivix,
@@ -513,6 +536,7 @@ function syncUpUsers() {
         pullCivix: pullCivix,
         listenCivix: listenCivix,
         listenChats: listenChats,
+        listenTareas: listenTareas,
         pullChats: pullChats,
         pullUsersAndApply: pullUsersAndApply
     };

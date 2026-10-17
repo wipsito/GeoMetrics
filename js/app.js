@@ -1580,13 +1580,30 @@ async function llamarIA(mensaje) {
 
     var response;
     try {
+        var primerNombre = 'estudiante';
+        try {
+            var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+            if (ses && ses.nombre) {
+                primerNombre = String(ses.nombre).trim().split(/\s+/)[0] || 'estudiante';
+            }
+        } catch (eN) {}
+        var msgs = chatHistory.slice();
+        // Contexto de nombre al inicio de cada turno (el Worker lo usa para dirigirse al usuario)
+        msgs = [{
+            role: 'system',
+            content: 'El usuario se llama ' + primerNombre + '. Dirígete a él o ella por su primer nombre (' + primerNombre + ') de forma natural. '
+                + 'Puedes usar conocimiento general sólido de ingeniería civil y de la nube/web académica cuando ayude, '
+                + 'sin inventar datos numéricos de laboratorio. Si hay textos guía de la materia, priorízalos y cítalos.'
+        }].concat(msgs);
+
         response = await fetch(backend, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 mode: 'chat',
                 model: AI_CONFIG.model,
-                messages: chatHistory,
+                messages: msgs,
+                userName: primerNombre,
                 temperature: 0.4,
                 max_tokens: 4096
             })
