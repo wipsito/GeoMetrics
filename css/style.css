@@ -15,11 +15,11 @@
     --azul-unip: #003366;
     --gris-unip: #DADADA;
 
-    --verde: #003366;              /* primario institucional (antes verde) */
-    --verde-claro: #004d99;        /* azul más claro */
-    --verde-oscuro: #001a33;       /* azul profundo */
-    --dorado: #ad3333;             /* acento institucional rojo */
-    --dorado-suave: #c45a5a;       /* rojo suave */
+    --verde: #003366;              /* primario azul institucional */
+    --verde-claro: #004d99;
+    --verde-oscuro: #001a33;
+    --dorado: #DADADA;             /* títulos y acentos de texto (NO rojo) */
+    --dorado-suave: #e8e8e8;
     --blanco: #ffffff;
     --gris: #DADADA;
     --fondo: #0a1420;
@@ -29,6 +29,8 @@
     --texto-suave: #b8c4d0;
     --acento: #4d8fd9;
     --peligro: #ad3333;
+    --boton: #ad3333;              /* SOLO botones de acción */
+    --boton-hover: #8f2a2a;
 }
 
 body {
@@ -158,7 +160,7 @@ body {
 }
 
 #btnComenzar {
-    background: var(--dorado);
+    background: var(--boton);
     color: #ffffff;
     border: none;
     padding: 18px 50px;
@@ -402,7 +404,7 @@ body {
 
     border-radius: 50%;
 
-    background: var(--dorado);
+    background: var(--boton);
 
     position: absolute;
 
@@ -1028,7 +1030,7 @@ body {
 
     border-radius: 8px;
 
-    background: var(--dorado);
+    background: var(--boton);
 
     color: #ffffff;
 
@@ -1590,7 +1592,7 @@ body {
 }
 
 .tab-btn.active {
-    background: var(--dorado);
+    background: var(--boton);
     border-color: var(--dorado);
     color: #ffffff;
 }
@@ -2160,7 +2162,7 @@ body {
 
 .asistente-input button {
     padding: 14px 25px;
-    background: var(--dorado);
+    background: var(--boton);
     border: none;
     border-radius: 25px;
     color: #ffffff;
@@ -2416,7 +2418,7 @@ body {
     font-size: 13px;
 }
 .login-tab.active {
-    background: var(--dorado);
+    background: var(--boton);
     color: #ffffff;
     border-color: var(--dorado);
     font-weight: bold;
@@ -2453,7 +2455,7 @@ body {
 .btn-login {
     width: 100%;
     margin-top: 16px;
-    background: var(--dorado);
+    background: var(--boton);
     color: #ffffff;
     border: none;
     padding: 14px;
@@ -2541,7 +2543,7 @@ body {
     margin-top: 8px;
     margin-right: 8px;
     color: #ffffff;
-    background: var(--dorado);
+    background: var(--boton);
     padding: 6px 10px;
     border-radius: 6px;
     text-decoration: none;
@@ -2604,7 +2606,7 @@ body {
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    background: var(--dorado);
+    background: var(--boton);
     color: #ffffff;
     display: flex;
     align-items: center;
@@ -2776,7 +2778,7 @@ body {
     width: 34px;
     height: 34px;
     border-radius: 50%;
-    background: var(--dorado);
+    background: var(--boton);
     color: #0a1420;
     display: flex;
     align-items: center;
@@ -3124,7 +3126,7 @@ body {
     border: 2px solid rgba(173, 51, 51, 0.35);
 }
 .tabla-foto-ini {
-    background: var(--dorado);
+    background: var(--boton);
     color: #0a1420;
     font-size: 11px;
     font-weight: bold;
@@ -4932,31 +4934,78 @@ div.ai-detect-result[hidden] {
 .quiz-card { margin-bottom: 16px; }
 
 
+
+
 /* =========================================
    UNI PAMPLONA UNIFIED — todos los apartados
+   Rojo (#ad3333) SOLO en botones de acción
+   Títulos: gris #DADADA / azul institucional
 ========================================= */
+
+/* Títulos e información: gris claro, nunca rojo */
+.aula-card h3,
+.ensayo-card h3,
+.seccion-titulo h2,
+.login-card h2,
+.menu-user-name,
+.chat-aula-header,
+.bulbos-step-title,
+h1, h2, h3, h4 {
+    color: var(--gris-unip) !important;
+}
+
+.login-hint,
+.grafica-hint,
+small,
+.integrante-rol {
+    color: var(--texto-suave) !important;
+}
+
+/* Pestañas activas: azul institucional (no rojo) */
 .tab-btn.active,
-.login-tab.active,
-.btn-calcular,
-button.btn-calcular {
+.login-tab.active {
     background: var(--azul-unip) !important;
     border-color: var(--azul-unip) !important;
     color: #fff !important;
 }
-.tab-btn.active {
-    background: var(--rojo-unip) !important;
-    border-color: var(--rojo-unip) !important;
+
+.tab-btn:not(.active) {
+    color: var(--gris-unip);
 }
+
+/* BOTONES PRINCIPALES — único lugar del rojo */
+.btn-calcular,
+button.btn-calcular,
+#btnEstChatEnviar,
+#btnDocChatEnviar,
+.btn-enviar,
+button[type="submit"].btn-calcular {
+    background: var(--boton) !important;
+    border: 1px solid var(--boton) !important;
+    color: #ffffff !important;
+}
+.btn-calcular:hover,
+button.btn-calcular:hover {
+    background: var(--boton-hover) !important;
+    border-color: var(--boton-hover) !important;
+}
+
+/* Botones secundarios: contorno azul */
 .btn-limpiar,
-.btn-secundario {
+.btn-secundario,
+.btn-volver {
     border-color: var(--azul-unip) !important;
     color: var(--gris-unip) !important;
+    background: transparent !important;
 }
 .btn-limpiar:hover,
-.btn-secundario:hover {
-    background: rgba(0, 51, 102, 0.35) !important;
+.btn-secundario:hover,
+.btn-volver:hover {
+    background: rgba(0, 51, 102, 0.4) !important;
     color: #fff !important;
 }
+
+/* Tarjetas */
 .aula-card,
 .ensayo-card,
 .menu-card,
@@ -4966,47 +5015,65 @@ button.btn-calcular {
     border-color: rgba(0, 51, 102, 0.55) !important;
     background: rgba(10, 20, 32, 0.92) !important;
 }
-.aula-card h3,
-.ensayo-card h3,
-.seccion-titulo h2,
-.login-card h2,
-.menu-user-name,
-.chat-aula-header {
-    color: var(--gris-unip) !important;
-}
-.login-hint,
-.grafica-hint,
-small {
-    color: var(--texto-suave) !important;
-}
+
 .mensaje-error {
     color: var(--rojo-unip) !important;
 }
-.badge-ok { background: rgba(0, 51, 102, 0.5); color: #fff; }
-.badge-pend { background: rgba(173, 51, 51, 0.45); color: #fff; }
+
+.badge-ok { background: rgba(0, 51, 102, 0.55); color: #fff; }
+.badge-pend { background: rgba(0, 51, 102, 0.35); color: var(--gris-unip); }
+
 .chat-aula-item.active {
-    border-color: var(--rojo-unip) !important;
-    box-shadow: 0 0 0 1px var(--rojo-unip) !important;
+    border-color: var(--azul-unip) !important;
+    box-shadow: 0 0 0 1px var(--azul-unip) !important;
 }
 .chat-burbuja.propia {
     background: rgba(0, 51, 102, 0.85) !important;
 }
 .chat-burbuja.ajena {
-    background: rgba(173, 51, 51, 0.25) !important;
+    background: rgba(0, 51, 102, 0.35) !important;
 }
+
 input, select, textarea {
     border-color: rgba(0, 51, 102, 0.6) !important;
 }
 input:focus, select:focus, textarea:focus {
-    border-color: var(--rojo-unip) !important;
-    outline-color: var(--rojo-unip);
+    border-color: var(--azul-unip) !important;
+    outline-color: var(--azul-unip);
 }
+
 .seccion-encabezado,
 .header-app {
-    border-bottom-color: rgba(173, 51, 51, 0.35) !important;
+    border-bottom-color: rgba(0, 51, 102, 0.5) !important;
 }
+
 .integrante-item {
     background: rgba(0, 51, 102, 0.25) !important;
-    border-color: rgba(173, 51, 51, 0.3) !important;
+    border-color: rgba(0, 51, 102, 0.45) !important;
 }
-.integrante-rol { color: var(--rojo-unip) !important; }
+
+/* Civix: botones de acción en rojo; títulos en gris */
+.asistente-panel h3,
+.civix-titulo,
+#asistenteIA h3 {
+    color: var(--gris-unip) !important;
+}
+.btn-descarga-civix {
+    background: var(--boton) !important;
+    color: #fff !important;
+    border-color: var(--boton) !important;
+}
+
+/* Negritas en respuestas Civix: gris, no rojo */
+.chat-mensaje strong,
+.mensaje-bot strong,
+.asistente-mensajes strong,
+.civix-msg strong,
+.burbuja-bot strong {
+    color: var(--gris-unip) !important;
+}
+.chat-mensaje h1, .chat-mensaje h2, .chat-mensaje h3,
+.asistente-mensajes h1, .asistente-mensajes h2, .asistente-mensajes h3,
+.civix-msg h1, .civix-msg h2, .civix-msg h3 {
+    color: var(--gris-unip) !important;
+}
