@@ -1364,6 +1364,7 @@ function aulaRenderDocente() {
     aulaRenderEntregasDocente();
     try { if (typeof aulaRenderIntegrantesDocente === 'function') aulaRenderIntegrantesDocente(); } catch (e) {}
     try { if (typeof aulaRenderQuicesDocente === 'function') aulaRenderQuicesDocente(); } catch (eQ) {}
+    try { if (typeof aulaQuizCivixBind === 'function') aulaQuizCivixBind(); } catch (eQC) {}
 }
 
 function aulaActualizarResumenDocente() {
@@ -4299,6 +4300,7 @@ function aulaChatBind() {
                 }
                 if (tab === 'doc-quices') {
                     if (typeof aulaRenderQuicesDocente === 'function') aulaRenderQuicesDocente();
+                    if (typeof aulaQuizCivixBind === 'function') aulaQuizCivixBind();
                 }
                 if (tab === 'est-quices') {
                     if (typeof aulaRenderQuicesEstudiante === 'function') aulaRenderQuicesEstudiante();
@@ -4571,6 +4573,7 @@ function aulaAdminBind() {
 
 document.addEventListener('DOMContentLoaded', function() {
     try { aulaAdminBind(); } catch (e) {}
+    try { if (typeof aulaQuizCivixBind === 'function') aulaQuizCivixBind(); } catch (e2) {}
 });
 // also bind immediately if DOM ready
 if (document.readyState !== 'loading') {
@@ -4710,5 +4713,320 @@ function aulaRenderQuicesEstudiante() {
             alert('Respuestas enviadas.');
         });
     });
+}
+
+
+
+
+// =========================================
+// QUIZ CON CIVIX (panel docente)
+// =========================================
+
+window.__quizCivixPreguntas = [];
+
+function aulaQuizCivixBind() {
+    if (window.__quizCivixBound) return;
+    window.__quizCivixBound = true;
+    var g = document.getElementById('btnQuizCivixGenerar');
+    if (g) g.addEventListener('click', function() { aulaQuizCivixGenerar(); });
+    var t = document.getElementById('btnQuizCivixTodas');
+    if (t) t.addEventListener('click', function() { aulaQuizCivixToggleAll(true); });
+    var n = document.getElementById('btnQuizCivixNinguna');
+    if (n) n.addEventListener('click', function() { aulaQuizCivixToggleAll(false); });
+    var f = document.getElementById('btnQuizCivixAlFormulario');
+    if (f) f.addEventListener('click', function() { aulaQuizCivixCargarFormulario(); });
+    var p = document.getElementById('btnQuizCivixPDF');
+    if (p) p.addEventListener('click', function() { aulaQuizCivixDescargarPDF(); });
+}
+
+function aulaQuizCivixParsear(texto) {
+    var lines = String(texto || '').split(/\r?\n/);
+    var out = [];
+    var buf = '';
+    function flush() {
+        var t = buf.replace(/\s+/g, ' ').trim();
+        t = t.replace(/^\*+\s*/, '').replace(/^[-•]\s*/, '');
+        t = t.replace(/^\d+[\).:\-]\s*/, '');
+        t = t.replace(/^P(regunta)?\s*\d+\s*[:.)\-]\s*/i, '');
+        t = t.replace(/^\*\*(.+?)\*\*\s*/, '$1 ');
+        if (t.length > 8) out.push(t);
+        buf = '';
+    }
+    lines.forEach(function(line) {
+        var L = line.trim();
+        if (!L) { flush(); return; }
+        if (/^(\d+[\).:\-]|P(regunta)?\s*\d+|[-•*])\s+/i.test(L) && buf) flush();
+        buf = buf ? (buf + ' ' + L) : L;
+    });
+    flush();
+    // dedupe
+    var seen = {};
+    return out.filter(function(q) {
+        var k = q.toLowerCase();
+        if (seen[k]) return false;
+        seen[k] = true;
+        return true;
+    });
+}
+
+async function aulaQuizCivixGenerar() {
+    var err = document.getElementById('quizCivixError');
+    var st = document.getElementById('quizCivixStatus');
+    var box = document.getElementById('quizCivixResultados');
+    var lista = document.getElementById('quizCivixLista');
+    if (err) err.textContent = '';
+    var materia = (document.getElementById('quizCivixMateria') || {}).value || 'Mecánica de Suelos I';
+    var temas = ((document.getElementById('quizCivixTemas') || {}).value || '').trim();
+    var n = parseInt((document.getElementById('quizCivixN') || {}).value, 10) || 8;
+    var nivel = (document.getElementById('quizCivixNivel') || {}).value || 'intermedio';
+    if (!temas) {
+        if (err) err.textContent = 'Escribe al menos un tema a evaluar.';
+        return;
+    }
+    n = Math.max(3, Math.min(20, n));
+
+    var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+    if (!user || user.rol !== 'docente') {
+        if (err) err.textContent = 'Solo el docente puede generar quices con Civix.';
+        return;
+    }
+    var primerNombre = String(user.nombre || 'Docente').trim().split(/\s+/)[0];
+
+    var backend = '';
+    try {
+        backend = (typeof AI_CONFIG !== 'undefined' && AI_CONFIG.backendUrl) ? String(AI_CONFIG.backendUrl).trim() : '';
+    } catch (e) {}
+    if (!backend) {
+        if (err) err.textContent = 'Falta configurar backendUrl de Civix en js/config.js.';
+        return;
+    }
+
+    if (st) { st.hidden = false; st.textContent = 'Civix está generando las preguntas…'; }
+    if (box) box.hidden = true;
+    window.__quizCivixPreguntas = [];
+
+    var prompt =
+        'Eres Civix, asistente del docente ' + primerNombre + ' en GeoMetrics (Universidad de Pamplona, Ingeniería Civil).\n' +
+        'Genera exactamente ' + n + ' preguntas de evaluación para un QUIZ académico.\n' +
+        'Materia: ' + materia + '\n' +
+        'Nivel: ' + nivel + '\n' +
+        'Temas a evaluar: ' + temas + '\n\n' +
+        'Reglas:\n' +
+        '1) Responde SOLO con la lista numerada de preguntas (1. 2. 3. …), sin introducción ni conclusión.\n' +
+        '2) Mezcla preguntas teóricas y de aplicación numérica cuando el tema lo permita.\n' +
+        '3) Cada pregunta debe poder responderse en 2–8 líneas.\n' +
+        '4) Usa unidades SI y símbolos claros en texto plano (sigma, tau, phi, no LaTeX).\n' +
+        '5) No incluyas las respuestas ni el solucionario.\n' +
+        '6) Adecúa el lenguaje a estudiantes de Ingeniería Civil de pregrado.';
+
+    try {
+        var response = await fetch(backend, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mode: 'chat',
+                model: (typeof AI_CONFIG !== 'undefined' && AI_CONFIG.model) ? AI_CONFIG.model : undefined,
+                userName: primerNombre,
+                messages: [
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.5,
+                max_tokens: 4096
+            })
+        });
+        var data = {};
+        try { data = await response.json(); } catch (eJ) {}
+        if (!response.ok) {
+            throw new Error((data && data.error) ? data.error : ('Error HTTP ' + response.status));
+        }
+        var texto = (data && data.content) ? String(data.content) : '';
+        var preguntas = aulaQuizCivixParsear(texto);
+        if (!preguntas.length) {
+            throw new Error('Civix no devolvió preguntas en formato usable. Intenta de nuevo.');
+        }
+        window.__quizCivixPreguntas = preguntas;
+        if (lista) {
+            lista.innerHTML = preguntas.map(function(q, i) {
+                return '<label class="quiz-civix-item" style="display:flex;gap:10px;align-items:flex-start;margin:8px 0;padding:8px;border:1px solid rgba(0,51,102,0.4);border-radius:8px;">' +
+                    '<input type="checkbox" class="quiz-civix-chk" data-i="' + i + '" checked style="margin-top:4px;">' +
+                    '<span><strong>' + (i + 1) + '.</strong> ' +
+                    (typeof aulaEsc === 'function' ? aulaEsc(q) : q.replace(/</g,'&lt;')) +
+                    '</span></label>';
+            }).join('');
+        }
+        if (box) box.hidden = false;
+        if (st) st.textContent = 'Se generaron ' + preguntas.length + ' preguntas. Selecciona las que deseas usar.';
+        // Prefill título
+        var tit = document.getElementById('quizTitulo');
+        if (tit && !tit.value) {
+            tit.value = 'Quiz — ' + temas.split(/[,;]/)[0].trim().slice(0, 40);
+        }
+        var mat = document.getElementById('quizMateria');
+        if (mat) mat.value = materia;
+    } catch (e) {
+        console.warn(e);
+        if (err) err.textContent = e.message || 'No se pudo generar el quiz.';
+        if (st) st.hidden = true;
+    }
+}
+
+function aulaQuizCivixSeleccionadas() {
+    var checks = document.querySelectorAll('.quiz-civix-chk:checked');
+    var all = window.__quizCivixPreguntas || [];
+    var out = [];
+    checks.forEach(function(ch) {
+        var i = parseInt(ch.getAttribute('data-i'), 10);
+        if (!isNaN(i) && all[i]) out.push(all[i]);
+    });
+    return out;
+}
+
+function aulaQuizCivixToggleAll(on) {
+    document.querySelectorAll('.quiz-civix-chk').forEach(function(ch) { ch.checked = !!on; });
+}
+
+function aulaQuizCivixCargarFormulario() {
+    var sel = aulaQuizCivixSeleccionadas();
+    var err = document.getElementById('quizCivixError');
+    if (!sel.length) {
+        if (err) err.textContent = 'Marca al menos una pregunta.';
+        return;
+    }
+    var ta = document.getElementById('quizPreguntas');
+    if (ta) ta.value = sel.join('\n');
+    var matC = document.getElementById('quizCivixMateria');
+    var mat = document.getElementById('quizMateria');
+    if (mat && matC) mat.value = matC.value;
+    if (err) err.textContent = '';
+    var st = document.getElementById('quizCivixStatus');
+    if (st) { st.hidden = false; st.textContent = sel.length + ' preguntas cargadas en «Publicar quiz». Revisa y pulsa PUBLICAR QUIZ.'; }
+    // scroll to form
+    var form = document.getElementById('quizTitulo');
+    if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function aulaQuizCivixLoadScript(src) {
+    return new Promise(function(resolve, reject) {
+        if (document.querySelector('script[src="' + src + '"]')) {
+            resolve();
+            return;
+        }
+        var s = document.createElement('script');
+        s.src = src;
+        s.onload = function() { resolve(); };
+        s.onerror = function() { reject(new Error('No se pudo cargar ' + src)); };
+        document.head.appendChild(s);
+    });
+}
+
+async function aulaQuizCivixDescargarPDF() {
+    var sel = aulaQuizCivixSeleccionadas();
+    var err = document.getElementById('quizCivixError');
+    if (!sel.length) {
+        if (err) err.textContent = 'Marca al menos una pregunta para el PDF.';
+        return;
+    }
+    var materia = (document.getElementById('quizCivixMateria') || {}).value || '';
+    var temas = ((document.getElementById('quizCivixTemas') || {}).value || '').trim();
+    var titulo = ((document.getElementById('quizTitulo') || {}).value || '').trim() || ('Quiz — ' + (temas || materia));
+    var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+    var docente = user && user.nombre ? user.nombre : 'Docente';
+
+    try {
+        await aulaQuizCivixLoadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+        var JsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
+        if (!JsPDF) throw new Error('jsPDF no disponible');
+        var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        var mL = 18, mR = 18, mT = 18, pageW = doc.internal.pageSize.getWidth();
+        var pageH = doc.internal.pageSize.getHeight();
+        var maxW = pageW - mL - mR;
+        var y = mT;
+
+        // Header bar UniPamplona
+        doc.setFillColor(0, 51, 102);
+        doc.rect(0, 0, pageW, 22, 'F');
+        doc.setFillColor(173, 51, 51);
+        doc.rect(0, 22, pageW, 2, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text('GeoMetrics — Universidad de Pamplona', mL, 12);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Ingeniería Civil · Quiz generado con Civix', mL, 18);
+        y = 32;
+
+        doc.setTextColor(0, 51, 102);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        var titleLines = doc.splitTextToSize(titulo, maxW);
+        doc.text(titleLines, mL, y);
+        y += titleLines.length * 7 + 4;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.setTextColor(40, 40, 40);
+        doc.text('Materia: ' + materia, mL, y); y += 6;
+        doc.text('Docente: ' + docente, mL, y); y += 6;
+        if (temas) {
+            var tLines = doc.splitTextToSize('Temas: ' + temas, maxW);
+            doc.text(tLines, mL, y);
+            y += tLines.length * 5.5 + 2;
+        }
+        doc.text('Fecha: ' + new Date().toLocaleDateString('es-CO'), mL, y); y += 10;
+
+        doc.setDrawColor(0, 51, 102);
+        doc.setLineWidth(0.3);
+        doc.line(mL, y, pageW - mR, y);
+        y += 8;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(0, 51, 102);
+        doc.text('Preguntas', mL, y); y += 8;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.setTextColor(20, 20, 20);
+
+        sel.forEach(function(q, i) {
+            var block = (i + 1) + '. ' + q;
+            var lines = doc.splitTextToSize(block, maxW);
+            if (y + lines.length * 5.5 + 8 > pageH - 18) {
+                doc.addPage();
+                y = mT;
+            }
+            doc.text(lines, mL, y);
+            y += lines.length * 5.5 + 6;
+            // space for answer
+            doc.setDrawColor(180, 180, 180);
+            doc.setLineWidth(0.2);
+            for (var k = 0; k < 2; k++) {
+                if (y > pageH - 18) { doc.addPage(); y = mT; }
+                doc.line(mL, y, pageW - mR, y);
+                y += 7;
+            }
+            y += 3;
+        });
+
+        // footer
+        var pages = doc.internal.getNumberOfPages();
+        for (var p = 1; p <= pages; p++) {
+            doc.setPage(p);
+            doc.setFontSize(9);
+            doc.setTextColor(120, 120, 120);
+            doc.text('GeoMetrics · Quiz académico', mL, pageH - 8);
+            doc.text(String(p), pageW - mR - 5, pageH - 8);
+        }
+
+        var safe = titulo.replace(/[^\w\-]+/g, '_').slice(0, 40);
+        doc.save('Quiz_' + safe + '_GeoMetrics.pdf');
+        if (err) err.textContent = '';
+        var st = document.getElementById('quizCivixStatus');
+        if (st) { st.hidden = false; st.textContent = 'PDF descargado. También puedes cargar las preguntas en «Publicar quiz».'; }
+    } catch (e) {
+        console.warn(e);
+        if (err) err.textContent = e.message || 'No se pudo generar el PDF.';
+    }
 }
 
