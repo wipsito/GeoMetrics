@@ -9000,7 +9000,7 @@ function bulbosRenderGrafica() {
         (__bulbosState.tipo === 'puntual' || __bulbosState.tipo === 'circular');
 
     // Colores tipo diagrama académico (más claros sobre fondo oscuro)
-    var colors = ['#FFCC00', '#5eead4', '#38bdf8', '#c4b5fd', '#fb923c', '#4ade80', '#f472b6', '#f87171'];
+    var colors = ['#ad3333', '#5eead4', '#38bdf8', '#c4b5fd', '#fb923c', '#4d8fd9', '#f472b6', '#f87171'];
     var traces = [];
 
     // Línea de superficie del terreno
@@ -9027,8 +9027,8 @@ function bulbosRenderGrafica() {
             mode: 'markers+text',
             text: ['Q'],
             textposition: 'top center',
-            textfont: { color: '#FFCC00', size: 14, family: 'Arial Black' },
-            marker: { size: 12, color: '#FFCC00', symbol: 'triangle-down' },
+            textfont: { color: '#ad3333', size: 14, family: 'Arial Black' },
+            marker: { size: 12, color: '#ad3333', symbol: 'triangle-down' },
             name: 'Carga Q',
             hoverinfo: 'skip',
             showlegend: false
@@ -9151,7 +9151,7 @@ function bulbosRenderGrafica() {
     var title = 'Bulbo de presión — ' + (tipoLabels[__bulbosState.tipo] || '');
 
     var layout = {
-        title: { text: title, font: { color: '#FFCC00', size: 16 } },
+        title: { text: title, font: { color: '#ad3333', size: 16 } },
         paper_bgcolor: '#0f1612',
         plot_bgcolor: '#0c1210',
         font: { color: '#d5e0d8' },
@@ -9493,7 +9493,7 @@ function incRenderGrafica() {
             y: smooth.y,
             mode: 'lines',
             name: 'Δσz(z)',
-            line: { color: '#FFCC00', width: 2.8, shape: 'spline', smoothing: 1.2 },
+            line: { color: '#ad3333', width: 2.8, shape: 'spline', smoothing: 1.2 },
             hovertemplate: 'Δσz=%{x:.4f}<br>z=%{y:.3f} m<extra></extra>'
         });
     }
@@ -9503,7 +9503,7 @@ function incRenderGrafica() {
             y: zs,
             mode: 'markers',
             name: 'Datos',
-            marker: { size: 8, color: '#4ade80', line: { width: 1, color: '#0f1612' } },
+            marker: { size: 8, color: '#4d8fd9', line: { width: 1, color: '#0f1612' } },
             hovertemplate: 'Δσz=%{x:.4f}<br>z=%{y:.3f} m<extra></extra>'
         });
     }
@@ -9517,7 +9517,7 @@ function incRenderGrafica() {
     var layout = {
         title: {
             text: 'Incremento de esfuerzo — Δσz vs profundidad' + (sub.length ? '<br><span style="font-size:12px;color:#a8b8ae">' + sub.join(' · ') + '</span>' : ''),
-            font: { color: '#FFCC00', size: 15 }
+            font: { color: '#ad3333', size: 15 }
         },
         paper_bgcolor: '#0f1612',
         plot_bgcolor: '#0c1210',

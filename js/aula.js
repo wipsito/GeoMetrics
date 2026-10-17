@@ -554,7 +554,7 @@ function aulaActualizarIdentidadLogin() {
 
     if (!aulaEmailInstitucional(email)) {
         rol.textContent = 'El correo debe ser @' + aulaDominio();
-        rol.style.color = '#ff8d8d';
+        rol.style.color = '#ad3333';
         return;
     }
     rol.style.color = '';
@@ -4441,7 +4441,7 @@ function aulaRenderAdmin() {
     var adminsEl = document.getElementById('adminListaAdmins');
     if (adminsEl) {
         var ads = aulaAdminsLoad();
-        adminsEl.innerHTML = '<h4 style="margin:0 0 8px;color:#e8b84a;">Administradores actuales</h4>' +
+        adminsEl.innerHTML = '<h4 style="margin:0 0 8px;color:#DADADA;">Administradores actuales</h4>' +
             ads.map(function(e) {
                 var fijo = e === aulaNormalizarEmail(AULA_SUPER_ADMIN);
                 return '<div class="admin-row"><div><strong>' + escHtml(e) + '</strong>' +
