@@ -1086,6 +1086,7 @@
             <button class="tab-btn" data-tab="doc-entregas">Entregas <span class="tab-badge" id="badgeEntregas" hidden>0</span></button>
             <button class="tab-btn" data-tab="doc-chat">Chat <span class="tab-badge" id="badgeChatDoc" hidden>0</span></button>
             <button class="tab-btn" data-tab="doc-integrantes">Integrantes del curso</button>
+            <button class="tab-btn" data-tab="doc-quices">Quices</button>
         </section>
 
         <section class="tab-content active" id="doc-tareas">
@@ -1249,6 +1250,34 @@
             </div>
         </section>
 
+        <section class="tab-content" id="doc-quices">
+            <div class="aula-grid">
+                <div class="aula-card">
+                    <h3>Publicar quiz</h3>
+                    <p class="login-hint">Una pregunta por línea. Los estudiantes de la materia/grupo lo verán en Mi aula.</p>
+                    <label>Título</label>
+                    <input type="text" id="quizTitulo" placeholder="Quiz 1 — Esfuerzos">
+                    <label>Materia</label>
+                    <select id="quizMateria">
+                        <option>Mecánica de Suelos I</option>
+                        <option>Mecánica de Suelos II</option>
+                        <option>Resistencia de Materiales</option>
+                    </select>
+                    <label>Grupo (vacío = todos)</label>
+                    <input type="text" id="quizGrupo" placeholder="A">
+                    <label>Preguntas (una por línea)</label>
+                    <textarea id="quizPreguntas" rows="6" placeholder="¿Qué es el esfuerzo normal?&#10;Calcule τ si V=10 kN y A=0.02 m²"></textarea>
+                    <p class="mensaje-error" id="quizError"></p>
+                    <button type="button" class="btn-calcular" id="btnCrearQuiz" style="margin-top:10px">PUBLICAR QUIZ</button>
+                </div>
+                <div class="aula-card aula-card-wide">
+                    <h3>Quices publicados</h3>
+                    <div id="listaQuicesDocente" class="aula-lista"></div>
+                </div>
+            </div>
+        </section>
+
+
     </main>
 
 <!-- ============================================
@@ -1275,6 +1304,7 @@
             <button class="tab-btn" data-tab="est-entregas">Mis entregas</button>
             <button class="tab-btn" data-tab="est-chat">Chat <span class="tab-badge" id="badgeChatEst" hidden>0</span></button>
             <button class="tab-btn" data-tab="est-integrantes">Integrantes del curso</button>
+            <button class="tab-btn" data-tab="est-quices">Quices</button>
         </section>
 
         <section class="tab-content active" id="est-tareas">
@@ -1366,6 +1396,15 @@
             </div>
         </section>
 
+        <section class="tab-content" id="est-quices">
+            <div class="aula-card aula-card-wide">
+                <h3>Quices de tus materias</h3>
+                <p class="login-hint">Responde y envía. El docente verá tus entregas en próximas versiones.</p>
+                <div id="listaQuicesEstudiante" class="aula-lista"></div>
+            </div>
+        </section>
+
+
 
 </main>
     <!-- Modal editar perfil (solo foto) -->
@@ -1424,9 +1463,9 @@
             </div>
             <div class="aula-card aula-card-wide">
                 <h3>Permisos de administrador</h3>
-                <p class="login-hint">Solo un administrador puede otorgar este permiso a otro docente. El superadmin (Andrés) no se puede quitar.</p>
+                <p class="login-hint">Puedes otorgar administrador a docentes o estudiantes (correo institucional). El superadmin (Andrés) no se puede quitar.</p>
                 <label>Correo a promover como administrador</label>
-                <input type="email" id="adminPromoEmail" placeholder="docente@unipamplona.edu.co">
+                <input type="email" id="adminPromoEmail" placeholder="estudiante.o.docente@unipamplona.edu.co">
                 <div class="botones-calculo" style="margin-top:12px;">
                     <button type="button" class="btn-calcular" id="btnAdminPromo">OTORGAR ADMIN</button>
                 </div>
