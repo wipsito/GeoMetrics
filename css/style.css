@@ -10,25 +10,33 @@
 }
 
 :root {
-    --verde: #0d5c3d;
-    --verde-claro: #1a7a52;
-    --verde-oscuro: #063d28;
-    --dorado: #f0c14b;
-    --dorado-suave: #ffe09a;
-    --fondo: #0c1210;
-    --fondo-card: rgba(18, 32, 26, 0.92);
-    --texto: #e8f0eb;
-    --texto-suave: #a8bdb0;
-    --acento: #3dd68c;
-    --peligro: #f87171;
+    /* Universidad de Pamplona — colores corporativos oficiales */
+    --rojo-unip: #ad3333;
+    --azul-unip: #003366;
+    --gris-unip: #DADADA;
+
+    --verde: #003366;              /* primario institucional (antes verde) */
+    --verde-claro: #004d99;        /* azul más claro */
+    --verde-oscuro: #001a33;       /* azul profundo */
+    --dorado: #ad3333;             /* acento institucional rojo */
+    --dorado-suave: #c45a5a;       /* rojo suave */
+    --blanco: #ffffff;
+    --gris: #DADADA;
+    --fondo: #0a1420;
+    --fondo-2: #0f1c2e;
+    --fondo-card: rgba(0, 51, 102, 0.35);
+    --texto: #f2f5f8;
+    --texto-suave: #b8c4d0;
+    --acento: #4d8fd9;
+    --peligro: #ad3333;
 }
 
 body {
     font-family: Arial, Helvetica, sans-serif;
     background:
-        radial-gradient(ellipse at top, rgba(232, 184, 74, 0.12), transparent 55%),
-        radial-gradient(ellipse at bottom right, rgba(196, 120, 74, 0.10), transparent 50%),
-        var(--fondo);
+        radial-gradient(ellipse at top, rgba(0, 51, 102, 0.55), transparent 55%),
+        radial-gradient(ellipse at bottom right, rgba(173, 51, 51, 0.18), transparent 50%),
+        linear-gradient(160deg, #0a1420 0%, #0f1c2e 45%, #001a33 100%);
     color: var(--blanco);
     min-height: 100vh;
 }
@@ -151,7 +159,7 @@ body {
 
 #btnComenzar {
     background: var(--dorado);
-    color: #10200f;
+    color: #ffffff;
     border: none;
     padding: 18px 50px;
     border-radius: 10px;
@@ -183,7 +191,7 @@ body {
     align-items: center;
     flex-wrap: wrap;
     gap: 12px;
-    color: #7a8f82;
+    color: #b8c4d0;
     font-size: 12px;
     z-index: 2;
     padding: 16px 20px 8px;
@@ -288,7 +296,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 40px 20px 28px;
-    background: linear-gradient(145deg, #1c1410 0%, #2f1f16 45%, #4a3224 100%);
+    background: linear-gradient(145deg, #001a33 0%, #003366 45%, #0a2548 100%);
     position: relative;
     overflow: hidden;
 }
@@ -369,17 +377,17 @@ body {
 }
 
 .capa-1 {
-    background: #9b7653;
+    background: #003366;
     transform: translateZ(0);
 }
 
 .capa-2 {
-    background: #795538;
+    background: #00264d;
     transform: translateZ(-65px);
 }
 
 .capa-3 {
-    background: #4d3523;
+    background: #001a33;
     transform: translateZ(-130px);
 }
 
@@ -463,7 +471,7 @@ body {
 
     gap: 12px;
 
-    color: #9fb0a6;
+    color: #b8c4d0;
 
     font-size: 13px;
 }
@@ -617,7 +625,7 @@ body {
 }
 
 .menu-card p {
-    color: #b9c8c0;
+    color: #c5d0da;
 
     line-height: 1.5;
 }
@@ -869,7 +877,7 @@ body {
 }
 
 .ensayo-card p {
-    color: #b9c8c0;
+    color: #c5d0da;
 
     line-height: 1.5;
 
@@ -954,7 +962,7 @@ body {
 }
 
 .ayuda {
-    color: #9fb0a6;
+    color: #b8c4d0;
 
     font-size: 14px;
 
@@ -1022,7 +1030,7 @@ body {
 
     background: var(--dorado);
 
-    color: #10200f;
+    color: #ffffff;
 
     font-weight: bold;
 
@@ -1092,7 +1100,7 @@ body {
 .resultado-principal span {
     display: block;
 
-    color: #b9c8c0;
+    color: #c5d0da;
 
     font-size: 12px;
 
@@ -1128,7 +1136,7 @@ body {
 .resultados-secundarios span {
     display: block;
 
-    color: #9fb0a6;
+    color: #b8c4d0;
 
     font-size: 12px;
 
@@ -1140,7 +1148,7 @@ body {
 }
 
 .resultados-secundarios small {
-    color: #9fb0a6;
+    color: #b8c4d0;
 }
 
 
@@ -1464,7 +1472,7 @@ body {
 }
 
 .select-estilo option {
-    background: #03140c;
+    background: #001a33;
     color: var(--blanco);
 }
 
@@ -1584,7 +1592,7 @@ body {
 .tab-btn.active {
     background: var(--dorado);
     border-color: var(--dorado);
-    color: #10200f;
+    color: #ffffff;
 }
 
 /* =========================================
@@ -2013,7 +2021,7 @@ body {
     max-width: none;
     max-height: none;
     height: 100%;
-    background: linear-gradient(145deg, #1c1410 0%, #2f1f16 45%, #4a3224 100%);
+    background: linear-gradient(145deg, #001a33 0%, #003366 45%, #0a2548 100%);
     border: none;
     border-radius: 0;
     display: flex;
@@ -2155,7 +2163,7 @@ body {
     background: var(--dorado);
     border: none;
     border-radius: 25px;
-    color: #10200f;
+    color: #ffffff;
     font-weight: bold;
     cursor: pointer;
     transition: 0.3s;
@@ -2374,7 +2382,7 @@ body {
 }
 .grafica-hint {
     margin-top: 10px;
-    color: #9fb0a6;
+    color: #b8c4d0;
     font-size: 13px;
 }
 
@@ -2409,7 +2417,7 @@ body {
 }
 .login-tab.active {
     background: var(--dorado);
-    color: #10200f;
+    color: #ffffff;
     border-color: var(--dorado);
     font-weight: bold;
 }
@@ -2417,7 +2425,7 @@ body {
 .login-form.active { display: block; }
 .login-form label {
     display: block;
-    color: #b9c8c0;
+    color: #c5d0da;
     font-size: 12px;
     margin: 10px 0 4px;
 }
@@ -2446,7 +2454,7 @@ body {
     width: 100%;
     margin-top: 16px;
     background: var(--dorado);
-    color: #10200f;
+    color: #ffffff;
     border: none;
     padding: 14px;
     border-radius: 10px;
@@ -2458,7 +2466,7 @@ body {
 .login-hint {
     margin-top: 10px;
     font-size: 11px;
-    color: #9fb0a6;
+    color: #b8c4d0;
     line-height: 1.4;
 }
 .login-hint code {
@@ -2502,7 +2510,7 @@ body {
 }
 .aula-card label {
     display: block;
-    color: #b9c8c0;
+    color: #c5d0da;
     font-size: 12px;
     margin: 10px 0 4px;
 }
@@ -2515,9 +2523,9 @@ body {
     padding: 14px;
 }
 .aula-item strong { color: #fff; }
-.aula-item p { color: #b9c8c0; margin: 6px 0; font-size: 14px; }
+.aula-item p { color: #c5d0da; margin: 6px 0; font-size: 14px; }
 .aula-item small { color: #8fa297; font-size: 12px; }
-.aula-vacio { color: #9fb0a6; }
+.aula-vacio { color: #b8c4d0; }
 .btn-item-del {
     margin-top: 8px;
     background: transparent;
@@ -2532,7 +2540,7 @@ body {
     display: inline-block;
     margin-top: 8px;
     margin-right: 8px;
-    color: #10200f;
+    color: #ffffff;
     background: var(--dorado);
     padding: 6px 10px;
     border-radius: 6px;
@@ -2597,7 +2605,7 @@ body {
     height: 42px;
     border-radius: 50%;
     background: var(--dorado);
-    color: #10200f;
+    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2612,13 +2620,13 @@ body {
 }
 .login-identidad p {
     margin: 2px 0 0;
-    color: #b9c8c0;
+    color: #c5d0da;
     font-size: 12px;
 }
 
 
 .login-lead {
-    color: #b9c8c0;
+    color: #c5d0da;
     font-size: 13px;
     line-height: 1.5;
     margin-bottom: 14px;
@@ -2649,7 +2657,7 @@ body {
 }
 .perfil-box label {
     display: block;
-    color: #b9c8c0;
+    color: #c5d0da;
     font-size: 12px;
     margin: 10px 0 4px;
 }
@@ -2954,7 +2962,7 @@ body {
 
 .calificar-box label {
     font-size: 11px;
-    color: #b9c8c0;
+    color: #c5d0da;
     margin: 0;
 }
 
@@ -3189,7 +3197,7 @@ body {
     border-radius: 999px;
 }
 .resultado-card time {
-    color: #b9c8c0;
+    color: #c5d0da;
     font-size: 12px;
 }
 .resultado-card h4 {
@@ -3212,7 +3220,7 @@ body {
 }
 .resultados-vacio-icono { font-size: 42px; margin-bottom: 10px; }
 .resultados-vacio h4 { color: var(--dorado); margin: 0 0 10px; }
-.resultados-hint { color: #b9c8c0; font-size: 13px; }
+.resultados-hint { color: #c5d0da; font-size: 13px; }
 
 .math-block {
     display: block;
@@ -3278,7 +3286,7 @@ body {
     border-bottom: 1px solid rgba(255,255,255,0.08);
     font-size: 13px;
 }
-.resultado-detalle-tabla td:first-child { color: #b9c8c0; width: 55%; }
+.resultado-detalle-tabla td:first-child { color: #c5d0da; width: 55%; }
 .resultado-pre {
     background: rgba(0,0,0,0.25);
     padding: 10px;
@@ -4805,7 +4813,7 @@ div.ai-detect-result[hidden] {
 .bulbos-esquema {
   margin-top: 8px;
   text-align: center;
-  color: #b9c8c0;
+  color: #c5d0da;
   font-size: 0.85rem;
   white-space: pre-line;
   line-height: 1.35;
