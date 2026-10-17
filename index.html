@@ -1270,6 +1270,48 @@
                     <p class="mensaje-error" id="quizError"></p>
                     <button type="button" class="btn-calcular" id="btnCrearQuiz" style="margin-top:10px">PUBLICAR QUIZ</button>
                 </div>
+
+                <div class="aula-card aula-card-wide" id="cardQuizCivix">
+                    <h3>Generar quiz con Civix</h3>
+                    <p class="login-hint">Indica la materia y los temas. Civix propone preguntas; tú eliges cuáles van al quiz y puedes descargar el PDF.</p>
+                    <div class="filtros-aula" style="flex-wrap:wrap;gap:10px;">
+                        <label>Materia
+                            <select id="quizCivixMateria">
+                                <option>Mecánica de Suelos I</option>
+                                <option>Mecánica de Suelos II</option>
+                                <option>Resistencia de Materiales</option>
+                            </select>
+                        </label>
+                        <label>N.º de preguntas
+                            <input type="number" id="quizCivixN" min="3" max="20" value="8" style="width:80px">
+                        </label>
+                        <label>Nivel
+                            <select id="quizCivixNivel">
+                                <option value="basico">Básico</option>
+                                <option value="intermedio" selected>Intermedio</option>
+                                <option value="avanzado">Avanzado</option>
+                            </select>
+                        </label>
+                    </div>
+                    <label>Tema(s) a evaluar</label>
+                    <textarea id="quizCivixTemas" rows="3" placeholder="Ej: contenido de humedad, curva granulométrica y límites de Atterberg"></textarea>
+                    <div class="botones-calculo" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="button" class="btn-calcular" id="btnQuizCivixGenerar">GENERAR PREGUNTAS CON CIVIX</button>
+                    </div>
+                    <p class="mensaje-error" id="quizCivixError"></p>
+                    <p class="login-hint" id="quizCivixStatus" hidden></p>
+                    <div id="quizCivixResultados" hidden style="margin-top:14px;">
+                        <h4 style="margin:0 0 8px;">Preguntas propuestas — marca las que quieras incluir</h4>
+                        <div id="quizCivixLista" class="aula-lista"></div>
+                        <div class="botones-calculo" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                            <button type="button" class="btn-limpiar" id="btnQuizCivixTodas">Seleccionar todas</button>
+                            <button type="button" class="btn-limpiar" id="btnQuizCivixNinguna">Quitar todas</button>
+                            <button type="button" class="btn-calcular" id="btnQuizCivixAlFormulario">CARGAR EN PUBLICAR QUIZ</button>
+                            <button type="button" class="btn-calcular" id="btnQuizCivixPDF">DESCARGAR PDF</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="aula-card aula-card-wide">
                     <h3>Quices publicados</h3>
                     <div id="listaQuicesDocente" class="aula-lista"></div>
