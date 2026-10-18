@@ -5223,10 +5223,10 @@ input:focus, select:focus, textarea:focus {
     min-height: 400px;
     height: min(62vh, 500px);
     border-radius: 16px;
-    border: 1px solid rgba(148,163,184,0.45);
-    background: linear-gradient(180deg, #f8fafc 0%, #e5e7eb 100%);
+    border: 1px solid #2B3A50;
+    background: #0B1220;
     overflow: hidden;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.28);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4);
 }
 .sim3d-container canvas {
     display: block;
