@@ -1807,7 +1807,11 @@
             </div>
             <div class="aula-card sim-maquina-card" id="card-sim-inconfinada" hidden>
                 <h3>Prensa de Compresión Inconfinada</h3>
-                <p class="grafica-hint">Muestra cilíndrica sin confinamiento lateral (σ₃ = 0). Ajusta qu y observa la falla.</p>
+                <p class="grafica-hint">Muestra cilíndrica sin confinamiento lateral (σ₃ = 0). Ajusta qu y observa la falla. Vista <strong>3D</strong> interactiva: arrastra para rotar, rueda para zoom.</p>
+                <div class="sim-vista-tabs">
+                    <button type="button" class="tab-btn active" id="btnVista3DInconf" data-vista-uc="3d">Vista 3D</button>
+                    <button type="button" class="tab-btn" id="btnVista2DInconf" data-vista-uc="2d">Vista 2D + curva</button>
+                </div>
                 <div class="sim-maquina-layout">
                     <div class="sim-maquina-controles">
                         <label>Diámetro (mm)</label>
@@ -1824,16 +1828,22 @@
                             <button type="button" class="btn-calcular" id="btn-sim-uc-start">▶ INICIAR ENSAYO</button>
                             <button type="button" class="btn-limpiar" id="btn-sim-uc-reset">Reiniciar</button>
                         </div>
-                    </div>
-                    <div class="sim-maquina-vista">
-                        <canvas id="sim-inconf-canvas" class="sim-maquina-canvas" width="460" height="300"></canvas>
-                        <div class="sim-lecturas">
+                        <div class="sim-lecturas" style="margin-top:12px">
                             <div><span>σ</span><strong id="sim-uc-sig">—</strong><small>kPa</small></div>
                             <div><span>ε</span><strong id="sim-uc-eps">—</strong><small>%</small></div>
                             <div><span>P</span><strong id="sim-uc-p">—</strong><small>N</small></div>
                             <div><span>Estado</span><strong id="sim-uc-estado">Listo</strong></div>
                         </div>
-                        <canvas id="sim-uc-curva" class="sim-curva-canvas" width="360" height="300"></canvas>
+                    </div>
+                    <div class="sim-maquina-vista">
+                        <div id="sim-uc-vista-3d" class="sim3d-wrap">
+                            <div id="sim3d-prensa-container" class="sim3d-container" role="img" aria-label="Prensa de compresión inconfinada en 3D"></div>
+                            <p class="login-hint sim3d-hint">Arrastra para orbitar · Rueda para zoom · El cilindro se comprime al iniciar el ensayo</p>
+                        </div>
+                        <div id="sim-uc-vista-2d" class="sim-uc-2d" hidden>
+                            <canvas id="sim-inconf-canvas" class="sim-maquina-canvas" width="460" height="300"></canvas>
+                            <canvas id="sim-uc-curva" class="sim-curva-canvas" width="360" height="300"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2098,6 +2108,7 @@
             <div class="modal-perfil-body" id="modalVistaPreviaBody"></div>
         </div>
     </div>
+    <script src="js/sim3d-prensa.js"></script>
     <script src="js/aula.js"></script>
     <script src="js/app.js"></script>
 </body>
