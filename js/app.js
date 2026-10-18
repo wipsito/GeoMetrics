@@ -7737,6 +7737,12 @@ function mostrarTarjetasSim(tipo) {
         var el = document.getElementById(map[k]);
         if (el) el.hidden = (k !== tipo);
     });
+    if (tipo === 'inconfinada') {
+        setTimeout(function() {
+            simUCSetVista('3d');
+            simUCMount3D();
+        }, 80);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -8028,6 +8034,7 @@ function simUCTick(ts) {
     el = document.getElementById('sim-uc-estado');
     if (el) el.textContent = eps >= 19 ? 'Falla / fin' : (sig >= p.qu * 0.98 ? '¡Pico qu!' : 'Cargando…');
     dibujarPrensaUC(eps, sig);
+    simUCUpdate3D(eps, sig);
     // mini curve
     var cv = document.getElementById('sim-uc-curva');
     if (cv) {
@@ -8074,6 +8081,7 @@ function simularInconfinada() {
                 if (!window.__simUC.running) {
                     var pre = Math.max(0, (200 - p.qu) / 200 * 3);
                     dibujarPrensaUC(pre, 0);
+                    simUCUpdate3D(pre, 0);
                 }
             });
         });
@@ -9981,3 +9989,57 @@ function dmBindUI() {
 }
 document.addEventListener('DOMContentLoaded', function() { try { dmBindUI(); } catch (e) { console.warn(e); } });
 try { dmBindUI(); } catch (e0) {}
+
+
+/* --- Puente 3D prensa inconfinada --- */
+function simUCUpdate3D(eps, sig) {
+    if (!window.GeoSim3DPrensa || !window.GeoSim3DPrensa.isReady()) return;
+    var d = parseFloat((document.getElementById('sim-uc-d') || {}).value) || 38;
+    var L0 = parseFloat((document.getElementById('sim-uc-l0') || {}).value) || 76;
+    try {
+        window.GeoSim3DPrensa.update(eps || 0, sig || 0, { d_mm: d, L0_mm: L0 });
+    } catch (e) {}
+}
+function simUCMount3D() {
+    var box = document.getElementById('sim3d-prensa-container');
+    if (!box || !window.GeoSim3DPrensa) return;
+    if (!window.GeoSim3DPrensa.isReady()) {
+        window.GeoSim3DPrensa.mount('sim3d-prensa-container');
+    } else {
+        window.GeoSim3DPrensa.resize();
+        simUCUpdate3D(0, 0);
+    }
+}
+function simUCSetVista(modo) {
+    var v3 = document.getElementById('sim-uc-vista-3d');
+    var v2 = document.getElementById('sim-uc-vista-2d');
+    var b3 = document.getElementById('btnVista3DInconf');
+    var b2 = document.getElementById('btnVista2DInconf');
+    if (modo === '2d') {
+        if (v3) v3.hidden = true;
+        if (v2) { v2.hidden = false; v2.style.display = 'flex'; }
+        if (b2) b2.classList.add('active');
+        if (b3) b3.classList.remove('active');
+        try { dibujarPrensaUC(0, 0); } catch (e) {}
+    } else {
+        if (v2) { v2.hidden = true; v2.style.display = 'none'; }
+        if (v3) { v3.hidden = false; }
+        if (b3) b3.classList.add('active');
+        if (b2) b2.classList.remove('active');
+        setTimeout(simUCMount3D, 50);
+    }
+}
+(function bindVistaUC() {
+    if (window.__vistaUCBound) return;
+    window.__vistaUCBound = true;
+    document.addEventListener('click', function(e) {
+        var t = e.target;
+        if (!t) return;
+        if (t.id === 'btnVista3DInconf' || (t.getAttribute && t.getAttribute('data-vista-uc') === '3d')) {
+            simUCSetVista('3d');
+        }
+        if (t.id === 'btnVista2DInconf' || (t.getAttribute && t.getAttribute('data-vista-uc') === '2d')) {
+            simUCSetVista('2d');
+        }
+    });
+})();
