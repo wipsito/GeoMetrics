@@ -1303,7 +1303,11 @@
                     <div id="quizCivixResultados" hidden style="margin-top:14px;">
                         <h4 style="margin:0 0 8px;">Preguntas propuestas — marca las que quieras incluir</h4>
                         <div id="quizCivixLista" class="aula-lista"></div>
-                        <div class="botones-calculo" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                        <div class="quiz-civix-add" style="display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;">
+                            <input type="text" id="quizCivixNueva" placeholder="Añadir pregunta manual…" style="flex:1;min-width:200px;">
+                            <button type="button" class="btn-limpiar" id="btnQuizCivixAdd">＋ Añadir</button>
+                        </div>
+                        <div class="botones-calculo" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
                             <button type="button" class="btn-limpiar" id="btnQuizCivixTodas">Seleccionar todas</button>
                             <button type="button" class="btn-limpiar" id="btnQuizCivixNinguna">Quitar todas</button>
                             <button type="button" class="btn-calcular" id="btnQuizCivixAlFormulario">CARGAR EN PUBLICAR QUIZ</button>
