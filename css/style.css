@@ -5212,3 +5212,42 @@ input:focus, select:focus, textarea:focus {
     gap: 12px;
     margin: 12px 0;
 }
+
+
+/* Prototipo 3D — prensa inconfinada */
+.sim3d-wrap {
+    width: 100%;
+}
+.sim3d-container {
+    width: 100%;
+    min-height: 360px;
+    height: min(52vh, 420px);
+    border-radius: 14px;
+    border: 1px solid #2B3A50;
+    background: #0B1220;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+}
+.sim3d-container canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+.sim3d-hint {
+    margin-top: 8px;
+    font-size: 12px;
+}
+.sim-vista-tabs {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0 14px;
+    flex-wrap: wrap;
+}
+.sim-vista-tabs .tab-btn {
+    cursor: pointer;
+}
+.sim-uc-2d {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
