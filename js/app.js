@@ -9005,7 +9005,7 @@ function bulbosRenderGrafica() {
         (__bulbosState.tipo === 'puntual' || __bulbosState.tipo === 'circular');
 
     // Colores tipo diagrama académico (más claros sobre fondo oscuro)
-    var colors = ['#ad3333', '#5eead4', '#38bdf8', '#c4b5fd', '#fb923c', '#4d8fd9', '#f472b6', '#f87171'];
+    var colors = ['#733E24', '#5eead4', '#38bdf8', '#c4b5fd', '#fb923c', '#4d8fd9', '#f472b6', '#f87171'];
     var traces = [];
 
     // Línea de superficie del terreno
@@ -9032,8 +9032,8 @@ function bulbosRenderGrafica() {
             mode: 'markers+text',
             text: ['Q'],
             textposition: 'top center',
-            textfont: { color: '#DADADA', size: 14, family: 'Arial Black' },
-            marker: { size: 12, color: '#DADADA', symbol: 'triangle-down' },
+            textfont: { color: '#BBBDBC', size: 14, family: 'Arial Black' },
+            marker: { size: 12, color: '#BBBDBC', symbol: 'triangle-down' },
             name: 'Carga Q',
             hoverinfo: 'skip',
             showlegend: false
@@ -9156,7 +9156,7 @@ function bulbosRenderGrafica() {
     var title = 'Bulbo de presión — ' + (tipoLabels[__bulbosState.tipo] || '');
 
     var layout = {
-        title: { text: title, font: { color: '#DADADA', size: 16 } },
+        title: { text: title, font: { color: '#BBBDBC', size: 16 } },
         paper_bgcolor: '#0f1612',
         plot_bgcolor: '#0c1210',
         font: { color: '#d5e0d8' },
@@ -9498,7 +9498,7 @@ function incRenderGrafica() {
             y: smooth.y,
             mode: 'lines',
             name: 'Δσz(z)',
-            line: { color: '#DADADA', width: 2.8, shape: 'spline', smoothing: 1.2 },
+            line: { color: '#BBBDBC', width: 2.8, shape: 'spline', smoothing: 1.2 },
             hovertemplate: 'Δσz=%{x:.4f}<br>z=%{y:.3f} m<extra></extra>'
         });
     }
@@ -9522,7 +9522,7 @@ function incRenderGrafica() {
     var layout = {
         title: {
             text: 'Incremento de esfuerzo — Δσz vs profundidad' + (sub.length ? '<br><span style="font-size:12px;color:#a8b8ae">' + sub.join(' · ') + '</span>' : ''),
-            font: { color: '#DADADA', size: 15 }
+            font: { color: '#BBBDBC', size: 15 }
         },
         paper_bgcolor: '#0f1612',
         plot_bgcolor: '#0c1210',
@@ -9737,9 +9737,9 @@ function dmSimDraw(p) {
         ctx.lineTo(W/2 - 30, H - 160 - drop * 0.2);
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = '#DADADA';
+        ctx.strokeStyle = '#BBBDBC';
         ctx.strokeRect(W/2 - 55, H - 40, 110, 6);
-        ctx.fillStyle = '#DADADA';
+        ctx.fillStyle = '#BBBDBC';
         ctx.font = '13px sans-serif';
         ctx.fillText('Slump ≈ ' + (slump * p).toFixed(0) + ' mm', 20, 28);
     } else if (tipo === 'compresion') {
@@ -9749,13 +9749,13 @@ function dmSimDraw(p) {
         ctx.fillRect(W/2 - 70, H - 50, 140, 18);
         ctx.fillStyle = '#9a9a9a';
         ctx.fillRect(W/2 - 40, 60 + def/2, 80, H - 130 - def);
-        ctx.strokeStyle = '#ad3333';
+        ctx.strokeStyle = '#733E24';
         ctx.strokeRect(W/2 - 40, 60 + def/2, 80, H - 130 - def);
         var P = parseFloat((document.getElementById('dmSimVal') || {}).value) || 400;
         var d = parseFloat((document.getElementById('dmSimD') || {}).value) || 150;
         var A = Math.PI * Math.pow(d/2, 2);
         var fc = (P * 1000 * p) / A;
-        ctx.fillStyle = '#DADADA';
+        ctx.fillStyle = '#BBBDBC';
         ctx.font = '13px sans-serif';
         ctx.fillText('P = ' + (P * p).toFixed(0) + ' kN', 20, 28);
         ctx.fillText('σ ≈ ' + fc.toFixed(1) + ' MPa', 20, 48);
@@ -9776,7 +9776,7 @@ function dmSimDraw(p) {
             var w = (pt.v / tot) * bw * (0.3 + 0.7 * p);
             ctx.fillStyle = pt.col;
             ctx.fillRect(x0, y0 + i * 50, w, bh);
-            ctx.fillStyle = '#DADADA';
+            ctx.fillStyle = '#BBBDBC';
             ctx.font = '12px sans-serif';
             ctx.fillText(pt.n + ' ~ ' + (pt.v * p).toFixed(0) + ' kg/m³', x0, y0 + i * 50 - 6);
         });

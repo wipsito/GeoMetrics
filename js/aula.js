@@ -555,7 +555,7 @@ function aulaActualizarIdentidadLogin() {
 
     if (!aulaEmailInstitucional(email)) {
         rol.textContent = 'El correo debe ser @' + aulaDominio();
-        rol.style.color = '#ad3333';
+        rol.style.color = '#733E24';
         return;
     }
     rol.style.color = '';
@@ -4444,7 +4444,7 @@ function aulaRenderAdmin() {
     var adminsEl = document.getElementById('adminListaAdmins');
     if (adminsEl) {
         var ads = aulaAdminsLoad();
-        adminsEl.innerHTML = '<h4 style="margin:0 0 8px;color:#DADADA;">Administradores actuales</h4>' +
+        adminsEl.innerHTML = '<h4 style="margin:0 0 8px;color:#BBBDBC;">Administradores actuales</h4>' +
             ads.map(function(e) {
                 var fijo = e === aulaNormalizarEmail(AULA_SUPER_ADMIN);
                 return '<div class="admin-row"><div><strong>' + escHtml(e) + '</strong>' +
@@ -4973,9 +4973,9 @@ async function aulaQuizCivixDescargarPDF() {
         var y = mT;
 
         // Header bar UniPamplona
-        doc.setFillColor(0, 51, 102);
+        doc.setFillColor(36, 95, 115);
         doc.rect(0, 0, pageW, 22, 'F');
-        doc.setFillColor(173, 51, 51);
+        doc.setFillColor(115, 62, 36);
         doc.rect(0, 22, pageW, 2, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
@@ -4986,7 +4986,7 @@ async function aulaQuizCivixDescargarPDF() {
         doc.text('Ingeniería Civil · Quiz generado con Civix', mL, 18);
         y = 32;
 
-        doc.setTextColor(0, 51, 102);
+        doc.setTextColor(36, 95, 115);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(16);
         var titleLines = doc.splitTextToSize(titulo, maxW);
@@ -5005,14 +5005,14 @@ async function aulaQuizCivixDescargarPDF() {
         }
         doc.text('Fecha: ' + new Date().toLocaleDateString('es-CO'), mL, y); y += 10;
 
-        doc.setDrawColor(0, 51, 102);
+        doc.setDrawColor(36, 95, 115);
         doc.setLineWidth(0.3);
         doc.line(mL, y, pageW - mR, y);
         y += 8;
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
-        doc.setTextColor(0, 51, 102);
+        doc.setTextColor(36, 95, 115);
         doc.text('Preguntas', mL, y); y += 8;
 
         doc.setFont('helvetica', 'normal');
