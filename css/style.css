@@ -5220,11 +5220,11 @@ input:focus, select:focus, textarea:focus {
 }
 .sim3d-container {
     width: 100%;
-    min-height: 360px;
-    height: min(52vh, 420px);
+    min-height: 380px;
+    height: min(58vh, 460px);
     border-radius: 14px;
     border: 1px solid #2B3A50;
-    background: #0B1220;
+    background: #e8eaed;
     overflow: hidden;
     box-shadow: 0 12px 40px rgba(0,0,0,0.35);
 }
