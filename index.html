@@ -1112,15 +1112,19 @@
                     <button type="button" class="btn-calcular btn-abrir-sim-dm" data-sim-dm="aci211">ABRIR SIMULADOR</button>
                 </div>
             </div>
-            <div id="dmSimDetalle" hidden style="margin-top:16px">
-                <button type="button" class="btn-limpiar" id="btnVolverSimDM">← Volver</button>
-                <div class="sim-layout" style="display:flex;flex-wrap:wrap;gap:16px;margin-top:12px">
-                    <canvas id="dmSimCanvas" width="360" height="320" style="background:#0a1420;border-radius:12px;border:1px solid rgba(0,51,102,0.6);max-width:100%"></canvas>
-                    <div style="flex:1;min-width:220px">
-                        <h3 id="dmSimTitulo">Simulador</h3>
+            <div id="dmSimDetalle" class="dm-sim-full" hidden>
+                <div class="dm-sim-toolbar">
+                    <button type="button" class="btn-limpiar" id="btnVolverSimDM">← Volver a simuladores</button>
+                    <h3 id="dmSimTitulo" style="margin:0">Simulador</h3>
+                </div>
+                <div class="dm-sim-stage">
+                    <div class="dm-sim-canvas-wrap">
+                        <canvas id="dmSimCanvas" width="480" height="400"></canvas>
+                    </div>
+                    <div class="dm-sim-side">
                         <div id="dmSimControles" class="form-grid"></div>
-                        <button type="button" class="btn-calcular" id="btnDmSimStart" style="margin-top:10px">INICIAR</button>
-                        <div id="dmSimInfo" class="resultado-box" style="margin-top:12px"></div>
+                        <button type="button" class="btn-calcular" id="btnDmSimStart" style="margin-top:12px;width:100%">INICIAR</button>
+                        <div id="dmSimInfo" class="resultado-box" style="margin-top:14px"></div>
                     </div>
                 </div>
             </div>
