@@ -149,6 +149,9 @@
                             <label class="reg-mat-item"><input type="checkbox" name="regMat" value="Resistencia de Materiales"> Resistencia de Materiales
                                 <input type="text" class="reg-grupo-input" data-mat="Resistencia de Materiales" placeholder="Grupo" disabled>
                             </label>
+                            <label class="reg-mat-item"><input type="checkbox" name="regMat" value="Diseño de Mezclas"> Diseño de Mezclas
+                                <input type="text" class="reg-grupo-input" data-mat="Diseño de Mezclas" placeholder="Grupo" disabled>
+                            </label>
                         </div>
                         <p class="login-hint">Marca una o varias materias e indica el grupo de cada una.</p>
 
@@ -184,6 +187,9 @@
                             </label>
                             <label class="reg-mat-item"><input type="checkbox" name="docMat" value="Resistencia de Materiales"> Resistencia de Materiales
                                 <input type="text" class="doc-grupo-input" data-mat="Resistencia de Materiales" placeholder="Grupos: A, B, C" disabled>
+                            </label>
+                            <label class="reg-mat-item"><input type="checkbox" name="docMat" value="Diseño de Mezclas"> Diseño de Mezclas
+                                <input type="text" class="doc-grupo-input" data-mat="Diseño de Mezclas" placeholder="Grupos: A, B" disabled>
                             </label>
                         </div>
                         <p class="login-hint">Marca las materias e indica los grupos separados por comas (ej. A, B, C).</p>
@@ -257,6 +263,12 @@
                 <div class="card-icono">🔬</div>
                 <h3>Resistencia de Materiales</h3>
                 <p>Tracción, compresión, flexión, torsión, pandeo y más.</p>
+            </button>
+
+            <button class="menu-card" data-seccion="diseno-mezclas" data-materia="Diseño de Mezclas">
+                <div class="card-icono">🧱</div>
+                <h3>Diseño de Mezclas</h3>
+                <p>Concreto: ACI 211.1, ensayos de control y simuladores de laboratorio.</p>
             </button>
 
             <button class="menu-card" data-seccion="recursos">
@@ -922,6 +934,199 @@
     <!-- ============================================
          PANTALLA RECURSOS / BIBLIOTECA
     ============================================= -->
+
+    <!-- ============================================
+         PANTALLA DISEÑO DE MEZCLAS
+    ============================================= -->
+    <main class="pantalla-curso" id="pantallaDisenoMezclas" style="display:none">
+        <header class="seccion-encabezado seccion-encabezado-doc">
+            <div class="seccion-titulo">
+                <div class="seccion-icono">🧱</div>
+                <div>
+                    <h2>Diseño de Mezclas</h2>
+                    <p>Código 165019 · Concreto, control de calidad y método ACI 211.1</p>
+                </div>
+            </div>
+            <button class="btn-volver" id="btnVolverDisenoMezclas">← VOLVER AL MENÚ</button>
+        </header>
+
+        <section class="submenu-tabs">
+            <button class="tab-btn active" data-tab="dm-teoria">Teoría</button>
+            <button class="tab-btn" data-tab="dm-ensayos">Ensayos</button>
+            <button class="tab-btn" data-tab="dm-simuladores">Simuladores</button>
+        </section>
+
+        <section class="tab-content active" id="dm-teoria">
+            <div class="teoria-container">
+                <h3>Diseño de Mezclas — Contenido Programático (165019)</h3>
+                <div class="teoria-seccion">
+                    <h4>1. Fundamentos del diseño de mezclas</h4>
+                    <p>El concreto es el material más usado en infraestructura en Colombia. Un diseño adecuado garantiza <strong>durabilidad, seguridad, eficiencia y sostenibilidad</strong>.</p>
+                    <p>Componentes básicos: <strong>cemento, agregados (fino y grueso), agua y aditivos</strong>. La relación agua/cemento (a/c) controla resistencia y durabilidad.</p>
+                    <div class="formula-box">a/c ↓ → resistencia y durabilidad ↑ (con buena curación)</div>
+                    <p>Normativa de referencia: <strong>ACI 211.1, NTC, ASTM, NSR-10</strong>, ASOCRETO / Neville / Mehta &amp; Monteiro.</p>
+                </div>
+                <div class="teoria-seccion">
+                    <h4>2. Control de calidad (fresco y endurecido)</h4>
+                    <p><strong>Estado fresco:</strong> revenimiento (slump), temperatura, aire atrapado, peso unitario.</p>
+                    <p><strong>Estado endurecido:</strong> resistencia a la compresión de cilindros (f'c), módulos y durabilidad.</p>
+                    <div class="formula-box">f'c = P / A &nbsp;&nbsp; (P = carga máxima, A = área de la sección)</div>
+                </div>
+                <div class="teoria-seccion">
+                    <h4>3. Método ACI 211.1 — proporciones</h4>
+                    <p>Secuencia típica: resistencia requerida → relación a/c → asentamiento y tamaño máximo del agregado → contenido de agua → cemento → volumen de agregado grueso → agregado fino por volumen absoluto → ajustes de prueba.</p>
+                    <div class="formula-box">V_abs = masa / (Gs · γ_agua) &nbsp;&nbsp; · &nbsp;&nbsp; Σ V = 1 m³</div>
+                </div>
+                <div class="teoria-seccion">
+                    <h4>4. Mezclas especiales e innovación</h4>
+                    <p>Autocompactantes, ligeros, alta resistencia, permeables; adiciones (escoria, ceniza, sílice, fibras); concretos verdes y economía circular con agregados reciclados.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="dm-ensayos">
+            <div class="ensayos-grid" id="dmEnsayosGrid">
+                <button type="button" class="ensayo-card" data-ensayo-dm="revenimiento">
+                    <div class="ensayo-icono">🥣</div>
+                    <h3>Revenimiento (Slump)</h3>
+                    <p>Trabajabilidad del concreto fresco (NTC / ASTM C143).</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+                <button type="button" class="ensayo-card" data-ensayo-dm="compresion">
+                    <div class="ensayo-icono">🏛️</div>
+                    <h3>Resistencia a la compresión</h3>
+                    <p>Cilindros: f'c = P/A (NTC / ASTM C39).</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+                <button type="button" class="ensayo-card" data-ensayo-dm="granulometria-agg">
+                    <div class="ensayo-icono">📊</div>
+                    <h3>Granulometría de agregados</h3>
+                    <p>% que pasa, módulo de finura del arena.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+                <button type="button" class="ensayo-card" data-ensayo-dm="peso-unitario">
+                    <div class="ensayo-icono">⚖️</div>
+                    <h3>Peso unitario</h3>
+                    <p>Densidad del agregado o del concreto fresco.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+                <button type="button" class="ensayo-card" data-ensayo-dm="aci211">
+                    <div class="ensayo-icono">📐</div>
+                    <h3>Diseño ACI 211.1</h3>
+                    <p>Proporciones por m³ de concreto.</p>
+                    <span>INICIAR DISEÑO →</span>
+                </button>
+            </div>
+
+            <!-- Detalle ensayos DM -->
+            <div id="dmEnsayoDetalle" hidden>
+                <button type="button" class="btn-limpiar" id="btnVolverEnsayosDM" style="margin-bottom:12px">← Volver a ensayos</button>
+
+                <div class="ensayo-panel" id="dm-panel-revenimiento" hidden>
+                    <h3>Ensayo de revenimiento (Slump)</h3>
+                    <p class="login-hint">Cono de Abrams: llenado en 3 capas, cada una apisonada 25 veces. Se mide el asentamiento vertical.</p>
+                    <div class="form-grid">
+                        <label>Altura del cono (mm)<input type="number" id="dmSlumpH" value="300"></label>
+                        <label>Altura después del ensayo (mm)<input type="number" id="dmSlumpHf" value="220"></label>
+                    </div>
+                    <button type="button" class="btn-calcular" id="btnDmCalcSlump">CALCULAR</button>
+                    <div id="dmSlumpRes" class="resultado-box" style="margin-top:12px"></div>
+                </div>
+
+                <div class="ensayo-panel" id="dm-panel-compresion" hidden>
+                    <h3>Resistencia a la compresión de cilindros</h3>
+                    <div class="form-grid">
+                        <label>Diámetro (mm)<input type="number" id="dmFcD" value="150"></label>
+                        <label>Carga máxima P (kN)<input type="number" id="dmFcP" value="450"></label>
+                        <label>Edad (días)<input type="number" id="dmFcEdad" value="28"></label>
+                    </div>
+                    <button type="button" class="btn-calcular" id="btnDmCalcFc">CALCULAR f'c</button>
+                    <div id="dmFcRes" class="resultado-box" style="margin-top:12px"></div>
+                </div>
+
+                <div class="ensayo-panel" id="dm-panel-granulometria-agg" hidden>
+                    <h3>Granulometría de agregados</h3>
+                    <p class="login-hint">Ingresa masa retenida (g). Se calcula % retenido, acumulado, % que pasa y módulo de finura (arena).</p>
+                    <div class="form-grid" id="dmGranRows">
+                        <label>Tamiz 3/8" (9.5 mm)<input type="number" class="dm-gran" data-ab="9.5" value="0"></label>
+                        <label>N.º 4 (4.75 mm)<input type="number" class="dm-gran" data-ab="4.75" value="20"></label>
+                        <label>N.º 8 (2.36 mm)<input type="number" class="dm-gran" data-ab="2.36" value="80"></label>
+                        <label>N.º 16 (1.18 mm)<input type="number" class="dm-gran" data-ab="1.18" value="120"></label>
+                        <label>N.º 30 (0.60 mm)<input type="number" class="dm-gran" data-ab="0.6" value="150"></label>
+                        <label>N.º 50 (0.30 mm)<input type="number" class="dm-gran" data-ab="0.3" value="180"></label>
+                        <label>N.º 100 (0.15 mm)<input type="number" class="dm-gran" data-ab="0.15" value="200"></label>
+                        <label>Fondo<input type="number" class="dm-gran" data-ab="0" value="250"></label>
+                    </div>
+                    <button type="button" class="btn-calcular" id="btnDmCalcGran">CALCULAR</button>
+                    <div id="dmGranRes" class="resultado-box" style="margin-top:12px"></div>
+                </div>
+
+                <div class="ensayo-panel" id="dm-panel-peso-unitario" hidden>
+                    <h3>Peso unitario</h3>
+                    <div class="form-grid">
+                        <label>Masa del recipiente (kg)<input type="number" id="dmPuMr" value="2.5" step="0.01"></label>
+                        <label>Masa recipiente + material (kg)<input type="number" id="dmPuMt" value="18.2" step="0.01"></label>
+                        <label>Volumen del recipiente (m³)<input type="number" id="dmPuV" value="0.01" step="0.0001"></label>
+                    </div>
+                    <button type="button" class="btn-calcular" id="btnDmCalcPu">CALCULAR</button>
+                    <div id="dmPuRes" class="resultado-box" style="margin-top:12px"></div>
+                </div>
+
+                <div class="ensayo-panel" id="dm-panel-aci211" hidden>
+                    <h3>Diseño de mezcla — método ACI 211.1 (simplificado)</h3>
+                    <p class="login-hint">Estimación educativa por m³. Ajusta con ensayo de laboratorio en obra.</p>
+                    <div class="form-grid">
+                        <label>f'c deseada (MPa)<input type="number" id="dmAciFc" value="28"></label>
+                        <label>Asentamiento (mm)<input type="number" id="dmAciSlump" value="100"></label>
+                        <label>Tamaño máx. agregado (mm)<input type="number" id="dmAciTm" value="19"></label>
+                        <label>Gs cemento<input type="number" id="dmAciGsc" value="3.15" step="0.01"></label>
+                        <label>Gs agregado grueso<input type="number" id="dmAciGsg" value="2.70" step="0.01"></label>
+                        <label>Gs agregado fino<input type="number" id="dmAciGsf" value="2.65" step="0.01"></label>
+                        <label>Peso unitario suelto grueso (kg/m³)<input type="number" id="dmAciPug" value="1600"></label>
+                        <label>Vol. grueso seco / vol. unitario<input type="number" id="dmAciVg" value="0.62" step="0.01"></label>
+                    </div>
+                    <button type="button" class="btn-calcular" id="btnDmCalcAci">CALCULAR PROPORCIONES</button>
+                    <div id="dmAciRes" class="resultado-box" style="margin-top:12px"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="tab-content" id="dm-simuladores">
+            <div class="ensayos-grid" id="dmSimGrid">
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">🥣</div>
+                    <h3>Simulador de revenimiento</h3>
+                    <p>Visualiza el cono de Abrams y el asentamiento.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim-dm" data-sim-dm="revenimiento">ABRIR SIMULADOR</button>
+                </div>
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">🏛️</div>
+                    <h3>Simulador de compresión</h3>
+                    <p>Carga axial sobre cilindro hasta falla.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim-dm" data-sim-dm="compresion">ABRIR SIMULADOR</button>
+                </div>
+                <div class="ensayo-card sim-card">
+                    <div class="ensayo-icono">📐</div>
+                    <h3>Simulador ACI 211.1</h3>
+                    <p>Ajusta parámetros y observa proporciones.</p>
+                    <button type="button" class="btn-calcular btn-abrir-sim-dm" data-sim-dm="aci211">ABRIR SIMULADOR</button>
+                </div>
+            </div>
+            <div id="dmSimDetalle" hidden style="margin-top:16px">
+                <button type="button" class="btn-limpiar" id="btnVolverSimDM">← Volver</button>
+                <div class="sim-layout" style="display:flex;flex-wrap:wrap;gap:16px;margin-top:12px">
+                    <canvas id="dmSimCanvas" width="360" height="320" style="background:#0a1420;border-radius:12px;border:1px solid rgba(0,51,102,0.6);max-width:100%"></canvas>
+                    <div style="flex:1;min-width:220px">
+                        <h3 id="dmSimTitulo">Simulador</h3>
+                        <div id="dmSimControles" class="form-grid"></div>
+                        <button type="button" class="btn-calcular" id="btnDmSimStart" style="margin-top:10px">INICIAR</button>
+                        <div id="dmSimInfo" class="resultado-box" style="margin-top:12px"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
     <main class="pantalla-curso" id="pantallaRecursos">
         <header class="seccion-encabezado seccion-encabezado-doc">
             <div class="seccion-titulo">
@@ -1262,6 +1467,7 @@
                         <option>Mecánica de Suelos I</option>
                         <option>Mecánica de Suelos II</option>
                         <option>Resistencia de Materiales</option>
+                        <option>Diseño de Mezclas</option>
                     </select>
                     <label>Grupo (vacío = todos)</label>
                     <input type="text" id="quizGrupo" placeholder="A">
@@ -1280,6 +1486,7 @@
                                 <option>Mecánica de Suelos I</option>
                                 <option>Mecánica de Suelos II</option>
                                 <option>Resistencia de Materiales</option>
+                                <option>Diseño de Mezclas</option>
                             </select>
                         </label>
                         <label>N.º de preguntas
