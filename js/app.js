@@ -7906,20 +7906,154 @@ function graficaTriaxial() {
 window.__simUC = window.__simUC || { running: false, paused: false, pauseAccum: 0, history: [], raf: null };
 
 function simUCDur(vel) {
-    var map = { 1: 5, 2: 5, 3: 2.5, 4: 1, 5: 0.5 };
-    return map[Math.round(vel) || 3] || 2.5;
+    var map = { 1: 5, 2: 3.5, 3: 2.5, 4: 1, 5: 0.5 };
+    var k = Math.round(Number(vel));
+    return map[k] || 2.5;
+}
+
+function simUCVelLabel(vel) {
+    var names = { 1: 'muy lenta', 2: 'lenta', 3: 'media', 4: 'rápida', 5: 'muy rápida' };
+    var k = Math.round(Number(vel)) || 3;
+    return (names[k] || 'media') + ' (~' + simUCDur(k) + ' s)';
+}
+
+function simUCNum(id, def, min, max) {
+    var el = document.getElementById(id);
+    var v = el ? parseFloat(el.value) : NaN;
+    if (!isFinite(v)) v = def;
+    if (min !== undefined && v < min) v = min;
+    if (max !== undefined && v > max) v = max;
+    return v;
 }
 
 function simUCParams() {
-    var d = parseFloat((document.getElementById('sim-uc-d') || {}).value) || 38;
-    var L0 = parseFloat((document.getElementById('sim-uc-l0') || {}).value) || 76;
-    var qu = parseFloat((document.getElementById('sim-uc-qu') || {}).value) || 120;
-    if (window.__datosEnsayoMS2 && window.__datosEnsayoMS2.inconfinada && window.__datosEnsayoMS2.inconfinada.qu) {
-        qu = window.__datosEnsayoMS2.inconfinada.qu;
-    }
-    var vel = parseFloat((document.getElementById('sim-uc-vel') || {}).value) || 3;
+    var d = simUCNum('sim-uc-d', 38, 10, 150);
+    var L0 = simUCNum('sim-uc-l0', 76, 20, 300);
+    var qu = simUCNum('sim-uc-qu', 120, 1, 2000);
+    var vel = simUCNum('sim-uc-vel', 3, 1, 5);
     var A = Math.PI * Math.pow((d / 1000) / 2, 2); // m²
     return { d: d, L0: L0, qu: qu, vel: vel, A: A };
+}
+
+/* ---------- Vista 3D (GeoSim3DPrensa) con respaldo a 2D ---------- */
+function simUCUpdate3D(eps, sig) {
+    try {
+        if (!window.GeoSim3DPrensa || !window.GeoSim3DPrensa.isReady()) return;
+        var p = simUCParams();
+        window.GeoSim3DPrensa.update(eps || 0, sig || 0, { d_mm: p.d, L0_mm: p.L0 });
+    } catch (e) { /* la vista 3D nunca debe romper el ensayo */ }
+}
+
+function simUCMount3D() {
+    var cont = document.getElementById('sim3d-prensa-container');
+    var wrap = document.getElementById('sim-uc-vista-3d');
+    if (!cont || !wrap || wrap.hidden) return;
+    if (!window.GeoSim3DPrensa) { simUCFallback2D('No se pudo cargar el módulo 3D.'); return; }
+    var tok = (window.__simUC.mountTok = (window.__simUC.mountTok || 0) + 1);
+    window.GeoSim3DPrensa.mount(cont);
+    var tries = 0;
+    (function espera() {
+        if (tok !== window.__simUC.mountTok) return;
+        if (window.GeoSim3DPrensa.isReady()) {
+            window.GeoSim3DPrensa.resize();
+            var st = window.__simUC.last || { eps: 0, sig: 0 };
+            simUCUpdate3D(st.eps, st.sig);
+            return;
+        }
+        if (++tries > 40) { simUCFallback2D('La vista 3D no está disponible (sin conexión o sin WebGL). Se muestra la vista 2D.'); return; }
+        setTimeout(espera, 150);
+    })();
+}
+
+function simUCFallback2D(msg) {
+    var hint = document.querySelector('#sim-uc-vista-3d .sim3d-hint');
+    if (hint && msg) hint.textContent = msg;
+    simUCSetVista('2d');
+    var cont = document.getElementById('card-sim-inconfinada');
+    var h = cont && cont.querySelector('.grafica-hint');
+    if (h && msg) h.setAttribute('data-aviso', msg);
+}
+
+function simUCSetVista(v) {
+    var w3 = document.getElementById('sim-uc-vista-3d');
+    var w2 = document.getElementById('sim-uc-vista-2d');
+    if (!w3 || !w2) return;
+    var es3d = (v !== '2d');
+    w3.hidden = !es3d;
+    w2.hidden = es3d;
+    var b3 = document.getElementById('btnVista3DInconf');
+    var b2 = document.getElementById('btnVista2DInconf');
+    if (b3) b3.classList.toggle('active', es3d);
+    if (b2) b2.classList.toggle('active', !es3d);
+    var st = window.__simUC.last || { eps: 0, sig: 0 };
+    if (es3d) {
+        simUCMount3D();
+    } else {
+        dibujarPrensaUC(st.eps, st.sig);
+        simUCDrawCurve();
+    }
+}
+
+function simUCDrawCurve() {
+    var cv = document.getElementById('sim-uc-curva');
+    if (!cv) return;
+    var p = simUCParams();
+    var ctx = cv.getContext('2d');
+    var w = cv.width, h = cv.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, h);
+    var ox = 62, oy = h - 34, gx = w - 14, gy = 18;
+    function sx(x) { return ox + (x / 20) * (gx - ox); }
+    function sy(y) { return oy - (y / (p.qu * 1.2)) * (oy - gy); }
+    // rejilla + ejes
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
+    ctx.fillStyle = '#9aa3ad'; ctx.font = '10px sans-serif';
+    var i;
+    for (i = 0; i <= 20; i += 5) {
+        ctx.beginPath(); ctx.moveTo(sx(i), gy); ctx.lineTo(sx(i), oy); ctx.stroke();
+        ctx.fillText(i + '', sx(i) - 4, oy + 13);
+    }
+    for (i = 0; i <= 4; i++) {
+        var yv = (p.qu * 1.2) * i / 4;
+        ctx.beginPath(); ctx.moveTo(ox, sy(yv)); ctx.lineTo(gx, sy(yv)); ctx.stroke();
+        ctx.fillText(yv.toFixed(0), 22, sy(yv) + 3);
+    }
+    ctx.strokeStyle = '#888'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
+    ctx.fillStyle = '#ccc'; ctx.font = '11px sans-serif';
+    ctx.fillText('ε axial (%)', (ox + gx) / 2 - 24, h - 6);
+    ctx.save(); ctx.translate(11, (oy + gy) / 2 + 22); ctx.rotate(-Math.PI / 2);
+    ctx.fillText('σ (kPa)', 0, 0); ctx.restore();
+    // línea de qu
+    ctx.strokeStyle = 'rgba(232,184,74,0.45)'; ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(ox, sy(p.qu)); ctx.lineTo(gx, sy(p.qu)); ctx.stroke(); ctx.setLineDash([]);
+    // curva teórica tenue + curva en vivo
+    ctx.strokeStyle = 'rgba(94,200,255,0.18)'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (i = 0; i <= 40; i++) {
+        var e = i * 0.5, sg = simUCCurve(e, p.qu);
+        if (i === 0) ctx.moveTo(sx(e), sy(sg)); else ctx.lineTo(sx(e), sy(sg));
+    }
+    ctx.stroke();
+    var hist = window.__simUC.history || [];
+    if (hist.length) {
+        ctx.strokeStyle = '#5ec8ff'; ctx.lineWidth = 2.5; ctx.beginPath();
+        hist.forEach(function(pt, k) {
+            if (k === 0) ctx.moveTo(sx(pt.eps), sy(pt.sig)); else ctx.lineTo(sx(pt.eps), sy(pt.sig));
+        });
+        ctx.stroke();
+        var last = hist[hist.length - 1];
+        ctx.fillStyle = '#ff6b6b'; ctx.beginPath(); ctx.arc(sx(last.eps), sy(last.sig), 4, 0, 6.2832); ctx.fill();
+    }
+    ctx.fillStyle = '#e8b84a'; ctx.font = '11px sans-serif';
+    ctx.fillText('qu = ' + p.qu.toFixed(0) + ' kPa', ox + 8, gy + 12);
+}
+
+function simUCSetChips(sig, eps, P, estado) {
+    var el;
+    el = document.getElementById('sim-uc-sig'); if (el) el.textContent = (sig === null) ? '—' : sig.toFixed(0);
+    el = document.getElementById('sim-uc-eps'); if (el) el.textContent = (eps === null) ? '—' : eps.toFixed(1);
+    el = document.getElementById('sim-uc-p'); if (el) el.textContent = (P === null) ? '—' : P.toFixed(1);
+    el = document.getElementById('sim-uc-estado'); if (el && estado) el.textContent = estado;
 }
 
 function dibujarPrensaUC(eps, sig) {
@@ -8032,33 +8166,11 @@ function simUCTick(ts) {
     var sig = simUCCurve(eps, p.qu);
     var P = sig * 1000 * p.A; // N
     window.__simUC.history.push({ eps: eps, sig: sig });
-    var el;
-    el = document.getElementById('sim-uc-sig'); if (el) el.textContent = sig.toFixed(0);
-    el = document.getElementById('sim-uc-eps'); if (el) el.textContent = eps.toFixed(1);
-    el = document.getElementById('sim-uc-p'); if (el) el.textContent = P.toFixed(1);
-    el = document.getElementById('sim-uc-estado');
-    if (el) el.textContent = eps >= 19 ? 'Falla / fin' : (sig >= p.qu * 0.98 ? '¡Pico qu!' : 'Cargando…');
+    window.__simUC.last = { eps: eps, sig: sig };
+    simUCSetChips(sig, eps, P, eps >= 19.99 ? 'Falla / fin' : (sig >= p.qu * 0.98 ? '¡Pico qu!' : 'Cargando…'));
     dibujarPrensaUC(eps, sig);
     simUCUpdate3D(eps, sig);
-    // mini curve
-    var cv = document.getElementById('sim-uc-curva');
-    if (cv) {
-        var ctx = cv.getContext('2d');
-        var w = cv.width, h = cv.height;
-        ctx.clearRect(0, 0, w, h);
-        ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, h);
-        var ox = 40, oy = h - 20, gx = w - 10, gy = 10;
-        function sx(x) { return ox + (x / 20) * (gx - ox); }
-        function sy(y) { return oy - (y / (p.qu * 1.2)) * (oy - gy); }
-        ctx.strokeStyle = '#555'; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
-        ctx.strokeStyle = '#5ec8ff'; ctx.beginPath();
-        window.__simUC.history.forEach(function(pt, i) {
-            if (i === 0) ctx.moveTo(sx(pt.eps), sy(pt.sig)); else ctx.lineTo(sx(pt.eps), sy(pt.sig));
-        });
-        ctx.stroke();
-        ctx.fillStyle = '#e8b84a'; ctx.font = '11px sans-serif';
-        ctx.fillText('qu = ' + p.qu.toFixed(0) + ' kPa', ox + 6, gy + 12);
-    }
+    simUCDrawCurve();
     if (eps >= 20) {
         window.__simUC.running = false;
         window.__simUC.paused = false;
@@ -8069,68 +8181,92 @@ function simUCTick(ts) {
     window.__simUC.raf = requestAnimationFrame(simUCTick);
 }
 
+function simUCReset(bs) {
+    var S = window.__simUC;
+    if (S.raf) cancelAnimationFrame(S.raf);
+    S.raf = null;
+    S.running = false;
+    S.paused = false;
+    S.pauseAccum = 0;
+    S.t0 = 0;
+    S.history = [];
+    S.last = { eps: 0, sig: 0 };
+    dibujarPrensaUC(0, 0);
+    simUCUpdate3D(0, 0);
+    simUCDrawCurve();
+    simUCSetChips(null, null, null, 'Listo');
+    if (bs) bs.textContent = '▶ INICIAR ENSAYO';
+}
+
 function simularInconfinada() {
-    if (window.__datosEnsayoMS2 && window.__datosEnsayoMS2.inconfinada) {
-        var el = document.getElementById('sim-uc-qu');
-        if (el) el.value = window.__datosEnsayoMS2.inconfinada.qu;
+    var S = window.__simUC;
+    // si viene de un ensayo cargado, precarga qu en el control (una sola vez por apertura)
+    if (window.__datosEnsayoMS2 && window.__datosEnsayoMS2.inconfinada && window.__datosEnsayoMS2.inconfinada.qu) {
+        var elq = document.getElementById('sim-uc-qu');
+        if (elq) {
+            var q = parseFloat(window.__datosEnsayoMS2.inconfinada.qu);
+            if (isFinite(q) && q > 0) elq.value = Math.max(parseFloat(elq.min) || 0, Math.min(parseFloat(elq.max) || 1e9, q));
+        }
     }
-    if (!window.__simUC.bound) {
-        window.__simUC.bound = true;
+    var bs = document.getElementById('btn-sim-uc-start');
+    var br = document.getElementById('btn-sim-uc-reset');
+    if (!S.bound) {
+        S.bound = true;
         ['sim-uc-qu', 'sim-uc-vel', 'sim-uc-d', 'sim-uc-l0'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.addEventListener('input', function() {
                 var p = simUCParams();
                 var v = document.getElementById('sim-uc-qu-val'); if (v) v.textContent = p.qu.toFixed(0);
-                var vv = document.getElementById('sim-uc-vel-val'); if (vv) vv.textContent = ' (~' + simUCDur(p.vel) + ' s)';
-                // Vista previa: si no corre, muestra cilindro a proporción; con qu bajo, leve pre-deformación
-                if (!window.__simUC.running) {
-                    var pre = Math.max(0, (200 - p.qu) / 200 * 3);
-                    dibujarPrensaUC(pre, 0);
-                    simUCUpdate3D(pre, 0);
+                var vv = document.getElementById('sim-uc-vel-val'); if (vv) vv.textContent = simUCVelLabel(p.vel);
+                if (!S.running) {
+                    // vista previa a proporción (sin ensayo en curso)
+                    dibujarPrensaUC(0, 0);
+                    simUCUpdate3D(0, 0);
+                    simUCDrawCurve();
                 }
             });
         });
-        var bs = document.getElementById('btn-sim-uc-start');
-        var br = document.getElementById('btn-sim-uc-reset');
+        [['btnVista3DInconf', '3d'], ['btnVista2DInconf', '2d']].forEach(function(par) {
+            var b = document.getElementById(par[0]);
+            if (b) b.addEventListener('click', function() { simUCSetVista(par[1]); });
+        });
+        window.addEventListener('resize', function() {
+            if (window.GeoSim3DPrensa && window.GeoSim3DPrensa.isReady()) window.GeoSim3DPrensa.resize();
+        });
         if (bs) bs.addEventListener('click', function() {
-            if (window.__simUC.running && !window.__simUC.paused) {
-                window.__simUC.paused = true;
-                window.__simUC.pauseAt = performance.now();
-                if (window.__simUC.raf) cancelAnimationFrame(window.__simUC.raf);
+            if (S.running && !S.paused) {
+                S.paused = true;
+                S.pauseAt = performance.now();
+                if (S.raf) cancelAnimationFrame(S.raf);
                 bs.textContent = '▶ CONTINUAR';
-                var st = document.getElementById('sim-uc-estado'); if (st) st.textContent = 'Pausado';
+                simUCSetChips(S.last ? S.last.sig : 0, S.last ? S.last.eps : 0, S.last ? S.last.sig * 1000 * simUCParams().A : 0, 'Pausado');
                 return;
             }
-            if (window.__simUC.running && window.__simUC.paused) {
-                window.__simUC.paused = false;
-                window.__simUC.pauseAccum = (window.__simUC.pauseAccum || 0) + (performance.now() - (window.__simUC.pauseAt || performance.now()));
+            if (S.running && S.paused) {
+                S.paused = false;
+                S.pauseAccum = (S.pauseAccum || 0) + (performance.now() - (S.pauseAt || performance.now()));
                 bs.textContent = '⏸ PAUSA';
                 var st = document.getElementById('sim-uc-estado'); if (st) st.textContent = 'Continuando…';
-                window.__simUC.raf = requestAnimationFrame(simUCTick);
+                S.raf = requestAnimationFrame(simUCTick);
                 return;
             }
-            window.__simUC.running = true;
-            window.__simUC.paused = false;
-            window.__simUC.pauseAccum = 0;
-            window.__simUC.t0 = 0;
-            window.__simUC.history = [];
+            // inicio (o reinicio tras terminar)
+            if (S.raf) cancelAnimationFrame(S.raf);
+            S.running = true;
+            S.paused = false;
+            S.pauseAccum = 0;
+            S.t0 = 0;
+            S.history = [];
+            S.last = { eps: 0, sig: 0 };
             bs.textContent = '⏸ PAUSA';
-            window.__simUC.raf = requestAnimationFrame(simUCTick);
+            S.raf = requestAnimationFrame(simUCTick);
         });
-        if (br) br.addEventListener('click', function() {
-            if (window.__simUC.raf) cancelAnimationFrame(window.__simUC.raf);
-            window.__simUC.running = false;
-            window.__simUC.paused = false;
-            window.__simUC.pauseAccum = 0;
-            window.__simUC.history = [];
-            dibujarPrensaUC(0, 0);
-            var st = document.getElementById('sim-uc-estado'); if (st) st.textContent = 'Listo';
-            if (bs) bs.textContent = '▶ INICIAR ENSAYO';
-        });
+        if (br) br.addEventListener('click', function() { simUCReset(bs); });
     }
     var p = simUCParams();
     var v = document.getElementById('sim-uc-qu-val'); if (v) v.textContent = p.qu.toFixed(0);
-    dibujarPrensaUC(0, 0);
+    var vv = document.getElementById('sim-uc-vel-val'); if (vv) vv.textContent = simUCVelLabel(p.vel);
+    if (!S.running) simUCReset(bs);
 }
 
 // =========================================
