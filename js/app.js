@@ -10016,17 +10016,38 @@ function simUCSetVista(modo) {
     var b3 = document.getElementById('btnVista3DInconf');
     var b2 = document.getElementById('btnVista2DInconf');
     if (modo === '2d') {
-        if (v3) v3.hidden = true;
-        if (v2) { v2.hidden = false; v2.style.display = 'flex'; }
+        if (v3) {
+            v3.hidden = true;
+            v3.style.display = 'none';
+        }
+        if (v2) {
+            v2.hidden = false;
+            v2.style.display = 'grid';
+        }
         if (b2) b2.classList.add('active');
         if (b3) b3.classList.remove('active');
-        try { dibujarPrensaUC(0, 0); } catch (e) {}
+        setTimeout(function () {
+            try {
+                var hist = (window.__simUC && window.__simUC.history) || [];
+                var last = hist.length ? hist[hist.length - 1] : { eps: 0, sig: 0 };
+                dibujarPrensaUC(last.eps || 0, last.sig || 0);
+            } catch (e) {
+                try { dibujarPrensaUC(0, 0); } catch (e2) {}
+            }
+        }, 30);
     } else {
-        if (v2) { v2.hidden = true; v2.style.display = 'none'; }
-        if (v3) { v3.hidden = false; }
+        if (v2) {
+            v2.hidden = true;
+            v2.style.display = 'none';
+        }
+        if (v3) {
+            v3.hidden = false;
+            v3.style.display = 'block';
+        }
         if (b3) b3.classList.add('active');
         if (b2) b2.classList.remove('active');
-        setTimeout(simUCMount3D, 50);
+        setTimeout(simUCMount3D, 80);
+        setTimeout(simUCMount3D, 250);
     }
 }
 (function bindVistaUC() {

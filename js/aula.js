@@ -555,7 +555,7 @@ function aulaActualizarIdentidadLogin() {
 
     if (!aulaEmailInstitucional(email)) {
         rol.textContent = 'El correo debe ser @' + aulaDominio();
-        rol.style.color = '#0d5c3d';
+        rol.style.color = '#4a3224';
         return;
     }
     rol.style.color = '';
@@ -2948,7 +2948,11 @@ function aulaAbrirSimulador(tipo, origenId) {
         if (tipo === 'mohr' && typeof dibujarCirculoMohr === 'function') dibujarCirculoMohr(100, 50, 30);
         if (tipo === 'esfdef' && typeof dibujarDiagramaEsfDef === 'function') dibujarDiagramaEsfDef(200, 250, 400);
         if (tipo === 'corte' && typeof simularCorteDirecto === 'function') simularCorteDirecto();
-        if (tipo === 'inconfinada' && typeof simularInconfinada === 'function') simularInconfinada();
+        if (tipo === 'inconfinada') {
+            if (typeof simularInconfinada === 'function') simularInconfinada();
+            if (typeof simUCSetVista === 'function') simUCSetVista('3d');
+            else if (typeof simUCMount3D === 'function') setTimeout(simUCMount3D, 100);
+        }
         if (tipo === 'consolidacion' && typeof simularConsolidacionMaquina === 'function' && origenId !== 'pantallaSuelos') simularConsolidacionMaquina();
         if (tipo === 'triaxial' && typeof simularTriaxial === 'function') simularTriaxial();
         if (tipo === 'bulbos' && typeof bulbosPresionInit === 'function') bulbosPresionInit();
@@ -4444,7 +4448,7 @@ function aulaRenderAdmin() {
     var adminsEl = document.getElementById('adminListaAdmins');
     if (adminsEl) {
         var ads = aulaAdminsLoad();
-        adminsEl.innerHTML = '<h4 style="margin:0 0 8px;color:#a8bdb0;">Administradores actuales</h4>' +
+        adminsEl.innerHTML = '<h4 style="margin:0 0 8px;color:#c4b5a0;">Administradores actuales</h4>' +
             ads.map(function(e) {
                 var fijo = e === aulaNormalizarEmail(AULA_SUPER_ADMIN);
                 return '<div class="admin-row"><div><strong>' + escHtml(e) + '</strong>' +
@@ -4973,9 +4977,9 @@ async function aulaQuizCivixDescargarPDF() {
         var y = mT;
 
         // Header bar UniPamplona
-        doc.setFillColor(13, 92, 61);
+        doc.setFillColor(74, 50, 36);
         doc.rect(0, 0, pageW, 22, 'F');
-        doc.setFillColor(13, 92, 61);
+        doc.setFillColor(74, 50, 36);
         doc.rect(0, 22, pageW, 2, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
@@ -4986,7 +4990,7 @@ async function aulaQuizCivixDescargarPDF() {
         doc.text('Ingeniería Civil · Quiz generado con Civix', mL, 18);
         y = 32;
 
-        doc.setTextColor(13, 92, 61);
+        doc.setTextColor(74, 50, 36);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(16);
         var titleLines = doc.splitTextToSize(titulo, maxW);
@@ -5005,14 +5009,14 @@ async function aulaQuizCivixDescargarPDF() {
         }
         doc.text('Fecha: ' + new Date().toLocaleDateString('es-CO'), mL, y); y += 10;
 
-        doc.setDrawColor(13, 92, 61);
+        doc.setDrawColor(74, 50, 36);
         doc.setLineWidth(0.3);
         doc.line(mL, y, pageW - mR, y);
         y += 8;
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(12);
-        doc.setTextColor(13, 92, 61);
+        doc.setTextColor(74, 50, 36);
         doc.text('Preguntas', mL, y); y += 8;
 
         doc.setFont('helvetica', 'normal');
