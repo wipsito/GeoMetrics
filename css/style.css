@@ -5220,13 +5220,13 @@ input:focus, select:focus, textarea:focus {
 }
 .sim3d-container {
     width: 100%;
-    min-height: 380px;
-    height: min(58vh, 460px);
-    border-radius: 14px;
-    border: 1px solid #2B3A50;
-    background: #e8eaed;
+    min-height: 400px;
+    height: min(62vh, 500px);
+    border-radius: 16px;
+    border: 1px solid rgba(148,163,184,0.45);
+    background: linear-gradient(180deg, #f8fafc 0%, #e5e7eb 100%);
     overflow: hidden;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.28);
 }
 .sim3d-container canvas {
     display: block;
