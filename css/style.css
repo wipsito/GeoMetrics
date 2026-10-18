@@ -5281,3 +5281,43 @@ input:focus, select:focus, textarea:focus {
         grid-template-columns: 1fr !important;
     }
 }
+
+
+/* UC 2D grande: máquina + curva */
+#card-sim-inconfinada .sim-maquina-layout {
+    grid-template-columns: minmax(200px, 240px) 1fr !important;
+    gap: 18px;
+}
+#card-sim-inconfinada .sim-uc-2d {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 16px;
+    width: 100%;
+    min-height: 420px;
+}
+#card-sim-inconfinada .sim-uc-2d[hidden] {
+    display: none !important;
+}
+#card-sim-inconfinada .sim-uc-2d .sim-maquina-canvas,
+#card-sim-inconfinada .sim-uc-2d .sim-curva-canvas {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 400px !important;
+    height: min(52vh, 480px) !important;
+    border-radius: 14px;
+    border: 1px solid #2B3A50;
+    background: #0B1220;
+}
+#card-sim-inconfinada .sim3d-container {
+    min-height: 440px;
+    height: min(65vh, 540px);
+}
+@media (max-width: 960px) {
+    #card-sim-inconfinada .sim-maquina-layout {
+        grid-template-columns: 1fr !important;
+    }
+    #card-sim-inconfinada .sim-uc-2d {
+        grid-template-columns: 1fr !important;
+    }
+}
+
