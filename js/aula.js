@@ -79,7 +79,8 @@ function aulaSeed() {
         materias: [
             { nombre: 'Mecánica de Suelos I', grupo: 'DEMO' },
             { nombre: 'Mecánica de Suelos II', grupo: 'DEMO' },
-            { nombre: 'Resistencia de Materiales', grupo: 'DEMO' }
+            { nombre: 'Resistencia de Materiales', grupo: 'DEMO' },
+            { nombre: 'Diseño de Mezclas', grupo: 'DEMO' }
         ],
         materia: 'Mecánica de Suelos I',
         grupo: 'DEMO',
