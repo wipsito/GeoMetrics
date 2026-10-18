@@ -5321,3 +5321,32 @@ input:focus, select:focus, textarea:focus {
     }
 }
 
+
+/* Compresión inconfinada — la vista (3D o 2D) ocupa todo el ancho disponible
+   (anula la rejilla de 2 columnas de .sim-maquina-vista usada por otros simuladores) */
+#pantallaSimuladores #card-sim-inconfinada .sim-maquina-vista {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0;
+}
+#pantallaSimuladores #card-sim-inconfinada .sim-maquina-layout > * { min-width: 0; }
+#pantallaSimuladores #card-sim-inconfinada #sim-uc-vista-2d {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 16px;
+    min-height: 0;
+}
+#pantallaSimuladores #card-sim-inconfinada #sim-uc-vista-2d[hidden] { display: none !important; }
+#pantallaSimuladores #card-sim-inconfinada #sim-uc-vista-3d[hidden] { display: none !important; }
+#pantallaSimuladores #card-sim-inconfinada #sim-uc-vista-2d canvas {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: 4 / 3;
+}
+@media (max-width: 960px) {
+    #pantallaSimuladores #card-sim-inconfinada #sim-uc-vista-2d {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+}
