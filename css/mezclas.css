@@ -165,3 +165,15 @@
     .dm-card, .dm-paso, .dm-toast { transition: none; }
     .dm-card:hover, .dm-paso:hover { transform: none; }
 }
+
+/* ---------- Mecánica de Suelos II (reutiliza el diseño .dm-) ---------- */
+.dm-ms2-ens { padding: 0 0 8px; }
+.dm-ms2-ens .dm-cards { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+.dm-ms2-ens .dm-card-o { border: 1px solid var(--dm-line); }
+.ms2-3d { margin: 0 0 18px; }
+.ms2-3d-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.ms2-3d-head h4 { font-size: 18px; margin-top: 2px; }
+.ms2-3d-btns { display: flex; gap: 10px; }
+.ms2-3d-btns button { padding: 10px 16px; cursor: pointer; font: inherit; font-weight: 700; font-size: 13px; border-radius: 8px; }
+.ms2-form-wrap { margin-top: 4px; }
+#panel-ensayo-ms2 { padding: 0 4px 20px; }

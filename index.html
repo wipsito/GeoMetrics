@@ -546,147 +546,147 @@
         </section>
 
         <section class="tab-content active" id="ms2-teoria">
-            <div class="teoria-container">
-                <h3>Mecánica de Suelos II — Contenido Programático</h3>
-                
-                <div class="teoria-seccion">
-                    <h4>1. Resistencia al Corte de los Suelos</h4>
-                    <p>La resistencia al corte es la propiedad fundamental del suelo que determina la estabilidad de estructuras geotécnicas. En laboratorio se determina con el <strong>ensayo de corte directo</strong> y la <strong>compresión inconfinada</strong>.</p>
-                    <div class="formula-box">τ = c + σ'·tan(φ)</div>
-                    <p><strong>Corte directo:</strong> σn = Pv/A · τ = Ph/A. Con varios ensayos se obtiene la envolvente de Coulomb (c y φ).</p>
-                    <p><strong>Compresión inconfinada:</strong> cu = qu/2 (φ ≈ 0 en condición no drenada).</p>
-                    <p><strong>Consolidación:</strong> curva e–log σ', índices Cc y Cr, presión de preconsolidación σ'p y coeficiente Cv.</p>
-                    <p>Donde: τ = resistencia al corte, c = cohesión, σ' = esfuerzo efectivo, φ = ángulo de fricción interna.</p>
-                    <p><strong>Criterio de falla de Mohr-Coulomb:</strong> Define la condición de falla en términos de esfuerzos normales y cortantes.</p>
-                    <p><strong>Círculo de Mohr:</strong> Representación gráfica del estado de esfuerzos en un punto. La envolvente de falla es tangente a los círculos de Mohr en condición de falla.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>2. Cimentaciones Superficiales - Capacidad de Carga</h4>
-                    <p>Las cimentaciones superficiales transfieren cargas a capas de suelo cercanas a la superficie.</p>
-                    <p><strong>Teoría de Terzaghi:</strong></p>
-                    <div class="formula-box">q<sub>u</sub> = c·N<sub>c</sub>·s<sub>c</sub> + q·N<sub>q</sub>·s<sub>q</sub> + 0.5·γ·B·N<sub>γ</sub>·s<sub>γ</sub></div>
-                    <p><strong>Factores de capacidad de carga:</strong></p>
-                    <ul>
-                        <li>N<sub>c</sub> = 5.7 (cimentación corrida), 7.5 (cuadrada), 5.14 (circular)</li>
-                        <li>N<sub>q</sub> = tan²(45°+φ/2)·e<sup>π·tanφ</sup></li>
-                        <li>N<sub>γ</sub> ≈ 2(N<sub>q</sub>+1)·tanφ</li>
-                    </ul>
-                    <p><strong>Factor de seguridad:</strong> FS = q<sub>u</sub> / q<sub>adm</sub> ≥ 3</p>
-                    <p><strong>Efecto del nivel freático:</strong> Reduce la capacidad de carga cuando está dentro de la zona de influencia (d ≤ 0 a D<sub>f</sub> + B).</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>3. Capacidad de Carga y Asentamientos Admisibles</h4>
-                    <p><strong>Incremento de esfuerzo vertical:</strong></p>
-                    <div class="formula-box">Δσ<sub>z</sub> = q·I<sub>z</sub></div>
-                    <p>Donde I<sub>z</sub> es el factor de influencia que depende de m = z/B y n = L/B.</p>
-                    <p><strong>Método 2:1:</strong> Δσ<sub>z</sub> = q·B·L / ((B+z)(L+z))</p>
-                    <p><strong>Asentamiento elástico:</strong></p>
-                    <div class="formula-box">S<sub>e</sub> = (q·B·(1-ν²) / E) · I<sub>s</sub></div>
-                    <p><strong>Asentamiento por consolidación:</strong></p>
-                    <div class="formula-box">S<sub>c</sub> = C<sub>r</sub>·H·log(t<sub>2</sub>/t<sub>1</sub>) + C<sub>c</sub>·H·log((σ'<sub>0</sub>+Δσ)/σ'<sub>0</sub>)</div>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>4. Losas de Cimentación</h4>
-                    <p>Las losas de cimentación se usan cuando la capacidad portante es baja o las cargas son elevadas.</p>
-                    <p><strong>Tipos:</strong></p>
-                    <ul>
-                        <li>Zapatas aisladas conectadas</li>
-                        <li>Losa maciza</li>
-                        <li>Losa con vigas de borde</li>
-                        <li>Losa con pedestales</li>
-                        <li>Cajas de cimentación (compensadas)</li>
-                    </ul>
-                    <p><strong>Criterio:</strong> Cuando el área de zapatas > 50% del área total de la planta, es más económico usar losa.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>5. Presión Lateral de Tierra</h4>
-                    <p><strong>Presión en Reposo (K<sub>0</sub>):</strong></p>
-                    <div class="formula-box">K<sub>0</sub> = 1 - sin(φ) (Jaky)</div>
-                    <p><strong>Presión Activa (Rankine):</strong></p>
-                    <div class="formula-box">K<sub>a</sub> = tan²(45° - φ/2)</div>
-                    <p><strong>Presión Pasiva (Rankine):</strong></p>
-                    <div class="formula-box">K<sub>p</sub> = tan²(45° + φ/2)</div>
-                    <p>Para muros con fricción, se usa Coulomb con coeficiente de fricción δ ≈ 2φ/3.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>6. Muros de Contención</h4>
-                    <p><strong>Tipos de muros:</strong></p>
-                    <ul>
-                        <li><strong>Muros de gravedad:</strong> resisten por su peso propio (concreto masivo, piedra, gaviones)</li>
-                        <li><strong>Muros en voladizo:</strong> concreto armado, más esbeltos</li>
-                        <li><strong>Muros de contención estabilizados mecánicamente (MSE):</strong> tierra armada/geoceldas</li>
-                    </ul>
-                    <p><strong>Verificaciones de estabilidad:</strong></p>
-                    <ul>
-                        <li>Volteo: FS<sub>V</sub> = M<sub>R</sub>/M<sub>O</sub> ≥ 1.5</li>
-                        <li>Deslizamiento: FS<sub>D</sub> = ΣF<sub>R</sub>/ΣF<sub>D</sub> ≥ 1.5</li>
-                        <li>Capacidad portante: FS<sub>CP</sub> = q<sub>u</sub>/q<sub>máx</sub> ≥ 3</li>
-                    </ul>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>7. Cimentaciones Profundas - Pilotes</h4>
-                    <p><strong>Tipos de pilotes:</strong></p>
-                    <ul>
-                        <li><strong>Por función:</strong> de carga vertical, de tensión (anclajes), de retención lateral</li>
-                        <li><strong>Por forma de transmisión:</strong> de punta, de fricción, mixtos</li>
-                        <li><strong>Por material:</strong> concreto (prefabricados, colados), acero (tubulares, H), madera</li>
-                    </ul>
-                    <p><strong>Capacidad de carga de un pilote:</strong></p>
-                    <div class="formula-box">Q<sub>u</sub> = Q<sub>p</sub> + Q<sub>s</sub> = q<sub>p</sub>·A<sub>p</sub> + Σq<sub>si</sub>·A<sub>si</sub></div>
-                    <p><strong>Métodos de instalación:</strong> hinca (martillo), perforado (barrena), mezcla (jet grouting)</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>8. Estabilidad de Taludes</h4>
-                    <p><strong>Tipos de falla:</strong></p>
-                    <ul>
-                        <li><strong>Falla circular:</strong> más común en suelos cohesivos</li>
-                        <li><strong>Falla planar:</strong> en taludes rocosos o con discontinuidades</li>
-                        <li><strong>Falla por cuña:</strong> intersección de dos planos</li>
-                    </ul>
-                    <p><strong>Métodos de análisis:</strong></p>
-                    <ul>
-                        <li><strong>Fellenius (Ordinario):</strong> FS = Σ(c·Δl + W·cosα·tanφ) / Σ(W·sinα)</li>
-                        <li><strong>Bishop:</strong> considera fuerzas entre dovelas</li>
-                        <li><strong>Morgenstern-Price:</strong> más riguroso, satisfacción de equilibrio</li>
-                    </ul>
-                    <p><strong>Factor de seguridad mínimo:</strong> FS ≥ 1.5 para condiciones normales, FS ≥ 1.3 para condiciones sísmicas.</p>
+            <div class="dm dm-teoria dm-ms2-teoria">
+                <header class="dm-teohead"><h3>Mecánica de Suelos II — Contenido Programático</h3><p>Resistencia al corte, cimentaciones, empujes de tierra y estabilidad: fundamentos que sustentan los ensayos de laboratorio de este apartado.</p></header>
+                <div class="dm-teolayout">
+                    <nav class="dm-toc" aria-label="Contenido de la teoría"><b>Contenido</b><a href="#ms2-t-1" data-t="1"><span>1</span>Resistencia al Corte de los Suelos</a><a href="#ms2-t-2" data-t="2"><span>2</span>Cimentaciones Superficiales - Capacidad de Carga</a><a href="#ms2-t-3" data-t="3"><span>3</span>Capacidad de Carga y Asentamientos Admisibles</a><a href="#ms2-t-4" data-t="4"><span>4</span>Losas de Cimentación</a><a href="#ms2-t-5" data-t="5"><span>5</span>Presión Lateral de Tierra</a><a href="#ms2-t-6" data-t="6"><span>6</span>Muros de Contención</a><a href="#ms2-t-7" data-t="7"><span>7</span>Cimentaciones Profundas - Pilotes</a><a href="#ms2-t-8" data-t="8"><span>8</span>Estabilidad de Taludes</a></nav>
+                    <div class="dm-teobody">
+                        <section class="dm-sec" id="ms2-t-1"><h4><span>1</span>Resistencia al Corte de los Suelos</h4>
+                            <p>La resistencia al corte es la propiedad fundamental del suelo que determina la estabilidad de estructuras geotécnicas. En laboratorio se determina con el <strong>ensayo de corte directo</strong> y la <strong>compresión inconfinada</strong>.</p>
+                            <div class="dm-formula">τ = c + σ'·tan(φ)</div>
+                            <p><strong>Corte directo:</strong> σn = Pv/A · τ = Ph/A. Con varios ensayos se obtiene la envolvente de Coulomb (c y φ).</p>
+                            <p><strong>Compresión inconfinada:</strong> cu = qu/2 (φ ≈ 0 en condición no drenada).</p>
+                            <p><strong>Consolidación:</strong> curva e–log σ', índices Cc y Cr, presión de preconsolidación σ'p y coeficiente Cv.</p>
+                            <p>Donde: τ = resistencia al corte, c = cohesión, σ' = esfuerzo efectivo, φ = ángulo de fricción interna.</p>
+                            <div class="dm-callout"><strong>Criterio de falla de Mohr-Coulomb:</strong> Define la condición de falla en términos de esfuerzos normales y cortantes.</div>
+                            <p><strong>Círculo de Mohr:</strong> Representación gráfica del estado de esfuerzos en un punto. La envolvente de falla es tangente a los círculos de Mohr en condición de falla.</p>
+                        </section>
+                        <section class="dm-sec" id="ms2-t-2"><h4><span>2</span>Cimentaciones Superficiales - Capacidad de Carga</h4>
+                            <p>Las cimentaciones superficiales transfieren cargas a capas de suelo cercanas a la superficie.</p>
+                            <p><strong>Teoría de Terzaghi:</strong></p>
+                            <div class="dm-formula">q<sub>u</sub> = c·N<sub>c</sub>·s<sub>c</sub> + q·N<sub>q</sub>·s<sub>q</sub> + 0.5·γ·B·N<sub>γ</sub>·s<sub>γ</sub></div>
+                            <p><strong>Factores de capacidad de carga:</strong></p>
+                            <ul>
+                                <li>N<sub>c</sub> = 5.7 (cimentación corrida), 7.5 (cuadrada), 5.14 (circular)</li>
+                                <li>N<sub>q</sub> = tan²(45°+φ/2)·e<sup>π·tanφ</sup></li>
+                                <li>N<sub>γ</sub> ≈ 2(N<sub>q</sub>+1)·tanφ</li>
+                            </ul>
+                            <div class="dm-callout"><strong>Factor de seguridad:</strong> FS = q<sub>u</sub> / q<sub>adm</sub> ≥ 3</div>
+                            <div class="dm-callout"><strong>Efecto del nivel freático:</strong> Reduce la capacidad de carga cuando está dentro de la zona de influencia (d ≤ 0 a D<sub>f</sub> + B).</div>
+                        </section>
+                        <section class="dm-sec" id="ms2-t-3"><h4><span>3</span>Capacidad de Carga y Asentamientos Admisibles</h4>
+                            <p><strong>Incremento de esfuerzo vertical:</strong></p>
+                            <div class="dm-formula">Δσ<sub>z</sub> = q·I<sub>z</sub></div>
+                            <p>Donde I<sub>z</sub> es el factor de influencia que depende de m = z/B y n = L/B.</p>
+                            <p><strong>Método 2:1:</strong> Δσ<sub>z</sub> = q·B·L / ((B+z)(L+z))</p>
+                            <p><strong>Asentamiento elástico:</strong></p>
+                            <div class="dm-formula">S<sub>e</sub> = (q·B·(1-ν²) / E) · I<sub>s</sub></div>
+                            <p><strong>Asentamiento por consolidación:</strong></p>
+                            <div class="dm-formula">S<sub>c</sub> = C<sub>r</sub>·H·log(t<sub>2</sub>/t<sub>1</sub>) + C<sub>c</sub>·H·log((σ'<sub>0</sub>+Δσ)/σ'<sub>0</sub>)</div>
+                        </section>
+                        <section class="dm-sec" id="ms2-t-4"><h4><span>4</span>Losas de Cimentación</h4>
+                            <p>Las losas de cimentación se usan cuando la capacidad portante es baja o las cargas son elevadas.</p>
+                            <p><strong>Tipos:</strong></p>
+                            <ul>
+                                <li>Zapatas aisladas conectadas</li>
+                                <li>Losa maciza</li>
+                                <li>Losa con vigas de borde</li>
+                                <li>Losa con pedestales</li>
+                                <li>Cajas de cimentación (compensadas)</li>
+                            </ul>
+                            <div class="dm-callout"><strong>Criterio:</strong> Cuando el área de zapatas > 50% del área total de la planta, es más económico usar losa.</div>
+                        </section>
+                        <section class="dm-sec" id="ms2-t-5"><h4><span>5</span>Presión Lateral de Tierra</h4>
+                            <p><strong>Presión en Reposo (K<sub>0</sub>):</strong></p>
+                            <div class="dm-formula">K<sub>0</sub> = 1 - sin(φ) (Jaky)</div>
+                            <p><strong>Presión Activa (Rankine):</strong></p>
+                            <div class="dm-formula">K<sub>a</sub> = tan²(45° - φ/2)</div>
+                            <p><strong>Presión Pasiva (Rankine):</strong></p>
+                            <div class="dm-formula">K<sub>p</sub> = tan²(45° + φ/2)</div>
+                            <p>Para muros con fricción, se usa Coulomb con coeficiente de fricción δ ≈ 2φ/3.</p>
+                        </section>
+                        <section class="dm-sec" id="ms2-t-6"><h4><span>6</span>Muros de Contención</h4>
+                            <p><strong>Tipos de muros:</strong></p>
+                            <ul>
+                                <li><strong>Muros de gravedad:</strong> resisten por su peso propio (concreto masivo, piedra, gaviones)</li>
+                                <li><strong>Muros en voladizo:</strong> concreto armado, más esbeltos</li>
+                                <li><strong>Muros de contención estabilizados mecánicamente (MSE):</strong> tierra armada/geoceldas</li>
+                            </ul>
+                            <p><strong>Verificaciones de estabilidad:</strong></p>
+                            <ul>
+                                <li>Volteo: FS<sub>V</sub> = M<sub>R</sub>/M<sub>O</sub> ≥ 1.5</li>
+                                <li>Deslizamiento: FS<sub>D</sub> = ΣF<sub>R</sub>/ΣF<sub>D</sub> ≥ 1.5</li>
+                                <li>Capacidad portante: FS<sub>CP</sub> = q<sub>u</sub>/q<sub>máx</sub> ≥ 3</li>
+                            </ul>
+                        </section>
+                        <section class="dm-sec" id="ms2-t-7"><h4><span>7</span>Cimentaciones Profundas - Pilotes</h4>
+                            <p><strong>Tipos de pilotes:</strong></p>
+                            <ul>
+                                <li><strong>Por función:</strong> de carga vertical, de tensión (anclajes), de retención lateral</li>
+                                <li><strong>Por forma de transmisión:</strong> de punta, de fricción, mixtos</li>
+                                <li><strong>Por material:</strong> concreto (prefabricados, colados), acero (tubulares, H), madera</li>
+                            </ul>
+                            <p><strong>Capacidad de carga de un pilote:</strong></p>
+                            <div class="dm-formula">Q<sub>u</sub> = Q<sub>p</sub> + Q<sub>s</sub> = q<sub>p</sub>·A<sub>p</sub> + Σq<sub>si</sub>·A<sub>si</sub></div>
+                            <p><strong>Métodos de instalación:</strong> hinca (martillo), perforado (barrena), mezcla (jet grouting)</p>
+                        </section>
+                        <section class="dm-sec" id="ms2-t-8"><h4><span>8</span>Estabilidad de Taludes</h4>
+                            <p><strong>Tipos de falla:</strong></p>
+                            <ul>
+                                <li><strong>Falla circular:</strong> más común en suelos cohesivos</li>
+                                <li><strong>Falla planar:</strong> en taludes rocosos o con discontinuidades</li>
+                                <li><strong>Falla por cuña:</strong> intersección de dos planos</li>
+                            </ul>
+                            <p><strong>Métodos de análisis:</strong></p>
+                            <ul>
+                                <li><strong>Fellenius (Ordinario):</strong> FS = Σ(c·Δl + W·cosα·tanφ) / Σ(W·sinα)</li>
+                                <li><strong>Bishop:</strong> considera fuerzas entre dovelas</li>
+                                <li><strong>Morgenstern-Price:</strong> más riguroso, satisfacción de equilibrio</li>
+                            </ul>
+                            <div class="dm-callout"><strong>Factor de seguridad mínimo:</strong> FS ≥ 1.5 para condiciones normales, FS ≥ 1.3 para condiciones sísmicas.</div>
+                        </section>
+                    </div>
                 </div>
             </div>
         </section>
     
         <section class="tab-content" id="ms2-ensayos">
-            <div class="ensayos-grid" id="ms2-ensayos-grid">
-                <button class="ensayo-card" data-ensayo-ms2="corte">
-                    <div class="ensayo-icono">✂️</div>
-                    <h3>Corte Directo</h3>
-                    <p>Resistencia al corte: cohesión c y ángulo φ (Mohr-Coulomb).</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-                <button class="ensayo-card" data-ensayo-ms2="inconfinada">
-                    <div class="ensayo-icono">🧱</div>
-                    <h3>Compresión Inconfinada</h3>
-                    <p>Resistencia qu y cohesión no drenada cu = qu/2.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-                <button class="ensayo-card" data-ensayo-ms2="consolidacion">
-                    <div class="ensayo-icono">📉</div>
-                    <h3>Consolidación</h3>
-                    <p>Cv, índice de compresión Cc y presión de preconsolidación.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-                <button class="ensayo-card" data-ensayo-ms2="triaxial">
-                    <div class="ensayo-icono">🧪</div>
-                    <h3>Ensayo Triaxial</h3>
-                    <p>σ₁, σ₃, círculos de Mohr y parámetros c, φ (UU / CU / CD).</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
+            <div class="dm dm-ms2-ens">
+                <div class="dm-intro"><p>Selecciona un ensayo para abrir el formulario de cálculo junto con el <strong>módulo 3D</strong> de la máquina que lo realiza en el laboratorio.</p></div>
+                <div class="dm-cards ensayos-grid-ms2" id="ms2-ensayos-grid">
+                    <button class="dm-card" data-ensayo-ms2="corte">
+                        <span class="dm-card-ico">✂️</span>
+                        <span class="dm-card-n">Ensayo 01</span>
+                        <span class="dm-card-t">Corte Directo</span>
+                        <span class="dm-card-d">Resistencia al corte: cohesión c y ángulo φ (Mohr-Coulomb).</span>
+                        <span class="dm-card-o">⚙️ Máquina de corte directo · 3D</span>
+                        <span class="dm-card-go">INICIAR ENSAYO →</span>
+                    </button>
+                    <button class="dm-card" data-ensayo-ms2="inconfinada">
+                        <span class="dm-card-ico">🧱</span>
+                        <span class="dm-card-n">Ensayo 02</span>
+                        <span class="dm-card-t">Compresión Inconfinada</span>
+                        <span class="dm-card-d">Resistencia qu y cohesión no drenada cu = qu/2.</span>
+                        <span class="dm-card-o">⚙️ Prensa de compresión inconfinada · 3D</span>
+                        <span class="dm-card-go">INICIAR ENSAYO →</span>
+                    </button>
+                    <button class="dm-card" data-ensayo-ms2="consolidacion">
+                        <span class="dm-card-ico">📉</span>
+                        <span class="dm-card-n">Ensayo 03</span>
+                        <span class="dm-card-t">Consolidación</span>
+                        <span class="dm-card-d">Cv, índice de compresión Cc y presión de preconsolidación.</span>
+                        <span class="dm-card-o">⚙️ Consolidómetro con marco de carga · 3D</span>
+                        <span class="dm-card-go">INICIAR ENSAYO →</span>
+                    </button>
+                    <button class="dm-card" data-ensayo-ms2="triaxial">
+                        <span class="dm-card-ico">🧪</span>
+                        <span class="dm-card-n">Ensayo 04</span>
+                        <span class="dm-card-t">Ensayo Triaxial</span>
+                        <span class="dm-card-d">σ₁, σ₃, círculos de Mohr y parámetros c, φ (UU / CU / CD).</span>
+                        <span class="dm-card-o">⚙️ Cámara triaxial con marco de carga · 3D</span>
+                        <span class="dm-card-go">INICIAR ENSAYO →</span>
+                    </button>
+                </div>
             </div>
             <div class="panel-ensayo" id="panel-ensayo-ms2" style="display:none;"></div>
             <p class="login-hint" style="padding:0 16px 20px;">Guías oficiales (PDF):
@@ -1940,6 +1940,7 @@
         </div>
     </div>
     <script src="js/sim3d-prensa.js"></script>
+    <script src="js/sim3d-ms2.js"></script>
     <script src="js/mezclas-calc.js"></script>
     <script src="js/mezclas.js"></script>
     <script src="js/mezclas-sim.js"></script>

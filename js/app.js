@@ -5156,7 +5156,10 @@ function volverAListaEnsayosMS2() {
     var panel = document.getElementById('panel-ensayo-ms2');
     var grid = document.getElementById('ms2-ensayos-grid');
     if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
-    if (grid) grid.style.display = 'grid';
+    if (grid) grid.style.display = '';
+    var introEns = document.querySelector('#ms2-ensayos .dm-intro');
+    if (introEns) introEns.style.display = '';
+    if (window.GeoSim3DMS2) window.GeoSim3DMS2.dispose();
 }
 
 function abrirEnsayoSuelos2(nombre) {
@@ -5164,14 +5167,51 @@ function abrirEnsayoSuelos2(nombre) {
     var grid = document.getElementById('ms2-ensayos-grid');
     if (!panel) return;
     if (grid) grid.style.display = 'none';
+    var introEns = document.querySelector('#ms2-ensayos .dm-intro');
+    if (introEns) introEns.style.display = 'none';
     panel.style.display = 'block';
     var html = '<button class="btn-volver-panel btn-volver" onclick="volverAListaEnsayosMS2()">← Ensayos</button>';
+    html += ms2Modulo3dHtml(nombre);
+    html += '<div class="ms2-form-wrap dm">';
     if (nombre === 'corte') html += crearFormularioCorteDirecto();
     else if (nombre === 'inconfinada') html += crearFormularioInconfinada();
     else if (nombre === 'consolidacion') html += crearFormularioConsolidacionMS2();
     else if (nombre === 'triaxial') html += crearFormularioTriaxial();
+    html += '</div>';
     panel.innerHTML = html;
     window.scrollTo(0, 0);
+    ms2Montar3d(nombre);
+}
+
+function ms2Modulo3dHtml(tipo) {
+    var G = window.GeoSim3DMS2;
+    var info = (G && G.info(tipo)) || { maquina: 'Máquina de laboratorio', partes: '' };
+    return '<div class="dm-panel ms2-3d">' +
+        '<div class="ms2-3d-head"><div><span class="dm-card-n">Módulo 3D</span><h4>' + info.maquina + '</h4></div>' +
+        '<div class="ms2-3d-btns"><button class="btn-calcular" id="ms2-3d-play" onclick="ms2Toggle3d()">▶ SIMULAR</button>' +
+        '<button class="btn-limpiar" onclick="ms2Reset3d()">↺ REINICIAR</button></div></div>' +
+        '<div id="ms2-3d-container" class="sim3d-container" role="img" aria-label="' + info.maquina + ' en 3D"></div>' +
+        '<p class="dm-hint">' + info.partes + '. Arrastra para orbitar · rueda para zoom.</p></div>';
+}
+function ms2Montar3d(tipo) {
+    var G = window.GeoSim3DMS2, c = document.getElementById('ms2-3d-container');
+    if (!c) return;
+    if (!G) { c.innerHTML = '<p class="dm-hint" style="padding:20px">No se pudo cargar el módulo 3D.</p>'; return; }
+    G.mount(c, tipo).then(function(ok) {
+        if (!ok && document.getElementById('ms2-3d-container') === c) c.innerHTML = '<p class="dm-hint" style="padding:20px">La vista 3D no está disponible (sin conexión o sin WebGL).</p>';
+    });
+    G.onEnd(function() { var b = document.getElementById('ms2-3d-play'); if (b) b.textContent = '▶ SIMULAR'; });
+}
+function ms2Toggle3d() {
+    var G = window.GeoSim3DMS2, b = document.getElementById('ms2-3d-play');
+    if (!G || !b) return;
+    if (b.textContent.indexOf('SIMULAR') >= 0) { G.play(); b.textContent = '⏸ PAUSAR'; }
+    else { G.pause(); b.textContent = '▶ SIMULAR'; }
+}
+function ms2Reset3d() {
+    var G = window.GeoSim3DMS2, b = document.getElementById('ms2-3d-play');
+    if (G) G.reset();
+    if (b) b.textContent = '▶ SIMULAR';
 }
 
 function crearFormularioCorteDirecto() {
@@ -9717,3 +9757,29 @@ function incDescargarPNG() {
 }
 
 // Diseño de Mezclas: ver js/mezclas-calc.js, js/mezclas.js y js/mezclas-sim.js
+
+/* Teoría Suelos II: índice lateral con scroll suave y resaltado (mismo diseño que Diseño de Mezclas) */
+document.addEventListener('DOMContentLoaded', function() {
+    var root = document.querySelector('.dm-ms2-teoria');
+    if (!root) return;
+    var links = {};
+    root.querySelectorAll('.dm-toc a').forEach(function(a) {
+        links[a.getAttribute('data-t')] = a;
+        a.addEventListener('click', function(e) {
+            e.preventDefault();
+            var t = document.getElementById('ms2-t-' + a.getAttribute('data-t'));
+            if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    if ('IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function(es) {
+            es.forEach(function(en) {
+                if (!en.isIntersecting) return;
+                Object.keys(links).forEach(function(k) { links[k].classList.remove('is-on'); });
+                var k = en.target.id.replace('ms2-t-', '');
+                if (links[k]) links[k].classList.add('is-on');
+            });
+        }, { rootMargin: '-15% 0px -70% 0px' });
+        root.querySelectorAll('.dm-sec').forEach(function(s) { io.observe(s); });
+    }
+});
