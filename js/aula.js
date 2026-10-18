@@ -4737,6 +4737,12 @@ function aulaQuizCivixBind() {
     if (f) f.addEventListener('click', function() { aulaQuizCivixCargarFormulario(); });
     var p = document.getElementById('btnQuizCivixPDF');
     if (p) p.addEventListener('click', function() { aulaQuizCivixDescargarPDF(); });
+    var add = document.getElementById('btnQuizCivixAdd');
+    if (add) add.addEventListener('click', function() { aulaQuizCivixAddManual(); });
+    var inpAdd = document.getElementById('quizCivixNueva');
+    if (inpAdd) inpAdd.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); aulaQuizCivixAddManual(); }
+    });
 }
 
 function aulaQuizCivixParsear(texto) {
@@ -4845,16 +4851,7 @@ async function aulaQuizCivixGenerar() {
             throw new Error('Civix no devolvió preguntas en formato usable. Intenta de nuevo.');
         }
         window.__quizCivixPreguntas = preguntas;
-        if (lista) {
-            lista.innerHTML = preguntas.map(function(q, i) {
-                return '<label class="quiz-civix-item" style="display:flex;gap:10px;align-items:flex-start;margin:8px 0;padding:8px;border:1px solid rgba(0,51,102,0.4);border-radius:8px;">' +
-                    '<input type="checkbox" class="quiz-civix-chk" data-i="' + i + '" checked style="margin-top:4px;">' +
-                    '<span><strong>' + (i + 1) + '.</strong> ' +
-                    (typeof aulaEsc === 'function' ? aulaEsc(q) : q.replace(/</g,'&lt;')) +
-                    '</span></label>';
-            }).join('');
-        }
-        if (box) box.hidden = false;
+        aulaQuizCivixPintarLista();
         if (st) st.textContent = 'Se generaron ' + preguntas.length + ' preguntas. Selecciona las que deseas usar.';
         // Prefill título
         var tit = document.getElementById('quizTitulo');
@@ -4868,6 +4865,38 @@ async function aulaQuizCivixGenerar() {
         if (err) err.textContent = e.message || 'No se pudo generar el quiz.';
         if (st) st.hidden = true;
     }
+}
+
+function aulaQuizCivixPintarLista() {
+    var lista = document.getElementById('quizCivixLista');
+    var box = document.getElementById('quizCivixResultados');
+    var preguntas = window.__quizCivixPreguntas || [];
+    if (!lista) return;
+    lista.innerHTML = preguntas.map(function(q, i) {
+        var txt = typeof aulaEsc === 'function' ? aulaEsc(q) : String(q).replace(/</g,'&lt;');
+        return '<label class="quiz-civix-item">' +
+            '<input type="checkbox" class="quiz-civix-chk" data-i="' + i + '" checked>' +
+            '<span class="quiz-civix-texto"><strong>' + (i + 1) + '.</strong> ' + txt + '</span>' +
+            '</label>';
+    }).join('');
+    if (box) box.hidden = !preguntas.length;
+}
+
+function aulaQuizCivixAddManual() {
+    var inp = document.getElementById('quizCivixNueva');
+    var err = document.getElementById('quizCivixError');
+    var t = inp ? String(inp.value || '').trim() : '';
+    if (!t) {
+        if (err) err.textContent = 'Escribe la pregunta a añadir.';
+        return;
+    }
+    if (!window.__quizCivixPreguntas) window.__quizCivixPreguntas = [];
+    window.__quizCivixPreguntas.push(t);
+    if (inp) inp.value = '';
+    if (err) err.textContent = '';
+    aulaQuizCivixPintarLista();
+    var st = document.getElementById('quizCivixStatus');
+    if (st) { st.hidden = false; st.textContent = 'Pregunta añadida (' + window.__quizCivixPreguntas.length + ' en total).'; }
 }
 
 function aulaQuizCivixSeleccionadas() {
