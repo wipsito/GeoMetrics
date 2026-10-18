@@ -96,8 +96,8 @@
         var blue = M(0x3B82F6, 0.4, 0.42);
         var blueDeep = M(0x2563EB, 0.45, 0.4);
         var plate = M(0xb8c0c8, 0.7, 0.28);
-        var soil = M(0xc4a574, 0.02, 0.88);
-        var soilDark = M(0xa8895e, 0.02, 0.9);
+        var soil = M(0xd2b48c, 0.0, 0.55);
+        var soilDark = M(0xc4a574, 0.0, 0.55);
         var black = M(0x2a2e33, 0.3, 0.55);
         var white = M(0xf1f5f9, 0.1, 0.7);
         var red = M(0xF87171, 0.2, 0.45);
@@ -145,21 +145,16 @@
 
         // —— Muestra ——
         var grpSoil = new THREE.Group();
-        var body = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.33, 1.2, 36), soil);
+        var body = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 1.2, 48), soil);
         body.castShadow = true;
         body.receiveShadow = true;
         grpSoil.add(body);
-        for (var i = 0; i < 5; i++) {
-            var band = new THREE.Mesh(new THREE.TorusGeometry(0.335, 0.014, 6, 28), soilDark);
-            band.rotation.x = Math.PI / 2;
-            band.position.y = -0.45 + i * 0.22;
-            grpSoil.add(band);
-        }
+        /* cilindro liso sin rugosidad/bandas */
         var capMat = M(0xd4c4a8, 0.05, 0.85);
-        var capT = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 32), capMat);
+        var capT = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.03, 48), capMat);
         capT.position.y = 0.62;
         grpSoil.add(capT);
-        var capB = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.04, 32), capMat);
+        var capB = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.03, 48), capMat);
         capB.position.y = -0.62;
         grpSoil.add(capB);
 
