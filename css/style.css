@@ -5246,8 +5246,38 @@ input:focus, select:focus, textarea:focus {
 .sim-vista-tabs .tab-btn {
     cursor: pointer;
 }
+/* Vista 2D: máquina y curva lado a lado */
 .sim-uc-2d {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    width: 100%;
+    align-items: start;
+}
+.sim-uc-2d[hidden],
+#sim-uc-vista-2d[hidden] {
+    display: none !important;
+}
+#sim-uc-vista-3d[hidden],
+.sim3d-wrap[hidden] {
+    display: none !important;
+}
+.sim-uc-2d .sim-maquina-canvas,
+.sim-uc-2d .sim-curva-canvas {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 260px;
+    border-radius: 12px;
+    border: 1px solid #2B3A50;
+    background: #0B1220;
+}
+.sim-maquina-vista {
+    display: block;
+    width: 100%;
+}
+@media (max-width: 900px) {
+    .sim-uc-2d {
+        grid-template-columns: 1fr !important;
+    }
 }
