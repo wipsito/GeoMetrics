@@ -2036,8 +2036,8 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 18px 28px;
-    background: rgba(173, 51, 51, 0.08);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 51, 102, 0.45);
+    border-bottom: 1px solid rgba(218, 218, 218, 0.15);
     flex-shrink: 0;
 }
 
@@ -4035,22 +4035,29 @@ label.btn-adjuntar:not(.btn-adjuntar-icon) {
     position: absolute;
     top: 70px;
     right: 16px;
-    width: min(340px, 92vw);
+    width: min(360px, 92vw);
     max-height: 55vh;
     overflow: auto;
-    background: #1a2a1a;
-    border: 1px solid rgba(173, 51, 51, 0.35);
+    background: linear-gradient(160deg, #0a1420 0%, #0f1c2e 50%, #001a33 100%);
+    border: 1px solid rgba(0, 51, 102, 0.75);
     border-radius: 14px;
     z-index: 40;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
-    padding: 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    padding: 12px 14px;
 }
 .civix-historial-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
-    color: #ad3333;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(218, 218, 218, 0.2);
+    color: #DADADA;
+}
+.civix-historial-head strong {
+    color: #DADADA !important;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
 }
 .btn-cerrar-hist-civix {
     background: transparent;
@@ -4071,17 +4078,19 @@ label.btn-adjuntar:not(.btn-adjuntar-icon) {
     color: #fff;
     cursor: pointer;
 }
-.civix-hist-item:hover { background: rgba(173,51,51,0.15); }
+.civix-hist-item:hover { background: rgba(0, 51, 102, 0.45); border-color: rgba(218, 218, 218, 0.25); }
 .civix-hist-item strong { display: block; font-size: 13px; margin-bottom: 4px; }
 .civix-hist-item span { font-size: 11px; opacity: 0.7; }
 .civix-hist-item .civix-hist-del {
     float: right;
     background: transparent;
     border: none;
-    color: #f88;
+    color: #DADADA;
     cursor: pointer;
     font-size: 14px;
+    opacity: 0.75;
 }
+.civix-hist-item .civix-hist-del:hover { color: #ad3333; opacity: 1; }
 .asistente-contenido { position: relative; }
 .asistente-contenido .asistente-input textarea#inputAsistente {
     flex: 1 1 auto !important;
@@ -5076,4 +5085,53 @@ input:focus, select:focus, textarea:focus {
 .asistente-mensajes h1, .asistente-mensajes h2, .asistente-mensajes h3,
 .civix-msg h1, .civix-msg h2, .civix-msg h3 {
     color: var(--gris-unip) !important;
+}
+
+
+/* Listado preguntas Civix quiz — ordenado */
+#quizCivixLista {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 4px 2px 8px;
+}
+.quiz-civix-item {
+    display: grid !important;
+    grid-template-columns: 28px 1fr;
+    gap: 12px;
+    align-items: start;
+    margin: 0 !important;
+    padding: 12px 14px !important;
+    border: 1px solid rgba(0, 51, 102, 0.55) !important;
+    border-radius: 10px !important;
+    background: rgba(0, 51, 102, 0.22) !important;
+    width: 100%;
+    box-sizing: border-box;
+}
+.quiz-civix-item:hover {
+    border-color: rgba(218, 218, 218, 0.35) !important;
+    background: rgba(0, 51, 102, 0.35) !important;
+}
+.quiz-civix-item input.quiz-civix-chk {
+    width: 18px;
+    height: 18px;
+    margin: 2px 0 0 0 !important;
+    accent-color: #003366;
+    cursor: pointer;
+}
+.quiz-civix-item .quiz-civix-texto {
+    color: #e8eef5;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    text-align: left;
+}
+.quiz-civix-item .quiz-civix-texto strong {
+    color: #DADADA !important;
+    margin-right: 6px;
+}
+#quizCivixResultados h4 {
+    color: #DADADA !important;
+    margin: 0 0 10px !important;
 }
