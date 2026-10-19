@@ -1,0 +1,444 @@
+/* =========================================================
+   GeoMetrics · Mecánica de Suelos II — pestaña ENSAYOS
+   Lista de ensayos, panel por secciones y visor 3D
+   Paleta: #0B1220 · #151F32 · #1E293B · #2B3A50 · #3B82F6 · #2DD4BF
+========================================================= */
+
+#ms2-ensayos {
+    --ms2-accent: #3B82F6;
+    padding-bottom: 40px;
+}
+#ms2-ensayos em, #ms2-ensayos i { font-style: normal; }
+
+/* ---------------- HERO DE LA LISTA ---------------- */
+#ms2-ensayos .ms2-hero {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 28px;
+    padding: 30px 34px;
+    margin-bottom: 26px;
+    border: 1px solid #2B3A50;
+    border-radius: 22px;
+    background:
+        radial-gradient(520px 220px at 0% 0%, rgba(59,130,246,.22), transparent 70%),
+        radial-gradient(460px 220px at 100% 100%, rgba(45,212,191,.16), transparent 70%),
+        linear-gradient(135deg, #151F32 0%, #101a2c 100%);
+    overflow: hidden;
+}
+#ms2-ensayos .ms2-hero::after {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+        linear-gradient(rgba(167,180,200,.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(167,180,200,.05) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: linear-gradient(90deg, transparent 20%, #000 100%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 20%, #000 100%);
+    pointer-events: none;
+}
+.ms2-hero-text, .ms2-hero-stats { position: relative; z-index: 1; }
+#ms2-ensayos .ms2-eyebrow {
+    display: inline-block;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase;
+    color: #2DD4BF; margin-bottom: 10px;
+}
+#ms2-ensayos .ms2-hero h3 {
+    font-size: clamp(24px, 3vw, 34px); line-height: 1.15; margin: 0 0 10px; letter-spacing: -.3px;
+}
+#ms2-ensayos .ms2-hero p { color: #A7B4C8; max-width: 560px; line-height: 1.55; font-size: 15px; }
+.ms2-flow {
+    list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; padding: 0;
+}
+.ms2-flow li {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px 6px 6px; font-size: 12px; font-weight: 600; color: #D6DEEA;
+    background: rgba(11,18,32,.55); border: 1px solid #2B3A50; border-radius: 999px;
+}
+.ms2-flow li b {
+    width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
+    background: #3B82F6; color: #fff; font-size: 11px;
+}
+.ms2-hero-stats {
+    list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    align-self: center; padding: 0;
+}
+.ms2-hero-stats li {
+    min-width: 104px; padding: 16px 14px; text-align: center;
+    background: rgba(11,18,32,.6); border: 1px solid #2B3A50; border-radius: 16px;
+}
+.ms2-hero-stats strong { display: block; font-size: 30px; line-height: 1; color: #F1F5F9; }
+.ms2-hero-stats em { display: block; margin-top: 8px; font-size: 11px; letter-spacing: .8px; text-transform: uppercase; color: #A7B4C8; }
+
+/* ---------------- TARJETAS ---------------- */
+#ms2-ensayos .ms2-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+#ms2-ensayos .ensayo-card.ms2-card {
+    --a: var(--ms2-accent);
+    position: relative;
+    display: flex; flex-direction: column; gap: 16px;
+    min-height: 0; padding: 22px 24px 20px;
+    text-align: left; color: #F1F5F9;
+    background:
+        radial-gradient(380px 160px at 100% 0%, rgba(var(--ms2-rgb), .13), transparent 70%),
+        #151F32 !important;
+    border: 1px solid #2B3A50 !important;
+    border-radius: 20px;
+    overflow: hidden;
+    transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+}
+#ms2-ensayos .ms2-card::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background: linear-gradient(180deg, var(--a), rgba(var(--ms2-rgb), .15));
+}
+#ms2-ensayos .ensayo-card.ms2-card:hover,
+#ms2-ensayos .ensayo-card.ms2-card:focus-visible {
+    transform: translateY(-4px);
+    border-color: var(--a) !important;
+    box-shadow: 0 18px 44px rgba(0,0,0,.38), 0 0 0 1px rgba(var(--ms2-rgb), .35);
+    outline: none;
+}
+.ms2-card-head { display: flex; justify-content: space-between; align-items: center; }
+#ms2-ensayos .ms2-card-num {
+    font-size: 13px; font-weight: 800; letter-spacing: 1.5px; color: var(--ms2-accent);
+}
+#ms2-ensayos .ms2-card-tag {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px;
+    color: var(--ms2-accent); background: rgba(var(--ms2-rgb), .12); border: 1px solid rgba(var(--ms2-rgb), .35);
+}
+#ms2-ensayos .ms2-card-tag::before { content: "◈ "; }
+.ms2-card-body { display: flex; align-items: center; gap: 18px; }
+#ms2-ensayos .ms2-glyph {
+    flex: 0 0 74px; width: 74px; height: 74px; padding: 14px;
+    display: grid; place-items: center; border-radius: 18px;
+    color: var(--ms2-accent);
+    background: linear-gradient(160deg, rgba(var(--ms2-rgb), .16), rgba(var(--ms2-rgb), .04));
+    border: 1px solid rgba(var(--ms2-rgb), .35);
+}
+.ms2-glyph svg { width: 100%; height: 100%; }
+#ms2-ensayos .ms2-card h3 { font-size: 20px; margin: 0 0 6px; line-height: 1.2; }
+#ms2-ensayos .ms2-card p { margin: 0; color: #A7B4C8; line-height: 1.5; font-size: 14px; }
+.ms2-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ms2-chips em {
+    font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 8px;
+    color: #D6DEEA; background: #1E293B; border: 1px solid #2B3A50;
+}
+.ms2-machine {
+    display: grid; gap: 2px; padding: 12px 14px; border-radius: 12px;
+    background: rgba(11,18,32,.6); border: 1px dashed rgba(var(--ms2-rgb), .45);
+}
+.ms2-machine b { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: #718096; }
+.ms2-machine strong { font-size: 14px; color: #F1F5F9; }
+.ms2-machine small { font-size: 12px; color: #A7B4C8 !important; }
+#ms2-ensayos .ms2-card .ms2-card-cta {
+    display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+    margin-top: 2px; padding: 9px 16px; border-radius: 10px;
+    font-size: 11px; font-weight: 800; letter-spacing: 1.2px; color: #0B1220;
+    background: var(--ms2-accent);
+    transition: gap .2s ease;
+}
+#ms2-ensayos .ms2-card:hover .ms2-card-cta { gap: 14px; }
+
+/* ---------------- GUÍAS PDF ---------------- */
+.ms2-guias {
+    margin-top: 26px; padding: 22px 24px; border: 1px solid #2B3A50; border-radius: 18px; background: #151F32;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+}
+.ms2-guias-head h4 { font-size: 16px; margin: 0 0 4px; }
+.ms2-guias-head p { margin: 0; font-size: 13px; color: #A7B4C8; }
+.ms2-guias-list { display: flex; flex-wrap: wrap; gap: 10px; }
+#ms2-ensayos a.ms2-guia {
+    display: flex; align-items: center; gap: 12px; padding: 10px 16px 10px 10px;
+    text-decoration: none; color: #F1F5F9; background: #1E293B; border: 1px solid #2B3A50; border-radius: 12px;
+    transition: border-color .2s, transform .2s;
+}
+#ms2-ensayos a.ms2-guia:hover { border-color: #3B82F6; transform: translateY(-2px); }
+.ms2-guia i {
+    width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px;
+    font-size: 10px; font-weight: 800; letter-spacing: .6px; color: #F87171; background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.35);
+}
+.ms2-guia strong { display: block; font-size: 13px; }
+.ms2-guia small { font-size: 11px; color: #A7B4C8 !important; }
+
+/* =========================================================
+   PANEL DE ENSAYO (shell)
+========================================================= */
+.ms2-shell { max-width: 1200px; margin: 0 auto; padding: 0 0 24px; }
+
+.ms2-topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+#ms2-ensayos .ms2-back { margin: 0 !important; padding: 9px 16px !important; border-radius: 10px !important; font-size: 13px; cursor: pointer; }
+.ms2-crumbs { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #718096; flex-wrap: wrap; }
+.ms2-crumbs i { opacity: .5; }
+.ms2-crumbs b { color: #F1F5F9; font-weight: 600; }
+#ms2-ensayos a.ms2-top-guia {
+    margin-left: auto; font-size: 12px; font-weight: 700; text-decoration: none; padding: 8px 14px; border-radius: 10px;
+    color: #F1F5F9; background: #1E293B; border: 1px solid #2B3A50;
+}
+#ms2-ensayos a.ms2-top-guia:hover { border-color: var(--ms2-accent); color: var(--ms2-accent); }
+
+/* cabecera del ensayo */
+#ms2-ensayos .ms2-phero {
+    position: relative; display: grid; grid-template-columns: auto 1fr; gap: 22px 26px; align-items: center;
+    padding: 26px 30px; margin-bottom: 18px; border-radius: 22px; overflow: hidden;
+    border: 1px solid #2B3A50;
+    background:
+        radial-gradient(520px 200px at 0% 0%, color-mix(in srgb, var(--ms2-accent) 24%, transparent), transparent 70%),
+        linear-gradient(135deg, #151F32, #101a2c);
+}
+#ms2-ensayos .ms2-phero::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--ms2-accent);
+}
+.ms2-phero-icon {
+    width: 84px; height: 84px; padding: 16px; border-radius: 22px; color: var(--ms2-accent);
+    background: rgba(11,18,32,.6); border: 1px solid color-mix(in srgb, var(--ms2-accent) 45%, transparent);
+}
+.ms2-phero-icon svg { width: 100%; height: 100%; }
+.ms2-phero-text em {
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ms2-accent);
+}
+#ms2-ensayos .ms2-phero h2 { font-size: clamp(24px, 3vw, 34px); margin: 6px 0 10px; line-height: 1.15; letter-spacing: -.3px; }
+.ms2-fund {
+    display: inline-flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0; padding: 9px 14px;
+    background: rgba(11,18,32,.65); border: 1px solid #2B3A50; border-radius: 10px;
+    font-size: 13px; color: #D6DEEA; line-height: 1.5;
+}
+.ms2-fund b { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ms2-accent); }
+.ms2-phero-meta {
+    grid-column: 1 / -1; list-style: none; padding: 0; margin: 0; display: grid; gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.ms2-phero-meta li { padding: 11px 14px; border-radius: 12px; background: rgba(11,18,32,.55); border: 1px solid #2B3A50; }
+.ms2-phero-meta b { display: block; font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: #718096; margin-bottom: 3px; }
+.ms2-phero-meta span { font-size: 14px; font-weight: 600; color: #F1F5F9; }
+
+/* pasos */
+.ms2-steps { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+.ms2-steps button {
+    display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px 7px 7px; cursor: pointer;
+    font-size: 12px; font-weight: 600; color: #D6DEEA; background: #151F32; border: 1px solid #2B3A50; border-radius: 999px;
+    transition: border-color .2s, color .2s;
+}
+.ms2-steps button b {
+    width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
+    font-size: 11px; color: #0B1220; background: var(--ms2-accent);
+}
+.ms2-steps button:hover { border-color: var(--ms2-accent); color: #fff; }
+
+/* secciones */
+.ms2-sec { margin-bottom: 26px; scroll-margin-top: 16px; }
+.ms2-sec-head { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.ms2-sec-head em {
+    min-width: 42px; height: 42px; padding: 0 8px; display: grid; place-items: center; border-radius: 12px;
+    font-size: 14px; font-weight: 800; color: var(--ms2-accent);
+    background: color-mix(in srgb, var(--ms2-accent) 14%, transparent); border: 1px solid color-mix(in srgb, var(--ms2-accent) 40%, transparent);
+}
+#ms2-ensayos .ms2-sec-head h4 { font-size: 19px; margin: 0 0 2px; }
+.ms2-sec-head p { margin: 0; font-size: 13px; color: #A7B4C8; }
+
+/* formulario original dentro del nuevo panel */
+#ms2-ensayos .ms2-shell .laboratorio-panel { max-width: none; gap: 20px; align-items: start; }
+#ms2-ensayos .ms2-shell .datos-panel,
+#ms2-ensayos .ms2-shell .resultado-panel,
+#ms2-ensayos .ms2-shell .grafica-panel {
+    background: #151F32; border: 1px solid #2B3A50; border-radius: 18px; box-shadow: none;
+}
+#ms2-ensayos .ms2-shell .datos-panel h4 {
+    font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ms2-accent);
+    margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 1px solid #2B3A50;
+}
+#ms2-ensayos .ms2-shell .datos-panel h4:first-child { margin-top: 0; }
+#ms2-ensayos .ms2-shell .datos-panel input:focus,
+#ms2-ensayos .ms2-shell .datos-panel select:focus { border-color: var(--ms2-accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--ms2-accent) 25%, transparent); outline: none; }
+#ms2-ensayos .ms2-shell .resultado-panel h4 { font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ms2-accent); }
+#ms2-ensayos .ms2-shell .resultado-principal strong { color: var(--ms2-accent); }
+#ms2-ensayos .ms2-shell .interpretacion { border-left-color: var(--ms2-accent); }
+#ms2-ensayos .ms2-shell .interpretacion > span { color: var(--ms2-accent); }
+#ms2-ensayos .ms2-shell .btn-grafica { color: var(--ms2-accent); }
+#ms2-ensayos .ms2-shell .grafica-panel canvas { max-width: 100%; height: auto; border-radius: 12px; border: 1px solid #2B3A50; background: #0B1220; }
+
+/* =========================================================
+   VISOR 3D (módulo de máquina)
+========================================================= */
+.lab3d {
+    --lab-accent: #3B82F6;
+    --lab-h: clamp(420px, 62vh, 600px);
+    display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; align-items: start;
+}
+.lab3d-stage {
+    position: relative; padding-top: var(--lab-h); border-radius: 20px; overflow: hidden;
+    border: 1px solid #2B3A50; background: #0B1220; box-shadow: 0 18px 50px rgba(0,0,0,.38);
+}
+.lab3d-canvas, .lab3d-pins, .lab3d-loading, .lab3d-fail {
+    position: absolute; top: 0; left: 0; right: 0; height: var(--lab-h);
+}
+.lab3d-canvas { cursor: grab; touch-action: pan-y; }
+.lab3d-stage.is-drag .lab3d-canvas { cursor: grabbing; }
+.lab3d-canvas canvas { display: block; width: 100% !important; height: 100% !important; }
+.lab3d-pins { overflow: hidden; pointer-events: none; }
+.lab3d-stage.pins-off .lab3d-pins { display: none; }
+
+.lab3d-pin {
+    position: absolute; left: 0; top: 0; width: 0; height: 0; padding: 0; border: 0; background: none;
+    pointer-events: auto; cursor: pointer; will-change: transform;
+}
+.lab3d-pin > span {
+    position: absolute; left: -11px; top: -11px; width: 22px; height: 22px; display: grid; place-items: center;
+    border-radius: 50%; font-size: 11px; font-weight: 800; color: #0B1220;
+    background: var(--lab-accent); border: 2px solid #0B1220; box-shadow: 0 0 0 1px var(--lab-accent), 0 4px 12px rgba(0,0,0,.5);
+    transition: transform .15s ease;
+}
+.lab3d-pin > em {
+    position: absolute; left: 16px; top: -16px; width: max-content; max-width: 210px; padding: 8px 10px; text-align: left;
+    border-radius: 10px; background: rgba(21,31,50,.96); border: 1px solid var(--lab-accent);
+    box-shadow: 0 10px 26px rgba(0,0,0,.5);
+    opacity: 0; transform: translateY(4px); pointer-events: none; transition: opacity .15s, transform .15s; z-index: 5;
+}
+.lab3d-pin em b { display: block; font-size: 12px; color: #F1F5F9; line-height: 1.3; }
+.lab3d-pin em small { display: block; margin-top: 3px; font-size: 11px; line-height: 1.35; color: #A7B4C8 !important; font-weight: 400; }
+.lab3d-pin:hover, .lab3d-pin.hl, .lab3d-pin.pin-open { z-index: 20; }
+.lab3d-pin:hover > span, .lab3d-pin.hl > span { transform: scale(1.25); }
+.lab3d-pin:hover > em, .lab3d-pin.hl > em, .lab3d-pin.pin-open > em { opacity: 1; transform: none; }
+
+.lab3d-tag {
+    position: absolute; top: 14px; left: 14px; display: grid; gap: 2px; padding: 9px 14px; max-width: 62%;
+    border-radius: 12px; background: rgba(21,31,50,.88); border: 1px solid #2B3A50; backdrop-filter: blur(6px);
+    border-left: 3px solid var(--lab-accent);
+}
+.lab3d-tag span { font-size: 9.5px; letter-spacing: 1.3px; text-transform: uppercase; color: #718096; }
+.lab3d-tag strong { font-size: 14px; color: #F1F5F9; }
+.lab3d-state {
+    position: absolute; top: 74px; left: 14px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px;
+    border-radius: 999px; font-size: 12px; background: rgba(21,31,50,.88); border: 1px solid #2B3A50; color: #D6DEEA;
+}
+.lab3d-state i { width: 8px; height: 8px; border-radius: 50%; background: #718096; }
+.lab3d-state.is-run i { background: #22C55E; box-shadow: 0 0 0 4px rgba(34,197,94,.2); animation: lab3dPulse 1.2s infinite; }
+.lab3d-state.is-done i { background: var(--lab-accent); }
+@keyframes lab3dPulse { 50% { box-shadow: 0 0 0 8px rgba(34,197,94,0); } }
+
+.lab3d-views {
+    position: absolute; top: 14px; right: 14px; display: flex; gap: 4px; padding: 4px;
+    border-radius: 12px; background: rgba(21,31,50,.88); border: 1px solid #2B3A50; backdrop-filter: blur(6px);
+}
+.lab3d-views button {
+    min-width: 32px; padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+    color: #A7B4C8; background: transparent; border: 0; border-radius: 8px;
+}
+.lab3d-views button:hover { background: #1E293B; color: #fff; }
+.lab3d-views button.on { background: var(--lab-accent); color: #0B1220; }
+
+.lab3d-hud {
+    position: absolute; left: 14px; right: 14px; top: calc(var(--lab-h) - 76px);
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; pointer-events: none;
+}
+.lab3d-hud > div {
+    padding: 8px 12px; border-radius: 12px; background: rgba(21,31,50,.9); border: 1px solid #2B3A50; backdrop-filter: blur(6px);
+}
+.lab3d-hud span { display: block; font-size: 11px; font-weight: 700; color: var(--lab-accent); letter-spacing: .5px; }
+.lab3d-hud strong { font-size: 20px; color: #F1F5F9; font-variant-numeric: tabular-nums; }
+.lab3d-hud small { margin-left: 4px; font-size: 11px; color: #A7B4C8 !important; }
+
+.lab3d-controls {
+    position: relative; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px;
+    background: #151F32; border-top: 1px solid #2B3A50;
+}
+.lab3d-controls button {
+    cursor: pointer; font-size: 13px; font-weight: 700; border-radius: 10px; border: 1px solid #2B3A50;
+    color: #F1F5F9; background: #1E293B; padding: 9px 14px;
+}
+.lab3d-controls button:hover { border-color: var(--lab-accent); }
+.lab3d-controls .lab3d-play { background: var(--lab-accent); color: #0B1220; border-color: var(--lab-accent); min-width: 150px; }
+.lab3d-controls .lab3d-play.is-playing { background: #1E293B; color: #F1F5F9; border-color: var(--lab-accent); }
+.lab3d-scrub { flex: 1 1 160px; min-width: 120px; accent-color: var(--lab-accent); }
+.lab3d-pct { min-width: 40px; text-align: right; font-size: 12px; color: #A7B4C8; font-variant-numeric: tabular-nums; }
+.lab3d-speed { padding: 8px 10px; font-size: 12px; color: #F1F5F9; background: #1E293B; border: 1px solid #2B3A50; border-radius: 10px; }
+.lab3d-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #A7B4C8; cursor: pointer; }
+.lab3d-toggle input { accent-color: var(--lab-accent); }
+
+.lab3d-loading, .lab3d-fail {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center;
+    background: #0B1220; color: #A7B4C8; font-size: 13px; padding: 24px;
+}
+.lab3d-loading[hidden], .lab3d-fail[hidden] { display: none; }
+.lab3d-spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid #2B3A50; border-top-color: var(--lab-accent); animation: lab3dSpin .9s linear infinite; }
+@keyframes lab3dSpin { to { transform: rotate(360deg); } }
+.lab3d-fail strong { color: #F1F5F9; font-size: 16px; }
+.lab3d-fail-ico { font-size: 34px; }
+.lab3d-fail small { max-width: 420px; color: #718096 !important; line-height: 1.5; }
+.lab3d-stage.is-fail .lab3d-hud, .lab3d-stage.is-fail .lab3d-views { display: none; }
+
+/* ficha de la máquina */
+.lab3d-info {
+    padding: 18px; border-radius: 20px; background: #151F32; border: 1px solid #2B3A50;
+    max-height: calc(var(--lab-h) + 60px); overflow: auto;
+}
+.lab3d-info-head { display: grid; gap: 4px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid #2B3A50; }
+.lab3d-info-head span { font-size: 10px; letter-spacing: 1.3px; text-transform: uppercase; color: #718096; }
+.lab3d-info-head strong { font-size: 17px; color: #F1F5F9; line-height: 1.25; }
+.lab3d-info-head em { font-size: 12.5px; color: #A7B4C8; }
+.lab3d-info-head code {
+    justify-self: start; margin-top: 6px; padding: 3px 9px; font-size: 11px; font-weight: 700; border-radius: 6px;
+    color: var(--lab-accent); background: color-mix(in srgb, var(--lab-accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--lab-accent) 35%, transparent);
+}
+.lab3d-info h5 { font-size: 11px; letter-spacing: 1.3px; text-transform: uppercase; color: var(--lab-accent); margin: 16px 0 8px; }
+.lab3d-parts, .lab3d-phases { list-style: none; display: grid; gap: 6px; padding: 0; margin: 0; }
+.lab3d-parts li, .lab3d-phases li {
+    display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; border: 1px solid transparent; cursor: default;
+}
+.lab3d-parts li { cursor: pointer; }
+.lab3d-parts li.hl { background: #1E293B; border-color: var(--lab-accent); }
+.lab3d-chip, .lab3d-ph-n {
+    flex: 0 0 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
+    font-size: 11px; font-weight: 800; color: #0B1220; background: var(--lab-accent);
+}
+.lab3d-ph-n { background: #2B3A50; color: #A7B4C8; }
+.lab3d-info li b { display: block; font-size: 12.5px; color: #F1F5F9; line-height: 1.3; }
+.lab3d-info li small { display: block; margin-top: 2px; font-size: 11.5px; line-height: 1.4; color: #A7B4C8 !important; }
+.lab3d-phases li.is-on { background: color-mix(in srgb, var(--lab-accent) 12%, transparent); border-color: color-mix(in srgb, var(--lab-accent) 45%, transparent); }
+.lab3d-phases li.is-on .lab3d-ph-n { background: var(--lab-accent); color: #0B1220; }
+.lab3d-phases li.is-done .lab3d-ph-n { background: #22C55E; color: #0B1220; }
+.lab3d-note {
+    margin: 16px 0 0; padding: 10px 12px; font-size: 12px; line-height: 1.5; color: #A7B4C8;
+    background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.3); border-radius: 10px;
+}
+.lab3d-note b { color: #FBBF24; margin-right: 4px; }
+.lab3d-note.is-real { background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.35); }
+.lab3d-note.is-real b { color: #22C55E; }
+.lab3d-note em { display: block; margin-top: 4px; color: #718096; }
+
+/* ---------------- RESPONSIVE ---------------- */
+@media (max-width: 1060px) {
+    .lab3d { grid-template-columns: 1fr; }
+    .lab3d-info { max-height: none; }
+}
+@media (max-width: 860px) {
+    #ms2-ensayos .ms2-hero { flex-direction: column; padding: 24px 22px; }
+    .ms2-hero-stats { align-self: stretch; }
+    #ms2-ensayos .ms2-grid { grid-template-columns: 1fr; }
+    #ms2-ensayos .ms2-phero { grid-template-columns: 1fr; padding: 22px; }
+    .ms2-phero-meta { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+    .lab3d { --lab-h: 400px; }
+    .lab3d-hud { grid-template-columns: repeat(2, minmax(0, 1fr)); top: calc(var(--lab-h) - 124px); }
+    .lab3d-views button[data-view="frontal"], .lab3d-views button[data-view="lateral"] { display: none; }
+    .lab3d-tag { max-width: 56%; }
+    .lab3d-state { top: 82px; }
+    .ms2-hero-stats li { min-width: 0; }
+    .ms2-card-body { flex-direction: column; align-items: flex-start; }
+}
+
+/* paneles a todo el ancho de la sección */
+#ms2-ensayos .ms2-shell .grafica-panel,
+#ms2-ensayos .ms2-shell .laboratorio-panel { max-width: none; width: 100%; }
+
+/* botón de informe PDF coherente con el acento del ensayo */
+#ms2-ensayos .ms2-shell .btn-informe-pdf {
+    width: 100%; padding: 12px 16px; font-size: 13px; font-weight: 700; cursor: pointer; border-radius: 10px;
+    color: var(--ms2-accent) !important; background: color-mix(in srgb, var(--ms2-accent) 10%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--ms2-accent) 55%, transparent) !important;
+}
+#ms2-ensayos .ms2-shell .btn-informe-pdf:hover { background: color-mix(in srgb, var(--ms2-accent) 20%, transparent) !important; filter: none; }
