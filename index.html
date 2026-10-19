@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/mezclas.css">
     <link rel="stylesheet" href="css/ensayos-ms2.css">
-    <link rel="stylesheet" href="css/suelos1.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
@@ -369,136 +368,67 @@
             <button class="tab-btn active" data-tab="ms1-ensayos">Ensayos</button>
         </section>
 
-        <!-- Ensayos de Mecánica de Suelos I — estética alineada con Diseño de Mezclas -->
+        <!-- Ensayos de Mecánica de Suelos I -->
         <section class="tab-content active" id="ms1-ensayos">
-            <div class="ms1">
+            <div class="ensayos-grid">
+                <button class="ensayo-card" data-ensayo="humedad">
+                    <div class="ensayo-icono">💧</div>
+                    <h3>Contenido de Humedad</h3>
+                    <p>Determina la cantidad de agua presente en una muestra de suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
 
-                <!-- Hero intro -->
-                <header class="ms1-hero">
-                    <div class="ms1-hero-text">
-                        <em class="ms1-eyebrow">Laboratorio virtual · Mecánica de Suelos I</em>
-                        <h3>Ensayos de caracterización de suelos</h3>
-                        <p>Elige un ensayo, ingresa tus lecturas de laboratorio y obtén los parámetros físicos del suelo con el mismo rigor y presentación profesional de Diseño de Mezclas.</p>
-                        <ol class="ms1-flow">
-                            <li><strong>1</strong> Selecciona el ensayo</li>
-                            <li><strong>2</strong> Ingresa datos de laboratorio</li>
-                            <li><strong>3</strong> Calcula y visualiza resultados</li>
-                            <li><strong>4</strong> Guarda o genera informe</li>
-                        </ol>
-                    </div>
-                </header>
+                <button class="ensayo-card" data-ensayo="granulometria">
+                    <div class="ensayo-icono">📊</div>
+                    <h3>Granulometría</h3>
+                    <p>Análisis de la distribución de tamaños de partículas del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
 
-                <!-- Grupo 1: Propiedades índice -->
-                <section class="ms1-group">
-                    <header class="ms1-grouphead">
-                        <span class="ms1-num">1</span>
-                        <div>
-                            <h4>Propiedades índice</h4>
-                            <p>Humedad, granulometría, límites de consistencia y gravedad específica.</p>
-                        </div>
-                    </header>
-                    <div class="ms1-cards">
-                        <button type="button" class="ensayo-card ms1-card" data-ensayo="humedad">
-                            <span class="ms1-card-ico" aria-hidden="true">💧</span>
-                            <span class="ms1-card-t">Contenido de Humedad</span>
-                            <span class="ms1-card-n">ASTM D2216</span>
-                            <span class="ms1-card-d">Determina la cantidad de agua presente en una muestra de suelo por secado en horno.</span>
-                            <span class="ms1-card-o">Obtiene: w (%)</span>
-                            <span class="ms1-card-go">ABRIR ENSAYO →</span>
-                        </button>
+                <button class="ensayo-card" data-ensayo="limites">
+                    <div class="ensayo-icono">📏</div>
+                    <h3>Límites de Atterberg</h3>
+                    <p>Determinación de los límites de consistencia del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
 
-                        <button type="button" class="ensayo-card ms1-card" data-ensayo="granulometria">
-                            <span class="ms1-card-ico" aria-hidden="true">📊</span>
-                            <span class="ms1-card-t">Granulometría</span>
-                            <span class="ms1-card-n">ASTM D6913 / D422</span>
-                            <span class="ms1-card-d">Análisis de la distribución de tamaños de partículas por tamizado.</span>
-                            <span class="ms1-card-o">Obtiene: curva, D₁₀, D₃₀, D₆₀, Cu, Cc</span>
-                            <span class="ms1-card-go">ABRIR ENSAYO →</span>
-                        </button>
+                <button class="ensayo-card" data-ensayo="gravedad">
+                    <div class="ensayo-icono">⚖️</div>
+                    <h3>Gravedad Específica</h3>
+                    <p>Determinación de la gravedad específica de los sólidos del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
 
-                        <button type="button" class="ensayo-card ms1-card" data-ensayo="limites">
-                            <span class="ms1-card-ico" aria-hidden="true">📏</span>
-                            <span class="ms1-card-t">Límites de Atterberg</span>
-                            <span class="ms1-card-n">ASTM D4318</span>
-                            <span class="ms1-card-d">Determinación de los límites de consistencia del suelo (LL, LP, IP).</span>
-                            <span class="ms1-card-o">Obtiene: LL, LP, IP, carta de plasticidad</span>
-                            <span class="ms1-card-go">ABRIR ENSAYO →</span>
-                        </button>
+                <button class="ensayo-card" data-ensayo="compactacion">
+                    <div class="ensayo-icono">🏗️</div>
+                    <h3>Compactación Proctor</h3>
+                    <p>Analiza la relación entre humedad y densidad seca del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
 
-                        <button type="button" class="ensayo-card ms1-card" data-ensayo="gravedad">
-                            <span class="ms1-card-ico" aria-hidden="true">⚖️</span>
-                            <span class="ms1-card-t">Gravedad Específica</span>
-                            <span class="ms1-card-n">ASTM D854</span>
-                            <span class="ms1-card-d">Determinación de la gravedad específica de los sólidos del suelo (Gs).</span>
-                            <span class="ms1-card-o">Obtiene: Gs</span>
-                            <span class="ms1-card-go">ABRIR ENSAYO →</span>
-                        </button>
-                    </div>
-                </section>
+                <button class="ensayo-card" data-ensayo="densidad">
+                    <div class="ensayo-icono">📦</div>
+                    <h3>Densidad de Campo</h3>
+                    <p>Determina la densidad del suelo en condiciones de campo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
 
-                <!-- Grupo 2: Compactación y densidad -->
-                <section class="ms1-group">
-                    <header class="ms1-grouphead">
-                        <span class="ms1-num">2</span>
-                        <div>
-                            <h4>Compactación y densidad</h4>
-                            <p>Relación humedad-densidad y control de compactación en campo.</p>
-                        </div>
-                    </header>
-                    <div class="ms1-cards">
-                        <button type="button" class="ensayo-card ms1-card" data-ensayo="compactacion">
-                            <span class="ms1-card-ico" aria-hidden="true">🏗️</span>
-                            <span class="ms1-card-t">Compactación Proctor</span>
-                            <span class="ms1-card-n">ASTM D698 / D1557</span>
-                            <span class="ms1-card-d">Relación entre contenido de humedad y densidad seca del suelo.</span>
-                            <span class="ms1-card-o">Obtiene: γd máx, w óptima, curva Proctor</span>
-                            <span class="ms1-card-go">ABRIR ENSAYO →</span>
-                        </button>
+                <button class="ensayo-card" data-ensayo="clasificacion">
+                    <div class="ensayo-icono">🗂️</div>
+                    <h3>Clasificación SUCS</h3>
+                    <p>Clasificación de suelos según el Sistema Unificado de Clasificación.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
 
-                        <button type="button" class="ensayo-card ms1-card" data-ensayo="densidad">
-                            <span class="ms1-card-ico" aria-hidden="true">📦</span>
-                            <span class="ms1-card-t">Densidad de Campo</span>
-                            <span class="ms1-card-n">ASTM D1556 / D6938</span>
-                            <span class="ms1-card-d">Determina la densidad del suelo en condiciones de campo (cono de arena o nuclear).</span>
-                            <span class="ms1-card-o">Obtiene: γd campo, % compactación</span>
-                            <span class="ms1-card-go">ABRIR ENSAYO →</span>
-                        </button>
-                    </div>
-                </section>
+                <button class="ensayo-card" data-ensayo="permeabilidad">
+                    <div class="ensayo-icono">💦</div>
+                    <h3>Permeabilidad</h3>
+                    <p>Estudia el flujo de agua a través del suelo (Ley de Darcy).</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+            </div>
 
-                <!-- Grupo 3: Clasificación y permeabilidad -->
-                <section class="ms1-group">
-                    <header class="ms1-grouphead">
-                        <span class="ms1-num">3</span>
-                        <div>
-                            <h4>Clasificación y permeabilidad</h4>
-                            <p>Sistema Unificado (SUCS) y flujo de agua a través del suelo.</p>
-                        </div>
-                    </header>
-                    <div class="ms1-cards">
-                        <button type="button" class="ensayo-card ms1-card" data-ensayo="clasificacion">
-                            <span class="ms1-card-ico" aria-hidden="true">🗂️</span>
-                            <span class="ms1-card-t">Clasificación SUCS</span>
-                            <span class="ms1-card-n">ASTM D2487</span>
-                            <span class="ms1-card-d">Clasificación de suelos según el Sistema Unificado de Clasificación de Suelos.</span>
-                            <span class="ms1-card-o">Obtiene: símbolo de grupo y nombre</span>
-                            <span class="ms1-card-go">ABRIR ENSAYO →</span>
-                        </button>
-
-                        <button type="button" class="ensayo-card ms1-card" data-ensayo="permeabilidad">
-                            <span class="ms1-card-ico" aria-hidden="true">💦</span>
-                            <span class="ms1-card-t">Permeabilidad</span>
-                            <span class="ms1-card-n">ASTM D2434 / D5084</span>
-                            <span class="ms1-card-d">Estudia el flujo de agua a través del suelo según la Ley de Darcy.</span>
-                            <span class="ms1-card-o">Obtiene: k (cm/s)</span>
-                            <span class="ms1-card-go">ABRIR ENSAYO →</span>
-                        </button>
-                    </div>
-                </section>
-
-            </div><!-- /.ms1 -->
-
-            <!-- Panel de Ensayos (se llena dinámicamente al abrir un ensayo) -->
+            <!-- Panel de Ensayos (oculto inicialmente) -->
             <div class="panel-ensayo" id="panel-ensayo">
                 <!-- Se llena dinámicamente -->
             </div>
