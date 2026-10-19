@@ -1793,52 +1793,51 @@ function activarTabsSeccion(seccionId) {
 
 function abrirEnsayoSuelos(nombre) {
     var panel = document.getElementById('panel-ensayo');
-    // Ocultar la grilla nueva (.ms1) o la antigua (.ensayos-grid) por compatibilidad
-    var grid = document.querySelector('#ms1-ensayos .ms1') || document.querySelector('#ms1-ensayos .ensayos-grid');
+    var grid = document.querySelector('#ms1-ensayos .ensayos-grid');
     if (grid) grid.style.display = 'none';
-
-    panel.innerHTML = '';
-
-    switch (nombre) {
+    
+    panel.innerHTML = '<button class="btn-volver-panel btn-volver" onclick="volverAListaEnsayos()">← Ensayos</button>';
+    
+    switch(nombre) {
         case 'humedad':
-            panel.innerHTML = crearFormularioHumedad();
+            panel.innerHTML += crearFormularioHumedad();
             break;
         case 'granulometria':
-            panel.innerHTML = crearFormularioGranulometria();
-            setTimeout(function () { try { aplicarTamicesSeleccionados(); } catch (e) {} }, 30);
+            panel.innerHTML += crearFormularioGranulometria();
+            setTimeout(function(){ try { aplicarTamicesSeleccionados(); } catch (e) {} }, 30);
             break;
         case 'limites':
-            panel.innerHTML = crearFormularioLimites();
+            panel.innerHTML += crearFormularioLimites();
             break;
         case 'gravedad':
-            panel.innerHTML = crearFormularioGravedad();
+            panel.innerHTML += crearFormularioGravedad();
             break;
         case 'compactacion':
-            panel.innerHTML = crearFormularioCompactacion();
+            panel.innerHTML += crearFormularioCompactacion();
             break;
         case 'densidad':
-            panel.innerHTML = crearFormularioDensidad();
+            panel.innerHTML += crearFormularioDensidad();
             break;
         case 'clasificacion':
-            panel.innerHTML = crearFormularioClasificacion();
+            panel.innerHTML += crearFormularioClasificacion();
             break;
         case 'permeabilidad':
-            panel.innerHTML = crearFormularioPermeabilidad();
+            panel.innerHTML += crearFormularioPermeabilidad();
             break;
     }
-
+    
     panel.style.display = 'block';
     window.scrollTo(0, 0);
 }
 
 function volverAListaEnsayos() {
     var panel = document.getElementById('panel-ensayo');
-    var grid = document.querySelector('#ms1-ensayos .ms1') || document.querySelector('#ms1-ensayos .ensayos-grid');
+    var grid = document.querySelector('#ms1-ensayos .ensayos-grid');
     if (panel) {
         panel.style.display = 'none';
         panel.innerHTML = '';
     }
-    if (grid) grid.style.display = '';
+    if (grid) grid.style.display = 'grid';
 }
 
 // =========================================
@@ -2917,84 +2916,42 @@ function calcularRMDureza() {
 
 function crearFormularioHumedad() {
     return `
-<div class="ms1 ms1-view">
-    <header class="ms1-viewhead">
-        <button type="button" class="btn-limpiar" onclick="volverAListaEnsayos()">← Ensayos</button>
-        <div class="ms1-viewtitle">
-            <h3>Contenido de Humedad</h3>
-            <span class="ms1-norma">ASTM D2216</span>
-        </div>
-    </header>
-
-    <div class="ms1-cols">
-        <!-- Columna izquierda: datos -->
-        <div class="ms1-col">
-            <div class="ms1-panel">
+        <h3>Contenido de Humedad</h3>
+        <div class="laboratorio-panel">
+            <div class="datos-panel">
                 <h4>Datos de la muestra</h4>
-                <div class="ms1-formrow">
-                    <div class="ms1-field">
-                        <label class="ms1-lab" for="h-recipiente">Masa del recipiente <em>(g)</em></label>
-                        <input type="number" id="h-recipiente" placeholder="Ej. 25.40" step="0.01" inputmode="decimal">
-                    </div>
-                    <div class="ms1-field">
-                        <label class="ms1-lab" for="h-humeda">Masa recipiente + suelo húmedo <em>(g)</em></label>
-                        <input type="number" id="h-humeda" placeholder="Ej. 125.80" step="0.01" inputmode="decimal">
-                    </div>
-                    <div class="ms1-field">
-                        <label class="ms1-lab" for="h-seca">Masa recipiente + suelo seco <em>(g)</em></label>
-                        <input type="number" id="h-seca" placeholder="Ej. 105.20" step="0.01" inputmode="decimal">
-                    </div>
-                </div>
-                <p class="ms1-hint">Seca la muestra en horno a 110 ± 5 °C hasta peso constante (normalmente 12–24 h).</p>
-                <div class="ms1-actions">
-                    <button type="button" class="btn-calcular" onclick="calcularHumedad()">CALCULAR</button>
-                    <button type="button" class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('humedad')">GUARDAR DATOS</button>
-                    <button type="button" class="btn-informe-pdf" id="btnInforme-humedad" onclick="generarInformeEnsayoPDF('humedad')">Descargar informe</button>
-                    <button type="button" class="btn-limpiar" onclick="limpiarCampo('h')">LIMPIAR</button>
-                </div>
-                <div class="ms1-error" id="h-error" role="alert"></div>
-            </div>
-
-            <details class="ms1-panel ms1-proc" open>
-                <summary>Procedimiento y fórmula</summary>
-                <ol>
-                    <li>Pesar el recipiente limpio y seco → <strong>M<sub>r</sub></strong></li>
-                    <li>Colocar la muestra húmeda y pesar → <strong>M<sub>rh</sub></strong></li>
-                    <li>Secar en horno a 110 ± 5 °C hasta peso constante</li>
-                    <li>Pesar recipiente + suelo seco → <strong>M<sub>rs</sub></strong></li>
-                </ol>
-                <div class="ms1-formula">
-                    w (%) = (M<sub>rh</sub> − M<sub>rs</sub>) / (M<sub>rs</sub> − M<sub>r</sub>) × 100
-                </div>
-                <p>Donde: masa de agua = M<sub>rh</sub> − M<sub>rs</sub> · masa de sólidos = M<sub>rs</sub> − M<sub>r</sub></p>
-            </details>
+                <label>Masa del recipiente (g):</label>
+                <input type="number" id="h-recipiente" placeholder="Ej. 25.40" step="0.01">
+                <label>Masa recipiente + suelo húmedo (g):</label>
+                <input type="number" id="h-humeda" placeholder="Ej. 125.80" step="0.01">
+                <label>Masa recipiente + suelo seco (g):</label>
+                <input type="number" id="h-seca" placeholder="Ej. 105.20" step="0.01">
+                <div class="botones-calculo">
+                    <button class="btn-calcular" onclick="calcularHumedad()">CALCULAR</button>
+                    <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('humedad')">GUARDAR DATOS</button>
+        <div class="botones-calculo" style="margin-top:10px">
+          <button type="button" class="btn-informe-pdf" id="btnInforme-humedad" onclick="generarInformeEnsayoPDF('humedad')">Descargar informe</button>
         </div>
-
-        <!-- Columna derecha: resultados -->
-        <div class="ms1-col">
-            <div class="ms1-panel">
+                    <button class="btn-limpiar" onclick="limpiarCampo('h')">LIMPIAR</button>
+                </div>
+                <div class="mensaje-error" id="h-error"></div>
+            </div>
+            <div class="resultado-panel">
                 <h4>Resultados</h4>
-                <div class="ms1-tiles" id="h-tiles">
-                    <div class="ms1-tile is-big">
-                        <span>Contenido de humedad</span>
-                        <strong id="h-resultado">—</strong>
-                    </div>
-                    <div class="ms1-tile">
-                        <span>Masa de agua</span>
-                        <strong id="h-agua">—</strong>
-                        <small>g</small>
-                    </div>
-                    <div class="ms1-tile">
-                        <span>Masa suelo seco</span>
-                        <strong id="h-suelo">—</strong>
-                        <small>g</small>
-                    </div>
+                <div class="resultado-principal">
+                    <span>CONTENIDO DE HUMEDAD</span>
+                    <strong id="h-resultado">—</strong>
                 </div>
-                <p class="ms1-hint" style="margin-top:14px" id="h-interpretacion">Ingresa los datos y pulsa CALCULAR.</p>
+                <div class="resultados-secundarios">
+                    <div><span>Masa de agua</span><strong id="h-agua">—</strong><small>g</small></div>
+                    <div><span>Masa suelo seco</span><strong id="h-suelo">—</strong><small>g</small></div>
+                </div>
+                <div class="interpretacion">
+                    <span>INTERPRETACIÓN</span>
+                    <p id="h-interpretacion">Ingresa los datos para obtener el resultado.</p>
+                </div>
             </div>
         </div>
-    </div>
-</div>
 `;
 }
 
@@ -3380,13 +3337,7 @@ function parse(id) {
 
 function setError(id, msg) {
     var el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = msg || '';
-    // Soporta el nuevo estilo .ms1-error (mostrar/ocultar con .is-on)
-    if (el.classList.contains('ms1-error') || el.classList.contains('dm-error')) {
-        if (msg) el.classList.add('is-on');
-        else el.classList.remove('is-on');
-    }
+    if (el) el.textContent = msg;
 }
 
 function capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
@@ -3460,20 +3411,14 @@ function calcularHumedad() {
     var r = parse('h-recipiente'), h = parse('h-humeda'), s = parse('h-seca');
     setError('h-error', '');
     if (r == null || h == null || s == null) { setError('h-error', 'Completa todos los campos'); return; }
-    if (h <= r || s <= r || h < s) { setError('h-error', 'Revisa los datos: el peso húmedo debe ser mayor que el seco y ambos mayores que el recipiente.'); return; }
+    if (h <= r || s <= r || h < s) { setError('h-error', 'Revisa los datos'); return; }
     var agua = h - s, sueloSeco = s - r, w = (agua / sueloSeco) * 100;
     function setTxt(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
     setTxt('h-resultado', w.toFixed(2) + ' %');
     setTxt('h-agua', agua.toFixed(2));
     setTxt('h-suelo', sueloSeco.toFixed(2));
-    var interp = w < 10 ? 'Humedad baja (suelo relativamente seco).' : (w < 25 ? 'Humedad media (rango habitual en muchos suelos).' : 'Humedad alta (suelo con alto contenido de agua).');
-    setTxt('h-interpretacion', interp + '  w = ' + w.toFixed(2) + ' %');
-    // Resaltar el tile principal
-    var tile = document.querySelector('#h-tiles .ms1-tile.is-big');
-    if (tile) {
-        tile.classList.remove('is-ok', 'is-warn');
-        tile.classList.add(w < 5 || w > 40 ? 'is-warn' : 'is-ok');
-    }
+    var interp = w < 10 ? 'Humedad baja' : (w < 25 ? 'Humedad media' : 'Humedad alta');
+    setTxt('h-interpretacion', interp + '. w = ' + w.toFixed(2) + '%');
     window.__datosEnsayo.h = { recipiente: r, humeda: h, seca: s, agua: agua, suelo: sueloSeco, w: w };
 }
 
