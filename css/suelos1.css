@@ -1,0 +1,435 @@
+/* =========================================================
+   GeoMetrics — Mecánica de Suelos I (prefijo .ms1-)
+   Estética alineada con Diseño de Mezclas (.dm-)
+   Paleta institucional: azul #003366, gris #DADADA, acento #4d8fd9
+========================================================= */
+.ms1 {
+    --ms1-line: rgba(0, 51, 102, 0.6);
+    --ms1-card: rgba(10, 20, 32, 0.92);
+    --ms1-soft: #b8c4d0;
+    --ms1-acc: #4d8fd9;
+    color: var(--texto, #f2f5f8);
+}
+.ms1 *, .ms1 *::before, .ms1 *::after { box-sizing: border-box; }
+
+/* ---------- Hero / introducción ---------- */
+.ms1-hero {
+    margin-bottom: 28px;
+    padding: 22px 24px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(0, 51, 102, 0.45) 0%, rgba(10, 20, 32, 0.85) 100%);
+    border: 1px solid var(--ms1-line);
+}
+.ms1-hero-text { max-width: 720px; }
+.ms1-eyebrow {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--ms1-acc);
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+.ms1-hero h3 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #DADADA;
+}
+.ms1-hero p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.55;
+    color: #c5d0da;
+}
+.ms1-flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    margin: 16px 0 0;
+    padding: 0;
+    list-style: none;
+}
+.ms1-flow li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--ms1-soft);
+}
+.ms1-flow strong {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #003366;
+    border: 1px solid var(--ms1-acc);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+/* ---------- Grupos ---------- */
+.ms1-group {
+    margin-bottom: 32px;
+}
+.ms1-grouphead {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.ms1-grouphead h4 {
+    margin: 0;
+    font-size: 18px;
+    color: #DADADA;
+}
+.ms1-grouphead p {
+    margin: 2px 0 0;
+    color: var(--ms1-soft);
+    font-size: 13px;
+}
+.ms1-num {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    background: #003366;
+    border: 1px solid var(--ms1-acc);
+    color: #fff;
+    font-size: 14px;
+}
+
+/* ---------- Tarjetas de ensayo ---------- */
+.ms1-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+/* Compatibilidad: mantenemos .ensayo-card para el JS existente */
+.ms1 .ensayo-card,
+.ms1-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    text-align: left;
+    padding: 20px;
+    min-height: 220px;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    background: var(--ms1-card);
+    border: 1px solid var(--ms1-line);
+    border-radius: 16px;
+    transition: transform 0.2s, border-color 0.2s, background 0.2s;
+}
+
+.ms1 .ensayo-card:hover,
+.ms1 .ensayo-card:focus-visible,
+.ms1-card:hover,
+.ms1-card:focus-visible {
+    transform: translateY(-3px);
+    border-color: var(--ms1-acc);
+    background: rgba(0, 51, 102, 0.35);
+    outline: none;
+}
+
+.ms1-card-ico {
+    font-size: 30px;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+.ms1-card-t {
+    font-size: 17px;
+    font-weight: 700;
+    color: #DADADA;
+    margin: 0;
+}
+.ms1-card-n {
+    font-size: 11px;
+    letter-spacing: 0.6px;
+    color: var(--ms1-acc);
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.ms1-card-d {
+    font-size: 13px;
+    line-height: 1.5;
+    color: #c5d0da;
+    flex: 1;
+    margin: 0;
+}
+.ms1-card-o {
+    font-size: 12px;
+    color: #9fb3c8;
+    margin-top: 4px;
+}
+.ms1-card-go {
+    font-size: 12px;
+    color: var(--ms1-acc);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    margin-top: 8px;
+}
+
+/* Ocultar estilos viejos dentro de .ms1 */
+.ms1 .ensayo-icono { display: none; }
+.ms1 .ensayo-card h3 { display: none; }
+.ms1 .ensayo-card > p { display: none; }
+.ms1 .ensayo-card > span { display: none; }
+
+/* ---------- Panel del ensayo abierto (base para Paso 2) ---------- */
+.ms1-panel {
+    margin-top: 24px;
+    padding: 20px;
+    border-radius: 16px;
+    background: var(--ms1-card);
+    border: 1px solid var(--ms1-line);
+}
+.ms1-viewhead {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.ms1-viewtitle h3 {
+    margin: 0;
+    font-size: 20px;
+    color: #DADADA;
+}
+.ms1-norma {
+    font-size: 12px;
+    color: var(--ms1-acc);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+    .ms1-hero { padding: 16px; }
+    .ms1-hero h3 { font-size: 19px; }
+    .ms1-cards { grid-template-columns: 1fr; }
+    .ms1 .ensayo-card,
+    .ms1-card { min-height: 180px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ms1 .ensayo-card,
+    .ms1-card { transition: none; }
+    .ms1 .ensayo-card:hover,
+    .ms1-card:hover { transform: none; }
+}
+
+/* ---------- Vista de ensayo individual ---------- */
+.ms1-view {
+    margin-top: 8px;
+}
+.ms1-viewhead {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.ms1-viewtitle {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.ms1-viewtitle h3 {
+    margin: 0;
+    font-size: 20px;
+    color: #DADADA;
+}
+.ms1-norma {
+    font-size: 12px;
+    color: var(--ms1-acc);
+    font-weight: 700;
+    letter-spacing: 0.4px;
+}
+
+.ms1-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 18px;
+    align-items: start;
+}
+.ms1-col {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+}
+.ms1-panel {
+    background: var(--ms1-card);
+    border: 1px solid var(--ms1-line);
+    border-radius: 16px;
+    padding: 18px;
+    min-width: 0;
+}
+.ms1-panel > h4 {
+    font-size: 15px;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    color: #DADADA;
+}
+
+/* Campos de formulario */
+.ms1-formrow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+.ms1-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.ms1-lab {
+    font-size: 12.5px;
+    color: #dce4ec;
+    line-height: 1.3;
+}
+.ms1-lab em {
+    color: var(--ms1-soft);
+    font-style: normal;
+    font-size: 11.5px;
+}
+.ms1-field input,
+.ms1-field select {
+    width: 100%;
+    padding: 9px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.16);
+    background: rgba(0,0,0,.3);
+    color: #fff;
+    font: inherit;
+    font-size: 14px;
+}
+.ms1-field input:focus-visible,
+.ms1-field select:focus-visible {
+    outline: 2px solid #4d8fd9;
+    outline-offset: 2px;
+}
+.ms1-hint {
+    color: var(--ms1-soft);
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 4px 0 0;
+}
+
+/* Botones de acción */
+.ms1-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+}
+.ms1-actions .btn-calcular,
+.ms1-actions .btn-limpiar,
+.ms1-actions .btn-informe-pdf {
+    margin: 0;
+}
+
+/* Resultados con tiles (estilo Mezclas) */
+.ms1-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+}
+.ms1-tile {
+    padding: 11px 13px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.08);
+    border-left: 3px solid rgba(77,143,217,.5);
+    min-width: 0;
+}
+.ms1-tile span {
+    display: block;
+    font-size: 11.5px;
+    color: var(--ms1-soft);
+    margin-bottom: 3px;
+}
+.ms1-tile strong {
+    display: block;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+    color: #fff;
+}
+.ms1-tile.is-big strong { font-size: 22px; }
+.ms1-tile.is-ok { border-left-color: #5fb98a; }
+.ms1-tile.is-ok strong { color: #bfeed6; }
+.ms1-tile.is-warn { border-left-color: #e6b34a; }
+.ms1-tile.is-warn strong { color: #f6dc9c; }
+.ms1-tile small {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    color: #9fb3c8;
+}
+
+.ms1-empty {
+    color: var(--ms1-soft);
+    font-size: 13.5px;
+    margin: 0;
+}
+.ms1-error {
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(224,112,107,.14);
+    border: 1px solid rgba(224,112,107,.5);
+    color: #ffd1ce;
+    font-size: 13.5px;
+    line-height: 1.5;
+    margin-top: 12px;
+    display: none;
+}
+.ms1-error.is-on { display: block; }
+
+/* Procedimiento */
+.ms1-proc {
+    margin-top: 0;
+}
+.ms1-proc summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: #DADADA;
+    font-size: 15px;
+}
+.ms1-proc[open] summary { margin-bottom: 10px; }
+.ms1-proc ol, .ms1-proc ul {
+    margin: 0 0 8px 20px;
+    padding: 0;
+}
+.ms1-proc li, .ms1-proc p {
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: #d6dee6;
+    margin: 4px 0;
+}
+.ms1-formula {
+    margin: 10px 0;
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 15px;
+    line-height: 1.7;
+    color: #DADADA;
+    background: rgba(0,0,0,.3);
+    border: 1px solid rgba(77,143,217,.35);
+    border-radius: 10px;
+    overflow-x: auto;
+}
+
+@media (max-width: 900px) {
+    .ms1-cols { grid-template-columns: 1fr; }
+}
