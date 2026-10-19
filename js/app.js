@@ -4909,6 +4909,11 @@ function descargarInformeDesdeHistorial(id) {
         return;
     }
     var det = item.detalle || {};
+    // Mecánica de Suelos I: informe propio (js/suelos1.js)
+    if (det.reporte && det.modulo === 'suelos1' && window.Suelos1 && typeof window.Suelos1.imprimirInforme === 'function') {
+        window.Suelos1.imprimirInforme(det.reporte);
+        return;
+    }
     // Diseño de Mezclas: informe propio (js/mezclas.js)
     if (det.reporte && window.Mezclas && typeof window.Mezclas.imprimirInforme === 'function') {
         window.Mezclas.imprimirInforme(det.reporte);
