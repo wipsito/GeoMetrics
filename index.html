@@ -10,8 +10,8 @@
     <link rel="apple-touch-icon" href="docs/GeoMetrics.png">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/mezclas.css">
-    <link rel="stylesheet" href="css/suelos1.css">
     <link rel="stylesheet" href="css/ensayos-ms2.css">
+    <link rel="stylesheet" href="css/sim-ms2.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
@@ -55,7 +55,7 @@
                 <span class="logo-label">Universidad de Pamplona</span>
             </div>
             <div class="topbar-right">
-                <img src="docs/logo_ingenieria_civil.png" alt="Ingeniería Civil" class="logo-top" />
+                <img src="docs/logo_ingenieria_civil.png" alt="Ingeniería Civil" class="logo-top logo-civil-bg" />
                 <span class="logo-label">Ingeniería Civil</span>
             </div>
         </header>
@@ -365,16 +365,164 @@
         </header>
 
         <section class="submenu-tabs">
-            <button class="tab-btn active" data-tab="ms1-teoria">Teoría</button>
-            <button class="tab-btn" data-tab="ms1-ensayos">Ensayos</button>
+            <button class="tab-btn" data-tab="ms1-teoria">Teoría</button>
+            <button class="tab-btn active" data-tab="ms1-ensayos">Ensayos</button>
         </section>
 
-        <section class="tab-content active" id="ms1-teoria">
-            <div id="ms1TeoriaRoot"></div>
+        <!-- Ensayos de Mecánica de Suelos I -->
+        <section class="tab-content active" id="ms1-ensayos">
+            <div class="ensayos-grid">
+                <button class="ensayo-card" data-ensayo="humedad">
+                    <div class="ensayo-icono">💧</div>
+                    <h3>Contenido de Humedad</h3>
+                    <p>Determina la cantidad de agua presente en una muestra de suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="granulometria">
+                    <div class="ensayo-icono">📊</div>
+                    <h3>Granulometría</h3>
+                    <p>Análisis de la distribución de tamaños de partículas del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="limites">
+                    <div class="ensayo-icono">📏</div>
+                    <h3>Límites de Atterberg</h3>
+                    <p>Determinación de los límites de consistencia del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="gravedad">
+                    <div class="ensayo-icono">⚖️</div>
+                    <h3>Gravedad Específica</h3>
+                    <p>Determinación de la gravedad específica de los sólidos del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="compactacion">
+                    <div class="ensayo-icono">🏗️</div>
+                    <h3>Compactación Proctor</h3>
+                    <p>Analiza la relación entre humedad y densidad seca del suelo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="densidad">
+                    <div class="ensayo-icono">📦</div>
+                    <h3>Densidad de Campo</h3>
+                    <p>Determina la densidad del suelo en condiciones de campo.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="clasificacion">
+                    <div class="ensayo-icono">🗂️</div>
+                    <h3>Clasificación SUCS</h3>
+                    <p>Clasificación de suelos según el Sistema Unificado de Clasificación.</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+
+                <button class="ensayo-card" data-ensayo="permeabilidad">
+                    <div class="ensayo-icono">💦</div>
+                    <h3>Permeabilidad</h3>
+                    <p>Estudia el flujo de agua a través del suelo (Ley de Darcy).</p>
+                    <span>INICIAR ENSAYO →</span>
+                </button>
+            </div>
+
+            <!-- Panel de Ensayos (oculto inicialmente) -->
+            <div class="panel-ensayo" id="panel-ensayo">
+                <!-- Se llena dinámicamente -->
+            </div>
         </section>
 
-        <section class="tab-content" id="ms1-ensayos">
-            <div id="ms1EnsayosRoot"></div>
+        <section class="tab-content" id="ms1-teoria">
+            <div class="teoria-container">
+                <h3>Mecánica de Suelos I — Fundamentos Teóricos</h3>
+                
+                <div class="teoria-seccion">
+                    <h4>1. Introducción a la Mecánica de Suelos</h4>
+                    <p>La mecánica de suelos es la rama de la ingeniería que estudia el comportamiento del suelo como material de construcción. El suelo es un material natural formado por partículas sólidas, agua y aire.</p>
+                    <p><strong>Composición del suelo:</strong></p>
+                    <ul>
+                        <li><strong>Fase sólida:</strong> partículas minerales y orgánicas</li>
+                        <li><strong>Fase líquida:</strong> agua con sustancias disueltas</li>
+                        <li><strong>Fase gaseosa:</strong> aire y otros gases</li>
+                    </ul>
+                    <p>Las propiedades del suelo dependen de la relación entre estas tres fases, que se expresa mediante el contenido de humedad, el índice de poros y el grado de saturación.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>2. Contenido de Humedad (w)</h4>
+                    <p>El contenido de humedad es la relación entre el peso del agua y el peso de los sólidos del suelo.</p>
+                    <div class="formula-box">w = (W<sub>w</sub> / W<sub>s</sub>) × 100 %</div>
+                    <p>Se determina secando la muestra en un horno a 110±5°C hasta peso constante. Es un ensayo fundamental para todos los cálculos de mecánica de suelos.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>3. Análisis Granulométrico</h4>
+                    <p>La granulometría determina la distribución de tamaños de partículas mediante tamizado.</p>
+                    <p><strong>Clasificación por tamaño:</strong></p>
+                    <ul>
+                        <li><strong>Grava:</strong> partículas > 4.75 mm</li>
+                        <li><strong>Arena gruesa:</strong> 2.0 - 4.75 mm</li>
+                        <li><strong>Arena media:</strong> 0.425 - 2.0 mm</li>
+                        <li><strong>Arena fina:</strong> 0.075 - 0.425 mm</li>
+                        <li><strong>Finos (Limo y Arcilla):</strong> < 0.075 mm</li>
+                    </ul>
+                    <p><strong>Coeficiente de uniformidad:</strong> Cu = D60/D10. Valores > 4 (arenas) o > 6 (gravas) indican buena graduación.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>4. Límites de Atterberg</h4>
+                    <p>Definen los estados de consistencia del suelo según el contenido de humedad:</p>
+                    <ul>
+                        <li><strong>Límite Líquido (LL):</strong> paso del estado plástico al líquido. Ensayo de Casagrande a 25 golpes.</li>
+                        <li><strong>Límite Plástico (LP):</strong> paso del estado semisólido al plástico. Formación de rollitos de 3mm.</li>
+                        <li><strong>Índice de Plasticidad (IP):</strong> IP = LL - LP</li>
+                    </ul>
+                    <div class="formula-box">Línea A: IP = 0.73(LL - 20)</div>
+                    <p>La línea A separa arcillas (sobre la línea) de limos (bajo la línea) en la Carta de Plasticidad.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>5. Gravedad Específica (Gs)</h4>
+                    <p>Relación entre la densidad de los sólidos del suelo y la densidad del agua.</p>
+                    <div class="formula-box">G<sub>s</sub> = W<sub>s</sub> / (W<sub>s</sub> + W<sub>pw</sub> - W<sub>pws</sub>)</div>
+                    <p>Valores típicos: arenas 2.60-2.70, arcillas 2.70-2.90. Valores < 2.0 indican materia orgánica.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>6. Compactación Proctor</h4>
+                    <p>La compactación aumenta la densidad del suelo reduciendo vacíos. Ensayo Proctor Standard:</p>
+                    <ul>
+                        <li><strong>Masa del martillo:</strong> 2.5 kg</li>
+                        <li><strong>Altura de caída:</strong> 30.5 cm</li>
+                        <li><strong>Número de capas:</strong> 3</li>
+                        <li><strong>Golpes por capa:</strong> 25</li>
+                    </ul>
+                    <p>La curva de compactación es parabólica: a mayor humedad, mayor densidad hasta alcanzar la humedad óptima (w<sub>ópt</sub>), luego la densidad disminuye.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>7. Clasificación SUCS</h4>
+                    <p><strong>Suelos Gruesos</strong> (>50% retenido en #200):</p>
+                    <ul>
+                        <li><strong>Gravas (G):</strong> >50% del retenido es grava
+                            <ul><li>GW: bien graduada, Cu>4, Cc=1-3</li><li>GP: mal graduada</li></ul>
+                        </li>
+                        <li><strong>Arenas (S):</strong> >50% del retenido es arena
+                            <ul><li>SW: bien graduada, Cu>6, Cc=1-3</li><li>SP: mal graduada</li></ul>
+                        </li>
+                    </ul>
+                    <p><strong>Suelos Finos</strong> (>50% pasa #200):</p>
+                    <ul>
+                        <li><strong>CL:</strong> Arcilla baja plasticidad (LL<50, sobre línea A)</li>
+                        <li><strong>CH:</strong> Arcilla alta plasticidad (LL≥50, sobre línea A)</li>
+                        <li><strong>ML:</strong> Limo baja plasticidad (LL<50, bajo línea A)</li>
+                        <li><strong>MH:</strong> Limo alta plasticidad (LL≥50, bajo línea A)</li>
+                    </ul>
+                </div>
+            </div>
         </section>
     </main>
 
@@ -521,17 +669,16 @@
                     <div class="ms2-hero-text">
                         <em class="ms2-eyebrow">Laboratorio virtual · Mecánica de Suelos II</em>
                         <h3>Ensayos de resistencia y deformación</h3>
-                        <p>Elige un ensayo, observa la máquina en 3D, ingresa tus lecturas y obtén los parámetros de diseño del suelo.</p>
+                        <p>Elige un ensayo, ingresa tus lecturas de laboratorio y obtén los parámetros de diseño del suelo. Las máquinas 2D y 3D están en Simuladores.</p>
                         <ol class="ms2-flow">
-                            <li><b>1</b>Máquina 3D</li>
-                            <li><b>2</b>Datos</li>
-                            <li><b>3</b>Resultados</li>
-                            <li><b>4</b>Gráfica</li>
+                            <li><b>1</b>Datos</li>
+                            <li><b>2</b>Resultados</li>
+                            <li><b>3</b>Gráfica</li>
                         </ol>
                     </div>
                     <ul class="ms2-hero-stats">
                         <li><strong>4</strong><em>Ensayos</em></li>
-                        <li><strong>4</strong><em>Máquinas 3D</em></li>
+                        <li><strong>3</strong><em>Pasos</em></li>
                         <li><strong>3</strong><em>Guías PDF</em></li>
                     </ul>
                 </header>
@@ -539,7 +686,7 @@
                 <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="corte" style="--ms2-accent:#3B82F6;--ms2-rgb:59,130,246">
                     <div class="ms2-card-head">
                         <em class="ms2-card-num">01</em>
-                        <em class="ms2-card-tag">Módulo 3D</em>
+                        <em class="ms2-card-tag">Laboratorio</em>
                     </div>
                     <div class="ms2-card-body">
                         <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 3v7M28.5 6.5 32 10l3.5-3.5"/><rect x="17" y="12" width="26" height="14" rx="1.8"/><rect x="24" y="30" width="26" height="14" rx="1.8"/><path d="M5 37h13M13 33l5 4-5 4"/><path d="M6 53h52"/></svg></div>
@@ -549,17 +696,12 @@
                         </div>
                     </div>
                     <div class="ms2-chips"><em>c</em><em>φ</em><em>τ – σn</em></div>
-                    <div class="ms2-machine">
-                        <b>Máquina asignada</b>
-                        <strong>Aparato de corte directo</strong>
-                        <small>ASTM D3080 · INV E-154</small>
-                    </div>
                     <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
                 <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="inconfinada" style="--ms2-accent:#2DD4BF;--ms2-rgb:45,212,191">
                     <div class="ms2-card-head">
                         <em class="ms2-card-num">02</em>
-                        <em class="ms2-card-tag">Módulo 3D</em>
+                        <em class="ms2-card-tag">Laboratorio</em>
                     </div>
                     <div class="ms2-card-body">
                         <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 3v8M28.5 7.5 32 11l3.5-3.5"/><rect x="15" y="13" width="34" height="5" rx="1.8"/><rect x="24" y="18" width="16" height="26" rx="3"/><path d="M27 37l10-14" stroke-dasharray="2.5 3"/><rect x="15" y="44" width="34" height="5" rx="1.8"/><path d="M6 56h52"/></svg></div>
@@ -569,17 +711,12 @@
                         </div>
                     </div>
                     <div class="ms2-chips"><em>qu</em><em>cu = qu/2</em><em>σ – ε</em></div>
-                    <div class="ms2-machine">
-                        <b>Máquina asignada</b>
-                        <strong>Prensa de compresión inconfinada</strong>
-                        <small>ASTM D2166 · INV E-152</small>
-                    </div>
                     <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
                 <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="consolidacion" style="--ms2-accent:#FBBF24;--ms2-rgb:251,191,36">
                     <div class="ms2-card-head">
                         <em class="ms2-card-num">03</em>
-                        <em class="ms2-card-tag">Módulo 3D</em>
+                        <em class="ms2-card-tag">Laboratorio</em>
                     </div>
                     <div class="ms2-card-body">
                         <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20h54"/><path d="M38 20l-6 12h12z"/><path d="M14 20v9"/><rect x="6" y="29" width="16" height="17" rx="2.5"/><path d="M10 38h8"/><path d="M53 20v10"/><rect x="46" y="30" width="14" height="4.5" rx="1"/><rect x="47.5" y="36" width="11" height="4.5" rx="1"/><path d="M4 54h56"/></svg></div>
@@ -589,17 +726,12 @@
                         </div>
                     </div>
                     <div class="ms2-chips"><em>Cv</em><em>Cc</em><em>σ'p</em><em>e – log σ'</em></div>
-                    <div class="ms2-machine">
-                        <b>Máquina asignada</b>
-                        <strong>Consolidómetro (edómetro) de palanca</strong>
-                        <small>ASTM D2435 · INV E-151</small>
-                    </div>
                     <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
                 <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="triaxial" style="--ms2-accent:#A78BFA;--ms2-rgb:167,139,250">
                     <div class="ms2-card-head">
                         <em class="ms2-card-num">04</em>
-                        <em class="ms2-card-tag">Módulo 3D</em>
+                        <em class="ms2-card-tag">Laboratorio</em>
                     </div>
                     <div class="ms2-card-body">
                         <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7h46M13 7v47M51 7v47"/><path d="M32 7v14"/><rect x="21" y="21" width="22" height="28" rx="2.5"/><rect x="28" y="28" width="8" height="14" rx="1.5"/><path d="M24 31h-4M24 38h-4M40 31h4M40 38h4" stroke-dasharray="1.5 2.5"/><path d="M6 54h52"/></svg></div>
@@ -609,11 +741,6 @@
                         </div>
                     </div>
                     <div class="ms2-chips"><em>σ₁</em><em>σ₃</em><em>c, φ</em><em>UU · CU · CD</em></div>
-                    <div class="ms2-machine">
-                        <b>Máquina asignada</b>
-                        <strong>Cámara triaxial con marco de carga</strong>
-                        <small>ASTM D2850 / D4767 · INV E-153</small>
-                    </div>
                     <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
                 </div>
@@ -632,46 +759,35 @@
             <div class="panel-ensayo" id="panel-ensayo-ms2" style="display:none;"></div>
         </section>
         <section class="tab-content" id="ms2-simuladores">
-            <div class="ensayos-grid simuladores-grid">
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">✂️</div>
-                    <h3>Simulador Corte Directo</h3>
-                    <p>Máquina de caja de corte: Pv, Ph y deslizamiento.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="corte">ABRIR SIMULADOR</button>
-                </div>
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">🧱</div>
-                    <h3>Simulador Compresión Inconfinada</h3>
-                    <p>Prensa uniaxial: muestra libre y curva σ–ε.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="inconfinada">ABRIR SIMULADOR</button>
-                </div>
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">📉</div>
-                    <h3>Simulador Consolidación</h3>
-                    <p>Edómetro: cargas escalonadas y asentamiento.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="consolidacion">ABRIR SIMULADOR</button>
-                </div>
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">🧪</div>
-                    <h3>Simulador Triaxial</h3>
-                    <p>Cámara triaxial: presión de celda σ₃ y carga axial.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="triaxial">ABRIR SIMULADOR</button>
-                </div>
-
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">📉</div>
-                    <h3>Bulbos de presión</h3>
-                    <p>Carga Excel e isobaras: puntual, circular o lineal.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="bulbos">ABRIR MÓDULO</button>
-                </div>
-
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">📊</div>
-                    <h3>Incrementos de esfuerzo</h3>
-                    <p>Carga Excel con P, X, Y y Δσz vs profundidad z.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="incrementos">ABRIR MÓDULO</button>
+            <div class="simhub" id="simhub-ms2">
+                <header class="simhub-hero">
+                    <div class="simhub-hero-text">
+                        <em class="simhub-eyebrow">Laboratorio virtual · Mecánica de Suelos II</em>
+                        <h3>Simuladores de ensayos</h3>
+                        <p>Cada ensayo tiene dos simuladores: el <b>2D</b>, para jugar con los parámetros y ver la curva en vivo, y el <b>3D</b>, para recorrer la máquina pieza por pieza.</p>
+                    </div>
+                    <ul class="simhub-hero-stats">
+                        <li><strong>4</strong><em>Ensayos</em></li>
+                        <li><strong>2D</strong><em>Curvas en vivo</em></li>
+                        <li><strong>3D</strong><em>Máquinas</em></li>
+                    </ul>
+                </header>
+                <div class="simhub-grid" id="simhub-grid"></div>
+                <h4 class="simhub-sub">Módulos de análisis con Excel</h4>
+                <div class="simhub-grid simhub-grid-mod">
+                    <div class="simhub-mod">
+                        <div class="simhub-mod-ico">📉</div>
+                        <div><h5>Bulbos de presión</h5><p>Carga Excel e isobaras: puntual, circular o lineal.</p></div>
+                        <button type="button" class="btn-calcular btn-abrir-sim" data-sim="bulbos">ABRIR MÓDULO</button>
+                    </div>
+                    <div class="simhub-mod">
+                        <div class="simhub-mod-ico">📊</div>
+                        <div><h5>Incrementos de esfuerzo</h5><p>Carga Excel con P, X, Y y Δσz vs profundidad z.</p></div>
+                        <button type="button" class="btn-calcular btn-abrir-sim" data-sim="incrementos">ABRIR MÓDULO</button>
+                    </div>
                 </div>
             </div>
+            <div class="simhub-panel" id="simhub-panel" style="display:none;"></div>
         </section>
 </main>
 
@@ -1880,9 +1996,12 @@
     <script src="js/mezclas-calc.js"></script>
     <script src="js/mezclas.js"></script>
     <script src="js/mezclas-sim.js"></script>
-    <script src="js/suelos1-calc.js"></script>
-    <script src="js/suelos1.js"></script>
     <script src="js/aula.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/sim2d-core.js"></script>
+    <script src="js/sim2d-inconfinada.js"></script>
+    <script src="js/sim2d-defs.js"></script>
+    <script src="js/sim-ms2.js"></script>
+    <script src="js/teoria-uniforme.js"></script>
 </body>
 </html>
