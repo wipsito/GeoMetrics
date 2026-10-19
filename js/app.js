@@ -5227,8 +5227,7 @@ function ms2ConstruirPanel(nombre, formHtml) {
     /* cabecera del ensayo */
     var chips = '';
     if (info) {
-        chips = '<li><b>Máquina</b><span>' + info.machine + '</span></li>' +
-                '<li><b>Normativa</b><span>' + info.norma + '</span></li>' +
+        chips = '<li><b>Normativa</b><span>' + info.norma + '</span></li>' +
                 '<li><b>Parámetros</b><span>' + info.params.join(' · ') + '</span></li>';
     }
     shell.appendChild(ms2El('header', 'ms2-phero',
@@ -5240,8 +5239,8 @@ function ms2ConstruirPanel(nombre, formHtml) {
 
     /* pasos */
     var steps = ms2El('nav', 'ms2-steps');
-    [['ms2-sec-maq', '1', 'Máquina 3D'], ['ms2-sec-datos', '2', 'Datos'],
-     ['ms2-res-anchor', '3', 'Resultados'], ['ms2-sec-graf', '4', 'Gráfica']].forEach(function(st) {
+    [['ms2-sec-datos', '1', 'Datos'],
+     ['ms2-res-anchor', '2', 'Resultados'], ['ms2-sec-graf', '3', 'Gráfica']].forEach(function(st) {
         var b = ms2El('button', null, '<b>' + st[1] + '</b>' + st[2]);
         b.type = 'button';
         b.addEventListener('click', function() {
@@ -5252,15 +5251,9 @@ function ms2ConstruirPanel(nombre, formHtml) {
     });
     shell.appendChild(steps);
 
-    /* 1 · máquina 3D */
-    var sMaq = ms2Seccion('ms2-sec-maq', '1', 'Máquina 3D asignada',
-        'Observa el equipo del ensayo, reproduce la secuencia y consulta cada componente.');
-    sMaq.appendChild(ms2El('div', 'ms2-lab3d-host')).id = 'ms2-lab3d-host';
-    shell.appendChild(sMaq);
-
-    /* 2–3 · datos y resultados */
+    /* 1–2 · datos y resultados (la máquina 3D vive ahora en Simuladores) */
     if (lab) {
-        var sDat = ms2Seccion('ms2-sec-datos', '2·3', 'Datos y resultados',
+        var sDat = ms2Seccion('ms2-sec-datos', '1·2', 'Datos y resultados',
             'Ingresa tus lecturas, calcula y revisa los parámetros obtenidos.');
         var res = lab.querySelector('.resultado-panel');
         if (res) res.id = 'ms2-res-anchor';
@@ -5270,7 +5263,7 @@ function ms2ConstruirPanel(nombre, formHtml) {
 
     /* 4 · gráfica */
     if (graf) {
-        var sGra = ms2Seccion('ms2-sec-graf', '4', 'Gráfica del ensayo',
+        var sGra = ms2Seccion('ms2-sec-graf', '3', 'Gráfica del ensayo',
             'Genera la curva a partir de los datos calculados.');
         sGra.appendChild(graf);
         shell.appendChild(sGra);
@@ -5318,7 +5311,6 @@ function abrirEnsayoSuelos2(nombre) {
     panel.appendChild(ms2ConstruirPanel(nombre, form));
     if (lista) lista.style.display = 'none';
     panel.style.display = 'block';
-    ms2Montar3D(nombre);
     window.scrollTo(0, 0);
 }
 
