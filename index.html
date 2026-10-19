@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/mezclas.css">
     <link rel="stylesheet" href="css/ensayos-ms2.css">
+    <link rel="stylesheet" href="css/sim-ms2.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
@@ -668,17 +669,16 @@
                     <div class="ms2-hero-text">
                         <em class="ms2-eyebrow">Laboratorio virtual · Mecánica de Suelos II</em>
                         <h3>Ensayos de resistencia y deformación</h3>
-                        <p>Elige un ensayo, observa la máquina en 3D, ingresa tus lecturas y obtén los parámetros de diseño del suelo.</p>
+                        <p>Elige un ensayo, ingresa tus lecturas de laboratorio y obtén los parámetros de diseño del suelo. Las máquinas 2D y 3D están en Simuladores.</p>
                         <ol class="ms2-flow">
-                            <li><b>1</b>Máquina 3D</li>
-                            <li><b>2</b>Datos</li>
-                            <li><b>3</b>Resultados</li>
-                            <li><b>4</b>Gráfica</li>
+                            <li><b>1</b>Datos</li>
+                            <li><b>2</b>Resultados</li>
+                            <li><b>3</b>Gráfica</li>
                         </ol>
                     </div>
                     <ul class="ms2-hero-stats">
                         <li><strong>4</strong><em>Ensayos</em></li>
-                        <li><strong>4</strong><em>Máquinas 3D</em></li>
+                        <li><strong>3</strong><em>Pasos</em></li>
                         <li><strong>3</strong><em>Guías PDF</em></li>
                     </ul>
                 </header>
@@ -686,7 +686,7 @@
                 <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="corte" style="--ms2-accent:#3B82F6;--ms2-rgb:59,130,246">
                     <div class="ms2-card-head">
                         <em class="ms2-card-num">01</em>
-                        <em class="ms2-card-tag">Módulo 3D</em>
+                        <em class="ms2-card-tag">Laboratorio</em>
                     </div>
                     <div class="ms2-card-body">
                         <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 3v7M28.5 6.5 32 10l3.5-3.5"/><rect x="17" y="12" width="26" height="14" rx="1.8"/><rect x="24" y="30" width="26" height="14" rx="1.8"/><path d="M5 37h13M13 33l5 4-5 4"/><path d="M6 53h52"/></svg></div>
@@ -696,17 +696,12 @@
                         </div>
                     </div>
                     <div class="ms2-chips"><em>c</em><em>φ</em><em>τ – σn</em></div>
-                    <div class="ms2-machine">
-                        <b>Máquina asignada</b>
-                        <strong>Aparato de corte directo</strong>
-                        <small>ASTM D3080 · INV E-154</small>
-                    </div>
                     <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
                 <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="inconfinada" style="--ms2-accent:#2DD4BF;--ms2-rgb:45,212,191">
                     <div class="ms2-card-head">
                         <em class="ms2-card-num">02</em>
-                        <em class="ms2-card-tag">Módulo 3D</em>
+                        <em class="ms2-card-tag">Laboratorio</em>
                     </div>
                     <div class="ms2-card-body">
                         <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 3v8M28.5 7.5 32 11l3.5-3.5"/><rect x="15" y="13" width="34" height="5" rx="1.8"/><rect x="24" y="18" width="16" height="26" rx="3"/><path d="M27 37l10-14" stroke-dasharray="2.5 3"/><rect x="15" y="44" width="34" height="5" rx="1.8"/><path d="M6 56h52"/></svg></div>
@@ -716,17 +711,12 @@
                         </div>
                     </div>
                     <div class="ms2-chips"><em>qu</em><em>cu = qu/2</em><em>σ – ε</em></div>
-                    <div class="ms2-machine">
-                        <b>Máquina asignada</b>
-                        <strong>Prensa de compresión inconfinada</strong>
-                        <small>ASTM D2166 · INV E-152</small>
-                    </div>
                     <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
                 <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="consolidacion" style="--ms2-accent:#FBBF24;--ms2-rgb:251,191,36">
                     <div class="ms2-card-head">
                         <em class="ms2-card-num">03</em>
-                        <em class="ms2-card-tag">Módulo 3D</em>
+                        <em class="ms2-card-tag">Laboratorio</em>
                     </div>
                     <div class="ms2-card-body">
                         <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20h54"/><path d="M38 20l-6 12h12z"/><path d="M14 20v9"/><rect x="6" y="29" width="16" height="17" rx="2.5"/><path d="M10 38h8"/><path d="M53 20v10"/><rect x="46" y="30" width="14" height="4.5" rx="1"/><rect x="47.5" y="36" width="11" height="4.5" rx="1"/><path d="M4 54h56"/></svg></div>
@@ -736,17 +726,12 @@
                         </div>
                     </div>
                     <div class="ms2-chips"><em>Cv</em><em>Cc</em><em>σ'p</em><em>e – log σ'</em></div>
-                    <div class="ms2-machine">
-                        <b>Máquina asignada</b>
-                        <strong>Consolidómetro (edómetro) de palanca</strong>
-                        <small>ASTM D2435 · INV E-151</small>
-                    </div>
                     <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
                 <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="triaxial" style="--ms2-accent:#A78BFA;--ms2-rgb:167,139,250">
                     <div class="ms2-card-head">
                         <em class="ms2-card-num">04</em>
-                        <em class="ms2-card-tag">Módulo 3D</em>
+                        <em class="ms2-card-tag">Laboratorio</em>
                     </div>
                     <div class="ms2-card-body">
                         <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7h46M13 7v47M51 7v47"/><path d="M32 7v14"/><rect x="21" y="21" width="22" height="28" rx="2.5"/><rect x="28" y="28" width="8" height="14" rx="1.5"/><path d="M24 31h-4M24 38h-4M40 31h4M40 38h4" stroke-dasharray="1.5 2.5"/><path d="M6 54h52"/></svg></div>
@@ -756,11 +741,6 @@
                         </div>
                     </div>
                     <div class="ms2-chips"><em>σ₁</em><em>σ₃</em><em>c, φ</em><em>UU · CU · CD</em></div>
-                    <div class="ms2-machine">
-                        <b>Máquina asignada</b>
-                        <strong>Cámara triaxial con marco de carga</strong>
-                        <small>ASTM D2850 / D4767 · INV E-153</small>
-                    </div>
                     <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
                 </div>
@@ -779,46 +759,35 @@
             <div class="panel-ensayo" id="panel-ensayo-ms2" style="display:none;"></div>
         </section>
         <section class="tab-content" id="ms2-simuladores">
-            <div class="ensayos-grid simuladores-grid">
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">✂️</div>
-                    <h3>Simulador Corte Directo</h3>
-                    <p>Máquina de caja de corte: Pv, Ph y deslizamiento.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="corte">ABRIR SIMULADOR</button>
-                </div>
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">🧱</div>
-                    <h3>Simulador Compresión Inconfinada</h3>
-                    <p>Prensa uniaxial: muestra libre y curva σ–ε.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="inconfinada">ABRIR SIMULADOR</button>
-                </div>
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">📉</div>
-                    <h3>Simulador Consolidación</h3>
-                    <p>Edómetro: cargas escalonadas y asentamiento.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="consolidacion">ABRIR SIMULADOR</button>
-                </div>
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">🧪</div>
-                    <h3>Simulador Triaxial</h3>
-                    <p>Cámara triaxial: presión de celda σ₃ y carga axial.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="triaxial">ABRIR SIMULADOR</button>
-                </div>
-
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">📉</div>
-                    <h3>Bulbos de presión</h3>
-                    <p>Carga Excel e isobaras: puntual, circular o lineal.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="bulbos">ABRIR MÓDULO</button>
-                </div>
-
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">📊</div>
-                    <h3>Incrementos de esfuerzo</h3>
-                    <p>Carga Excel con P, X, Y y Δσz vs profundidad z.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim" data-sim="incrementos">ABRIR MÓDULO</button>
+            <div class="simhub" id="simhub-ms2">
+                <header class="simhub-hero">
+                    <div class="simhub-hero-text">
+                        <em class="simhub-eyebrow">Laboratorio virtual · Mecánica de Suelos II</em>
+                        <h3>Simuladores de ensayos</h3>
+                        <p>Cada ensayo tiene dos simuladores: el <b>2D</b>, para jugar con los parámetros y ver la curva en vivo, y el <b>3D</b>, para recorrer la máquina pieza por pieza.</p>
+                    </div>
+                    <ul class="simhub-hero-stats">
+                        <li><strong>4</strong><em>Ensayos</em></li>
+                        <li><strong>2D</strong><em>Curvas en vivo</em></li>
+                        <li><strong>3D</strong><em>Máquinas</em></li>
+                    </ul>
+                </header>
+                <div class="simhub-grid" id="simhub-grid"></div>
+                <h4 class="simhub-sub">Módulos de análisis con Excel</h4>
+                <div class="simhub-grid simhub-grid-mod">
+                    <div class="simhub-mod">
+                        <div class="simhub-mod-ico">📉</div>
+                        <div><h5>Bulbos de presión</h5><p>Carga Excel e isobaras: puntual, circular o lineal.</p></div>
+                        <button type="button" class="btn-calcular btn-abrir-sim" data-sim="bulbos">ABRIR MÓDULO</button>
+                    </div>
+                    <div class="simhub-mod">
+                        <div class="simhub-mod-ico">📊</div>
+                        <div><h5>Incrementos de esfuerzo</h5><p>Carga Excel con P, X, Y y Δσz vs profundidad z.</p></div>
+                        <button type="button" class="btn-calcular btn-abrir-sim" data-sim="incrementos">ABRIR MÓDULO</button>
+                    </div>
                 </div>
             </div>
+            <div class="simhub-panel" id="simhub-panel" style="display:none;"></div>
         </section>
 </main>
 
@@ -2029,5 +1998,10 @@
     <script src="js/mezclas-sim.js"></script>
     <script src="js/aula.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/sim2d-core.js"></script>
+    <script src="js/sim2d-inconfinada.js"></script>
+    <script src="js/sim2d-defs.js"></script>
+    <script src="js/sim-ms2.js"></script>
+    <script src="js/teoria-uniforme.js"></script>
 </body>
 </html>
