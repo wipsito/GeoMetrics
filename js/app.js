@@ -5152,25 +5152,173 @@ document.addEventListener('DOMContentLoaded', function() {
 
 window.__datosEnsayoMS2 = window.__datosEnsayoMS2 || {};
 
+/* ---- Metadatos de presentación de cada ensayo (Suelos II) ---- */
+var MS2_INFO = {
+    corte: {
+        num: '01', accent: '#3B82F6', title: 'Ensayo de Corte Directo',
+        machine: 'Aparato de corte directo', norma: 'ASTM D3080 · INV E-154',
+        params: ['c', 'φ', 'τ – σn'], guia: 'docs/Guia_Corte_Directo.pdf'
+    },
+    inconfinada: {
+        num: '02', accent: '#2DD4BF', title: 'Ensayo de Compresión Inconfinada',
+        machine: 'Prensa de compresión inconfinada', norma: 'ASTM D2166 · INV E-152',
+        params: ['qu', 'cu = qu/2', 'σ – ε'], guia: 'docs/Guia_Compresion_Inconfinada.pdf'
+    },
+    consolidacion: {
+        num: '03', accent: '#FBBF24', title: 'Ensayo de Consolidación',
+        machine: 'Consolidómetro (edómetro) de palanca', norma: 'ASTM D2435 · INV E-151',
+        params: ['Cv', 'Cc', 'σ\'p'], guia: 'docs/Guia_Consolidacion.pdf'
+    },
+    triaxial: {
+        num: '04', accent: '#A78BFA', title: 'Ensayo Triaxial',
+        machine: 'Cámara triaxial con marco de carga', norma: 'ASTM D2850 / D4767 · INV E-153',
+        params: ['σ₁', 'σ₃', 'c, φ'], guia: null
+    }
+};
+
+function ms2El(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html != null) e.innerHTML = html;
+    return e;
+}
+
+function ms2Seccion(id, num, titulo, sub) {
+    var sec = ms2El('section', 'ms2-sec');
+    sec.id = id;
+    sec.appendChild(ms2El('header', 'ms2-sec-head',
+        '<em>' + num + '</em><div><h4>' + titulo + '</h4><p>' + sub + '</p></div>'));
+    return sec;
+}
+
+/* Reorganiza el formulario original (mismos nodos, mismos ids y onclick) en un panel
+   por secciones: cabecera · máquina 3D · datos y resultados · gráfica. */
+function ms2ConstruirPanel(nombre, formHtml) {
+    var info = MS2_INFO[nombre];
+    var tmp = ms2El('div', null, formHtml);
+    var h3 = tmp.querySelector('h3');
+    var hint = tmp.querySelector('p.login-hint');
+    var lab = tmp.querySelector('.laboratorio-panel');
+    var graf = tmp.querySelector('.grafica-panel');
+    var titulo = info ? info.title : (h3 ? h3.textContent : 'Ensayo');
+    var fund = hint ? hint.innerHTML : '';
+    var glyphEl = document.querySelector('[data-ensayo-ms2="' + nombre + '"] .ms2-glyph');
+    var glyph = glyphEl ? glyphEl.innerHTML : '';
+
+    var shell = ms2El('div', 'ms2-shell');
+    shell.setAttribute('data-ensayo', nombre);
+    if (info) shell.style.setProperty('--ms2-accent', info.accent);
+
+    /* barra superior */
+    var top = ms2El('div', 'ms2-topbar');
+    var back = ms2El('button', 'btn-volver-panel btn-volver ms2-back', '← Ensayos');
+    back.type = 'button';
+    back.addEventListener('click', volverAListaEnsayosMS2);
+    top.appendChild(back);
+    top.appendChild(ms2El('nav', 'ms2-crumbs',
+        '<span>Mecánica de Suelos II</span><i>/</i><span>Ensayos</span><i>/</i><b>' +
+        (info ? info.title.replace(/^Ensayo (de )?/, '') : titulo) + '</b>'));
+    if (info && info.guia) {
+        top.appendChild(ms2El('a', 'ms2-top-guia', 'Guía PDF ↓')).setAttribute('href', info.guia);
+        top.lastChild.setAttribute('download', '');
+    }
+    shell.appendChild(top);
+
+    /* cabecera del ensayo */
+    var chips = '';
+    if (info) {
+        chips = '<li><b>Máquina</b><span>' + info.machine + '</span></li>' +
+                '<li><b>Normativa</b><span>' + info.norma + '</span></li>' +
+                '<li><b>Parámetros</b><span>' + info.params.join(' · ') + '</span></li>';
+    }
+    shell.appendChild(ms2El('header', 'ms2-phero',
+        '<div class="ms2-phero-icon">' + glyph + '</div>' +
+        '<div class="ms2-phero-text"><em>Ensayo ' + (info ? info.num : '') + ' · Laboratorio virtual</em>' +
+        '<h2>' + titulo + '</h2>' +
+        (fund ? '<p class="ms2-fund"><b>Fundamento</b><span>' + fund + '</span></p>' : '') + '</div>' +
+        '<ul class="ms2-phero-meta">' + chips + '</ul>'));
+
+    /* pasos */
+    var steps = ms2El('nav', 'ms2-steps');
+    [['ms2-sec-maq', '1', 'Máquina 3D'], ['ms2-sec-datos', '2', 'Datos'],
+     ['ms2-res-anchor', '3', 'Resultados'], ['ms2-sec-graf', '4', 'Gráfica']].forEach(function(st) {
+        var b = ms2El('button', null, '<b>' + st[1] + '</b>' + st[2]);
+        b.type = 'button';
+        b.addEventListener('click', function() {
+            var t = document.getElementById(st[0]);
+            if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        steps.appendChild(b);
+    });
+    shell.appendChild(steps);
+
+    /* 1 · máquina 3D */
+    var sMaq = ms2Seccion('ms2-sec-maq', '1', 'Máquina 3D asignada',
+        'Observa el equipo del ensayo, reproduce la secuencia y consulta cada componente.');
+    sMaq.appendChild(ms2El('div', 'ms2-lab3d-host')).id = 'ms2-lab3d-host';
+    shell.appendChild(sMaq);
+
+    /* 2–3 · datos y resultados */
+    if (lab) {
+        var sDat = ms2Seccion('ms2-sec-datos', '2·3', 'Datos y resultados',
+            'Ingresa tus lecturas, calcula y revisa los parámetros obtenidos.');
+        var res = lab.querySelector('.resultado-panel');
+        if (res) res.id = 'ms2-res-anchor';
+        sDat.appendChild(lab);
+        shell.appendChild(sDat);
+    }
+
+    /* 4 · gráfica */
+    if (graf) {
+        var sGra = ms2Seccion('ms2-sec-graf', '4', 'Gráfica del ensayo',
+            'Genera la curva a partir de los datos calculados.');
+        sGra.appendChild(graf);
+        shell.appendChild(sGra);
+    }
+
+    /* cualquier nodo restante del formulario original se conserva al final */
+    Array.prototype.slice.call(tmp.children).forEach(function(n) {
+        if (n !== h3 && n !== hint) shell.appendChild(n);
+    });
+    return shell;
+}
+
+function ms2Montar3D(nombre) {
+    var host = document.getElementById('ms2-lab3d-host');
+    if (!host) return;
+    if (!window.GeoLab3D) {
+        host.innerHTML = '<p class="login-hint">El módulo 3D no está disponible.</p>';
+        return;
+    }
+    window.__ms2Lab3D = window.GeoLab3D.mount(host, nombre);
+}
+
+window.__datosEnsayoMS2 = window.__datosEnsayoMS2 || {};
+
 function volverAListaEnsayosMS2() {
     var panel = document.getElementById('panel-ensayo-ms2');
-    var grid = document.getElementById('ms2-ensayos-grid');
+    var lista = document.getElementById('ms2-lista') || document.getElementById('ms2-ensayos-grid');
+    if (window.GeoLab3D) window.GeoLab3D.disposeAll();
     if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
-    if (grid) grid.style.display = 'grid';
+    if (lista) lista.style.display = '';
+    window.scrollTo(0, 0);
 }
 
 function abrirEnsayoSuelos2(nombre) {
     var panel = document.getElementById('panel-ensayo-ms2');
-    var grid = document.getElementById('ms2-ensayos-grid');
+    var lista = document.getElementById('ms2-lista') || document.getElementById('ms2-ensayos-grid');
     if (!panel) return;
-    if (grid) grid.style.display = 'none';
+    if (window.GeoLab3D) window.GeoLab3D.disposeAll();
+    var form = '';
+    if (nombre === 'corte') form = crearFormularioCorteDirecto();
+    else if (nombre === 'inconfinada') form = crearFormularioInconfinada();
+    else if (nombre === 'consolidacion') form = crearFormularioConsolidacionMS2();
+    else if (nombre === 'triaxial') form = crearFormularioTriaxial();
+    panel.innerHTML = '';
+    panel.appendChild(ms2ConstruirPanel(nombre, form));
+    if (lista) lista.style.display = 'none';
     panel.style.display = 'block';
-    var html = '<button class="btn-volver-panel btn-volver" onclick="volverAListaEnsayosMS2()">← Ensayos</button>';
-    if (nombre === 'corte') html += crearFormularioCorteDirecto();
-    else if (nombre === 'inconfinada') html += crearFormularioInconfinada();
-    else if (nombre === 'consolidacion') html += crearFormularioConsolidacionMS2();
-    else if (nombre === 'triaxial') html += crearFormularioTriaxial();
-    panel.innerHTML = html;
+    ms2Montar3D(nombre);
     window.scrollTo(0, 0);
 }
 
@@ -5348,7 +5496,7 @@ function graficaCorteDirecto() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1a120c';
+    ctx.fillStyle = '#0B1220';
     ctx.fillRect(0, 0, w, h);
 
     // Ambos ejes en kPa (esfuerzos): σ y τ
@@ -7142,7 +7290,7 @@ function graficaInconfinada() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1c1410'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
     var maxE = Math.max.apply(null, d.pts.map(function(p) { return p.eps; })) * 1.15;
     var maxS = Math.max(d.qu * 1.2, 1);
     var ox = 55, oy = h - 40, gx = w - 30, gy = 25;
@@ -7259,7 +7407,7 @@ function graficaConsolidacionMS2() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1c1410'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
     var logs = d.pts.map(function(p) { return Math.log10(p.s); });
     var minL = Math.min.apply(null, logs) - 0.1, maxL = Math.max.apply(null, logs) + 0.1;
     var minE = Math.min.apply(null, d.pts.map(function(p) { return p.e; })) - 0.05;
@@ -7864,7 +8012,7 @@ function graficaTriaxial() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
     var maxS = Math.max.apply(null, d.pts.map(function(p) { return p.s1; })) * 1.2;
     var maxT = Math.max(d.c + maxS * Math.tan(d.phi * Math.PI / 180), Math.max.apply(null, d.pts.map(function(p) { return p.R; }))) * 1.25;
     var ox = 60, oy = h - 45, gx = w - 25, gy = 25;
