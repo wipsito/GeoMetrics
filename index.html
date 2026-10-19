@@ -10,6 +10,7 @@
     <link rel="apple-touch-icon" href="docs/GeoMetrics.png">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/mezclas.css">
+    <link rel="stylesheet" href="css/suelos1.css">
     <link rel="stylesheet" href="css/ensayos-ms2.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
@@ -364,164 +365,16 @@
         </header>
 
         <section class="submenu-tabs">
-            <button class="tab-btn" data-tab="ms1-teoria">Teoría</button>
-            <button class="tab-btn active" data-tab="ms1-ensayos">Ensayos</button>
+            <button class="tab-btn active" data-tab="ms1-teoria">Teoría</button>
+            <button class="tab-btn" data-tab="ms1-ensayos">Ensayos</button>
         </section>
 
-        <!-- Ensayos de Mecánica de Suelos I -->
-        <section class="tab-content active" id="ms1-ensayos">
-            <div class="ensayos-grid">
-                <button class="ensayo-card" data-ensayo="humedad">
-                    <div class="ensayo-icono">💧</div>
-                    <h3>Contenido de Humedad</h3>
-                    <p>Determina la cantidad de agua presente en una muestra de suelo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="granulometria">
-                    <div class="ensayo-icono">📊</div>
-                    <h3>Granulometría</h3>
-                    <p>Análisis de la distribución de tamaños de partículas del suelo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="limites">
-                    <div class="ensayo-icono">📏</div>
-                    <h3>Límites de Atterberg</h3>
-                    <p>Determinación de los límites de consistencia del suelo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="gravedad">
-                    <div class="ensayo-icono">⚖️</div>
-                    <h3>Gravedad Específica</h3>
-                    <p>Determinación de la gravedad específica de los sólidos del suelo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="compactacion">
-                    <div class="ensayo-icono">🏗️</div>
-                    <h3>Compactación Proctor</h3>
-                    <p>Analiza la relación entre humedad y densidad seca del suelo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="densidad">
-                    <div class="ensayo-icono">📦</div>
-                    <h3>Densidad de Campo</h3>
-                    <p>Determina la densidad del suelo en condiciones de campo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="clasificacion">
-                    <div class="ensayo-icono">🗂️</div>
-                    <h3>Clasificación SUCS</h3>
-                    <p>Clasificación de suelos según el Sistema Unificado de Clasificación.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="permeabilidad">
-                    <div class="ensayo-icono">💦</div>
-                    <h3>Permeabilidad</h3>
-                    <p>Estudia el flujo de agua a través del suelo (Ley de Darcy).</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-            </div>
-
-            <!-- Panel de Ensayos (oculto inicialmente) -->
-            <div class="panel-ensayo" id="panel-ensayo">
-                <!-- Se llena dinámicamente -->
-            </div>
+        <section class="tab-content active" id="ms1-teoria">
+            <div id="ms1TeoriaRoot"></div>
         </section>
 
-        <section class="tab-content" id="ms1-teoria">
-            <div class="teoria-container">
-                <h3>Mecánica de Suelos I — Fundamentos Teóricos</h3>
-                
-                <div class="teoria-seccion">
-                    <h4>1. Introducción a la Mecánica de Suelos</h4>
-                    <p>La mecánica de suelos es la rama de la ingeniería que estudia el comportamiento del suelo como material de construcción. El suelo es un material natural formado por partículas sólidas, agua y aire.</p>
-                    <p><strong>Composición del suelo:</strong></p>
-                    <ul>
-                        <li><strong>Fase sólida:</strong> partículas minerales y orgánicas</li>
-                        <li><strong>Fase líquida:</strong> agua con sustancias disueltas</li>
-                        <li><strong>Fase gaseosa:</strong> aire y otros gases</li>
-                    </ul>
-                    <p>Las propiedades del suelo dependen de la relación entre estas tres fases, que se expresa mediante el contenido de humedad, el índice de poros y el grado de saturación.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>2. Contenido de Humedad (w)</h4>
-                    <p>El contenido de humedad es la relación entre el peso del agua y el peso de los sólidos del suelo.</p>
-                    <div class="formula-box">w = (W<sub>w</sub> / W<sub>s</sub>) × 100 %</div>
-                    <p>Se determina secando la muestra en un horno a 110±5°C hasta peso constante. Es un ensayo fundamental para todos los cálculos de mecánica de suelos.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>3. Análisis Granulométrico</h4>
-                    <p>La granulometría determina la distribución de tamaños de partículas mediante tamizado.</p>
-                    <p><strong>Clasificación por tamaño:</strong></p>
-                    <ul>
-                        <li><strong>Grava:</strong> partículas > 4.75 mm</li>
-                        <li><strong>Arena gruesa:</strong> 2.0 - 4.75 mm</li>
-                        <li><strong>Arena media:</strong> 0.425 - 2.0 mm</li>
-                        <li><strong>Arena fina:</strong> 0.075 - 0.425 mm</li>
-                        <li><strong>Finos (Limo y Arcilla):</strong> < 0.075 mm</li>
-                    </ul>
-                    <p><strong>Coeficiente de uniformidad:</strong> Cu = D60/D10. Valores > 4 (arenas) o > 6 (gravas) indican buena graduación.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>4. Límites de Atterberg</h4>
-                    <p>Definen los estados de consistencia del suelo según el contenido de humedad:</p>
-                    <ul>
-                        <li><strong>Límite Líquido (LL):</strong> paso del estado plástico al líquido. Ensayo de Casagrande a 25 golpes.</li>
-                        <li><strong>Límite Plástico (LP):</strong> paso del estado semisólido al plástico. Formación de rollitos de 3mm.</li>
-                        <li><strong>Índice de Plasticidad (IP):</strong> IP = LL - LP</li>
-                    </ul>
-                    <div class="formula-box">Línea A: IP = 0.73(LL - 20)</div>
-                    <p>La línea A separa arcillas (sobre la línea) de limos (bajo la línea) en la Carta de Plasticidad.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>5. Gravedad Específica (Gs)</h4>
-                    <p>Relación entre la densidad de los sólidos del suelo y la densidad del agua.</p>
-                    <div class="formula-box">G<sub>s</sub> = W<sub>s</sub> / (W<sub>s</sub> + W<sub>pw</sub> - W<sub>pws</sub>)</div>
-                    <p>Valores típicos: arenas 2.60-2.70, arcillas 2.70-2.90. Valores < 2.0 indican materia orgánica.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>6. Compactación Proctor</h4>
-                    <p>La compactación aumenta la densidad del suelo reduciendo vacíos. Ensayo Proctor Standard:</p>
-                    <ul>
-                        <li><strong>Masa del martillo:</strong> 2.5 kg</li>
-                        <li><strong>Altura de caída:</strong> 30.5 cm</li>
-                        <li><strong>Número de capas:</strong> 3</li>
-                        <li><strong>Golpes por capa:</strong> 25</li>
-                    </ul>
-                    <p>La curva de compactación es parabólica: a mayor humedad, mayor densidad hasta alcanzar la humedad óptima (w<sub>ópt</sub>), luego la densidad disminuye.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>7. Clasificación SUCS</h4>
-                    <p><strong>Suelos Gruesos</strong> (>50% retenido en #200):</p>
-                    <ul>
-                        <li><strong>Gravas (G):</strong> >50% del retenido es grava
-                            <ul><li>GW: bien graduada, Cu>4, Cc=1-3</li><li>GP: mal graduada</li></ul>
-                        </li>
-                        <li><strong>Arenas (S):</strong> >50% del retenido es arena
-                            <ul><li>SW: bien graduada, Cu>6, Cc=1-3</li><li>SP: mal graduada</li></ul>
-                        </li>
-                    </ul>
-                    <p><strong>Suelos Finos</strong> (>50% pasa #200):</p>
-                    <ul>
-                        <li><strong>CL:</strong> Arcilla baja plasticidad (LL<50, sobre línea A)</li>
-                        <li><strong>CH:</strong> Arcilla alta plasticidad (LL≥50, sobre línea A)</li>
-                        <li><strong>ML:</strong> Limo baja plasticidad (LL<50, bajo línea A)</li>
-                        <li><strong>MH:</strong> Limo alta plasticidad (LL≥50, bajo línea A)</li>
-                    </ul>
-                </div>
-            </div>
+        <section class="tab-content" id="ms1-ensayos">
+            <div id="ms1EnsayosRoot"></div>
         </section>
     </main>
 
@@ -2027,6 +1880,8 @@
     <script src="js/mezclas-calc.js"></script>
     <script src="js/mezclas.js"></script>
     <script src="js/mezclas-sim.js"></script>
+    <script src="js/suelos1-calc.js"></script>
+    <script src="js/suelos1.js"></script>
     <script src="js/aula.js"></script>
     <script src="js/app.js"></script>
 </body>
