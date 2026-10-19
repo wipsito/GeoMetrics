@@ -10,6 +10,7 @@
     <link rel="apple-touch-icon" href="docs/GeoMetrics.png">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/mezclas.css">
+    <link rel="stylesheet" href="css/ensayos-ms2.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
@@ -662,38 +663,120 @@
         </section>
     
         <section class="tab-content" id="ms2-ensayos">
-            <div class="ensayos-grid" id="ms2-ensayos-grid">
-                <button class="ensayo-card" data-ensayo-ms2="corte">
-                    <div class="ensayo-icono">✂️</div>
-                    <h3>Corte Directo</h3>
-                    <p>Resistencia al corte: cohesión c y ángulo φ (Mohr-Coulomb).</p>
-                    <span>INICIAR ENSAYO →</span>
+            <div class="ms2-lista" id="ms2-lista">
+                <header class="ms2-hero">
+                    <div class="ms2-hero-text">
+                        <em class="ms2-eyebrow">Laboratorio virtual · Mecánica de Suelos II</em>
+                        <h3>Ensayos de resistencia y deformación</h3>
+                        <p>Elige un ensayo, observa la máquina en 3D, ingresa tus lecturas y obtén los parámetros de diseño del suelo.</p>
+                        <ol class="ms2-flow">
+                            <li><b>1</b>Máquina 3D</li>
+                            <li><b>2</b>Datos</li>
+                            <li><b>3</b>Resultados</li>
+                            <li><b>4</b>Gráfica</li>
+                        </ol>
+                    </div>
+                    <ul class="ms2-hero-stats">
+                        <li><strong>4</strong><em>Ensayos</em></li>
+                        <li><strong>4</strong><em>Máquinas 3D</em></li>
+                        <li><strong>3</strong><em>Guías PDF</em></li>
+                    </ul>
+                </header>
+                <div class="ensayos-grid ms2-grid" id="ms2-ensayos-grid">
+                <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="corte" style="--ms2-accent:#3B82F6;--ms2-rgb:59,130,246">
+                    <div class="ms2-card-head">
+                        <em class="ms2-card-num">01</em>
+                        <em class="ms2-card-tag">Módulo 3D</em>
+                    </div>
+                    <div class="ms2-card-body">
+                        <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 3v7M28.5 6.5 32 10l3.5-3.5"/><rect x="17" y="12" width="26" height="14" rx="1.8"/><rect x="24" y="30" width="26" height="14" rx="1.8"/><path d="M5 37h13M13 33l5 4-5 4"/><path d="M6 53h52"/></svg></div>
+                        <div class="ms2-card-text">
+                            <h3>Corte Directo</h3>
+                            <p>Resistencia al corte: cohesión c y ángulo φ (Mohr-Coulomb).</p>
+                        </div>
+                    </div>
+                    <div class="ms2-chips"><em>c</em><em>φ</em><em>τ – σn</em></div>
+                    <div class="ms2-machine">
+                        <b>Máquina asignada</b>
+                        <strong>Aparato de corte directo</strong>
+                        <small>ASTM D3080 · INV E-154</small>
+                    </div>
+                    <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
-                <button class="ensayo-card" data-ensayo-ms2="inconfinada">
-                    <div class="ensayo-icono">🧱</div>
-                    <h3>Compresión Inconfinada</h3>
-                    <p>Resistencia qu y cohesión no drenada cu = qu/2.</p>
-                    <span>INICIAR ENSAYO →</span>
+                <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="inconfinada" style="--ms2-accent:#2DD4BF;--ms2-rgb:45,212,191">
+                    <div class="ms2-card-head">
+                        <em class="ms2-card-num">02</em>
+                        <em class="ms2-card-tag">Módulo 3D</em>
+                    </div>
+                    <div class="ms2-card-body">
+                        <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M32 3v8M28.5 7.5 32 11l3.5-3.5"/><rect x="15" y="13" width="34" height="5" rx="1.8"/><rect x="24" y="18" width="16" height="26" rx="3"/><path d="M27 37l10-14" stroke-dasharray="2.5 3"/><rect x="15" y="44" width="34" height="5" rx="1.8"/><path d="M6 56h52"/></svg></div>
+                        <div class="ms2-card-text">
+                            <h3>Compresión Inconfinada</h3>
+                            <p>Resistencia qu y cohesión no drenada cu = qu/2.</p>
+                        </div>
+                    </div>
+                    <div class="ms2-chips"><em>qu</em><em>cu = qu/2</em><em>σ – ε</em></div>
+                    <div class="ms2-machine">
+                        <b>Máquina asignada</b>
+                        <strong>Prensa de compresión inconfinada</strong>
+                        <small>ASTM D2166 · INV E-152</small>
+                    </div>
+                    <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
-                <button class="ensayo-card" data-ensayo-ms2="consolidacion">
-                    <div class="ensayo-icono">📉</div>
-                    <h3>Consolidación</h3>
-                    <p>Cv, índice de compresión Cc y presión de preconsolidación.</p>
-                    <span>INICIAR ENSAYO →</span>
+                <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="consolidacion" style="--ms2-accent:#FBBF24;--ms2-rgb:251,191,36">
+                    <div class="ms2-card-head">
+                        <em class="ms2-card-num">03</em>
+                        <em class="ms2-card-tag">Módulo 3D</em>
+                    </div>
+                    <div class="ms2-card-body">
+                        <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20h54"/><path d="M38 20l-6 12h12z"/><path d="M14 20v9"/><rect x="6" y="29" width="16" height="17" rx="2.5"/><path d="M10 38h8"/><path d="M53 20v10"/><rect x="46" y="30" width="14" height="4.5" rx="1"/><rect x="47.5" y="36" width="11" height="4.5" rx="1"/><path d="M4 54h56"/></svg></div>
+                        <div class="ms2-card-text">
+                            <h3>Consolidación</h3>
+                            <p>Cv, índice de compresión Cc y presión de preconsolidación.</p>
+                        </div>
+                    </div>
+                    <div class="ms2-chips"><em>Cv</em><em>Cc</em><em>σ'p</em><em>e – log σ'</em></div>
+                    <div class="ms2-machine">
+                        <b>Máquina asignada</b>
+                        <strong>Consolidómetro (edómetro) de palanca</strong>
+                        <small>ASTM D2435 · INV E-151</small>
+                    </div>
+                    <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
-                <button class="ensayo-card" data-ensayo-ms2="triaxial">
-                    <div class="ensayo-icono">🧪</div>
-                    <h3>Ensayo Triaxial</h3>
-                    <p>σ₁, σ₃, círculos de Mohr y parámetros c, φ (UU / CU / CD).</p>
-                    <span>INICIAR ENSAYO →</span>
+                <button type="button" class="ensayo-card ms2-card" data-ensayo-ms2="triaxial" style="--ms2-accent:#A78BFA;--ms2-rgb:167,139,250">
+                    <div class="ms2-card-head">
+                        <em class="ms2-card-num">04</em>
+                        <em class="ms2-card-tag">Módulo 3D</em>
+                    </div>
+                    <div class="ms2-card-body">
+                        <div class="ms2-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7h46M13 7v47M51 7v47"/><path d="M32 7v14"/><rect x="21" y="21" width="22" height="28" rx="2.5"/><rect x="28" y="28" width="8" height="14" rx="1.5"/><path d="M24 31h-4M24 38h-4M40 31h4M40 38h4" stroke-dasharray="1.5 2.5"/><path d="M6 54h52"/></svg></div>
+                        <div class="ms2-card-text">
+                            <h3>Ensayo Triaxial</h3>
+                            <p>σ₁, σ₃, círculos de Mohr y parámetros c, φ (UU / CU / CD).</p>
+                        </div>
+                    </div>
+                    <div class="ms2-chips"><em>σ₁</em><em>σ₃</em><em>c, φ</em><em>UU · CU · CD</em></div>
+                    <div class="ms2-machine">
+                        <b>Máquina asignada</b>
+                        <strong>Cámara triaxial con marco de carga</strong>
+                        <small>ASTM D2850 / D4767 · INV E-153</small>
+                    </div>
+                    <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
                 </button>
+                </div>
+                <section class="ms2-guias" aria-label="Guías oficiales">
+                    <div class="ms2-guias-head">
+                        <h4>Guías oficiales de laboratorio</h4>
+                        <p>Procedimientos en PDF para cada ensayo.</p>
+                    </div>
+                    <div class="ms2-guias-list">
+                        <a class="ms2-guia" href="docs/Guia_Corte_Directo.pdf" download><i>PDF</i><div><strong>Corte directo</strong><small>Descargar guía</small></div></a>
+                        <a class="ms2-guia" href="docs/Guia_Compresion_Inconfinada.pdf" download><i>PDF</i><div><strong>Compresión inconfinada</strong><small>Descargar guía</small></div></a>
+                        <a class="ms2-guia" href="docs/Guia_Consolidacion.pdf" download><i>PDF</i><div><strong>Consolidación</strong><small>Descargar guía</small></div></a>
+                    </div>
+                </section>
             </div>
             <div class="panel-ensayo" id="panel-ensayo-ms2" style="display:none;"></div>
-            <p class="login-hint" style="padding:0 16px 20px;">Guías oficiales (PDF):
-                <a class="btn-descarga" href="docs/Guia_Corte_Directo.pdf" download>Corte directo</a>
-                <a class="btn-descarga" href="docs/Guia_Compresion_Inconfinada.pdf" download>Compresión inconfinada</a>
-                <a class="btn-descarga" href="docs/Guia_Consolidacion.pdf" download>Consolidación</a>
-            </p>
         </section>
         <section class="tab-content" id="ms2-simuladores">
             <div class="ensayos-grid simuladores-grid">
@@ -1940,6 +2023,7 @@
         </div>
     </div>
     <script src="js/sim3d-prensa.js"></script>
+    <script src="js/lab3d-ensayos.js"></script>
     <script src="js/mezclas-calc.js"></script>
     <script src="js/mezclas.js"></script>
     <script src="js/mezclas-sim.js"></script>
