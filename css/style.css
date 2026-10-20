@@ -5502,3 +5502,311 @@ input:focus, select:focus, textarea:focus {
         grid-template-columns: 1fr !important;
     }
 }
+
+
+/* ===== Módulos futuristas ===== */
+#pantallaMenu .menu-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 18px !important;
+}
+#pantallaMenu .menu-card {
+    position: relative !important;
+    overflow: hidden !important;
+    background: linear-gradient(155deg, rgba(22, 32, 52, 0.95) 0%, rgba(10, 16, 28, 0.98) 100%) !important;
+    border: 1px solid rgba(56, 189, 248, 0.18) !important;
+    border-radius: 20px !important;
+    box-shadow:
+        0 0 0 1px rgba(15, 23, 42, 0.8) inset,
+        0 12px 32px rgba(0, 0, 0, 0.35),
+        0 0 40px rgba(59, 130, 246, 0.04) !important;
+    backdrop-filter: blur(8px);
+}
+#pantallaMenu .menu-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.6), transparent);
+    opacity: 0.7;
+}
+#pantallaMenu .menu-card:hover {
+    border-color: rgba(56, 189, 248, 0.55) !important;
+    box-shadow:
+        0 0 0 1px rgba(56, 189, 248, 0.15) inset,
+        0 16px 40px rgba(0, 0, 0, 0.4),
+        0 0 48px rgba(56, 189, 248, 0.12) !important;
+    transform: translateY(-6px) scale(1.01) !important;
+}
+#pantallaMenu .card-icono {
+    background: linear-gradient(145deg, rgba(14, 165, 233, 0.25), rgba(37, 99, 235, 0.15)) !important;
+    border: 1px solid rgba(56, 189, 248, 0.3) !important;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.15) !important;
+}
+#pantallaMenu .card-asistente {
+    border-color: rgba(45, 212, 191, 0.45) !important;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.35), 0 0 36px rgba(45, 212, 191, 0.1) !important;
+}
+#pantallaMenu .card-asistente::before {
+    background: linear-gradient(90deg, transparent, rgba(45, 212, 191, 0.7), transparent);
+}
+
+/* ===== Teoría interactiva ===== */
+.teoria-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, 260px) 1fr;
+    gap: 20px;
+    align-items: start;
+}
+.teoria-nav {
+    position: sticky;
+    top: 16px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(71, 85, 105, 0.45);
+    border-radius: 16px;
+    padding: 14px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.teoria-nav-title {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: #64748b;
+    font-weight: 700;
+    padding: 4px 10px 10px;
+    margin: 0;
+}
+.teoria-nav-item {
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.35;
+    transition: 0.15s ease;
+}
+.teoria-nav-item:hover {
+    background: rgba(59, 130, 246, 0.12);
+    color: #e2e8f0;
+}
+.teoria-nav-item.active {
+    background: rgba(59, 130, 246, 0.25);
+    color: #fff;
+    font-weight: 600;
+}
+.teoria-panel-wrap {
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(71, 85, 105, 0.4);
+    border-radius: 16px;
+    padding: 22px 24px 28px;
+    min-height: 420px;
+}
+.teoria-panel-head h3 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    color: #f8fafc;
+}
+.teoria-panel-head p {
+    margin: 0 0 18px;
+    color: #94a3b8;
+    font-size: 14px;
+}
+.teoria-panel { display: none; }
+.teoria-panel.active { display: block; }
+.teoria-panel h4 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    color: #f1f5f9;
+    margin: 0 0 14px;
+}
+.teo-num {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    background: #3b82f6;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+}
+.teoria-panel p, .teoria-panel li {
+    color: #cbd5e1;
+    line-height: 1.65;
+    font-size: 14.5px;
+}
+.teo-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 14px 0 18px;
+}
+.teo-mini {
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.teo-mini strong { color: #f8fafc; font-size: 13px; }
+.teo-mini span { color: #94a3b8; font-size: 12px; }
+.formula-box {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 12px 0;
+    color: #e0f2fe;
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+}
+@media (max-width: 900px) {
+    .teoria-layout { grid-template-columns: 1fr; }
+    .teoria-nav { position: relative; top: 0; flex-direction: row; flex-wrap: wrap; }
+    .teo-cards { grid-template-columns: 1fr 1fr; }
+}
+
+
+/* ===== Tabs: ocultar no activos con fuerza ===== */
+#pantallaSuelos > .tab-content,
+#pantallaSuelos2 > .tab-content,
+#pantallaResistencia > .tab-content,
+#pantallaDisenoMezclas > .tab-content {
+    display: none !important;
+}
+#pantallaSuelos > .tab-content.active,
+#pantallaSuelos2 > .tab-content.active,
+#pantallaResistencia > .tab-content.active,
+#pantallaDisenoMezclas > .tab-content.active {
+    display: block !important;
+}
+
+/* Módulos más futuristas */
+#pantallaMenu .menu-card {
+    background: linear-gradient(155deg, rgba(22, 32, 52, 0.95) 0%, rgba(12, 18, 32, 0.98) 100%) !important;
+    border: 1px solid rgba(56, 189, 248, 0.12) !important;
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.8), 0 12px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04) !important;
+    backdrop-filter: blur(8px);
+}
+#pantallaMenu .menu-card:hover {
+    border-color: rgba(56, 189, 248, 0.45) !important;
+    box-shadow: 0 0 24px rgba(56, 189, 248, 0.12), 0 16px 40px rgba(0,0,0,0.4) !important;
+}
+#pantallaMenu .card-icono {
+    background: linear-gradient(145deg, rgba(56, 189, 248, 0.2), rgba(37, 99, 235, 0.15)) !important;
+    border: 1px solid rgba(56, 189, 248, 0.25) !important;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.1) !important;
+}
+#pantallaMenu .card-asistente {
+    border-color: rgba(45, 212, 191, 0.55) !important;
+    box-shadow: 0 0 28px rgba(45, 212, 191, 0.12), 0 12px 40px rgba(0,0,0,0.35) !important;
+}
+
+/* Recursos mejorado */
+.recursos-hero {
+    display: grid;
+    grid-template-columns: 1.4fr 0.8fr;
+    gap: 18px;
+    margin: 8px 0 28px;
+}
+.recursos-hero-card {
+    background: linear-gradient(135deg, rgba(30, 58, 95, 0.5), rgba(15, 23, 42, 0.9));
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 18px;
+    padding: 22px 24px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.25);
+}
+.recursos-eyebrow {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #38BDF8;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.recursos-hero-card h3 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    color: #F8FAFC;
+}
+.recursos-hero-card p {
+    margin: 0;
+    color: #94A3B8;
+    line-height: 1.55;
+    font-size: 14px;
+}
+.recursos-stats {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+.recursos-stats > div {
+    background: rgba(21, 31, 50, 0.9);
+    border: 1px solid rgba(71, 85, 105, 0.4);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+}
+.recursos-stats strong {
+    font-size: 18px;
+    color: #38BDF8;
+}
+.recursos-stats em {
+    font-style: normal;
+    font-size: 12px;
+    color: #94A3B8;
+}
+.recurso-bloque {
+    margin-bottom: 28px;
+    padding: 18px 18px 8px;
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(51, 65, 85, 0.5);
+}
+.recurso-bloque-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+.recurso-bloque-head h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #F1F5F9;
+}
+.recurso-tag {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: #0f172a;
+    background: linear-gradient(90deg, #38BDF8, #2DD4BF);
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+.libro-card-futura {
+    background: linear-gradient(160deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98)) !important;
+    border: 1px solid rgba(56, 189, 248, 0.15) !important;
+    border-radius: 16px !important;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.libro-card-futura:hover {
+    transform: translateY(-4px);
+    border-color: rgba(56, 189, 248, 0.4) !important;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+}
+@media (max-width: 800px) {
+    .recursos-hero { grid-template-columns: 1fr; }
+}
