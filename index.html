@@ -526,72 +526,127 @@
         </section>
 
     
-<section class="tab-content" id="ms1-ensayos">
-            <div class="ensayos-grid">
-                <button class="ensayo-card" data-ensayo="humedad">
-                    <div class="ensayo-icono">💧</div>
-                    <h3>Contenido de Humedad</h3>
-                    <p>Determina la cantidad de agua presente en una muestra de suelo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="granulometria">
-                    <div class="ensayo-icono">📊</div>
-                    <h3>Granulometría</h3>
-                    <p>Análisis de la distribución de tamaños de partículas del suelo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="limites">
-                    <div class="ensayo-icono">📏</div>
-                    <h3>Límites de Atterberg</h3>
-                    <p>Determinación de los límites de consistencia del suelo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="gravedad">
-                    <div class="ensayo-icono">⚖️</div>
-                    <h3>Gravedad Específica</h3>
-                    <p>Determinación de la gravedad específica de los sólidos del suelo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="compactacion">
-                    <div class="ensayo-icono">🏗️</div>
-                    <h3>Compactación Proctor</h3>
-                    <p>Analiza la relación entre humedad y densidad seca del suelo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="densidad">
-                    <div class="ensayo-icono">📦</div>
-                    <h3>Densidad de Campo</h3>
-                    <p>Determina la densidad del suelo en condiciones de campo.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="clasificacion">
-                    <div class="ensayo-icono">🗂️</div>
-                    <h3>Clasificación SUCS</h3>
-                    <p>Clasificación de suelos según el Sistema Unificado de Clasificación.</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
-
-                <button class="ensayo-card" data-ensayo="permeabilidad">
-                    <div class="ensayo-icono">💦</div>
-                    <h3>Permeabilidad</h3>
-                    <p>Estudia el flujo de agua a través del suelo (Ley de Darcy).</p>
-                    <span>INICIAR ENSAYO →</span>
-                </button>
+        <section class="tab-content" id="ms1-ensayos">
+            <div class="ms2-lista" id="ms1-lista">
+                <header class="ms2-hero">
+                    <div class="ms2-hero-text">
+                        <em class="ms2-eyebrow">Laboratorio virtual · Mecánica de Suelos I</em>
+                        <h3>Ensayos de caracterización del suelo</h3>
+                        <p>Elige un ensayo, ingresa tus lecturas de laboratorio y obtén los parámetros índice del suelo. Las máquinas y curvas en vivo están en Simuladores.</p>
+                        <ol class="ms2-flow">
+                            <li><b>1</b>Datos</li>
+                            <li><b>2</b>Resultados</li>
+                            <li><b>3</b>Gráfica / informe</li>
+                        </ol>
+                    </div>
+                    <ul class="ms2-hero-stats">
+                        <li><strong>8</strong><em>Ensayos</em></li>
+                        <li><strong>3</strong><em>Pasos</em></li>
+                        <li><strong>FLA</strong><em>Guía 23</em></li>
+                    </ul>
+                </header>
+                <div class="ensayos-grid ms2-grid" id="ms1-ensayos-grid">
+                    <button type="button" class="ensayo-card ms2-card" data-ensayo="humedad" style="--ms2-accent:#38BDF8;--ms2-rgb:56,189,248">
+                        <div class="ms2-card-head"><em class="ms2-card-num">01</em><em class="ms2-card-tag">Laboratorio</em></div>
+                        <div class="ms2-card-body">
+                            <div class="ms2-glyph">💧</div>
+                            <div class="ms2-card-text">
+                                <h3>Contenido de Humedad</h3>
+                                <p>Relación masa de agua / masa de sólidos. Base de consistencia y compactación.</p>
+                            </div>
+                        </div>
+                        <div class="ms2-chips"><em>w</em><em>W<sub>w</sub></em><em>W<sub>s</sub></em></div>
+                        <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
+                    </button>
+                    <button type="button" class="ensayo-card ms2-card" data-ensayo="granulometria" style="--ms2-accent:#3B82F6;--ms2-rgb:59,130,246">
+                        <div class="ms2-card-head"><em class="ms2-card-num">02</em><em class="ms2-card-tag">Laboratorio</em></div>
+                        <div class="ms2-card-body">
+                            <div class="ms2-glyph">📊</div>
+                            <div class="ms2-card-text">
+                                <h3>Granulometría</h3>
+                                <p>Curva granulométrica, D10, D30, D60, Cu y Cc.</p>
+                            </div>
+                        </div>
+                        <div class="ms2-chips"><em>D10</em><em>Cu</em><em>Cc</em></div>
+                        <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
+                    </button>
+                    <button type="button" class="ensayo-card ms2-card" data-ensayo="limites" style="--ms2-accent:#2DD4BF;--ms2-rgb:45,212,191">
+                        <div class="ms2-card-head"><em class="ms2-card-num">03</em><em class="ms2-card-tag">Laboratorio</em></div>
+                        <div class="ms2-card-body">
+                            <div class="ms2-glyph">📏</div>
+                            <div class="ms2-card-text">
+                                <h3>Límites de Atterberg</h3>
+                                <p>LL, LP, IP y carta de plasticidad para suelos finos.</p>
+                            </div>
+                        </div>
+                        <div class="ms2-chips"><em>LL</em><em>LP</em><em>IP</em></div>
+                        <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
+                    </button>
+                    <button type="button" class="ensayo-card ms2-card" data-ensayo="gravedad" style="--ms2-accent:#A78BFA;--ms2-rgb:167,139,250">
+                        <div class="ms2-card-head"><em class="ms2-card-num">04</em><em class="ms2-card-tag">Laboratorio</em></div>
+                        <div class="ms2-card-body">
+                            <div class="ms2-glyph">⚖️</div>
+                            <div class="ms2-card-text">
+                                <h3>Gravedad Específica</h3>
+                                <p>Gs de los sólidos: base para e, n y S.</p>
+                            </div>
+                        </div>
+                        <div class="ms2-chips"><em>Gs</em><em>ρs</em><em>ρw</em></div>
+                        <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
+                    </button>
+                    <button type="button" class="ensayo-card ms2-card" data-ensayo="compactacion" style="--ms2-accent:#FBBF24;--ms2-rgb:251,191,36">
+                        <div class="ms2-card-head"><em class="ms2-card-num">05</em><em class="ms2-card-tag">Laboratorio</em></div>
+                        <div class="ms2-card-body">
+                            <div class="ms2-glyph">🏗️</div>
+                            <div class="ms2-card-text">
+                                <h3>Compactación Proctor</h3>
+                                <p>Humedad óptima y densidad seca máxima γd máx.</p>
+                            </div>
+                        </div>
+                        <div class="ms2-chips"><em>w ópt</em><em>γd máx</em></div>
+                        <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
+                    </button>
+                    <button type="button" class="ensayo-card ms2-card" data-ensayo="densidad" style="--ms2-accent:#FB7185;--ms2-rgb:251,113,133">
+                        <div class="ms2-card-head"><em class="ms2-card-num">06</em><em class="ms2-card-tag">Campo</em></div>
+                        <div class="ms2-card-body">
+                            <div class="ms2-glyph">📦</div>
+                            <div class="ms2-card-text">
+                                <h3>Densidad de Campo</h3>
+                                <p>γd de campo y grado de compactación respecto al Proctor.</p>
+                            </div>
+                        </div>
+                        <div class="ms2-chips"><em>γd</em><em>% compactación</em></div>
+                        <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
+                    </button>
+                    <button type="button" class="ensayo-card ms2-card" data-ensayo="clasificacion" style="--ms2-accent:#34D399;--ms2-rgb:52,211,153">
+                        <div class="ms2-card-head"><em class="ms2-card-num">07</em><em class="ms2-card-tag">Análisis</em></div>
+                        <div class="ms2-card-body">
+                            <div class="ms2-glyph">🗂️</div>
+                            <div class="ms2-card-text">
+                                <h3>Clasificación SUCS</h3>
+                                <p>Símbolo de grupo a partir de granulometría y plasticidad.</p>
+                            </div>
+                        </div>
+                        <div class="ms2-chips"><em>GW–SC</em><em>CL–CH</em></div>
+                        <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
+                    </button>
+                    <button type="button" class="ensayo-card ms2-card" data-ensayo="permeabilidad" style="--ms2-accent:#22D3EE;--ms2-rgb:34,211,238">
+                        <div class="ms2-card-head"><em class="ms2-card-num">08</em><em class="ms2-card-tag">Laboratorio</em></div>
+                        <div class="ms2-card-body">
+                            <div class="ms2-glyph">💦</div>
+                            <div class="ms2-card-text">
+                                <h3>Permeabilidad</h3>
+                                <p>Coeficiente k por carga constante o variable (Darcy).</p>
+                            </div>
+                        </div>
+                        <div class="ms2-chips"><em>k</em><em>i</em><em>q</em></div>
+                        <span class="ms2-card-cta">INICIAR ENSAYO <i>→</i></span>
+                    </button>
+                </div>
             </div>
-
-            <!-- Panel de Ensayos (oculto inicialmente) -->
-            <div class="panel-ensayo" id="panel-ensayo">
-                <!-- Se llena dinámicamente -->
-            </div>
+            <div class="panel-ensayo" id="panel-ensayo"></div>
         </section>
 
-        
 <section class="tab-content simhub-tab" id="ms1-simuladores">
             <div class="simhub" id="simhub-ms1">
                 <header class="simhub-hero">
@@ -634,122 +689,19 @@
             <button class="tab-btn" data-tab="ms2-simuladores">Simuladores</button>
         </section>
 
-        <section class="tab-content active" id="ms2-teoria">
-            <div class="teoria-container">
-                <h3>Mecánica de Suelos II — Contenido Programático</h3>
-                
-                <div class="teoria-seccion">
-                    <h4>1. Resistencia al Corte de los Suelos</h4>
-                    <p>La resistencia al corte es la propiedad fundamental del suelo que determina la estabilidad de estructuras geotécnicas. En laboratorio se determina con el <strong>ensayo de corte directo</strong> y la <strong>compresión inconfinada</strong>.</p>
-                    <div class="formula-box">τ = c + σ'·tan(φ)</div>
-                    <p><strong>Corte directo:</strong> σn = Pv/A · τ = Ph/A. Con varios ensayos se obtiene la envolvente de Coulomb (c y φ).</p>
-                    <p><strong>Compresión inconfinada:</strong> cu = qu/2 (φ ≈ 0 en condición no drenada).</p>
-                    <p><strong>Consolidación:</strong> curva e–log σ', índices Cc y Cr, presión de preconsolidación σ'p y coeficiente Cv.</p>
-                    <p>Donde: τ = resistencia al corte, c = cohesión, σ' = esfuerzo efectivo, φ = ángulo de fricción interna.</p>
-                    <p><strong>Criterio de falla de Mohr-Coulomb:</strong> Define la condición de falla en términos de esfuerzos normales y cortantes.</p>
-                    <p><strong>Círculo de Mohr:</strong> Representación gráfica del estado de esfuerzos en un punto. La envolvente de falla es tangente a los círculos de Mohr en condición de falla.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>2. Cimentaciones Superficiales - Capacidad de Carga</h4>
-                    <p>Las cimentaciones superficiales transfieren cargas a capas de suelo cercanas a la superficie.</p>
-                    <p><strong>Teoría de Terzaghi:</strong></p>
-                    <div class="formula-box">q<sub>u</sub> = c·N<sub>c</sub>·s<sub>c</sub> + q·N<sub>q</sub>·s<sub>q</sub> + 0.5·γ·B·N<sub>γ</sub>·s<sub>γ</sub></div>
-                    <p><strong>Factores de capacidad de carga:</strong></p>
-                    <ul>
-                        <li>N<sub>c</sub> = 5.7 (cimentación corrida), 7.5 (cuadrada), 5.14 (circular)</li>
-                        <li>N<sub>q</sub> = tan²(45°+φ/2)·e<sup>π·tanφ</sup></li>
-                        <li>N<sub>γ</sub> ≈ 2(N<sub>q</sub>+1)·tanφ</li>
-                    </ul>
-                    <p><strong>Factor de seguridad:</strong> FS = q<sub>u</sub> / q<sub>adm</sub> ≥ 3</p>
-                    <p><strong>Efecto del nivel freático:</strong> Reduce la capacidad de carga cuando está dentro de la zona de influencia (d ≤ 0 a D<sub>f</sub> + B).</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>3. Capacidad de Carga y Asentamientos Admisibles</h4>
-                    <p><strong>Incremento de esfuerzo vertical:</strong></p>
-                    <div class="formula-box">Δσ<sub>z</sub> = q·I<sub>z</sub></div>
-                    <p>Donde I<sub>z</sub> es el factor de influencia que depende de m = z/B y n = L/B.</p>
-                    <p><strong>Método 2:1:</strong> Δσ<sub>z</sub> = q·B·L / ((B+z)(L+z))</p>
-                    <p><strong>Asentamiento elástico:</strong></p>
-                    <div class="formula-box">S<sub>e</sub> = (q·B·(1-ν²) / E) · I<sub>s</sub></div>
-                    <p><strong>Asentamiento por consolidación:</strong></p>
-                    <div class="formula-box">S<sub>c</sub> = C<sub>r</sub>·H·log(t<sub>2</sub>/t<sub>1</sub>) + C<sub>c</sub>·H·log((σ'<sub>0</sub>+Δσ)/σ'<sub>0</sub>)</div>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>4. Losas de Cimentación</h4>
-                    <p>Las losas de cimentación se usan cuando la capacidad portante es baja o las cargas son elevadas.</p>
-                    <p><strong>Tipos:</strong></p>
-                    <ul>
-                        <li>Zapatas aisladas conectadas</li>
-                        <li>Losa maciza</li>
-                        <li>Losa con vigas de borde</li>
-                        <li>Losa con pedestales</li>
-                        <li>Cajas de cimentación (compensadas)</li>
-                    </ul>
-                    <p><strong>Criterio:</strong> Cuando el área de zapatas > 50% del área total de la planta, es más económico usar losa.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>5. Presión Lateral de Tierra</h4>
-                    <p><strong>Presión en Reposo (K<sub>0</sub>):</strong></p>
-                    <div class="formula-box">K<sub>0</sub> = 1 - sin(φ) (Jaky)</div>
-                    <p><strong>Presión Activa (Rankine):</strong></p>
-                    <div class="formula-box">K<sub>a</sub> = tan²(45° - φ/2)</div>
-                    <p><strong>Presión Pasiva (Rankine):</strong></p>
-                    <div class="formula-box">K<sub>p</sub> = tan²(45° + φ/2)</div>
-                    <p>Para muros con fricción, se usa Coulomb con coeficiente de fricción δ ≈ 2φ/3.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>6. Muros de Contención</h4>
-                    <p><strong>Tipos de muros:</strong></p>
-                    <ul>
-                        <li><strong>Muros de gravedad:</strong> resisten por su peso propio (concreto masivo, piedra, gaviones)</li>
-                        <li><strong>Muros en voladizo:</strong> concreto armado, más esbeltos</li>
-                        <li><strong>Muros de contención estabilizados mecánicamente (MSE):</strong> tierra armada/geoceldas</li>
-                    </ul>
-                    <p><strong>Verificaciones de estabilidad:</strong></p>
-                    <ul>
-                        <li>Volteo: FS<sub>V</sub> = M<sub>R</sub>/M<sub>O</sub> ≥ 1.5</li>
-                        <li>Deslizamiento: FS<sub>D</sub> = ΣF<sub>R</sub>/ΣF<sub>D</sub> ≥ 1.5</li>
-                        <li>Capacidad portante: FS<sub>CP</sub> = q<sub>u</sub>/q<sub>máx</sub> ≥ 3</li>
-                    </ul>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>7. Cimentaciones Profundas - Pilotes</h4>
-                    <p><strong>Tipos de pilotes:</strong></p>
-                    <ul>
-                        <li><strong>Por función:</strong> de carga vertical, de tensión (anclajes), de retención lateral</li>
-                        <li><strong>Por forma de transmisión:</strong> de punta, de fricción, mixtos</li>
-                        <li><strong>Por material:</strong> concreto (prefabricados, colados), acero (tubulares, H), madera</li>
-                    </ul>
-                    <p><strong>Capacidad de carga de un pilote:</strong></p>
-                    <div class="formula-box">Q<sub>u</sub> = Q<sub>p</sub> + Q<sub>s</sub> = q<sub>p</sub>·A<sub>p</sub> + Σq<sub>si</sub>·A<sub>si</sub></div>
-                    <p><strong>Métodos de instalación:</strong> hinca (martillo), perforado (barrena), mezcla (jet grouting)</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>8. Estabilidad de Taludes</h4>
-                    <p><strong>Tipos de falla:</strong></p>
-                    <ul>
-                        <li><strong>Falla circular:</strong> más común en suelos cohesivos</li>
-                        <li><strong>Falla planar:</strong> en taludes rocosos o con discontinuidades</li>
-                        <li><strong>Falla por cuña:</strong> intersección de dos planos</li>
-                    </ul>
-                    <p><strong>Métodos de análisis:</strong></p>
-                    <ul>
-                        <li><strong>Fellenius (Ordinario):</strong> FS = Σ(c·Δl + W·cosα·tanφ) / Σ(W·sinα)</li>
-                        <li><strong>Bishop:</strong> considera fuerzas entre dovelas</li>
-                        <li><strong>Morgenstern-Price:</strong> más riguroso, satisfacción de equilibrio</li>
-                    </ul>
-                    <p><strong>Factor de seguridad mínimo:</strong> FS ≥ 1.5 para condiciones normales, FS ≥ 1.3 para condiciones sísmicas.</p>
+                <section class="tab-content active" id="ms2-teoria">
+            <div class="teoria-layout" id="teoria-ms2-root">
+                <aside class="teoria-nav" aria-label="Contenido teórico MS2"></aside>
+                <div class="teoria-panel-wrap">
+                    <header class="teoria-panel-head">
+                        <h3>Mecánica de Suelos II — Fundamentos Teóricos</h3>
+                        <p>Resistencia al corte, consolidación, cimentaciones y estabilidad. Selecciona un tema en el menú.</p>
+                    </header>
+                    <div class="teoria-panels-host" id="teoria-ms2-panels"></div>
                 </div>
             </div>
         </section>
-    
+
         <section class="tab-content" id="ms2-ensayos">
             <div class="ms2-lista" id="ms2-lista">
                 <header class="ms2-hero">
@@ -900,102 +852,19 @@
         </section>
 
         <!-- Teoría de Resistencia de Materiales -->
-        <section class="tab-content" id="rm-teoria">
-            <div class="teoria-container">
-                <h3>Resistencia de Materiales — Contenido Programático</h3>
-                
-                <div class="teoria-seccion">
-                    <h4>1. Propiedades de los Materiales</h4>
-                    <p>Los materiales de ingeniería exhiben comportamiento esfuerzo-deformación característico:</p>
-                    <p><strong>Zonas del diagrama σ-ε:</strong></p>
-                    <ul>
-                        <li><strong>Zona elástica:</strong> deformaciones proporcionales a esfuerzos (Ley de Hooke: σ = E·ε)</li>
-                        <li><strong>Punto de fluencia:</strong> inicio de deformación plástica permanente</li>
-                        <li><strong>Zona plástica:</strong> endurecimiento por deformación</li>
-                        <li><strong>Punto último:</strong> máximo esfuerzo resistido</li>
-                        <li><strong>Estrangulamiento:</strong> reducción de área, falla</li>
-                    </ul>
-                    <div class="formula-box">Ley de Hooke: σ = E · ε</div>
-                    <p>Donde E = módulo de Young. Valores típicos: acero 200 GPa, aluminio 70 GPa.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>2. Esfuerzos y Deformaciones por Carga Axial</h4>
-                    <p><strong>Esfuerzo normal:</strong></p>
-                    <div class="formula-box">σ = P / A</div>
-                    <p><strong>Deformación axial:</strong></p>
-                    <div class="formula-box">δ = P·L / (A·E) = σ·L / E</div>
-                    <p><strong>Efectos térmicos:</strong></p>
-                    <div class="formula-box">δ<sub>T</sub> = α·L·ΔT</div>
-                    <p>Donde α = coeficiente de dilatación térmica.</p>
-                    <p><strong>Principio de Saint-Venant:</strong> los esfuerzos se distribuyen uniformemente a suficiente distancia de la aplicación de carga.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>3. Análisis de Torsión</h4>
-                    <p>En ejes circulares subjected to torque:</p>
-                    <div class="formula-box">τ<sub>máx</sub> = T·r / J = T / (J/r) = T / W<sub>t</sub></div>
-                    <p>Donde: T = momento torsor, r = radio, J = momento polar de inercia = πd⁴/32</p>
-                    <p><strong>Ángulo de torsión:</strong></p>
-                    <div class="formula-box">φ = T·L / (G·J)</div>
-                    <p>Donde G = módulo de cortante = E / (2(1+ν))</p>
-                    <p><strong>Ejes estáticamente indeterminados:</strong> ecuaciones de compatibilidad + equilibrio.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>4. Análisis de Flexión Pura</h4>
-                    <p><strong>Distribución de esfuerzos:</strong></p>
-                    <div class="formula-box">σ = -M·y / I = -M / S</div>
-                    <p>Donde: M = momento flector, y = distancia al eje neutro, I = momento de inercia, S = módulo de sección</p>
-                    <p><strong>Hipótesis de Bernoulli-Navier:</strong> secciones planas permanecen planas después de la flexión.</p>
-                    <p><strong>Curvatura:</strong></p>
-                    <div class="formula-box">1/ρ = M / (E·I)</div>
-                    <p><strong>Flexión en materiales compuestos:</strong> usar módulo de sección transformado.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>5. Esfuerzos Cortantes en Vigas</h4>
-                    <p><strong>Esfuerzo cortante longitudinal:</strong></p>
-                    <div class="formula-box">τ = V·Q / (I·b)</div>
-                    <p>Donde: V = fuerza cortante, Q = momento estático del área, I = momento de inercia, b = ancho del elemento</p>
-                    <p><strong>Flujo de cortante:</strong></p>
-                    <div class="formula-box">q = V·Q / I = τ·t</div>
-                    <p>Importante para análisis de elementos compuestos y conexiones.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>6. Transformación de Esfuerzos</h4>
-                    <p><strong>Estado plano de esfuerzos:</strong></p>
-                    <div class="formula-box">σ<sub>x'</sub> = (σ<sub>x</sub>+σ<sub>y</sub>)/2 + (σ<sub>x</sub>-σ<sub>y</sub>)/2·cos2θ + τ<sub>xy</sub>·sin2θ</div>
-                    <div class="formula-box">τ<sub>x'y'</sub> = -(σ<sub>x</sub>-σ<sub>y</sub>)/2·sin2θ + τ<sub>xy</sub>·cos2θ</div>
-                    <p><strong>Esfuerzos principales:</strong></p>
-                    <div class="formula-box">σ<sub>1,2</sub> = (σ<sub>x</sub>+σ<sub>y</sub>)/2 ± √[((σ<sub>x</sub>-σ<sub>y</sub>)/2)² + τ<sub>xy</sub>²]</div>
-                    <p><strong>Círculo de Mohr:</strong> representación gráfica del estado de esfuerzos para cualquier orientación.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>7. Deflexiones en Vigas</h4>
-                    <p><strong>Por integración:</strong></p>
-                    <div class="formula-box">E·I·d²y/dx² = M(x)  →  E·I·dy/dx = ∫M(x)dx + C₁  →  E·I·y = ∫∫M(x)dx² + C₁x + C₂</div>
-                    <p><strong>Condiciones de frontera:</strong> y=0 en apoyos, dy/dx=0 en puntos de simetría.</p>
-                    <p><strong>Método de superposición:</strong> deflexiones por carga distribuida + puntual + momento.</p>
-                    <p><strong>Método de los tres momentos:</strong> para vigas continuas.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>8. Columnas y Pandeo</h4>
-                    <p><strong>Carga crítica de Euler:</strong></p>
-                    <div class="formula-box">P<sub>cr</sub> = π²·E·I / (K·L)²</div>
-                    <p>Donde K = factor de longitud efectiva (1 para articulado-articulado, 0.5 para empotrado-empotrado, 0.7 para empotrado-articulado, 2 para libre-articulado)</p>
-                    <p><strong>Esfuerzo crítico:</strong></p>
-                    <div class="formula-box">σ<sub>cr</sub> = P<sub>cr</sub>/A = π²·E / (K·L/r)²</div>
-                    <p>Donde r = radio de giro = √(I/A)</p>
-                    <p><strong>Relación de esbeltez:</strong> λ = K·L / r. Columnas cortas: λ < 50, Intermedias: 50 < λ < 200, Largas: λ > 200.</p>
+                <section class="tab-content" id="rm-teoria">
+            <div class="teoria-layout" id="teoria-rm-root">
+                <aside class="teoria-nav" aria-label="Contenido teórico RM"></aside>
+                <div class="teoria-panel-wrap">
+                    <header class="teoria-panel-head">
+                        <h3>Resistencia de Materiales — Fundamentos Teóricos</h3>
+                        <p>Esfuerzo, deformación, axial, torsión, flexión y columnas. Selecciona un tema en el menú.</p>
+                    </header>
+                    <div class="teoria-panels-host" id="teoria-rm-panels"></div>
                 </div>
             </div>
         </section>
 
-        <!-- Ensayos de Resistencia de Materiales -->
         <section class="tab-content active" id="rm-ensayos">
             <p class="login-hint" style="margin:0 0 14px">Equipos de referencia UniPamplona: máquina universal de ensayos (tipo SHIMADZU UH), banco de torsión, kit de flexión y durómetro Rockwell — Laboratorio de materiales / ensayo de materiales.</p>
             <div class="ensayos-grid" id="rm-ensayos-grid">
@@ -2119,6 +1988,7 @@
             <div class="modal-perfil-body" id="modalVistaPreviaBody"></div>
         </div>
     </div>
+    <script src="js/teoria-extensa.js"></script>
     <script src="js/sim3d-prensa.js"></script>
     <script src="js/lab3d-ensayos.js"></script>
     <script src="js/lab3d-ms1.js"></script>
