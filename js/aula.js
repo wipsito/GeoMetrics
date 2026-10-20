@@ -1173,15 +1173,12 @@ function aulaInitLogin() {
                         mostrarPantalla(last);
                         if (last === 'suelos') {
                             if (typeof activarTabsSeccion === 'function') activarTabsSeccion('pantallaSuelos');
-                            if (typeof restaurarTabActiva === 'function') setTimeout(function(){ restaurarTabActiva('pantallaSuelos'); }, 30);
                         }
                         if (last === 'suelos2') {
                             if (typeof activarTabsSeccion === 'function') activarTabsSeccion('pantallaSuelos2');
-                            if (typeof restaurarTabActiva === 'function') setTimeout(function(){ restaurarTabActiva('pantallaSuelos2'); }, 30);
                         }
                         if (last === 'resistencia') {
                             if (typeof activarTabsSeccion === 'function') activarTabsSeccion('pantallaResistencia');
-                            if (typeof restaurarTabActiva === 'function') setTimeout(function(){ restaurarTabActiva('pantallaResistencia'); }, 30);
                         }
                         if (last === 'resultados' && typeof cargarHistorial === 'function') cargarHistorial();
                         if (last === 'simuladores' && typeof actualizarSimFlujo === 'function') setTimeout(actualizarSimFlujo, 80);

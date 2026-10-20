@@ -1708,7 +1708,14 @@ function abrirSeccion(seccion) {
     switch(seccion) {
         case 'mecanica-suelos':
             mostrarPantalla('suelos');
+            try {
+                sessionStorage.removeItem('geometrics_last_tab_pantallaSuelos');
+                localStorage.removeItem('geometrics_last_tab_pantallaSuelos');
+                sessionStorage.setItem('geometrics_last_tab_pantallaSuelos', 'ms1-teoria');
+                localStorage.setItem('geometrics_last_tab_pantallaSuelos', 'ms1-teoria');
+            } catch (e) {}
             activarTabsSeccion('pantallaSuelos');
+            setTimeout(function(){ activarTabsSeccion('pantallaSuelos'); }, 40);
             break;
         case 'mecanica-suelos-2':
             mostrarPantalla('suelos2');
@@ -1757,12 +1764,18 @@ function inicializarTabs() {
                 this.classList.add('active');
                 
                 // Ocultar contenidos
-                seccion.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+                seccion.querySelectorAll('.tab-content').forEach(function(c) {
+                    c.classList.remove('active');
+                    c.style.display = 'none';
+                    c.setAttribute('hidden', '');
+                });
                 
                 // Mostrar seleccionado
                 var activo = document.getElementById(tabId);
                 if (activo) {
                     activo.classList.add('active');
+                    activo.style.display = 'block';
+                    activo.removeAttribute('hidden');
                     // Inicializar canvas si es simulador
                     if (tabId.indexOf('simuladores') !== -1 || tabId.indexOf('sim') !== -1) {
                         setTimeout(actualizarSimFlujo, 100);
@@ -1776,15 +1789,45 @@ function inicializarTabs() {
 function activarTabsSeccion(seccionId) {
     var seccion = document.getElementById(seccionId);
     if (!seccion) return;
-    
-    var tabs = seccion.querySelectorAll('.tab-btn');
-    tabs.forEach(function(t) { t.classList.remove('active'); });
-    
-    var contenidos = seccion.querySelectorAll('.tab-content');
-    contenidos.forEach(function(c) { c.classList.remove('active'); });
-    
-    if (tabs.length > 0) tabs[0].classList.add('active');
-    if (contenidos.length > 0) contenidos[0].classList.add('active');
+
+    var tabs = seccion.querySelectorAll('.submenu-tabs .tab-btn, .tab-btn[data-tab]');
+    // solo tabs del encabezado de la sección (no vistas 3D internas)
+    var headerTabs = seccion.querySelectorAll('.submenu-tabs .tab-btn');
+    if (!headerTabs.length) headerTabs = tabs;
+
+    headerTabs.forEach(function(t) { t.classList.remove('active'); });
+
+    var contenidos = seccion.querySelectorAll(':scope > .tab-content, .submenu-tabs ~ .tab-content');
+    // fallback: all tab-content under section
+    if (!contenidos.length) contenidos = seccion.querySelectorAll('.tab-content');
+    contenidos.forEach(function(c) {
+        c.classList.remove('active');
+        c.style.display = 'none';
+        c.setAttribute('hidden', '');
+    });
+
+    // Siempre Teoría al entrar al módulo desde el menú
+    var prefer = seccion.querySelector('.submenu-tabs .tab-btn[data-tab*="teoria"]')
+        || seccion.querySelector('.tab-btn[data-tab*="teoria"]')
+        || headerTabs[0];
+    if (!prefer) return;
+    prefer.classList.add('active');
+    var tabId = prefer.getAttribute('data-tab');
+    var panel = tabId ? document.getElementById(tabId) : null;
+    if (panel) {
+        panel.classList.add('active');
+        panel.style.display = 'block';
+        panel.removeAttribute('hidden');
+    } else if (contenidos.length > 0) {
+        contenidos[0].classList.add('active');
+        contenidos[0].style.display = 'block';
+        contenidos[0].removeAttribute('hidden');
+    }
+    // guardar teoría como tab activa
+    try {
+        sessionStorage.setItem('geometrics_last_tab_' + seccionId, tabId || '');
+        localStorage.setItem('geometrics_last_tab_' + seccionId, tabId || '');
+    } catch (e) {}
 }
 
 // =========================================
@@ -4909,11 +4952,6 @@ function descargarInformeDesdeHistorial(id) {
         return;
     }
     var det = item.detalle || {};
-    // Diseño de Mezclas: informe propio (js/mezclas.js)
-    if (det.reporte && window.Mezclas && typeof window.Mezclas.imprimirInforme === 'function') {
-        window.Mezclas.imprimirInforme(det.reporte);
-        return;
-    }
     var tipo = det.tipo || '';
     // Inferir tipo por nombre si falta
     if (!tipo && item.nombre) {
@@ -5152,165 +5190,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
 window.__datosEnsayoMS2 = window.__datosEnsayoMS2 || {};
 
-/* ---- Metadatos de presentación de cada ensayo (Suelos II) ---- */
-var MS2_INFO = {
-    corte: {
-        num: '01', accent: '#3B82F6', title: 'Ensayo de Corte Directo',
-        machine: 'Aparato de corte directo', norma: 'ASTM D3080 · INV E-154',
-        params: ['c', 'φ', 'τ – σn'], guia: 'docs/Guia_Corte_Directo.pdf'
-    },
-    inconfinada: {
-        num: '02', accent: '#2DD4BF', title: 'Ensayo de Compresión Inconfinada',
-        machine: 'Prensa de compresión inconfinada', norma: 'ASTM D2166 · INV E-152',
-        params: ['qu', 'cu = qu/2', 'σ – ε'], guia: 'docs/Guia_Compresion_Inconfinada.pdf'
-    },
-    consolidacion: {
-        num: '03', accent: '#FBBF24', title: 'Ensayo de Consolidación',
-        machine: 'Consolidómetro (edómetro) de palanca', norma: 'ASTM D2435 · INV E-151',
-        params: ['Cv', 'Cc', 'σ\'p'], guia: 'docs/Guia_Consolidacion.pdf'
-    },
-    triaxial: {
-        num: '04', accent: '#A78BFA', title: 'Ensayo Triaxial',
-        machine: 'Cámara triaxial con marco de carga', norma: 'ASTM D2850 / D4767 · INV E-153',
-        params: ['σ₁', 'σ₃', 'c, φ'], guia: null
-    }
-};
-
-function ms2El(tag, cls, html) {
-    var e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (html != null) e.innerHTML = html;
-    return e;
-}
-
-function ms2Seccion(id, num, titulo, sub) {
-    var sec = ms2El('section', 'ms2-sec');
-    sec.id = id;
-    sec.appendChild(ms2El('header', 'ms2-sec-head',
-        '<em>' + num + '</em><div><h4>' + titulo + '</h4><p>' + sub + '</p></div>'));
-    return sec;
-}
-
-/* Reorganiza el formulario original (mismos nodos, mismos ids y onclick) en un panel
-   por secciones: cabecera · máquina 3D · datos y resultados · gráfica. */
-function ms2ConstruirPanel(nombre, formHtml) {
-    var info = MS2_INFO[nombre];
-    var tmp = ms2El('div', null, formHtml);
-    var h3 = tmp.querySelector('h3');
-    var hint = tmp.querySelector('p.login-hint');
-    var lab = tmp.querySelector('.laboratorio-panel');
-    var graf = tmp.querySelector('.grafica-panel');
-    var titulo = info ? info.title : (h3 ? h3.textContent : 'Ensayo');
-    var fund = hint ? hint.innerHTML : '';
-    var glyphEl = document.querySelector('[data-ensayo-ms2="' + nombre + '"] .ms2-glyph');
-    var glyph = glyphEl ? glyphEl.innerHTML : '';
-
-    var shell = ms2El('div', 'ms2-shell');
-    shell.setAttribute('data-ensayo', nombre);
-    if (info) shell.style.setProperty('--ms2-accent', info.accent);
-
-    /* barra superior */
-    var top = ms2El('div', 'ms2-topbar');
-    var back = ms2El('button', 'btn-volver-panel btn-volver ms2-back', '← Ensayos');
-    back.type = 'button';
-    back.addEventListener('click', volverAListaEnsayosMS2);
-    top.appendChild(back);
-    top.appendChild(ms2El('nav', 'ms2-crumbs',
-        '<span>Mecánica de Suelos II</span><i>/</i><span>Ensayos</span><i>/</i><b>' +
-        (info ? info.title.replace(/^Ensayo (de )?/, '') : titulo) + '</b>'));
-    if (info && info.guia) {
-        top.appendChild(ms2El('a', 'ms2-top-guia', 'Guía PDF ↓')).setAttribute('href', info.guia);
-        top.lastChild.setAttribute('download', '');
-    }
-    shell.appendChild(top);
-
-    /* cabecera del ensayo */
-    var chips = '';
-    if (info) {
-        chips = '<li><b>Normativa</b><span>' + info.norma + '</span></li>' +
-                '<li><b>Parámetros</b><span>' + info.params.join(' · ') + '</span></li>';
-    }
-    shell.appendChild(ms2El('header', 'ms2-phero',
-        '<div class="ms2-phero-icon">' + glyph + '</div>' +
-        '<div class="ms2-phero-text"><em>Ensayo ' + (info ? info.num : '') + ' · Laboratorio virtual</em>' +
-        '<h2>' + titulo + '</h2>' +
-        (fund ? '<p class="ms2-fund"><b>Fundamento</b><span>' + fund + '</span></p>' : '') + '</div>' +
-        '<ul class="ms2-phero-meta">' + chips + '</ul>'));
-
-    /* pasos */
-    var steps = ms2El('nav', 'ms2-steps');
-    [['ms2-sec-datos', '1', 'Datos'],
-     ['ms2-res-anchor', '2', 'Resultados'], ['ms2-sec-graf', '3', 'Gráfica']].forEach(function(st) {
-        var b = ms2El('button', null, '<b>' + st[1] + '</b>' + st[2]);
-        b.type = 'button';
-        b.addEventListener('click', function() {
-            var t = document.getElementById(st[0]);
-            if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-        steps.appendChild(b);
-    });
-    shell.appendChild(steps);
-
-    /* 1–2 · datos y resultados (la máquina 3D vive ahora en Simuladores) */
-    if (lab) {
-        var sDat = ms2Seccion('ms2-sec-datos', '1·2', 'Datos y resultados',
-            'Ingresa tus lecturas, calcula y revisa los parámetros obtenidos.');
-        var res = lab.querySelector('.resultado-panel');
-        if (res) res.id = 'ms2-res-anchor';
-        sDat.appendChild(lab);
-        shell.appendChild(sDat);
-    }
-
-    /* 4 · gráfica */
-    if (graf) {
-        var sGra = ms2Seccion('ms2-sec-graf', '3', 'Gráfica del ensayo',
-            'Genera la curva a partir de los datos calculados.');
-        sGra.appendChild(graf);
-        shell.appendChild(sGra);
-    }
-
-    /* cualquier nodo restante del formulario original se conserva al final */
-    Array.prototype.slice.call(tmp.children).forEach(function(n) {
-        if (n !== h3 && n !== hint) shell.appendChild(n);
-    });
-    return shell;
-}
-
-function ms2Montar3D(nombre) {
-    var host = document.getElementById('ms2-lab3d-host');
-    if (!host) return;
-    if (!window.GeoLab3D) {
-        host.innerHTML = '<p class="login-hint">El módulo 3D no está disponible.</p>';
-        return;
-    }
-    window.__ms2Lab3D = window.GeoLab3D.mount(host, nombre);
-}
-
-window.__datosEnsayoMS2 = window.__datosEnsayoMS2 || {};
-
 function volverAListaEnsayosMS2() {
     var panel = document.getElementById('panel-ensayo-ms2');
-    var lista = document.getElementById('ms2-lista') || document.getElementById('ms2-ensayos-grid');
-    if (window.GeoLab3D) window.GeoLab3D.disposeAll();
+    var grid = document.getElementById('ms2-ensayos-grid');
     if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
-    if (lista) lista.style.display = '';
-    window.scrollTo(0, 0);
+    if (grid) grid.style.display = 'grid';
 }
 
 function abrirEnsayoSuelos2(nombre) {
     var panel = document.getElementById('panel-ensayo-ms2');
-    var lista = document.getElementById('ms2-lista') || document.getElementById('ms2-ensayos-grid');
+    var grid = document.getElementById('ms2-ensayos-grid');
     if (!panel) return;
-    if (window.GeoLab3D) window.GeoLab3D.disposeAll();
-    var form = '';
-    if (nombre === 'corte') form = crearFormularioCorteDirecto();
-    else if (nombre === 'inconfinada') form = crearFormularioInconfinada();
-    else if (nombre === 'consolidacion') form = crearFormularioConsolidacionMS2();
-    else if (nombre === 'triaxial') form = crearFormularioTriaxial();
-    panel.innerHTML = '';
-    panel.appendChild(ms2ConstruirPanel(nombre, form));
-    if (lista) lista.style.display = 'none';
+    if (grid) grid.style.display = 'none';
     panel.style.display = 'block';
+    var html = '<button class="btn-volver-panel btn-volver" onclick="volverAListaEnsayosMS2()">← Ensayos</button>';
+    if (nombre === 'corte') html += crearFormularioCorteDirecto();
+    else if (nombre === 'inconfinada') html += crearFormularioInconfinada();
+    else if (nombre === 'consolidacion') html += crearFormularioConsolidacionMS2();
+    else if (nombre === 'triaxial') html += crearFormularioTriaxial();
+    panel.innerHTML = html;
     window.scrollTo(0, 0);
 }
 
@@ -5488,7 +5386,7 @@ function graficaCorteDirecto() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#151F32';
+    ctx.fillStyle = '#1a120c';
     ctx.fillRect(0, 0, w, h);
 
     // Ambos ejes en kPa (esfuerzos): σ y τ
@@ -7282,7 +7180,7 @@ function graficaInconfinada() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#151F32'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#1c1410'; ctx.fillRect(0, 0, w, h);
     var maxE = Math.max.apply(null, d.pts.map(function(p) { return p.eps; })) * 1.15;
     var maxS = Math.max(d.qu * 1.2, 1);
     var ox = 55, oy = h - 40, gx = w - 30, gy = 25;
@@ -7399,7 +7297,7 @@ function graficaConsolidacionMS2() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#151F32'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#1c1410'; ctx.fillRect(0, 0, w, h);
     var logs = d.pts.map(function(p) { return Math.log10(p.s); });
     var minL = Math.min.apply(null, logs) - 0.1, maxL = Math.max.apply(null, logs) + 0.1;
     var minE = Math.min.apply(null, d.pts.map(function(p) { return p.e; })) - 0.05;
@@ -8004,7 +7902,7 @@ function graficaTriaxial() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#151F32'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, h);
     var maxS = Math.max.apply(null, d.pts.map(function(p) { return p.s1; })) * 1.2;
     var maxT = Math.max(d.c + maxS * Math.tan(d.phi * Math.PI / 180), Math.max.apply(null, d.pts.map(function(p) { return p.R; }))) * 1.25;
     var ox = 60, oy = h - 45, gx = w - 25, gy = 25;
@@ -8046,154 +7944,20 @@ function graficaTriaxial() {
 window.__simUC = window.__simUC || { running: false, paused: false, pauseAccum: 0, history: [], raf: null };
 
 function simUCDur(vel) {
-    var map = { 1: 5, 2: 3.5, 3: 2.5, 4: 1, 5: 0.5 };
-    var k = Math.round(Number(vel));
-    return map[k] || 2.5;
-}
-
-function simUCVelLabel(vel) {
-    var names = { 1: 'muy lenta', 2: 'lenta', 3: 'media', 4: 'rápida', 5: 'muy rápida' };
-    var k = Math.round(Number(vel)) || 3;
-    return (names[k] || 'media') + ' (~' + simUCDur(k) + ' s)';
-}
-
-function simUCNum(id, def, min, max) {
-    var el = document.getElementById(id);
-    var v = el ? parseFloat(el.value) : NaN;
-    if (!isFinite(v)) v = def;
-    if (min !== undefined && v < min) v = min;
-    if (max !== undefined && v > max) v = max;
-    return v;
+    var map = { 1: 5, 2: 5, 3: 2.5, 4: 1, 5: 0.5 };
+    return map[Math.round(vel) || 3] || 2.5;
 }
 
 function simUCParams() {
-    var d = simUCNum('sim-uc-d', 38, 10, 150);
-    var L0 = simUCNum('sim-uc-l0', 76, 20, 300);
-    var qu = simUCNum('sim-uc-qu', 120, 1, 2000);
-    var vel = simUCNum('sim-uc-vel', 3, 1, 5);
+    var d = parseFloat((document.getElementById('sim-uc-d') || {}).value) || 38;
+    var L0 = parseFloat((document.getElementById('sim-uc-l0') || {}).value) || 76;
+    var qu = parseFloat((document.getElementById('sim-uc-qu') || {}).value) || 120;
+    if (window.__datosEnsayoMS2 && window.__datosEnsayoMS2.inconfinada && window.__datosEnsayoMS2.inconfinada.qu) {
+        qu = window.__datosEnsayoMS2.inconfinada.qu;
+    }
+    var vel = parseFloat((document.getElementById('sim-uc-vel') || {}).value) || 3;
     var A = Math.PI * Math.pow((d / 1000) / 2, 2); // m²
     return { d: d, L0: L0, qu: qu, vel: vel, A: A };
-}
-
-/* ---------- Vista 3D (GeoSim3DPrensa) con respaldo a 2D ---------- */
-function simUCUpdate3D(eps, sig) {
-    try {
-        if (!window.GeoSim3DPrensa || !window.GeoSim3DPrensa.isReady()) return;
-        var p = simUCParams();
-        window.GeoSim3DPrensa.update(eps || 0, sig || 0, { d_mm: p.d, L0_mm: p.L0 });
-    } catch (e) { /* la vista 3D nunca debe romper el ensayo */ }
-}
-
-function simUCMount3D() {
-    var cont = document.getElementById('sim3d-prensa-container');
-    var wrap = document.getElementById('sim-uc-vista-3d');
-    if (!cont || !wrap || wrap.hidden) return;
-    if (!window.GeoSim3DPrensa) { simUCFallback2D('No se pudo cargar el módulo 3D.'); return; }
-    var tok = (window.__simUC.mountTok = (window.__simUC.mountTok || 0) + 1);
-    window.GeoSim3DPrensa.mount(cont);
-    var tries = 0;
-    (function espera() {
-        if (tok !== window.__simUC.mountTok) return;
-        if (window.GeoSim3DPrensa.isReady()) {
-            window.GeoSim3DPrensa.resize();
-            var st = window.__simUC.last || { eps: 0, sig: 0 };
-            simUCUpdate3D(st.eps, st.sig);
-            return;
-        }
-        if (++tries > 40) { simUCFallback2D('La vista 3D no está disponible (sin conexión o sin WebGL). Se muestra la vista 2D.'); return; }
-        setTimeout(espera, 150);
-    })();
-}
-
-function simUCFallback2D(msg) {
-    var hint = document.querySelector('#sim-uc-vista-3d .sim3d-hint');
-    if (hint && msg) hint.textContent = msg;
-    simUCSetVista('2d');
-    var cont = document.getElementById('card-sim-inconfinada');
-    var h = cont && cont.querySelector('.grafica-hint');
-    if (h && msg) h.setAttribute('data-aviso', msg);
-}
-
-function simUCSetVista(v) {
-    var w3 = document.getElementById('sim-uc-vista-3d');
-    var w2 = document.getElementById('sim-uc-vista-2d');
-    if (!w3 || !w2) return;
-    var es3d = (v !== '2d');
-    w3.hidden = !es3d;
-    w2.hidden = es3d;
-    var b3 = document.getElementById('btnVista3DInconf');
-    var b2 = document.getElementById('btnVista2DInconf');
-    if (b3) b3.classList.toggle('active', es3d);
-    if (b2) b2.classList.toggle('active', !es3d);
-    var st = window.__simUC.last || { eps: 0, sig: 0 };
-    if (es3d) {
-        simUCMount3D();
-    } else {
-        dibujarPrensaUC(st.eps, st.sig);
-        simUCDrawCurve();
-    }
-}
-
-function simUCDrawCurve() {
-    var cv = document.getElementById('sim-uc-curva');
-    if (!cv) return;
-    var p = simUCParams();
-    var ctx = cv.getContext('2d');
-    var w = cv.width, h = cv.height;
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, h);
-    var ox = 62, oy = h - 34, gx = w - 14, gy = 18;
-    function sx(x) { return ox + (x / 20) * (gx - ox); }
-    function sy(y) { return oy - (y / (p.qu * 1.2)) * (oy - gy); }
-    // rejilla + ejes
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1;
-    ctx.fillStyle = '#9aa3ad'; ctx.font = '10px sans-serif';
-    var i;
-    for (i = 0; i <= 20; i += 5) {
-        ctx.beginPath(); ctx.moveTo(sx(i), gy); ctx.lineTo(sx(i), oy); ctx.stroke();
-        ctx.fillText(i + '', sx(i) - 4, oy + 13);
-    }
-    for (i = 0; i <= 4; i++) {
-        var yv = (p.qu * 1.2) * i / 4;
-        ctx.beginPath(); ctx.moveTo(ox, sy(yv)); ctx.lineTo(gx, sy(yv)); ctx.stroke();
-        ctx.fillText(yv.toFixed(0), 22, sy(yv) + 3);
-    }
-    ctx.strokeStyle = '#888'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
-    ctx.fillStyle = '#ccc'; ctx.font = '11px sans-serif';
-    ctx.fillText('ε axial (%)', (ox + gx) / 2 - 24, h - 6);
-    ctx.save(); ctx.translate(11, (oy + gy) / 2 + 22); ctx.rotate(-Math.PI / 2);
-    ctx.fillText('σ (kPa)', 0, 0); ctx.restore();
-    // línea de qu
-    ctx.strokeStyle = 'rgba(232,184,74,0.45)'; ctx.setLineDash([5, 4]);
-    ctx.beginPath(); ctx.moveTo(ox, sy(p.qu)); ctx.lineTo(gx, sy(p.qu)); ctx.stroke(); ctx.setLineDash([]);
-    // curva teórica tenue + curva en vivo
-    ctx.strokeStyle = 'rgba(94,200,255,0.18)'; ctx.lineWidth = 1.5; ctx.beginPath();
-    for (i = 0; i <= 40; i++) {
-        var e = i * 0.5, sg = simUCCurve(e, p.qu);
-        if (i === 0) ctx.moveTo(sx(e), sy(sg)); else ctx.lineTo(sx(e), sy(sg));
-    }
-    ctx.stroke();
-    var hist = window.__simUC.history || [];
-    if (hist.length) {
-        ctx.strokeStyle = '#5ec8ff'; ctx.lineWidth = 2.5; ctx.beginPath();
-        hist.forEach(function(pt, k) {
-            if (k === 0) ctx.moveTo(sx(pt.eps), sy(pt.sig)); else ctx.lineTo(sx(pt.eps), sy(pt.sig));
-        });
-        ctx.stroke();
-        var last = hist[hist.length - 1];
-        ctx.fillStyle = '#ff6b6b'; ctx.beginPath(); ctx.arc(sx(last.eps), sy(last.sig), 4, 0, 6.2832); ctx.fill();
-    }
-    ctx.fillStyle = '#e8b84a'; ctx.font = '11px sans-serif';
-    ctx.fillText('qu = ' + p.qu.toFixed(0) + ' kPa', ox + 8, gy + 12);
-}
-
-function simUCSetChips(sig, eps, P, estado) {
-    var el;
-    el = document.getElementById('sim-uc-sig'); if (el) el.textContent = (sig === null) ? '—' : sig.toFixed(0);
-    el = document.getElementById('sim-uc-eps'); if (el) el.textContent = (eps === null) ? '—' : eps.toFixed(1);
-    el = document.getElementById('sim-uc-p'); if (el) el.textContent = (P === null) ? '—' : P.toFixed(1);
-    el = document.getElementById('sim-uc-estado'); if (el && estado) el.textContent = estado;
 }
 
 function dibujarPrensaUC(eps, sig) {
@@ -8306,11 +8070,33 @@ function simUCTick(ts) {
     var sig = simUCCurve(eps, p.qu);
     var P = sig * 1000 * p.A; // N
     window.__simUC.history.push({ eps: eps, sig: sig });
-    window.__simUC.last = { eps: eps, sig: sig };
-    simUCSetChips(sig, eps, P, eps >= 19.99 ? 'Falla / fin' : (sig >= p.qu * 0.98 ? '¡Pico qu!' : 'Cargando…'));
+    var el;
+    el = document.getElementById('sim-uc-sig'); if (el) el.textContent = sig.toFixed(0);
+    el = document.getElementById('sim-uc-eps'); if (el) el.textContent = eps.toFixed(1);
+    el = document.getElementById('sim-uc-p'); if (el) el.textContent = P.toFixed(1);
+    el = document.getElementById('sim-uc-estado');
+    if (el) el.textContent = eps >= 19 ? 'Falla / fin' : (sig >= p.qu * 0.98 ? '¡Pico qu!' : 'Cargando…');
     dibujarPrensaUC(eps, sig);
     simUCUpdate3D(eps, sig);
-    simUCDrawCurve();
+    // mini curve
+    var cv = document.getElementById('sim-uc-curva');
+    if (cv) {
+        var ctx = cv.getContext('2d');
+        var w = cv.width, h = cv.height;
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, h);
+        var ox = 40, oy = h - 20, gx = w - 10, gy = 10;
+        function sx(x) { return ox + (x / 20) * (gx - ox); }
+        function sy(y) { return oy - (y / (p.qu * 1.2)) * (oy - gy); }
+        ctx.strokeStyle = '#555'; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
+        ctx.strokeStyle = '#5ec8ff'; ctx.beginPath();
+        window.__simUC.history.forEach(function(pt, i) {
+            if (i === 0) ctx.moveTo(sx(pt.eps), sy(pt.sig)); else ctx.lineTo(sx(pt.eps), sy(pt.sig));
+        });
+        ctx.stroke();
+        ctx.fillStyle = '#e8b84a'; ctx.font = '11px sans-serif';
+        ctx.fillText('qu = ' + p.qu.toFixed(0) + ' kPa', ox + 6, gy + 12);
+    }
     if (eps >= 20) {
         window.__simUC.running = false;
         window.__simUC.paused = false;
@@ -8321,92 +8107,68 @@ function simUCTick(ts) {
     window.__simUC.raf = requestAnimationFrame(simUCTick);
 }
 
-function simUCReset(bs) {
-    var S = window.__simUC;
-    if (S.raf) cancelAnimationFrame(S.raf);
-    S.raf = null;
-    S.running = false;
-    S.paused = false;
-    S.pauseAccum = 0;
-    S.t0 = 0;
-    S.history = [];
-    S.last = { eps: 0, sig: 0 };
-    dibujarPrensaUC(0, 0);
-    simUCUpdate3D(0, 0);
-    simUCDrawCurve();
-    simUCSetChips(null, null, null, 'Listo');
-    if (bs) bs.textContent = '▶ INICIAR ENSAYO';
-}
-
 function simularInconfinada() {
-    var S = window.__simUC;
-    // si viene de un ensayo cargado, precarga qu en el control (una sola vez por apertura)
-    if (window.__datosEnsayoMS2 && window.__datosEnsayoMS2.inconfinada && window.__datosEnsayoMS2.inconfinada.qu) {
-        var elq = document.getElementById('sim-uc-qu');
-        if (elq) {
-            var q = parseFloat(window.__datosEnsayoMS2.inconfinada.qu);
-            if (isFinite(q) && q > 0) elq.value = Math.max(parseFloat(elq.min) || 0, Math.min(parseFloat(elq.max) || 1e9, q));
-        }
+    if (window.__datosEnsayoMS2 && window.__datosEnsayoMS2.inconfinada) {
+        var el = document.getElementById('sim-uc-qu');
+        if (el) el.value = window.__datosEnsayoMS2.inconfinada.qu;
     }
-    var bs = document.getElementById('btn-sim-uc-start');
-    var br = document.getElementById('btn-sim-uc-reset');
-    if (!S.bound) {
-        S.bound = true;
+    if (!window.__simUC.bound) {
+        window.__simUC.bound = true;
         ['sim-uc-qu', 'sim-uc-vel', 'sim-uc-d', 'sim-uc-l0'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.addEventListener('input', function() {
                 var p = simUCParams();
                 var v = document.getElementById('sim-uc-qu-val'); if (v) v.textContent = p.qu.toFixed(0);
-                var vv = document.getElementById('sim-uc-vel-val'); if (vv) vv.textContent = simUCVelLabel(p.vel);
-                if (!S.running) {
-                    // vista previa a proporción (sin ensayo en curso)
-                    dibujarPrensaUC(0, 0);
-                    simUCUpdate3D(0, 0);
-                    simUCDrawCurve();
+                var vv = document.getElementById('sim-uc-vel-val'); if (vv) vv.textContent = ' (~' + simUCDur(p.vel) + ' s)';
+                // Vista previa: si no corre, muestra cilindro a proporción; con qu bajo, leve pre-deformación
+                if (!window.__simUC.running) {
+                    var pre = Math.max(0, (200 - p.qu) / 200 * 3);
+                    dibujarPrensaUC(pre, 0);
+                    simUCUpdate3D(pre, 0);
                 }
             });
         });
-        [['btnVista3DInconf', '3d'], ['btnVista2DInconf', '2d']].forEach(function(par) {
-            var b = document.getElementById(par[0]);
-            if (b) b.addEventListener('click', function() { simUCSetVista(par[1]); });
-        });
-        window.addEventListener('resize', function() {
-            if (window.GeoSim3DPrensa && window.GeoSim3DPrensa.isReady()) window.GeoSim3DPrensa.resize();
-        });
+        var bs = document.getElementById('btn-sim-uc-start');
+        var br = document.getElementById('btn-sim-uc-reset');
         if (bs) bs.addEventListener('click', function() {
-            if (S.running && !S.paused) {
-                S.paused = true;
-                S.pauseAt = performance.now();
-                if (S.raf) cancelAnimationFrame(S.raf);
+            if (window.__simUC.running && !window.__simUC.paused) {
+                window.__simUC.paused = true;
+                window.__simUC.pauseAt = performance.now();
+                if (window.__simUC.raf) cancelAnimationFrame(window.__simUC.raf);
                 bs.textContent = '▶ CONTINUAR';
-                simUCSetChips(S.last ? S.last.sig : 0, S.last ? S.last.eps : 0, S.last ? S.last.sig * 1000 * simUCParams().A : 0, 'Pausado');
+                var st = document.getElementById('sim-uc-estado'); if (st) st.textContent = 'Pausado';
                 return;
             }
-            if (S.running && S.paused) {
-                S.paused = false;
-                S.pauseAccum = (S.pauseAccum || 0) + (performance.now() - (S.pauseAt || performance.now()));
+            if (window.__simUC.running && window.__simUC.paused) {
+                window.__simUC.paused = false;
+                window.__simUC.pauseAccum = (window.__simUC.pauseAccum || 0) + (performance.now() - (window.__simUC.pauseAt || performance.now()));
                 bs.textContent = '⏸ PAUSA';
                 var st = document.getElementById('sim-uc-estado'); if (st) st.textContent = 'Continuando…';
-                S.raf = requestAnimationFrame(simUCTick);
+                window.__simUC.raf = requestAnimationFrame(simUCTick);
                 return;
             }
-            // inicio (o reinicio tras terminar)
-            if (S.raf) cancelAnimationFrame(S.raf);
-            S.running = true;
-            S.paused = false;
-            S.pauseAccum = 0;
-            S.t0 = 0;
-            S.history = [];
-            S.last = { eps: 0, sig: 0 };
+            window.__simUC.running = true;
+            window.__simUC.paused = false;
+            window.__simUC.pauseAccum = 0;
+            window.__simUC.t0 = 0;
+            window.__simUC.history = [];
             bs.textContent = '⏸ PAUSA';
-            S.raf = requestAnimationFrame(simUCTick);
+            window.__simUC.raf = requestAnimationFrame(simUCTick);
         });
-        if (br) br.addEventListener('click', function() { simUCReset(bs); });
+        if (br) br.addEventListener('click', function() {
+            if (window.__simUC.raf) cancelAnimationFrame(window.__simUC.raf);
+            window.__simUC.running = false;
+            window.__simUC.paused = false;
+            window.__simUC.pauseAccum = 0;
+            window.__simUC.history = [];
+            dibujarPrensaUC(0, 0);
+            var st = document.getElementById('sim-uc-estado'); if (st) st.textContent = 'Listo';
+            if (bs) bs.textContent = '▶ INICIAR ENSAYO';
+        });
     }
     var p = simUCParams();
     var v = document.getElementById('sim-uc-qu-val'); if (v) v.textContent = p.qu.toFixed(0);
-    var vv = document.getElementById('sim-uc-vel-val'); if (vv) vv.textContent = simUCVelLabel(p.vel);
-    if (!S.running) simUCReset(bs);
+    dibujarPrensaUC(0, 0);
 }
 
 // =========================================
@@ -9446,8 +9208,8 @@ function bulbosRenderGrafica() {
 
     var layout = {
         title: { text: title, font: { color: '#c4b5a0', size: 16 } },
-        paper_bgcolor: '#151F32',
-        plot_bgcolor: '#151F32',
+        paper_bgcolor: '#0f1612',
+        plot_bgcolor: '#0c1210',
         font: { color: '#d5e0d8' },
         xaxis: {
             title: 'r — distancia radial',
@@ -9813,8 +9575,8 @@ function incRenderGrafica() {
             text: 'Incremento de esfuerzo — Δσz vs profundidad' + (sub.length ? '<br><span style="font-size:12px;color:#a8b8ae">' + sub.join(' · ') + '</span>' : ''),
             font: { color: '#c4b5a0', size: 15 }
         },
-        paper_bgcolor: '#151F32',
-        plot_bgcolor: '#151F32',
+        paper_bgcolor: '#0f1612',
+        plot_bgcolor: '#0c1210',
         font: { color: '#d5e0d8' },
         xaxis: {
             title: 'Δσz — incremento de esfuerzo vertical',
@@ -9856,4 +9618,542 @@ function incDescargarPNG() {
     });
 }
 
-// Diseño de Mezclas: ver js/mezclas-calc.js, js/mezclas.js y js/mezclas-sim.js
+
+
+
+/* =========================================
+   DISEÑO DE MEZCLAS — ensayos y simuladores
+========================================= */
+function dmShowPanel(id) {
+    document.querySelectorAll('#dmEnsayoDetalle .ensayo-panel').forEach(function(p) {
+        p.hidden = true;
+        p.style.display = 'none';
+    });
+    var el = document.getElementById(id);
+    if (el) {
+        el.hidden = false;
+        el.style.display = 'block';
+    }
+}
+function abrirEnsayoDM(nombre) {
+    var grid = document.getElementById('dmEnsayosGrid');
+    var det = document.getElementById('dmEnsayoDetalle');
+    if (grid) { grid.hidden = true; grid.style.display = 'none'; }
+    if (det) { det.hidden = false; det.style.display = 'block'; }
+    dmShowPanel('dm-panel-' + nombre);
+    try { det.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+}
+function volverEnsayosDM() {
+    var grid = document.getElementById('dmEnsayosGrid');
+    var det = document.getElementById('dmEnsayoDetalle');
+    if (grid) { grid.hidden = false; grid.style.display = ''; }
+    if (det) { det.hidden = true; det.style.display = 'none'; }
+    document.querySelectorAll('#dmEnsayoDetalle .ensayo-panel').forEach(function(p) {
+        p.hidden = true;
+        p.style.display = 'none';
+    });
+}
+
+function dmCalcSlump() {
+    var H = parseFloat((document.getElementById('dmSlumpH') || {}).value);
+    var Hf = parseFloat((document.getElementById('dmSlumpHf') || {}).value);
+    if (isNaN(H) || isNaN(Hf)) {
+        var b = document.getElementById('dmSlumpRes');
+        if (b) b.innerHTML = '<p class="mensaje-error">Completa altura del cono y altura final.</p>';
+        return;
+    }
+    var s = Math.max(0, H - Hf);
+    var clase = s < 25 ? 'Muy bajo / seco' : s < 50 ? 'Bajo' : s < 100 ? 'Medio' : s < 150 ? 'Alto' : 'Muy alto / fluido';
+    var box = document.getElementById('dmSlumpRes');
+    if (box) box.innerHTML =
+        '<p><strong>Revenimiento:</strong> ' + s.toFixed(0) + ' mm</p>' +
+        '<p><strong>Clasificación:</strong> ' + clase + '</p>' +
+        '<p class="login-hint">Referencia: ASTM C143 / NTC. Útil para control de trabajabilidad en obra.</p>';
+}
+function dmCalcFc() {
+    var d = parseFloat((document.getElementById('dmFcD') || {}).value);
+    var P = parseFloat((document.getElementById('dmFcP') || {}).value);
+    var edad = parseFloat((document.getElementById('dmFcEdad') || {}).value) || 28;
+    if (isNaN(d) || isNaN(P) || d <= 0) {
+        var b0 = document.getElementById('dmFcRes');
+        if (b0) b0.innerHTML = '<p class="mensaje-error">Ingresa diámetro y carga válidos.</p>';
+        return;
+    }
+    var A = Math.PI * Math.pow(d / 2, 2);
+    var fc = (P * 1000) / A;
+    var box = document.getElementById('dmFcRes');
+    if (box) box.innerHTML =
+        '<p><strong>Área A:</strong> ' + A.toFixed(1) + ' mm²</p>' +
+        '<p><strong>f\'c:</strong> ' + fc.toFixed(2) + ' MPa &nbsp;(' + (fc * 10.197).toFixed(1) + ' kgf/cm²)</p>' +
+        '<p><strong>Edad:</strong> ' + edad + ' días</p>' +
+        '<p class="login-hint">f\'c = P / A · ASTM C39 / NTC. Compara con la resistencia de diseño.</p>';
+}
+function dmCalcGran() {
+    var inputs = document.querySelectorAll('.dm-gran');
+    var rows = [];
+    var total = 0;
+    inputs.forEach(function(inp) {
+        var m = parseFloat(inp.value) || 0;
+        total += m;
+        rows.push({ ab: parseFloat(inp.getAttribute('data-ab')) || 0, m: m });
+    });
+    var box = document.getElementById('dmGranRes');
+    if (total <= 0) {
+        if (box) box.innerHTML = '<p class="mensaje-error">Ingresa masas retenidas mayores que cero.</p>';
+        return;
+    }
+    var acum = 0;
+    var html = '<div style="overflow-x:auto"><table class="tabla-resultados"><thead><tr><th>Abertura</th><th>Ret (g)</th><th>% ret</th><th>% acum</th><th>% pasa</th></tr></thead><tbody>';
+    var sumAcumMF = 0;
+    rows.forEach(function(r) {
+        var pct = 100 * r.m / total;
+        acum += pct;
+        var pasa = Math.max(0, 100 - acum);
+        html += '<tr><td>' + (r.ab > 0 ? r.ab + ' mm' : 'Fondo') + '</td><td>' + r.m.toFixed(1) + '</td><td>' + pct.toFixed(1) + '</td><td>' + acum.toFixed(1) + '</td><td>' + pasa.toFixed(1) + '</td></tr>';
+        if (r.ab > 0 && r.ab <= 4.75) sumAcumMF += acum;
+    });
+    html += '</tbody></table></div>';
+    html += '<p><strong>Módulo de finura (aprox.):</strong> ' + (sumAcumMF / 100).toFixed(2) + '</p>';
+    if (box) box.innerHTML = html;
+}
+function dmCalcPu() {
+    var mr = parseFloat((document.getElementById('dmPuMr') || {}).value);
+    var mt = parseFloat((document.getElementById('dmPuMt') || {}).value);
+    var V = parseFloat((document.getElementById('dmPuV') || {}).value);
+    var box = document.getElementById('dmPuRes');
+    if (isNaN(mr) || isNaN(mt) || isNaN(V) || V <= 0) {
+        if (box) box.innerHTML = '<p class="mensaje-error">Completa masas y volumen (&gt; 0).</p>';
+        return;
+    }
+    var pu = (mt - mr) / V;
+    if (box) box.innerHTML =
+        '<p><strong>Masa neta:</strong> ' + (mt - mr).toFixed(3) + ' kg</p>' +
+        '<p><strong>Peso unitario:</strong> ' + pu.toFixed(1) + ' kg/m³</p>';
+}
+function dmCalcAci() {
+    var fc = parseFloat((document.getElementById('dmAciFc') || {}).value) || 28;
+    var slump = parseFloat((document.getElementById('dmAciSlump') || {}).value) || 100;
+    var tm = parseFloat((document.getElementById('dmAciTm') || {}).value) || 19;
+    var gsc = parseFloat((document.getElementById('dmAciGsc') || {}).value) || 3.15;
+    var gsg = parseFloat((document.getElementById('dmAciGsg') || {}).value) || 2.70;
+    var gsf = parseFloat((document.getElementById('dmAciGsf') || {}).value) || 2.65;
+    var pug = parseFloat((document.getElementById('dmAciPug') || {}).value) || 1600;
+    var vgFac = parseFloat((document.getElementById('dmAciVg') || {}).value) || 0.62;
+    var ac = Math.max(0.35, Math.min(0.70, 0.55 - (fc - 21) * 0.008));
+    var agua = Math.max(140, Math.min(230, 180 + (slump - 75) * 0.15 - (tm - 19) * 1.2));
+    var cemento = agua / ac;
+    var masaG = vgFac * pug;
+    var volG = masaG / (gsg * 1000);
+    var volC = cemento / (gsc * 1000);
+    var volW = agua / 1000;
+    var volAir = 0.02;
+    var volF = Math.max(0.05, 1 - volC - volW - volG - volAir);
+    var masaF = volF * gsf * 1000;
+    var box = document.getElementById('dmAciRes');
+    if (box) box.innerHTML =
+        '<p><strong>a/c estimada:</strong> ' + ac.toFixed(3) + '</p>' +
+        '<p><strong>Agua:</strong> ' + agua.toFixed(1) + ' kg/m³</p>' +
+        '<p><strong>Cemento:</strong> ' + cemento.toFixed(1) + ' kg/m³</p>' +
+        '<p><strong>Agregado grueso:</strong> ' + masaG.toFixed(1) + ' kg/m³</p>' +
+        '<p><strong>Agregado fino:</strong> ' + masaF.toFixed(1) + ' kg/m³</p>' +
+        '<p class="login-hint">Estimación educativa. Ajustar con tablas ACI 211.1 y mezcla de prueba.</p>';
+}
+
+window.__dmSim = { tipo: null, anim: null, t: 0, running: false };
+
+function dmSimAbrir(tipo) {
+    var grid = document.getElementById('dmSimGrid');
+    var det = document.getElementById('dmSimDetalle');
+    if (grid) { grid.hidden = true; grid.style.display = 'none'; }
+    if (det) { det.hidden = false; det.style.display = 'block'; }
+    window.__dmSim.tipo = tipo;
+    window.__dmSim.t = 0;
+    window.__dmSim.running = false;
+    if (window.__dmSim.anim) cancelAnimationFrame(window.__dmSim.anim);
+
+    var tit = document.getElementById('dmSimTitulo');
+    var ctrl = document.getElementById('dmSimControles');
+    var names = { revenimiento: 'Simulador de revenimiento (cono de Abrams)', compresion: 'Simulador de compresión de cilindros', aci211: 'Simulador de proporciones ACI 211.1' };
+    if (tit) tit.textContent = names[tipo] || 'Simulador';
+    if (ctrl) {
+        if (tipo === 'revenimiento') {
+            ctrl.innerHTML =
+                '<label>Asentamiento objetivo (mm)<input type="number" id="dmSimVal" value="90" min="0" max="250"></label>' +
+                '<label>Velocidad<select id="dmSimVel"><option value="1">Normal</option><option value="0.6">Rápida</option><option value="1.6">Lenta</option></select></label>';
+        } else if (tipo === 'compresion') {
+            ctrl.innerHTML =
+                '<label>Carga máxima (kN)<input type="number" id="dmSimVal" value="400" min="10"></label>' +
+                '<label>Diámetro (mm)<input type="number" id="dmSimD" value="150" min="50"></label>' +
+                '<label>Velocidad<select id="dmSimVel"><option value="1">Normal</option><option value="0.55">Rápida</option><option value="1.7">Lenta</option></select></label>';
+        } else {
+            ctrl.innerHTML =
+                '<label>f\'c deseada (MPa)<input type="number" id="dmSimVal" value="28" min="10" max="60"></label>' +
+                '<label>Asentamiento (mm)<input type="number" id="dmSimSlump" value="100" min="25" max="200"></label>' +
+                '<label>Velocidad<select id="dmSimVel"><option value="1">Normal</option><option value="0.6">Rápida</option><option value="1.5">Lenta</option></select></label>';
+        }
+    }
+    var btn = document.getElementById('btnDmSimStart');
+    if (btn) btn.textContent = 'INICIAR';
+    var info = document.getElementById('dmSimInfo');
+    if (info) info.innerHTML = '<p class="login-hint">Ajusta los parámetros y pulsa <strong>INICIAR</strong>.</p>';
+    dmSimDraw(0);
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
+}
+function dmSimVolver() {
+    if (window.__dmSim.anim) cancelAnimationFrame(window.__dmSim.anim);
+    window.__dmSim.running = false;
+    window.__dmSim.t = 0;
+    var grid = document.getElementById('dmSimGrid');
+    var det = document.getElementById('dmSimDetalle');
+    if (grid) { grid.hidden = false; grid.style.display = ''; }
+    if (det) { det.hidden = true; det.style.display = 'none'; }
+}
+
+function dmSimDraw(p) {
+    var c = document.getElementById('dmSimCanvas');
+    if (!c || !c.getContext) return;
+    var ctx = c.getContext('2d');
+    var W = c.width, H = c.height;
+    ctx.clearRect(0, 0, W, H);
+    // fondo
+    var grd = ctx.createLinearGradient(0, 0, 0, H);
+    grd.addColorStop(0, '#0f172a');
+    grd.addColorStop(1, '#0B1220');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+    // grid suave
+    ctx.strokeStyle = 'rgba(43,58,80,0.45)';
+    ctx.lineWidth = 1;
+    for (var gx = 0; gx < W; gx += 24) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+    for (var gy = 0; gy < H; gy += 24) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+
+    var tipo = window.__dmSim.tipo;
+    var ease = p * p * (3 - 2 * p);
+
+    if (tipo === 'revenimiento') {
+        var slump = parseFloat((document.getElementById('dmSimVal') || {}).value) || 90;
+        var drop = Math.min(130, (slump / 250) * 160) * ease;
+        // mesa
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(W/2 - 110, H - 48, 220, 14);
+        ctx.fillStyle = '#1E293B';
+        ctx.fillRect(W/2 - 100, H - 40, 200, 8);
+        // concreto asentado (montículo)
+        ctx.fillStyle = '#78716c';
+        ctx.beginPath();
+        ctx.ellipse(W/2, H - 50 - drop * 0.15, 70 + drop * 0.15, 22, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // cono (tronco)
+        var topY = H - 200 - drop * 0.05;
+        var botY = H - 52 - drop;
+        ctx.fillStyle = '#a8a29e';
+        ctx.beginPath();
+        ctx.moveTo(W/2 - 55, botY);
+        ctx.lineTo(W/2 + 55, botY);
+        ctx.lineTo(W/2 + 28, topY);
+        ctx.lineTo(W/2 - 28, topY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#2DD4BF';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // cota slump
+        ctx.strokeStyle = '#3B82F6';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(W/2 + 80, H - 48);
+        ctx.lineTo(W/2 + 80, botY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#F1F5F9';
+        ctx.font = 'bold 15px system-ui,sans-serif';
+        ctx.fillText('Slump ≈ ' + (slump * ease).toFixed(0) + ' mm', 24, 32);
+        ctx.font = '12px system-ui,sans-serif';
+        ctx.fillStyle = '#A7B4C8';
+        ctx.fillText('Cono de Abrams · ASTM C143', 24, 52);
+    } else if (tipo === 'compresion') {
+        var Pmax = parseFloat((document.getElementById('dmSimVal') || {}).value) || 400;
+        var d = parseFloat((document.getElementById('dmSimD') || {}).value) || 150;
+        var def = ease * 22;
+        // platos
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(W/2 - 90, 50 + def * 0.3, 180, 16);
+        ctx.fillRect(W/2 - 90, H - 70, 180, 16);
+        // columnas guía
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(W/2 - 100, 66, 10, H - 150);
+        ctx.fillRect(W/2 + 90, 66, 10, H - 150);
+        // cilindro
+        var cy = 70 + def * 0.4;
+        var ch = H - 150 - def;
+        var cgrd = ctx.createLinearGradient(W/2 - 45, 0, W/2 + 45, 0);
+        cgrd.addColorStop(0, '#94a3b8');
+        cgrd.addColorStop(0.5, '#e2e8f0');
+        cgrd.addColorStop(1, '#94a3b8');
+        ctx.fillStyle = cgrd;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(W/2 - 42, cy, 84, ch, 6) : ctx.rect(W/2 - 42, cy, 84, ch);
+        ctx.fill();
+        if (ease > 0.85) {
+            ctx.strokeStyle = '#F87171';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(W/2 - 20, cy + ch * 0.3);
+            ctx.lineTo(W/2 + 10, cy + ch * 0.55);
+            ctx.lineTo(W/2 - 5, cy + ch * 0.7);
+            ctx.stroke();
+        }
+        var A = Math.PI * Math.pow(d / 2, 2);
+        var fc = (Pmax * 1000 * ease) / A;
+        ctx.fillStyle = '#F1F5F9';
+        ctx.font = 'bold 15px system-ui,sans-serif';
+        ctx.fillText('P = ' + (Pmax * ease).toFixed(0) + ' kN', 24, 28);
+        ctx.fillText('σ ≈ ' + fc.toFixed(2) + ' MPa', 24, 50);
+        ctx.fillStyle = '#A7B4C8';
+        ctx.font = '12px system-ui,sans-serif';
+        ctx.fillText('Cilindro Ø ' + d + ' mm', 24, 70);
+    } else {
+        var fc = parseFloat((document.getElementById('dmSimVal') || {}).value) || 28;
+        var slump = parseFloat((document.getElementById('dmSimSlump') || {}).value) || 100;
+        var ac = Math.max(0.35, Math.min(0.70, 0.55 - (fc - 21) * 0.008));
+        var agua = Math.max(140, Math.min(230, 180 + (slump - 75) * 0.15));
+        var cem = agua / ac;
+        var g = 1050, f = 780;
+        var tot = agua + cem + g + f;
+        var parts = [
+            { n: 'Agua', v: agua, col: '#3B82F6' },
+            { n: 'Cemento', v: cem, col: '#94a3b8' },
+            { n: 'Grueso', v: g, col: '#78716c' },
+            { n: 'Fino', v: f, col: '#d6d3d1' }
+        ];
+        ctx.fillStyle = '#F1F5F9';
+        ctx.font = 'bold 15px system-ui,sans-serif';
+        ctx.fillText('Proporciones por m³  ·  a/c ≈ ' + ac.toFixed(3), 24, 28);
+        var x0 = 40, y0 = 60, bw = W - 80, bh = 42;
+        parts.forEach(function(pt, i) {
+            var w = Math.max(8, (pt.v / tot) * bw * (0.15 + 0.85 * ease));
+            ctx.fillStyle = '#1E293B';
+            ctx.fillRect(x0, y0 + i * 70, bw, bh);
+            ctx.fillStyle = pt.col;
+            ctx.fillRect(x0, y0 + i * 70, w, bh);
+            ctx.fillStyle = '#F1F5F9';
+            ctx.font = '13px system-ui,sans-serif';
+            ctx.fillText(pt.n + '  ' + (pt.v * ease).toFixed(0) + ' kg/m³', x0 + 8, y0 + i * 70 - 8);
+        });
+    }
+}
+
+function dmSimToggle() {
+    var btn = document.getElementById('btnDmSimStart');
+    if (window.__dmSim.running) {
+        window.__dmSim.running = false;
+        if (window.__dmSim.anim) cancelAnimationFrame(window.__dmSim.anim);
+        if (btn) btn.textContent = 'CONTINUAR';
+        return;
+    }
+    if (window.__dmSim.t >= 1) window.__dmSim.t = 0;
+    window.__dmSim.running = true;
+    if (btn) btn.textContent = 'PAUSAR';
+    var vel = parseFloat((document.getElementById('dmSimVel') || {}).value) || 1;
+    var dur = 2800 * vel;
+    var start = performance.now() - (window.__dmSim.t || 0) * dur;
+    function frame(now) {
+        if (!window.__dmSim.running) return;
+        window.__dmSim.t = Math.min(1, (now - start) / dur);
+        dmSimDraw(window.__dmSim.t);
+        var info = document.getElementById('dmSimInfo');
+        if (info && window.__dmSim.t >= 1) {
+            if (window.__dmSim.tipo === 'revenimiento') {
+                var s = parseFloat((document.getElementById('dmSimVal') || {}).value) || 0;
+                info.innerHTML = '<p><strong>Ensayo terminado.</strong> Revenimiento simulado: ' + s.toFixed(0) + ' mm.</p>';
+            } else if (window.__dmSim.tipo === 'compresion') {
+                var P = parseFloat((document.getElementById('dmSimVal') || {}).value) || 0;
+                var d = parseFloat((document.getElementById('dmSimD') || {}).value) || 150;
+                var fc = (P * 1000) / (Math.PI * Math.pow(d / 2, 2));
+                info.innerHTML = '<p><strong>Falla alcanzada.</strong> f\'c ≈ ' + fc.toFixed(2) + ' MPa.</p>';
+            } else {
+                info.innerHTML = '<p><strong>Dosificación lista.</strong> Revisa las barras de proporciones (valores orientativos ACI 211.1).</p>';
+            }
+        }
+        if (window.__dmSim.t < 1) window.__dmSim.anim = requestAnimationFrame(frame);
+        else {
+            window.__dmSim.running = false;
+            if (btn) btn.textContent = 'REINICIAR';
+        }
+    }
+    window.__dmSim.anim = requestAnimationFrame(frame);
+}
+
+function dmBindUI() {
+    if (window.__dmBound) return;
+    window.__dmBound = true;
+    var root = document.getElementById('pantallaDisenoMezclas') || document;
+    root.addEventListener('click', function(e) {
+        var t = e.target;
+        if (!t) return;
+        var card = t.closest ? t.closest('[data-ensayo-dm]') : null;
+        if (card) {
+            e.preventDefault();
+            abrirEnsayoDM(card.getAttribute('data-ensayo-dm'));
+            return;
+        }
+        var simBtn = t.closest ? t.closest('.btn-abrir-sim-dm') : null;
+        if (simBtn || (t.classList && t.classList.contains('btn-abrir-sim-dm'))) {
+            e.preventDefault();
+            var el = simBtn || t;
+            dmSimAbrir(el.getAttribute('data-sim-dm'));
+            return;
+        }
+        if (t.id === 'btnVolverEnsayosDM') { e.preventDefault(); volverEnsayosDM(); }
+        if (t.id === 'btnVolverSimDM') { e.preventDefault(); dmSimVolver(); }
+        if (t.id === 'btnDmCalcSlump') { e.preventDefault(); dmCalcSlump(); }
+        if (t.id === 'btnDmCalcFc') { e.preventDefault(); dmCalcFc(); }
+        if (t.id === 'btnDmCalcGran') { e.preventDefault(); dmCalcGran(); }
+        if (t.id === 'btnDmCalcPu') { e.preventDefault(); dmCalcPu(); }
+        if (t.id === 'btnDmCalcAci') { e.preventDefault(); dmCalcAci(); }
+        if (t.id === 'btnDmSimStart') { e.preventDefault(); dmSimToggle(); }
+    });
+    // Enter avanza al siguiente input en ensayos DM
+    root.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter') return;
+        var t = e.target;
+        if (!t || t.tagName !== 'INPUT') return;
+        if (!t.closest || !t.closest('#dmEnsayoDetalle')) return;
+        e.preventDefault();
+        var inputs = Array.prototype.slice.call(document.querySelectorAll('#dmEnsayoDetalle .ensayo-panel:not([hidden]) input[type="number"]'));
+        var i = inputs.indexOf(t);
+        if (i >= 0 && i < inputs.length - 1) inputs[i + 1].focus();
+        else {
+            var panel = t.closest('.ensayo-panel');
+            var btn = panel && panel.querySelector('.btn-calcular');
+            if (btn) btn.click();
+        }
+    });
+}
+document.addEventListener('DOMContentLoaded', function() { try { dmBindUI(); } catch (e) { console.warn(e); } });
+try { dmBindUI(); } catch (e0) {}
+
+
+/* --- Puente 3D prensa inconfinada --- */
+function simUCUpdate3D(eps, sig) {
+    if (!window.GeoSim3DPrensa || !window.GeoSim3DPrensa.isReady()) return;
+    var d = parseFloat((document.getElementById('sim-uc-d') || {}).value) || 38;
+    var L0 = parseFloat((document.getElementById('sim-uc-l0') || {}).value) || 76;
+    try {
+        window.GeoSim3DPrensa.update(eps || 0, sig || 0, { d_mm: d, L0_mm: L0 });
+    } catch (e) {}
+}
+function simUCMount3D() {
+    var box = document.getElementById('sim3d-prensa-container');
+    if (!box || !window.GeoSim3DPrensa) return;
+    if (!window.GeoSim3DPrensa.isReady()) {
+        window.GeoSim3DPrensa.mount('sim3d-prensa-container');
+    } else {
+        window.GeoSim3DPrensa.resize();
+        simUCUpdate3D(0, 0);
+    }
+}
+function simUCSetVista(modo) {
+    var v3 = document.getElementById('sim-uc-vista-3d');
+    var v2 = document.getElementById('sim-uc-vista-2d');
+    var b3 = document.getElementById('btnVista3DInconf');
+    var b2 = document.getElementById('btnVista2DInconf');
+    if (modo === '2d') {
+        if (v3) {
+            v3.hidden = true;
+            v3.style.display = 'none';
+        }
+        if (v2) {
+            v2.hidden = false;
+            v2.style.display = 'grid';
+        }
+        if (b2) b2.classList.add('active');
+        if (b3) b3.classList.remove('active');
+        setTimeout(function () {
+            try {
+                var hist = (window.__simUC && window.__simUC.history) || [];
+                var last = hist.length ? hist[hist.length - 1] : { eps: 0, sig: 0 };
+                dibujarPrensaUC(last.eps || 0, last.sig || 0);
+            } catch (e) {
+                try { dibujarPrensaUC(0, 0); } catch (e2) {}
+            }
+        }, 30);
+    } else {
+        if (v2) {
+            v2.hidden = true;
+            v2.style.display = 'none';
+        }
+        if (v3) {
+            v3.hidden = false;
+            v3.style.display = 'block';
+        }
+        if (b3) b3.classList.add('active');
+        if (b2) b2.classList.remove('active');
+        setTimeout(simUCMount3D, 80);
+        setTimeout(simUCMount3D, 250);
+    }
+}
+(function bindVistaUC() {
+    if (window.__vistaUCBound) return;
+    window.__vistaUCBound = true;
+    document.addEventListener('click', function(e) {
+        var t = e.target;
+        if (!t) return;
+        if (t.id === 'btnVista3DInconf' || (t.getAttribute && t.getAttribute('data-vista-uc') === '3d')) {
+            simUCSetVista('3d');
+        }
+        if (t.id === 'btnVista2DInconf' || (t.getAttribute && t.getAttribute('data-vista-uc') === '2d')) {
+            simUCSetVista('2d');
+        }
+    });
+})();
+
+
+/* ===== Teoría MS1: navegación por temas ===== */
+function initTeoriaNav() {
+    document.querySelectorAll('.teoria-nav-item[data-teo]').forEach(function(btn) {
+        if (btn.__teoBound) return;
+        btn.__teoBound = true;
+        btn.addEventListener('click', function() {
+            var id = btn.getAttribute('data-teo');
+            var root = btn.closest('.teoria-layout') || document;
+            root.querySelectorAll('.teoria-nav-item').forEach(function(b) {
+                b.classList.toggle('active', b === btn);
+            });
+            root.querySelectorAll('.teoria-panel').forEach(function(p) {
+                var on = p.id === id;
+                p.classList.toggle('active', on);
+                if (on) {
+                    p.hidden = false;
+                    p.style.display = 'block';
+                    p.removeAttribute('hidden');
+                    try { p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+                } else {
+                    p.hidden = true;
+                    p.style.display = 'none';
+                    p.setAttribute('hidden', '');
+                }
+            });
+        });
+    });
+    // al cargar: mostrar solo el primer panel activo de cada layout
+    document.querySelectorAll('.teoria-layout').forEach(function(layout) {
+        var panels = layout.querySelectorAll('.teoria-panel');
+        var act = layout.querySelector('.teoria-panel.active') || panels[0];
+        panels.forEach(function(p) {
+            var on = act && p === act;
+            p.classList.toggle('active', on);
+            p.hidden = !on;
+            p.style.display = on ? 'block' : 'none';
+        });
+        var nav = layout.querySelector('.teoria-nav-item[data-teo="' + (act && act.id) + '"]');
+        if (nav) {
+            layout.querySelectorAll('.teoria-nav-item').forEach(function(b) {
+                b.classList.toggle('active', b === nav);
+            });
+        }
+    });
+}
+document.addEventListener('DOMContentLoaded', function() {
+    try { initTeoriaNav(); } catch (e) {}
+});
