@@ -12,6 +12,10 @@
     <link rel="stylesheet" href="css/mezclas.css">
     <link rel="stylesheet" href="css/ensayos-ms2.css">
     <link rel="stylesheet" href="css/sim-ms2.css">
+    <link rel="stylesheet" href="css/rediseno.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
@@ -55,7 +59,7 @@
                 <span class="logo-label">Universidad de Pamplona</span>
             </div>
             <div class="topbar-right">
-                <img src="docs/logo_ingenieria_civil.png" alt="Ingeniería Civil" class="logo-top logo-civil-bg" />
+                <img src="docs/logo_ingenieria_civil.png" alt="Ingeniería Civil" class="logo-top" />
                 <span class="logo-label">Ingeniería Civil</span>
             </div>
         </header>
@@ -365,12 +369,104 @@
         </header>
 
         <section class="submenu-tabs">
-            <button class="tab-btn" data-tab="ms1-teoria">Teoría</button>
-            <button class="tab-btn active" data-tab="ms1-ensayos">Ensayos</button>
+            <button class="tab-btn active" data-tab="ms1-teoria">Teoría</button>
+            <button class="tab-btn" data-tab="ms1-ensayos">Ensayos</button>
+            <button class="tab-btn" data-tab="ms1-simuladores">Simuladores</button>
+        </section>
+
+        <!-- Teoría de Mecánica de Suelos I (pestana inicial) -->
+        <section class="tab-content active" id="ms1-teoria">
+            <div class="teoria-container">
+                <h3>Mecánica de Suelos I — Fundamentos Teóricos</h3>
+
+                <div class="teoria-seccion">
+                    <h4>1. Introducción a la Mecánica de Suelos</h4>
+                    <p>La mecánica de suelos es la rama de la ingeniería que estudia el comportamiento del suelo como material de construcción. El suelo es un material natural formado por partículas sólidas, agua y aire.</p>
+                    <p><strong>Composición del suelo:</strong></p>
+                    <ul>
+                        <li><strong>Fase sólida:</strong> partículas minerales y orgánicas</li>
+                        <li><strong>Fase líquida:</strong> agua con sustancias disueltas</li>
+                        <li><strong>Fase gaseosa:</strong> aire y otros gases</li>
+                    </ul>
+                    <p>Las propiedades del suelo dependen de la relación entre estas tres fases, que se expresa mediante el contenido de humedad, el índice de poros y el grado de saturación.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>2. Contenido de Humedad (w)</h4>
+                    <p>El contenido de humedad es la relación entre el peso del agua y el peso de los sólidos del suelo.</p>
+                    <div class="formula-box">w = (W<sub>w</sub> / W<sub>s</sub>) × 100 %</div>
+                    <p>Se determina secando la muestra en un horno a 110±5°C hasta peso constante. Es un ensayo fundamental para todos los cálculos de mecánica de suelos.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>3. Análisis Granulométrico</h4>
+                    <p>La granulometría determina la distribución de tamaños de partículas mediante tamizado.</p>
+                    <p><strong>Clasificación por tamaño:</strong></p>
+                    <ul>
+                        <li><strong>Grava:</strong> partículas > 4.75 mm</li>
+                        <li><strong>Arena gruesa:</strong> 2.0 - 4.75 mm</li>
+                        <li><strong>Arena media:</strong> 0.425 - 2.0 mm</li>
+                        <li><strong>Arena fina:</strong> 0.075 - 0.425 mm</li>
+                        <li><strong>Finos (Limo y Arcilla):</strong> &lt; 0.075 mm</li>
+                    </ul>
+                    <p><strong>Coeficiente de uniformidad:</strong> Cu = D60/D10. Valores > 4 (arenas) o > 6 (gravas) indican buena graduación.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>4. Límites de Atterberg</h4>
+                    <p>Definen los estados de consistencia del suelo según el contenido de humedad:</p>
+                    <ul>
+                        <li><strong>Límite Líquido (LL):</strong> paso del estado plástico al líquido. Ensayo de Casagrande a 25 golpes.</li>
+                        <li><strong>Límite Plástico (LP):</strong> paso del estado semisólido al plástico. Formación de rollitos de 3mm.</li>
+                        <li><strong>Índice de Plasticidad (IP):</strong> IP = LL - LP</li>
+                    </ul>
+                    <div class="formula-box">Línea A: IP = 0.73(LL - 20)</div>
+                    <p>La línea A separa arcillas (sobre la línea) de limos (bajo la línea) en la Carta de Plasticidad.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>5. Gravedad Específica (Gs)</h4>
+                    <p>Relación entre la densidad de los sólidos del suelo y la densidad del agua.</p>
+                    <div class="formula-box">G<sub>s</sub> = W<sub>s</sub> / (W<sub>s</sub> + W<sub>pw</sub> - W<sub>pws</sub>)</div>
+                    <p>Valores típicos: arenas 2.60-2.70, arcillas 2.70-2.90. Valores &lt; 2.0 indican materia orgánica.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>6. Compactación Proctor</h4>
+                    <p>La compactación aumenta la densidad del suelo reduciendo vacíos. Ensayo Proctor Standard:</p>
+                    <ul>
+                        <li><strong>Masa del martillo:</strong> 2.5 kg</li>
+                        <li><strong>Altura de caída:</strong> 30.5 cm</li>
+                        <li><strong>Número de capas:</strong> 3</li>
+                        <li><strong>Golpes por capa:</strong> 25</li>
+                    </ul>
+                    <p>La curva de compactación es parabólica: a mayor humedad, mayor densidad hasta alcanzar la humedad óptima (w<sub>ópt</sub>), luego la densidad disminuye.</p>
+                </div>
+
+                <div class="teoria-seccion">
+                    <h4>7. Clasificación SUCS</h4>
+                    <p><strong>Suelos Gruesos</strong> (&gt;50% retenido en #200):</p>
+                    <ul>
+                        <li><strong>Gravas (G):</strong> &gt;50% del retenido es grava
+                            <ul><li>GW: bien graduada, Cu&gt;4, Cc=1-3</li><li>GP: mal graduada</li></ul>
+                        </li>
+                        <li><strong>Arenas (S):</strong> &gt;50% del retenido es arena
+                            <ul><li>SW: bien graduada, Cu&gt;6, Cc=1-3</li><li>SP: mal graduada</li></ul>
+                        </li>
+                    </ul>
+                    <p><strong>Suelos Finos</strong> (&gt;50% pasa #200):</p>
+                    <ul>
+                        <li><strong>CL:</strong> Arcilla baja plasticidad (LL&lt;50, sobre línea A)</li>
+                        <li><strong>CH:</strong> Arcilla alta plasticidad (LL≥50, sobre línea A)</li>
+                        <li><strong>ML:</strong> Limo baja plasticidad (LL&lt;50, bajo línea A)</li>
+                        <li><strong>MH:</strong> Limo alta plasticidad (LL≥50, bajo línea A)</li>
+                    </ul>
+                </div>
+            </div>
         </section>
 
         <!-- Ensayos de Mecánica de Suelos I -->
-        <section class="tab-content active" id="ms1-ensayos">
+        <section class="tab-content" id="ms1-ensayos">
             <div class="ensayos-grid">
                 <button class="ensayo-card" data-ensayo="humedad">
                     <div class="ensayo-icono">💧</div>
@@ -435,94 +531,24 @@
             </div>
         </section>
 
-        <section class="tab-content" id="ms1-teoria">
-            <div class="teoria-container">
-                <h3>Mecánica de Suelos I — Fundamentos Teóricos</h3>
-                
-                <div class="teoria-seccion">
-                    <h4>1. Introducción a la Mecánica de Suelos</h4>
-                    <p>La mecánica de suelos es la rama de la ingeniería que estudia el comportamiento del suelo como material de construcción. El suelo es un material natural formado por partículas sólidas, agua y aire.</p>
-                    <p><strong>Composición del suelo:</strong></p>
-                    <ul>
-                        <li><strong>Fase sólida:</strong> partículas minerales y orgánicas</li>
-                        <li><strong>Fase líquida:</strong> agua con sustancias disueltas</li>
-                        <li><strong>Fase gaseosa:</strong> aire y otros gases</li>
+        <!-- Simuladores 2D y 3D de Mecánica de Suelos I -->
+        <section class="tab-content" id="ms1-simuladores">
+            <div class="simhub" id="simhub-ms1">
+                <header class="simhub-hero">
+                    <div class="simhub-hero-text">
+                        <em class="simhub-eyebrow">Laboratorio virtual · Mecánica de Suelos I</em>
+                        <h3>Simuladores de ensayos</h3>
+                        <p>Cada ensayo tiene dos simuladores: el <b>2D</b>, para ajustar los parámetros y ver las curvas en vivo, y el <b>3D</b>, para recorrer el equipo pieza por pieza.</p>
+                    </div>
+                    <ul class="simhub-hero-stats">
+                        <li><strong>8</strong><em>Ensayos</em></li>
+                        <li><strong>2D</strong><em>Curvas en vivo</em></li>
+                        <li><strong>3D</strong><em>Equipos</em></li>
                     </ul>
-                    <p>Las propiedades del suelo dependen de la relación entre estas tres fases, que se expresa mediante el contenido de humedad, el índice de poros y el grado de saturación.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>2. Contenido de Humedad (w)</h4>
-                    <p>El contenido de humedad es la relación entre el peso del agua y el peso de los sólidos del suelo.</p>
-                    <div class="formula-box">w = (W<sub>w</sub> / W<sub>s</sub>) × 100 %</div>
-                    <p>Se determina secando la muestra en un horno a 110±5°C hasta peso constante. Es un ensayo fundamental para todos los cálculos de mecánica de suelos.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>3. Análisis Granulométrico</h4>
-                    <p>La granulometría determina la distribución de tamaños de partículas mediante tamizado.</p>
-                    <p><strong>Clasificación por tamaño:</strong></p>
-                    <ul>
-                        <li><strong>Grava:</strong> partículas > 4.75 mm</li>
-                        <li><strong>Arena gruesa:</strong> 2.0 - 4.75 mm</li>
-                        <li><strong>Arena media:</strong> 0.425 - 2.0 mm</li>
-                        <li><strong>Arena fina:</strong> 0.075 - 0.425 mm</li>
-                        <li><strong>Finos (Limo y Arcilla):</strong> < 0.075 mm</li>
-                    </ul>
-                    <p><strong>Coeficiente de uniformidad:</strong> Cu = D60/D10. Valores > 4 (arenas) o > 6 (gravas) indican buena graduación.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>4. Límites de Atterberg</h4>
-                    <p>Definen los estados de consistencia del suelo según el contenido de humedad:</p>
-                    <ul>
-                        <li><strong>Límite Líquido (LL):</strong> paso del estado plástico al líquido. Ensayo de Casagrande a 25 golpes.</li>
-                        <li><strong>Límite Plástico (LP):</strong> paso del estado semisólido al plástico. Formación de rollitos de 3mm.</li>
-                        <li><strong>Índice de Plasticidad (IP):</strong> IP = LL - LP</li>
-                    </ul>
-                    <div class="formula-box">Línea A: IP = 0.73(LL - 20)</div>
-                    <p>La línea A separa arcillas (sobre la línea) de limos (bajo la línea) en la Carta de Plasticidad.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>5. Gravedad Específica (Gs)</h4>
-                    <p>Relación entre la densidad de los sólidos del suelo y la densidad del agua.</p>
-                    <div class="formula-box">G<sub>s</sub> = W<sub>s</sub> / (W<sub>s</sub> + W<sub>pw</sub> - W<sub>pws</sub>)</div>
-                    <p>Valores típicos: arenas 2.60-2.70, arcillas 2.70-2.90. Valores < 2.0 indican materia orgánica.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>6. Compactación Proctor</h4>
-                    <p>La compactación aumenta la densidad del suelo reduciendo vacíos. Ensayo Proctor Standard:</p>
-                    <ul>
-                        <li><strong>Masa del martillo:</strong> 2.5 kg</li>
-                        <li><strong>Altura de caída:</strong> 30.5 cm</li>
-                        <li><strong>Número de capas:</strong> 3</li>
-                        <li><strong>Golpes por capa:</strong> 25</li>
-                    </ul>
-                    <p>La curva de compactación es parabólica: a mayor humedad, mayor densidad hasta alcanzar la humedad óptima (w<sub>ópt</sub>), luego la densidad disminuye.</p>
-                </div>
-
-                <div class="teoria-seccion">
-                    <h4>7. Clasificación SUCS</h4>
-                    <p><strong>Suelos Gruesos</strong> (>50% retenido en #200):</p>
-                    <ul>
-                        <li><strong>Gravas (G):</strong> >50% del retenido es grava
-                            <ul><li>GW: bien graduada, Cu>4, Cc=1-3</li><li>GP: mal graduada</li></ul>
-                        </li>
-                        <li><strong>Arenas (S):</strong> >50% del retenido es arena
-                            <ul><li>SW: bien graduada, Cu>6, Cc=1-3</li><li>SP: mal graduada</li></ul>
-                        </li>
-                    </ul>
-                    <p><strong>Suelos Finos</strong> (>50% pasa #200):</p>
-                    <ul>
-                        <li><strong>CL:</strong> Arcilla baja plasticidad (LL<50, sobre línea A)</li>
-                        <li><strong>CH:</strong> Arcilla alta plasticidad (LL≥50, sobre línea A)</li>
-                        <li><strong>ML:</strong> Limo baja plasticidad (LL<50, bajo línea A)</li>
-                        <li><strong>MH:</strong> Limo alta plasticidad (LL≥50, bajo línea A)</li>
-                    </ul>
-                </div>
+                </header>
+                <div class="simhub-grid" id="simhub-grid-ms1"></div>
             </div>
+            <div class="simhub-panel" id="simhub-panel-ms1" style="display:none;"></div>
         </section>
     </main>
 
@@ -947,40 +973,85 @@
         </section>
     
         <section class="tab-content" id="rm-simuladores">
-            <p class="login-hint" style="margin:0 0 14px">Simuladores interactivos de las mismas máquinas del laboratorio (UTM, flexión, torsión, Rockwell).</p>
-            <div class="ensayos-grid simuladores-grid" id="rm-sims-grid">
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">🔗</div>
-                    <h3>Simulador de tracción</h3>
-                    <p>Máquina universal — curva σ–ε interactiva.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim-rm" data-ensayo-rm="traccion">ABRIR SIMULADOR</button>
-                </div>
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">⬇️</div>
-                    <h3>Simulador de compresión</h3>
-                    <p>Prensa / UTM — falla de cilindro.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim-rm" data-ensayo-rm="compresion">ABRIR SIMULADOR</button>
-                </div>
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">📐</div>
-                    <h3>Simulador de flexión</h3>
-                    <p>Kit de flexión — módulo de ruptura.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim-rm" data-ensayo-rm="flexion">ABRIR SIMULADOR</button>
-                </div>
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">🌀</div>
-                    <h3>Simulador de torsión</h3>
-                    <p>Banco de torsión — τ, γ y G.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim-rm" data-ensayo-rm="torsion">ABRIR SIMULADOR</button>
-                </div>
-                <div class="ensayo-card sim-card">
-                    <div class="ensayo-icono">💎</div>
-                    <h3>Simulador de dureza</h3>
-                    <p>Durómetro Rockwell.</p>
-                    <button type="button" class="btn-calcular btn-abrir-sim-rm" data-ensayo-rm="dureza">ABRIR SIMULADOR</button>
+            <p class="login-hint" style="margin:0 0 14px">Simuladores interactivos de las mismas máquinas del laboratorio (UTM, flexión, torsión, Rockwell): recorre cada equipo en <b>3D</b> o reproduce las curvas en <b>2D</b>.</p>
+            <div class="simhub" id="simhub-rm">
+                <header class="simhub-hero">
+                    <div class="simhub-hero-text">
+                        <em class="simhub-eyebrow">Laboratorio virtual · Resistencia de Materiales</em>
+                        <h3>Simuladores de ensayos</h3>
+                        <p>Cada ensayo tiene dos simuladores: el <b>2D</b>, para ajustar los parámetros y ver la curva esfuerzo–deformación en vivo, y el <b>3D</b>, para recorrer la máquina pieza por pieza.</p>
+                    </div>
+                    <ul class="simhub-hero-stats">
+                        <li><strong>5</strong><em>Ensayos</em></li>
+                        <li><strong>2D</strong><em>Curvas en vivo</em></li>
+                        <li><strong>3D</strong><em>Máquinas</em></li>
+                    </ul>
+                </header>
+                <div class="ensayos-grid simuladores-grid simhub-grid" id="rm-sims-grid">
+                    <article class="simcard" style="--a:#3B82F6;--rgb:59,130,246">
+                        <div class="simcard-glow"></div>
+                        <div class="simcard-head"><em class="simcard-num">01</em><div class="simcard-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 20h10M10 44h10M44 20h10M44 44h10"/><path d="M20 20c6 4 6 16 0 20M44 20c-6 4-6 16 0 20"/><path d="M22 32h20" stroke-dasharray="3 3"/><path d="M4 32h6M14 32h4M46 32h4M56 32h4"/><path d="M8 28l-4 4 4 4M56 28l4 4-4 4"/></svg></div></div>
+                        <h4>Tracción uniaxial</h4>
+                        <p>Máquina universal (UTM) con mordazas: curva σ–ε, módulo E, fluencia y resistencia última.</p>
+                        <div class="simcard-chips"><em>σ – ε</em><em>E</em><em>σy</em><em>σu</em></div>
+                        <small class="simcard-norma">ASTM E8/E8M · NSR-10</small>
+                        <div class="simcard-btns">
+                            <button type="button" class="simcard-btn is-2d btn-abrir-sim-rm" data-ensayo-rm="traccion"><b>2D</b><span>Simulador 2D</span><i>Curvas en vivo</i></button>
+                            <button type="button" class="simcard-btn is-3d" data-rm-3d="traccion"><b>3D</b><span>Simulador 3D</span><i>Máquina completa</i></button>
+                        </div>
+                    </article>
+                    <article class="simcard" style="--a:#2DD4BF;--rgb:45,212,191">
+                        <div class="simcard-glow"></div>
+                        <div class="simcard-head"><em class="simcard-num">02</em><div class="simcard-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6v10M52 6v10"/><rect x="8" y="16" width="48" height="7" rx="2"/><path d="M32 23v8M28.5 27.5 32 31l3.5-3.5"/><rect x="22" y="33" width="20" height="18" rx="2"/><path d="M24 36l16 12M40 36l-16 12" stroke-dasharray="2.5 3"/><rect x="8" y="51" width="48" height="7" rx="2"/><path d="M32 43v8"/></svg></div></div>
+                        <h4>Compresión de cilindros</h4>
+                        <p>Prensa / UTM sobre cilindro de concreto: carga hasta la falla y resistencia a compresión fc.</p>
+                        <div class="simcard-chips"><em>fc</em><em>εc</em><em>P – δ</em></div>
+                        <small class="simcard-norma">ASTM C39 · NSR-10</small>
+                        <div class="simcard-btns">
+                            <button type="button" class="simcard-btn is-2d btn-abrir-sim-rm" data-ensayo-rm="compresion"><b>2D</b><span>Simulador 2D</span><i>Curvas en vivo</i></button>
+                            <button type="button" class="simcard-btn is-3d" data-rm-3d="compresion"><b>3D</b><span>Simulador 3D</span><i>Máquina completa</i></button>
+                        </div>
+                    </article>
+                    <article class="simcard" style="--a:#A78BFA;--rgb:167,139,250">
+                        <div class="simcard-glow"></div>
+                        <div class="simcard-head"><em class="simcard-num">03</em><div class="simcard-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 44h52"/><path d="M14 44v6M50 44v6"/><path d="M10 38h44"/><path d="M32 26v8M28.5 30.5 32 34l3.5-3.5"/><path d="M10 38c8 6 36 6 44 0" stroke-dasharray="3 3"/><path d="M6 54h52"/></svg></div></div>
+                        <h4>Flexión a 3 puntos</h4>
+                        <p>Kit de flexión en UTM: módulo de ruptura, momento flector y deflexión de la viga.</p>
+                        <div class="simcard-chips"><em>Mr</em><em>I</em><em>deflexión</em></div>
+                        <small class="simcard-norma">ASTM D790 · ASTM C78</small>
+                        <div class="simcard-btns">
+                            <button type="button" class="simcard-btn is-2d btn-abrir-sim-rm" data-ensayo-rm="flexion"><b>2D</b><span>Simulador 2D</span><i>Curvas en vivo</i></button>
+                            <button type="button" class="simcard-btn is-3d" data-rm-3d="flexion"><b>3D</b><span>Simulador 3D</span><i>Máquina completa</i></button>
+                        </div>
+                    </article>
+                    <article class="simcard" style="--a:#FBBF24;--rgb:251,191,36">
+                        <div class="simcard-glow"></div>
+                        <div class="simcard-head"><em class="simcard-num">04</em><div class="simcard-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="26" width="10" height="12" rx="2"/><rect x="48" y="26" width="10" height="12" rx="2"/><path d="M16 32h32"/><path d="M24 28c4 2 4 6 8 0s4 6 8 0" stroke-dasharray="2.5 3"/><path d="M32 16c6 0 10 4 10 8" /><path d="M42 24l-4-3m4 3-1 5"/><path d="M32 48c-6 0-10-4-10-8"/><path d="M22 40l4 3m-4-3 1-5"/></svg></div></div>
+                        <h4>Torsión de ejes</h4>
+                        <p>Banco de torsión: esfuerzo cortante, ángulo de giro y módulo torsional G.</p>
+                        <div class="simcard-chips"><em>T</em><em>θ</em><em>G</em></div>
+                        <small class="simcard-norma">ASTM A370 · Ensayo de torsión</small>
+                        <div class="simcard-btns">
+                            <button type="button" class="simcard-btn is-2d btn-abrir-sim-rm" data-ensayo-rm="torsion"><b>2D</b><span>Simulador 2D</span><i>Curvas en vivo</i></button>
+                            <button type="button" class="simcard-btn is-3d" data-rm-3d="torsion"><b>3D</b><span>Simulador 3D</span><i>Máquina completa</i></button>
+                        </div>
+                    </article>
+                    <article class="simcard" style="--a:#F472B6;--rgb:244,114,182">
+                        <div class="simcard-glow"></div>
+                        <div class="simcard-head"><em class="simcard-num">05</em><div class="simcard-glyph"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="24" r="15"/><path d="M32 24V13"/><path d="M32 24l7 6"/><path d="M17 24h3M44 24h3M32 9v3"/><path d="M26 44h12l-3 8h-6z"/><rect x="29" y="52" width="6" height="4" rx="1"/><path d="M20 58h24"/></svg></div></div>
+                        <h4>Dureza Rockwell</h4>
+                        <p>Durómetro Rockwell: penetración del indenter y lectura de dureza HRC / HRB.</p>
+                        <div class="simcard-chips"><em>HRC</em><em>HRB</em><em>h</em></div>
+                        <small class="simcard-norma">ASTM E18 · ISO 6508</small>
+                        <div class="simcard-btns">
+                            <button type="button" class="simcard-btn is-2d btn-abrir-sim-rm" data-ensayo-rm="dureza"><b>2D</b><span>Simulador 2D</span><i>Curvas en vivo</i></button>
+                            <button type="button" class="simcard-btn is-3d" data-rm-3d="dureza"><b>3D</b><span>Simulador 3D</span><i>Máquina completa</i></button>
+                        </div>
+                    </article>
                 </div>
             </div>
             <div class="panel-ensayo" id="panel-sim-rm" style="margin-top:16px;"></div>
+            <div class="simhub-panel" id="rm-sim3d" style="display:none;"></div>
         </section>
 </main>
 
@@ -1993,6 +2064,8 @@
     </div>
     <script src="js/sim3d-prensa.js"></script>
     <script src="js/lab3d-ensayos.js"></script>
+    <script src="js/lab3d-ms1.js"></script>
+    <script src="js/lab3d-rm.js"></script>
     <script src="js/mezclas-calc.js"></script>
     <script src="js/mezclas.js"></script>
     <script src="js/mezclas-sim.js"></script>
@@ -2001,6 +2074,7 @@
     <script src="js/sim2d-core.js"></script>
     <script src="js/sim2d-inconfinada.js"></script>
     <script src="js/sim2d-defs.js"></script>
+    <script src="js/sim2d-ms1.js"></script>
     <script src="js/sim-ms2.js"></script>
     <script src="js/teoria-uniforme.js"></script>
 </body>
