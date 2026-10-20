@@ -39,7 +39,8 @@
 
         var toc = '<nav class="dm-toc" aria-label="Contenido de la teoría"><b>Contenido</b>' +
             all.map(function (s, i) {
-                return '<a href="#' + prefix + '-t-' + s.id + '" data-t="' + s.id + '"><span>' + (i + 1) + '</span>' + esc(s.t) + '</a>';
+                var label = s.t || s.title || s.id || '';
+                return '<a href="#' + prefix + '-t-' + s.id + '" data-t="' + s.id + '"><span>' + (i + 1) + '</span>' + esc(label) + '</a>';
             }).join('') + '</nav>';
 
         var route = '<div class="dm-ruta">' + (mod.route || []).map(function (r, i) {
