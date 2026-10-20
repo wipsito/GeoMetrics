@@ -162,7 +162,7 @@
         function X(v) { return L + (v - o.xmin) / (o.xmax - o.xmin) * pw; }
         function Y(v) { return T + ph - (v - o.ymin) / (o.ymax - o.ymin) * ph; }
         ctx.save();
-        rrect(ctx, 0, 0, W, H, 14); ctx.fillStyle = '#151F32'; ctx.fill();
+        rrect(ctx, 0, 0, W, H, 14); ctx.fillStyle = C.bg; ctx.fill();
         label(ctx, o.title, 16, 16, { color: C.text, size: 13, weight: '700' });
         /* rejilla y ticks */
         ctx.strokeStyle = 'rgba(167,180,200,.10)'; ctx.lineWidth = 1;
@@ -248,8 +248,7 @@
             left.push([cx - w / 2, top + h * t]); right.push([cx + w / 2, top + h * t]);
         }
         var body = left.concat(right.slice().reverse());
-        var TONES = { sand: ['#caa86a', '#a98446', '#7d5f2c'], gray: ['#a4a9ad', '#868c91', '#5f6469'], steel: ['#c3ccd7', '#97a3b2', '#5d6877'], wood: ['#d2a468', '#ad8049', '#7e5a2c'], clay: ['#b98a5a', '#94673c', '#6b4626'] };
-        var base = TONES[o.tone] || TONES.clay;
+        var base = o.tone === 'sand' ? ['#caa86a', '#a98446', '#7d5f2c'] : ['#b98a5a', '#94673c', '#6b4626'];
         function paint() {
             polyPath(ctx, body);
             var g = ctx.createLinearGradient(cx - wMean / 2, 0, cx + wMean / 2, 0);
@@ -295,28 +294,6 @@
         return { wMean: wMean };
     }
 
-    /* Fondo de panel para gráficas personalizadas (mismo azul de la paleta) + título */
-    function panelBg(ctx, W, H, title) {
-        rrect(ctx, 0, 0, W, H, 14); ctx.fillStyle = '#151F32'; ctx.fill();
-        if (title) label(ctx, title, 16, 16, { color: C.text, size: 13, weight: '700' });
-    }
-    /* Montón de material (suelo) dibujado como polígono suave */
-    function pile(ctx, cx, base, w, h, col1, col2, seed) {
-        if (h <= 0.5) return;
-        var g = ctx.createLinearGradient(0, base - h, 0, base);
-        g.addColorStop(0, col1); g.addColorStop(1, col2);
-        ctx.beginPath(); ctx.moveTo(cx - w / 2, base);
-        ctx.quadraticCurveTo(cx - w * 0.22, base - h * 1.1, cx, base - h);
-        ctx.quadraticCurveTo(cx + w * 0.22, base - h * 1.1, cx + w / 2, base);
-        ctx.closePath(); ctx.fillStyle = g; ctx.fill();
-        var r = rng(seed || 3);
-        for (var i = 0; i < Math.min(30, 6 + h); i++) {
-            var px = cx + (r() - 0.5) * w * 0.7, py = base - r() * h * 0.85;
-            ctx.fillStyle = r() > 0.5 ? 'rgba(0,0,0,.22)' : 'rgba(255,255,255,.16)';
-            ctx.beginPath(); ctx.arc(px, py, 0.8 + r() * 1.3, 0, TAU); ctx.fill();
-        }
-    }
-
     var defs = {};
     function register(key, def) { defs[key] = def; }
 
@@ -325,7 +302,7 @@
         H: {
             clamp: clamp, lerp: lerp, fmt: fmt, rng: rng, prep: prep, rrect: rrect, rgba: rgba, hexRgb: hexRgb,
             stageBg: stageBg, steel: steel, arrow: arrow, label: label, dial: dial, plot: plot, ticks: ticks,
-            specimen: specimen, panelBg: panelBg, pile: pile, halfPlane: halfPlane, polyPath: polyPath, TAU: TAU
+            specimen: specimen, halfPlane: halfPlane, polyPath: polyPath, TAU: TAU
         }
     };
 })(window);

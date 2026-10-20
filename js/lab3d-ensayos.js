@@ -78,7 +78,7 @@
         inconfinada: {
             accent: '#2DD4BF',
             machine: 'Prensa de compresión inconfinada',
-            machineSub: 'Bastidor de acero, celda de carga, reloj comparador y panel de control',
+            machineSub: 'Marco de 4 columnas, celda de carga y deformímetro',
             norma: 'ASTM D2166 · INV E-152',
             duration: 14,
             phases: [
@@ -87,19 +87,19 @@
                 { a: 0.65, b: 1.01, t: 'Falla de la probeta', d: 'Aparece el plano de falla; qu = σ máx.' }
             ],
             parts: [
-                { name: "Bastidor de acero", desc: "Columnas y travesaño rígidos que reaccionan la carga axial." },
-                { name: "Celda de carga", desc: "Cabezal azul sobre el travesaño: mide la fuerza axial P." },
-                { name: "Muestra de suelo (probeta)", desc: "Cilindro libre de suelo cohesivo, sin confinamiento lateral (σ₃ = 0)." },
-                { name: "Plato móvil inferior", desc: "Sube a velocidad controlada y comprime la probeta contra el cabezal." },
-                { name: "Reloj comparador", desc: "Mide el acortamiento ΔL de la probeta (deformación axial)." },
-                { name: "Panel de control", desc: "Medidores, display de carga, arranque y parada del ensayo." }
+                { name: "Marco de 4 columnas", desc: "Estructura rígida que reacciona la carga axial." },
+                { name: "Cabezal con celda de carga", desc: "Aplica y mide la fuerza axial P." },
+                { name: "Probeta cilíndrica", desc: "Suelo cohesivo sin confinamiento lateral (σ₃ = 0)." },
+                { name: "Plato móvil inferior", desc: "Sube a velocidad controlada y comprime la probeta." },
+                { name: "Deformímetro axial", desc: "Mide el acortamiento ΔL de la probeta." },
+                { name: "Panel de control", desc: "Arranque, parada y selección de velocidad." }
             ],
             cam: {
-                target: [0, 2.05, 0],
-                home: { theta: 0.62, phi: 1.12, radius: 9.2 },
-                frontal: { theta: 0.0, phi: 1.3, radius: 9.4 },
-                lateral: { theta: 1.5, phi: 1.25, radius: 8.8 },
-                detalle: { theta: 0.5, phi: 1.2, radius: 4.8, target: [0, 2.0, 0] }
+                target: [0, 1.9, 0],
+                home: { theta: 0.65, phi: 1.1, radius: 7.4 },
+                frontal: { theta: 0.0, phi: 1.3, radius: 7.6 },
+                lateral: { theta: 1.5, phi: 1.25, radius: 7.2 },
+                detalle: { theta: 0.5, phi: 1.2, radius: 4.4 }
             }
         },
         consolidacion: {
@@ -265,6 +265,30 @@
         consolidacion: paramsConsol,
         triaxial: paramsTriaxial
     };
+
+    /* Params por defecto para escenas registradas desde fuera */
+    function defaultParams() {
+        return { real: false, nota: 'Valores típicos de ejemplo. Pulsa CALCULAR en el ensayo para usar tus datos.' };
+    }
+    function paramsFor(tipo) {
+        var fn = PARAMS[tipo] || defaultParams;
+        var o = null;
+        try { o = fn(); } catch (e) { o = null; }
+        if (!o) o = defaultParams();
+        if (o.nota == null) o.nota = defaultParams().nota;
+        if (o.real == null) o.real = false;
+        return o;
+    }
+
+    /* Registro de escenas externas (Mecánica de Suelos I, Resistencia, …) */
+    function register(key, meta, builder, paramsFn) {
+        if (!key || !meta || !builder) return false;
+        META[key] = meta;
+        BUILDERS[key] = builder;
+        PARAMS[key] = typeof paramsFn === 'function' ? paramsFn : defaultParams;
+        return true;
+    }
+
 
     /* ------------------------------------------------------------------ */
     /*  Primitivas three.js                                                */
@@ -569,194 +593,95 @@
     function buildPrensa(accent) {
         var root = new THREE.Group();
         var mt = materiales();
-        plinth(root, 3.8, 2.7, accent);
+        plinth(root, 3.4, 2.4, accent);
 
-        /* materiales del equipo (según la máquina de referencia) */
-        var mint = M(0xa9bfba, 0.35, 0.42);
-        var mintDark = M(0x8fa7a2, 0.4, 0.45);
-        var steelL = M(0xc9d2d9, 0.82, 0.26);
-        var steelM = M(0xaab5be, 0.85, 0.3);
-        var steelD = M(0x7d8892, 0.8, 0.35);
-        var slate = M(0x6f8fb4, 0.45, 0.4);
-        var rubber = M(0x1b1f24, 0.1, 0.85);
-        var bronze = M(0x9c8a6a, 0.7, 0.4);
-
-        /* texturas procedurales (granulado de la probeta y de la piedra) */
-        function speckle(base, n, lo, hi, size) {
-            var c = document.createElement('canvas');
-            c.width = c.height = 256;
-            var g = c.getContext('2d');
-            g.fillStyle = base; g.fillRect(0, 0, 256, 256);
-            for (var i = 0; i < n; i++) {
-                var v = Math.round(lo + Math.random() * (hi - lo));
-                g.fillStyle = 'rgb(' + v + ',' + v + ',' + (v + 2) + ')';
-                var s = 1 + Math.random() * size;
-                g.fillRect(Math.random() * 256, Math.random() * 256, s, s);
-            }
-            var t = new THREE.CanvasTexture(c);
-            t.wrapS = t.wrapT = THREE.RepeatWrapping;
-            return t;
-        }
-        var texSoil = speckle('#8a8d90', 5200, 55, 205, 3.2);
-        texSoil.repeat.set(2, 1);
-        var texStone = speckle('#9a9da0', 3400, 70, 190, 2.6);
-        texStone.repeat.set(2, 2);
-        var soilMat = new THREE.MeshStandardMaterial({ map: texSoil, color: 0xffffff, metalness: 0.0, roughness: 0.95 });
-        var stoneMat = new THREE.MeshStandardMaterial({ map: texStone, color: 0xffffff, metalness: 0.0, roughness: 0.95 });
-
-        /* ---- carcasa con frente inclinado ---- */
-        box(root, 3.2, 0.05, 2.2, 0, 0.025, 0, steelM);                          /* bandeja inferior */
-        [[-1.4, -0.9], [1.4, -0.9], [-1.4, 0.9], [1.4, 0.9]].forEach(function (p) {
-            cyl(root, 0.11, 0.13, 0.1, p[0], 0.0, p[1], rubber, 20);
+        box(root, 2.55, 0.18, 1.65, 0, 0.09, 0, mt.frameDark);
+        box(root, 2.35, 0.1, 1.45, 0, 0.22, 0, mt.frame);
+        box(root, 2.45, 0.04, 1.55, 0, 0.28, 0, mt.frameLight);
+        [[-1.1, -0.68], [1.1, -0.68], [-1.1, 0.68], [1.1, 0.68]].forEach(function (p) {
+            box(root, 0.2, 0.1, 0.2, p[0], 0.05, p[1], mt.black);
         });
-        var sh = new THREE.Shape();
-        sh.moveTo(-0.95, 0); sh.lineTo(0.95, 0); sh.lineTo(0.95, 0.26); sh.lineTo(0.55, 0.8); sh.lineTo(-0.95, 0.8);
-        sh.closePath();
-        var hg = new THREE.ExtrudeGeometry(sh, { depth: 2.9, bevelEnabled: false });
-        hg.rotateY(-Math.PI / 2);
-        hg.translate(1.45, 0.05, 0);
-        var housing = new THREE.Mesh(hg, mint);
-        housing.castShadow = true; housing.receiveShadow = true;
-        root.add(housing);
-        box(root, 2.9, 0.03, 1.55, 0, 0.865, -0.17, mintDark);                    /* tapa superior */
+        [[-0.7, 0.46], [0.7, 0.46], [-0.7, -0.46], [0.7, -0.46]].forEach(function (p) {
+            cyl(root, 0.06, 0.06, 2.7, p[0], 1.55, p[1], mt.chrome, 20);
+            cyl(root, 0.09, 0.09, 0.04, p[0], 0.32, p[1], mt.chromeDark, 12);
+            cyl(root, 0.09, 0.09, 0.04, p[0], 2.88, p[1], mt.chromeDark, 12);
+        });
+        box(root, 1.9, 0.32, 1.2, 0, 3.0, 0, mt.frame);
+        box(root, 1.75, 0.1, 1.05, 0, 3.2, 0, mt.frameLight);
+        box(root, 0.55, 0.14, 0.03, 0, 3.0, 0.62, mt.white);
+        cyl(root, 0.3, 0.3, 0.5, 0, 3.52, 0, mt.blue, 28);
+        cyl(root, 0.22, 0.22, 0.12, 0, 3.82, 0, mt.blueDeep, 20);
+        cyl(root, 0.12, 0.12, 0.15, 0, 3.95, 0, mt.chromeDark, 12);
+        var hose = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.028, 8, 20, Math.PI * 0.85), M(0x64748b, 0.2, 0.65));
+        hose.position.set(0.38, 3.5, 0.2);
+        hose.rotation.set(0.3, 0.8, 0.2);
+        root.add(hose);
+        cyl(root, 0.52, 0.52, 0.09, 0, 2.82, 0, mt.plate, 40);
+        cyl(root, 0.1, 0.1, 0.2, 0, 2.72, 0, mt.chromeDark, 16);
+        var piston = cyl(root, 0.065, 0.065, 1.15, 0, 2.15, 0, mt.chrome, 16);
+        var pistonBase = 2.15;
+        var plato = cyl(root, 0.62, 0.62, 0.08, 0, 0.52, 0, mt.plate, 40);
+        var platoBase = 0.52;
+        cyl(root, 0.4, 0.4, 0.1, 0, 0.62, 0, mt.chrome, 28);
+        cyl(root, 0.28, 0.28, 0.06, 0, 0.7, 0, mt.chromeDark, 20);
 
-        /* ---- panel de control (textura dibujada) ---- */
-        var pc = document.createElement('canvas');
-        pc.width = 1040; pc.height = 252;
-        var pg = pc.getContext('2d');
-        var panelTex = new THREE.CanvasTexture(pc);
-        var lastPanel = '';
-        function drawPanel(P, epsPct) {
-            var key = Math.round(P) + '|' + Math.round(epsPct * 10);
-            if (key === lastPanel) return;
-            lastPanel = key;
-            pg.clearRect(0, 0, 1040, 252);
-            var gr = pg.createLinearGradient(0, 0, 0, 252);
-            gr.addColorStop(0, '#e9eff1'); gr.addColorStop(1, '#bcc7cc');
-            pg.fillStyle = gr; pg.fillRect(0, 0, 1040, 252);
-            pg.strokeStyle = '#6c7780'; pg.lineWidth = 6; pg.strokeRect(4, 4, 1032, 244);
-            function meter(x, ang) {
-                pg.fillStyle = '#16191d'; pg.fillRect(x, 36, 150, 150);
-                pg.fillStyle = '#f2f4f5'; pg.beginPath(); pg.arc(x + 75, 150, 58, Math.PI * 1.1, Math.PI * 1.9); pg.lineTo(x + 75, 150); pg.fill();
-                pg.strokeStyle = '#c0392b'; pg.lineWidth = 5; pg.beginPath(); pg.moveTo(x + 75, 150);
-                pg.lineTo(x + 75 + Math.cos(ang) * 54, 150 + Math.sin(ang) * 54); pg.stroke();
-            }
-            var frac = Math.min(1, P / 400), fe = Math.min(1, epsPct / 20);
-            meter(40, Math.PI * (1.15 + 0.7 * frac));
-            meter(220, Math.PI * (1.15 + 0.7 * fe));
-            pg.fillStyle = '#9fd36a'; pg.fillRect(430, 40, 190, 70);
-            pg.strokeStyle = '#3a4a2a'; pg.lineWidth = 5; pg.strokeRect(430, 40, 190, 70);
-            pg.fillStyle = '#233016'; pg.font = 'bold 40px monospace'; pg.textAlign = 'right';
-            pg.fillText(Math.round(P) + ' N', 608, 91);
-            [470, 580].forEach(function (bx) {
-                pg.fillStyle = '#0e5c26'; pg.beginPath(); pg.arc(bx, 160, 26, 0, 6.3); pg.fill();
-                pg.fillStyle = '#26b64d'; pg.beginPath(); pg.arc(bx, 160, 20, 0, 6.3); pg.fill();
-            });
-            pg.fillStyle = '#34414b'; pg.font = 'bold 20px sans-serif'; pg.textAlign = 'center';
-            pg.fillText('START', 470, 218); pg.fillText('STOP', 580, 218);
-            [[775, 'CARGA', frac], [925, 'ΔL', fe]].forEach(function (d) {
-                pg.fillStyle = '#8c969e'; pg.beginPath(); pg.arc(d[0], 118, 66, 0, 6.3); pg.fill();
-                pg.fillStyle = '#fafafa'; pg.beginPath(); pg.arc(d[0], 118, 57, 0, 6.3); pg.fill();
-                var a = Math.PI * (0.8 + 1.4 * d[2]);
-                pg.strokeStyle = '#c0392b'; pg.lineWidth = 5; pg.beginPath(); pg.moveTo(d[0], 118); pg.lineTo(d[0] + Math.cos(a) * 46, 118 + Math.sin(a) * 46); pg.stroke();
-                pg.fillStyle = '#34414b'; pg.font = 'bold 20px sans-serif'; pg.fillText(d[1], d[0], 218);
-            });
-            panelTex.needsUpdate = true;
-        }
-        drawPanel(0, 0);
+        /* probeta */
+        var grp = new THREE.Group();
+        var body = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 1.2, 48), M(0xd2b48c, 0, 0.55));
+        body.castShadow = true;
+        grp.add(body);
+        var capMat = M(0xd4c4a8, 0.05, 0.85);
+        var capT = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.03, 48), capMat);
+        capT.position.y = 0.62;
+        grp.add(capT);
+        var capB = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.03, 48), capMat);
+        capB.position.y = -0.62;
+        grp.add(capB);
+        var failMat = new THREE.MeshStandardMaterial({
+            color: 0xF87171, metalness: 0.1, roughness: 0.5, transparent: true, opacity: 0, side: THREE.DoubleSide
+        });
+        var failPlane = new THREE.Mesh(new THREE.CircleGeometry(0.38, 32), failMat);
+        failPlane.rotation.x = Math.PI / 2;
+        grp.add(failPlane);
+        var crackMat = new THREE.MeshBasicMaterial({ color: 0xF87171, transparent: true, opacity: 0 });
+        var crack = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.05, 0.7), crackMat);
+        crack.position.set(0.02, 0, 0);
+        grp.add(crack);
+        grp.position.y = 1.35;
+        root.add(grp);
+        var soilBaseY = 1.35;
+
+        /* panel de control */
         var panel = new THREE.Group();
-        var slope = Math.atan2(0.54, 0.4);                 /* inclinación del frente */
-        panel.position.set(0, 0.585, 0.755);
-        panel.rotation.x = -(Math.PI / 2 - slope) ;
+        panel.position.set(1.48, 0.9, 0.1);
         root.add(panel);
-        var face = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.63), new THREE.MeshStandardMaterial({ map: panelTex, metalness: 0.2, roughness: 0.5 }));
-        face.position.z = 0.012;
-        panel.add(face);
+        box(panel, 0.58, 1.15, 0.72, 0, 0, 0, mt.blue);
+        box(panel, 0.52, 0.38, 0.68, 0, 0.28, 0.02, mt.black);
+        box(panel, 0.2, 0.09, 0.02, -0.12, 0.35, 0.37, mt.green);
+        box(panel, 0.2, 0.09, 0.02, 0.12, 0.35, 0.37, mt.green);
+        cyl(panel, 0.045, 0.045, 0.04, -0.14, -0.12, 0.37, mt.green, 12);
+        cyl(panel, 0.045, 0.045, 0.04, 0.0, -0.12, 0.37, mt.yellow, 12);
+        cyl(panel, 0.05, 0.05, 0.05, 0.14, -0.12, 0.37, mt.red, 12);
+        cyl(panel, 0.09, 0.09, 0.07, 0, -0.38, 0.38, mt.red, 16);
 
-        /* ---- bancada y plato inferior ---- */
-        [[-0.95, -0.55], [0.95, -0.55], [-0.95, 0.55], [0.95, 0.55]].forEach(function (p) {
-            cyl(root, 0.05, 0.05, 0.12, p[0], 0.92, p[1], steelD, 12);
-        });
-        box(root, 2.3, 0.08, 1.7, 0, 1.0, 0, steelL);
-        var knob = cyl(root, 0.075, 0.075, 0.1, 0.55, 0.93, 0.92, M(0xd9482b, 0.2, 0.45), 20);
-        knob.rotation.x = Math.PI / 2;
-        var lower = new THREE.Group();                        /* plato móvil: disco + vástago */
-        root.add(lower);
-        var disc = cyl(lower, 0.62, 0.62, 0.09, 0, 1.095, 0, stoneMat, 48);
-        cyl(lower, 0.2, 0.2, 0.2, 0, 1.24, 0, steelM, 32);
-        cyl(lower, 0.27, 0.27, 0.04, 0, 1.36, 0, steelL, 32);
-
-        /* ---- probeta ---- */
-        var HS = 1.3, RS = 0.4, topY = 2.7;                    /* altura inicial, radio, cara superior */
-        var spec = new THREE.Group();
-        var body = new THREE.Mesh(new THREE.CylinderGeometry(RS, RS, HS, 56), soilMat);
-        body.castShadow = true; body.receiveShadow = true;
-        spec.add(body);
-        var lbl = document.createElement('canvas'); lbl.width = 128; lbl.height = 72;
-        var lg = lbl.getContext('2d');
-        lg.fillStyle = '#f7f7f4'; lg.fillRect(0, 0, 128, 72);
-        lg.fillStyle = '#444'; lg.font = 'bold 14px sans-serif'; lg.fillText('M-01', 8, 20);
-        lg.fillStyle = '#888'; for (var li = 0; li < 4; li++) lg.fillRect(8, 30 + li * 9, 90 - li * 12, 3);
-        var label = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.17), new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(lbl), roughness: 0.8 }));
-        label.position.set(0, 0.12, RS + 0.004);
-        spec.add(label);
-        var crackG = new THREE.Group();
-        var ang = 0.96;                                        /* ≈ 55° respecto a la horizontal */
-        var crackMat = new THREE.MeshBasicMaterial({ color: 0x1b1210, transparent: true, opacity: 0, side: THREE.DoubleSide });
-        var crack = new THREE.Mesh(new THREE.RingGeometry(RS - 0.012, RS + 0.012, 72), crackMat);
-        crack.scale.set(1 / Math.cos(ang), 1, 1);
-        crack.rotation.x = -Math.PI / 2;
-        crackG.add(crack);
-        crackG.rotation.z = ang;
-        spec.add(crackG);
-        root.add(spec);
-
-        /* cabezal superior (fijo): anillo, vástago y collar */
-        var ring = cyl(root, 0.27, 0.27, 0.06, 0, topY + 0.03, 0, bronze, 40);
-        cyl(root, 0.17, 0.17, 0.32, 0, topY + 0.22, 0, steelM, 32);
-        cyl(root, 0.24, 0.24, 0.16, 0, topY + 0.46, 0, steelD, 32);
-
-        /* ---- bastidor de acero ---- */
-        box(root, 0.2, 2.72, 0.2, -1.05, 2.2, 0.5, steelM);                 /* poste cuadrado delantero izq. */
-        box(root, 0.2, 0.34, 0.2, -1.05, 3.72, 0.5, steelL);                /* bloque superior (celda lateral) */
-        var colXZ = [[1.05, 0.5], [-1.05, -0.5], [1.05, -0.5]];
-        colXZ.forEach(function (p) {
-            cyl(root, 0.075, 0.075, 3.0, p[0], 2.38, p[1], steelL, 24);
-            cyl(root, 0.1, 0.1, 0.1, p[0], 0.99, p[1], steelD, 20);
-        });
-        box(root, 2.9, 0.34, 1.5, 0, 3.33, 0, steelM);                      /* travesaño */
-        box(root, 2.7, 0.03, 1.3, 0, 3.515, 0, steelL);
-        var warn = box(root, 0.3, 0.004, 0.18, -0.55, 3.535, 0.25, M(0xf2c230, 0.1, 0.5));
-        warn.rotation.y = 0.35;
-        cyl(root, 0.36, 0.36, 0.22, 0, 3.66, 0, slate, 40);                 /* celda de carga */
-        cyl(root, 0.25, 0.25, 0.3, 0, 3.88, 0, steelL, 40);
-        cyl(root, 0.1, 0.1, 0.08, 0, 4.07, 0, steelM, 20);
-
-        /* ---- reloj comparador (derecha) ---- */
-        box(root, 0.34, 0.32, 0.34, 1.32, 1.02, -0.05, slate);
-        cyl(root, 0.045, 0.045, 0.7, 1.32, 1.5, -0.05, steelL, 14);
-        cyl(root, 0.07, 0.07, 0.12, 1.32, 1.85, -0.05, steelD, 14);
-        var dialN = makeDial(root, 1.32, 2.12, -0.05, 0.3, mt);
-
-        /* ---- sensor de carga (izquierda) y cable ---- */
-        cyl(root, 0.19, 0.19, 0.2, -1.28, 0.99, -0.38, slate, 28);
-        cyl(root, 0.1, 0.1, 0.07, -1.28, 1.13, -0.38, steelM, 20);
-        var cable = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.018, 8, 24, Math.PI * 1.1), rubber);
-        cable.position.set(-1.0, 1.0, -0.38); cable.rotation.set(Math.PI / 2, 0, 0.3);
-        root.add(cable);
+        /* deformímetro */
+        cyl(root, 0.035, 0.035, 1.0, 1.15, 1.2, 0.85, mt.chrome, 10);
+        box(root, 0.12, 0.06, 0.12, 1.15, 0.72, 0.85, mt.frameDark);
+        var dialN = makeDial(root, 1.15, 1.9, 0.85, 0.28, mt);
 
         var pins = [
-            { v: [-1.05, 3.15, 0.5] },
-            { v: [0, 4.15, 0] },
-            { v: [0, 2.2, 0.42] },
-            { v: [0, 1.1, 0.62] },
-            { v: [1.32, 2.4, -0.05] },
-            { v: [-0.9, 0.62, 1.0] }
+            { v: [0.7, 2.2, 0.46] },
+            { v: [0, 3.9, 0] },
+            { v: [0, 1.35, 0.35] },
+            { v: [0, 0.55, 0.62] },
+            { v: [1.15, 2.3, 0.85] },
+            { v: [1.48, 1.55, 0.1] }
         ];
 
         function set(p, prm) {
             var s0 = 0.08, sf = 0.65;
-            var eps, sig, x;
+            var eps, sig;
+            var x;
             if (p < s0) { eps = 0; }
             else if (p < sf) { eps = prm.epsf * (p - s0) / (sf - s0); }
             else { eps = prm.epsf + (p - sf) / (1 - sf) * prm.epsf * 0.4; }
@@ -764,25 +689,34 @@
             if (x <= 1) sig = prm.qu * (2 * x - x * x);
             else sig = prm.qu * (1 - 0.18 * (1 - Math.exp(-(x - 1) * 5)));
 
-            var sR = clamp(prm.dmm / 38, 0.8, 1.25), sH = clamp(prm.L0 / 76, 0.85, 1.1);
-            var e = Math.min(0.32, eps / 100 * 1.7);                /* acortamiento (exagerado para verlo) */
-            var h = HS * sH * (1 - e);
-            var lift = HS * sH * e;
-            body.scale.set(1, 1, 1);
-            spec.scale.set(sR * (1 + e * 0.45), (1 - e) * sH, sR * (1 + e * 0.45));
-            spec.position.y = topY - h / 2;
-            lower.position.y = (topY - HS * sH) - (topY - HS) + lift;   /* el plato sigue a la cara inferior */
+            var scaleR = clamp(prm.dmm / 38, 0.8, 1.3);
+            var scaleH = clamp(prm.L0 / 76, 0.8, 1.3);
+            var compress = Math.min(0.3, (eps / 20) * 0.3);
+            var bulge = 1 + compress * 0.4;
+            var lift = compress * 0.5;
+            grp.scale.set(scaleR * bulge, scaleH * (1 - compress), scaleR * bulge);
+            plato.position.y = platoBase + lift;
+            grp.position.y = soilBaseY + lift - compress * 0.35 * scaleH;
+            piston.position.y = pistonBase - lift * 0.25;
             dialN.rotation.z = -(eps / 20) * Math.PI * 1.6;
 
+            var t = Math.min(1, sig / Math.max(40, prm.qu * 1.2));
+            body.material.color.setRGB(0.82 - t * 0.1, 0.71 - t * 0.14, 0.55 - t * 0.12);
+
             var fa = ease(seg(p, sf, sf + 0.08));
-            crackMat.opacity = 0.92 * fa;
-            var tn = Math.min(1, sig / Math.max(40, prm.qu * 1.2));
-            soilMat.color.setRGB(1 - tn * 0.12, 1 - tn * 0.12, 1 - tn * 0.1);
+            var deg = 45 + Math.min(20, (prm.qu / 400) * 20);
+            var rad = deg * Math.PI / 180;
+            failPlane.rotation.x = Math.PI / 2 - rad * 0.35;
+            failPlane.rotation.y = 0.35;
+            failPlane.rotation.z = rad * 0.5;
+            failMat.opacity = 0.85 * fa;
+            crack.rotation.z = rad * 0.4;
+            crack.rotation.x = 0.15;
+            crackMat.opacity = 0.9 * fa;
 
             var A0 = Math.PI * Math.pow(prm.dmm / 1000 / 2, 2);
             var Ac = A0 / (1 - Math.min(0.5, eps / 100));
             var P = sig * 1000 * Ac;
-            drawPanel(P, eps);
             var ph = p < s0 ? 0 : p < sf ? 1 : 2;
             return {
                 hud: [
@@ -1221,7 +1155,7 @@
 
         var inst = {
             tipo: tipo, host: host, disposed: false, playing: false,
-            p: 0, speed: 1, prm: PARAMS[tipo](), lastPhase: -2,
+            p: 0, speed: 1, prm: paramsFor(tipo), lastPhase: -2,
             renderer: null, scene: null, camera: null, machine: null,
             raf: 0, last: 0, hudEls: [], pinEls: [], pinVecs: [],
             cam: null, goal: null, ready: false, dragging: false,
@@ -1286,7 +1220,7 @@
 
         function refresh() {
             if (inst.disposed) return;
-            inst.prm = PARAMS[tipo]();
+            inst.prm = paramsFor(tipo);
             setNota();
             apply();
         }
@@ -1481,10 +1415,9 @@
                 on(dom, 'pointercancel', endDrag);
                 on(dom, 'pointerleave', endDrag);
                 on(dom, 'wheel', function (e) {
-                    /* la rueda hace zoom sobre la máquina (acerca / aleja de forma proporcional) */
+                    if (e.ctrlKey || e.metaKey) return;      /* deja pasar el zoom/ralenti del navegador (Ctrl+rueda / pellizco) */
                     e.preventDefault();
-                    var dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
-                    inst.goal.radius = clamp(inst.goal.radius * Math.exp(dy * 0.0014), 1.3, 24);
+                    inst.goal.radius = clamp(inst.goal.radius + e.deltaY * 0.012, 3.2, 16);
                 }, { passive: false });
 
                 if (global.ResizeObserver) {
@@ -1512,7 +1445,7 @@
             if (!inst.ready) return;
             if (inst.playing) { inst.playing = false; }
             else {
-                if (inst.p >= 0.999 || inst.p <= 0.001) { inst.p = 0; inst.prm = PARAMS[tipo](); setNota(); }
+                if (inst.p >= 0.999 || inst.p <= 0.001) { inst.p = 0; inst.prm = paramsFor(tipo); setNota(); }
                 inst.playing = true;
             }
             updatePlayBtn();
@@ -1520,7 +1453,7 @@
         });
         on(btnReset, 'click', function () {
             if (!inst.ready) return;
-            inst.playing = false; inst.p = 0; inst.prm = PARAMS[tipo](); setNota();
+            inst.playing = false; inst.p = 0; inst.prm = paramsFor(tipo); setNota();
             updatePlayBtn(); apply();
         });
         on(scrub, 'input', function () {
@@ -1539,7 +1472,7 @@
             var vname = b.getAttribute('data-view');
             var z = b.getAttribute('data-zoom');
             if (vname) goView(vname);
-            else if (z) inst.goal.radius = clamp(inst.goal.radius * (parseFloat(z) > 0 ? 1.25 : 0.8), 1.3, 24);
+            else if (z) inst.goal.radius = clamp(inst.goal.radius + parseFloat(z) * 1.4, 3.2, 16);
         });
 
         /* al pulsar CALCULAR en el formulario, la máquina adopta los resultados */
@@ -1596,19 +1529,15 @@
         instances.length = 0;
     }
 
-    /* Permite que otros archivos (lab3d-ms1.js, lab3d-rm.js) añadan máquinas al mismo visor */
-    function register(tipo, def) {
-        META[tipo] = def.meta; PARAMS[tipo] = def.params; BUILDERS[tipo] = def.build;
-    }
-
     global.GeoLab3D = {
         mount: mount,
         disposeAll: disposeAll,
-        register: register,
         meta: META,
-        kit: {
-            M: M, glass: glass, add: add, box: box, cyl: cyl, cylX: cylX, cylZ: cylZ, rodX: rodX, setRodX: setRodX,
-            plinth: plinth, makeDial: makeDial, materiales: materiales,
+        register: register,
+        /* primitivas three.js reutilizables por escenas externas */
+        prim: {
+            M: M, glass: glass, add: add, box: box, cyl: cyl, cylX: cylX, cylZ: cylZ,
+            rodX: rodX, setRodX: setRodX, plinth: plinth, makeDial: makeDial, materiales: materiales,
             clamp: clamp, lerp: lerp, ease: ease, seg: seg, fmt: fmt
         }
     };
