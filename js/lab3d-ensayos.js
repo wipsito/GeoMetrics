@@ -266,6 +266,30 @@
         triaxial: paramsTriaxial
     };
 
+    /* Params por defecto para escenas registradas desde fuera */
+    function defaultParams() {
+        return { real: false, nota: 'Valores típicos de ejemplo. Pulsa CALCULAR en el ensayo para usar tus datos.' };
+    }
+    function paramsFor(tipo) {
+        var fn = PARAMS[tipo] || defaultParams;
+        var o = null;
+        try { o = fn(); } catch (e) { o = null; }
+        if (!o) o = defaultParams();
+        if (o.nota == null) o.nota = defaultParams().nota;
+        if (o.real == null) o.real = false;
+        return o;
+    }
+
+    /* Registro de escenas externas (Mecánica de Suelos I, Resistencia, …) */
+    function register(key, meta, builder, paramsFn) {
+        if (!key || !meta || !builder) return false;
+        META[key] = meta;
+        BUILDERS[key] = builder;
+        PARAMS[key] = typeof paramsFn === 'function' ? paramsFn : defaultParams;
+        return true;
+    }
+
+
     /* ------------------------------------------------------------------ */
     /*  Primitivas three.js                                                */
     /* ------------------------------------------------------------------ */
@@ -1131,7 +1155,7 @@
 
         var inst = {
             tipo: tipo, host: host, disposed: false, playing: false,
-            p: 0, speed: 1, prm: PARAMS[tipo](), lastPhase: -2,
+            p: 0, speed: 1, prm: paramsFor(tipo), lastPhase: -2,
             renderer: null, scene: null, camera: null, machine: null,
             raf: 0, last: 0, hudEls: [], pinEls: [], pinVecs: [],
             cam: null, goal: null, ready: false, dragging: false,
@@ -1196,7 +1220,7 @@
 
         function refresh() {
             if (inst.disposed) return;
-            inst.prm = PARAMS[tipo]();
+            inst.prm = paramsFor(tipo);
             setNota();
             apply();
         }
@@ -1391,7 +1415,7 @@
                 on(dom, 'pointercancel', endDrag);
                 on(dom, 'pointerleave', endDrag);
                 on(dom, 'wheel', function (e) {
-                    if (!(e.ctrlKey || e.metaKey || e.shiftKey)) return;      /* la rueda sola sigue haciendo scroll en la página */
+                    if (e.ctrlKey || e.metaKey) return;      /* deja pasar el zoom/ralenti del navegador (Ctrl+rueda / pellizco) */
                     e.preventDefault();
                     inst.goal.radius = clamp(inst.goal.radius + e.deltaY * 0.012, 3.2, 16);
                 }, { passive: false });
@@ -1421,7 +1445,7 @@
             if (!inst.ready) return;
             if (inst.playing) { inst.playing = false; }
             else {
-                if (inst.p >= 0.999 || inst.p <= 0.001) { inst.p = 0; inst.prm = PARAMS[tipo](); setNota(); }
+                if (inst.p >= 0.999 || inst.p <= 0.001) { inst.p = 0; inst.prm = paramsFor(tipo); setNota(); }
                 inst.playing = true;
             }
             updatePlayBtn();
@@ -1429,7 +1453,7 @@
         });
         on(btnReset, 'click', function () {
             if (!inst.ready) return;
-            inst.playing = false; inst.p = 0; inst.prm = PARAMS[tipo](); setNota();
+            inst.playing = false; inst.p = 0; inst.prm = paramsFor(tipo); setNota();
             updatePlayBtn(); apply();
         });
         on(scrub, 'input', function () {
@@ -1508,6 +1532,13 @@
     global.GeoLab3D = {
         mount: mount,
         disposeAll: disposeAll,
-        meta: META
+        meta: META,
+        register: register,
+        /* primitivas three.js reutilizables por escenas externas */
+        prim: {
+            M: M, glass: glass, add: add, box: box, cyl: cyl, cylX: cylX, cylZ: cylZ,
+            rodX: rodX, setRodX: setRodX, plinth: plinth, makeDial: makeDial, materiales: materiales,
+            clamp: clamp, lerp: lerp, ease: ease, seg: seg, fmt: fmt
+        }
     };
 })(window);

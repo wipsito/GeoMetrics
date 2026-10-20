@@ -3717,7 +3717,7 @@ function _prepCanvas(id, hintId, okMsg) {
     canvas.width = Math.floor(cssW * dpr);
     canvas.height = Math.floor(cssH * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#0a1f14';
+    ctx.fillStyle = '#0B1220';
     ctx.fillRect(0, 0, cssW, cssH);
     if (hintId) {
         var h = document.getElementById(hintId);
@@ -3735,7 +3735,7 @@ function _axes(ctx, pad, w, h, title) {
     ctx.lineTo(w - pad.r, h - pad.b);
     ctx.stroke();
     if (title) {
-        ctx.fillStyle = '#ffcc00';
+        ctx.fillStyle = '#2DD4BF';
         ctx.font = 'bold 14px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(title, w / 2, 22);
@@ -3756,7 +3756,7 @@ function _barChart(canvasId, hintId, labels, values, title, unit) {
         var x = pad.l + gap + i * (barW + gap);
         var bh = ((h - pad.t - pad.b) * v) / maxV;
         var y = h - pad.b - bh;
-        ctx.fillStyle = i % 2 === 0 ? '#ffcc00' : '#08783a';
+        ctx.fillStyle = i % 2 === 0 ? '#3B82F6' : '#2DD4BF';
         ctx.fillRect(x, y, barW, bh);
         ctx.fillStyle = '#fff';
         ctx.font = '12px Arial';
@@ -4032,7 +4032,7 @@ function graficaLimites() {
     ctx.beginPath(); ctx.moveTo(mid, 30); ctx.lineTo(mid, h - 20); ctx.stroke();
 
     // Flow curve
-    ctx.fillStyle = '#ffcc00';
+    ctx.fillStyle = '#2DD4BF';
     ctx.font = 'bold 12px Arial';
     ctx.textAlign = 'center';
     ctx.fillText('Curva de fluidez', mid / 2, 22);
@@ -4052,7 +4052,7 @@ function graficaLimites() {
     ctx.strokeStyle = 'rgba(255,255,255,0.25)';
     ctx.beginPath();
     ctx.moveTo(45, 40); ctx.lineTo(45, h - 40); ctx.lineTo(mid - 20, h - 40); ctx.stroke();
-    ctx.strokeStyle = '#ffcc00';
+    ctx.strokeStyle = '#2DD4BF';
     ctx.lineWidth = 2;
     ctx.beginPath();
     // regression line
@@ -4062,14 +4062,14 @@ function graficaLimites() {
         if (gi === minG) ctx.moveTo(xx, yy); else ctx.lineTo(xx, yy);
     }
     ctx.stroke();
-    ctx.fillStyle = '#08783a';
+    ctx.fillStyle = '#3B82F6';
     d.puntos.forEach(function(p) {
         ctx.beginPath();
         ctx.arc(xG(p.g), yH(p.h), 5, 0, Math.PI * 2);
         ctx.fill();
     });
     // LL at 25 blows
-    ctx.fillStyle = '#ffcc00';
+    ctx.fillStyle = '#2DD4BF';
     ctx.beginPath();
     ctx.arc(xG(25), yH(d.ll), 6, 0, Math.PI * 2);
     ctx.fill();
@@ -4077,7 +4077,7 @@ function graficaLimites() {
     ctx.fillText('LL=' + d.ll.toFixed(1) + '%', xG(25), yH(d.ll) - 10);
 
     // Plasticity chart
-    ctx.fillStyle = '#ffcc00';
+    ctx.fillStyle = '#2DD4BF';
     ctx.font = 'bold 12px Arial';
     ctx.fillText('Carta de plasticidad', mid + (w - mid) / 2, 22);
     var pl = { l: mid + 40, r: 20, t: 40, b: 40 };
@@ -4096,7 +4096,7 @@ function graficaLimites() {
     ctx.font = '10px Arial';
     ctx.fillText('Línea A', xLL(70), yIP(0.73 * 50) - 6);
     if (d.ll != null && d.ip != null) {
-        ctx.fillStyle = '#ffcc00';
+        ctx.fillStyle = '#2DD4BF';
         ctx.beginPath();
         ctx.arc(xLL(d.ll), yIP(d.ip), 7, 0, Math.PI * 2);
         ctx.fill();
@@ -4342,7 +4342,7 @@ function graficaClasificacion() {
     ctx.fillText('CL / CH', xLL(60), yIP(35));
     ctx.fillText('ML / MH', xLL(60), yIP(10));
     if (d.ll != null && d.ip != null) {
-        ctx.fillStyle = '#ffcc00';
+        ctx.fillStyle = '#2DD4BF';
         ctx.beginPath();
         ctx.arc(xLL(d.ll), yIP(d.ip), 8, 0, Math.PI * 2);
         ctx.fill();
@@ -4376,17 +4376,17 @@ function graficaPermeabilidad() {
     var vMax = d.k * iMax * 1.1;
     function xI(ii) { return pad.l + (ii / iMax) * (w - pad.l - pad.r); }
     function yV(vv) { return h - pad.b - (vv / (vMax || 1)) * (h - pad.t - pad.b); }
-    ctx.strokeStyle = '#ffcc00';
+    ctx.strokeStyle = '#2DD4BF';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(xI(0), yV(0));
     ctx.lineTo(xI(iMax), yV(d.k * iMax));
     ctx.stroke();
-    ctx.fillStyle = '#08783a';
+    ctx.fillStyle = '#3B82F6';
     ctx.beginPath();
     ctx.arc(xI(d.i), yV(d.v), 7, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#ffcc00';
+    ctx.fillStyle = '#2DD4BF';
     ctx.font = '12px Arial';
     ctx.textAlign = 'left';
     ctx.fillText('Punto de ensayo: i=' + d.i.toFixed(3) + ', v=' + d.v.toExponential(2), xI(d.i) + 10, yV(d.v) - 10);
@@ -4443,14 +4443,14 @@ function dibujarCirculoMohr(sx, sy, txy) {
     ctx.stroke();
     
     // Círculo
-    ctx.strokeStyle = '#ffcc00';
+    ctx.strokeStyle = '#2DD4BF';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(cx + ctexto - R, cy, R, 0, 2*Math.PI);
     ctx.stroke();
     
     // Punto
-    ctx.fillStyle = '#ffcc00';
+    ctx.fillStyle = '#2DD4BF';
     ctx.beginPath();
     ctx.arc(cx + (sx-sy)/2, cy - txy, 5, 0, 2*Math.PI);
     ctx.fill();
@@ -4607,7 +4607,7 @@ function dibujarDiagramaEsfDef(E, sy, su, er) {
     var eu = er;
     
     // Curva
-    ctx.strokeStyle = '#ffcc00';
+    ctx.strokeStyle = '#2DD4BF';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(50, h-30 - sy*scaleY);
@@ -4616,7 +4616,7 @@ function dibujarDiagramaEsfDef(E, sy, su, er) {
     ctx.stroke();
     
     // Punto de fluencia
-    ctx.fillStyle = '#ffcc00';
+    ctx.fillStyle = '#2DD4BF';
     ctx.beginPath();
     ctx.arc(50 + ey*100*scaleX, h-30 - sy*scaleY, 4, 0, 2*Math.PI);
     ctx.fill();
@@ -4709,7 +4709,7 @@ function actualizarSimFlujo() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     
-    ctx.fillStyle = '#1a3a1a';
+    ctx.fillStyle = '#0B1220';
     ctx.fillRect(0, 0, w, h);
     
     // Líneas de flujo
@@ -4764,7 +4764,7 @@ function actualizarSimConsolidacion() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     
-    ctx.fillStyle = '#1a1a2a';
+    ctx.fillStyle = '#0B1220';
     ctx.fillRect(0, 0, w, h);
     
     // Ejes
@@ -4776,7 +4776,7 @@ function actualizarSimConsolidacion() {
     ctx.stroke();
     
     // Curva de consolidación
-    ctx.strokeStyle = '#ffcc00';
+    ctx.strokeStyle = '#2DD4BF';
     ctx.lineWidth = 2;
     ctx.beginPath();
     for (var t = 0; t <= 10; t += 0.1) {
@@ -7537,8 +7537,8 @@ function dibujarMaquinaCorte(dh, dv, Ph) {
 
     // Fondo
     var grd = ctx.createLinearGradient(0, 0, 0, h);
-    grd.addColorStop(0, '#2a1f14');
-    grd.addColorStop(1, '#15100c');
+    grd.addColorStop(0, '#0e1729');
+    grd.addColorStop(1, '#0a101d');
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, w, h);
 
@@ -7681,7 +7681,7 @@ function dibujarCurvaSimCD() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1a120c';
+    ctx.fillStyle = '#0B1220';
     ctx.fillRect(0, 0, w, h);
     var hist = window.__simCD.history || [];
     var p = simCDLeerParams();
@@ -8141,7 +8141,7 @@ function simUCDrawCurve() {
     var ctx = cv.getContext('2d');
     var w = cv.width, h = cv.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
     var ox = 62, oy = h - 34, gx = w - 14, gy = 18;
     function sx(x) { return ox + (x / 20) * (gx - ox); }
     function sy(y) { return oy - (y / (p.qu * 1.2)) * (oy - gy); }
@@ -8202,7 +8202,7 @@ function dibujarPrensaUC(eps, sig) {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
     var p = simUCParams();
     eps = eps || 0;
     sig = sig || 0;
@@ -8429,7 +8429,7 @@ function dibujarEdometro(U, dv) {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
     var p = simCOParams();
     var cx = w / 2;
     var settle = Math.min(14, (dv || 0) * 5);
@@ -8508,7 +8508,7 @@ function simCOTick(ts) {
         var ctx = cv.getContext('2d');
         var w = cv.width, hh = cv.height;
         ctx.clearRect(0, 0, w, hh);
-        ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, hh);
+        ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, hh);
         var ox = 40, oy = hh - 20, gx = w - 10, gy = 10;
         var maxT = Math.max(1, window.__simCO.history[window.__simCO.history.length - 1].t);
         function sx(t) { return ox + (t / maxT) * (gx - ox); }
@@ -8620,7 +8620,7 @@ function dibujarCamaraTX(eps, s1, s3) {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
     var p = simTXParams();
     eps = eps || 0;
     s3 = s3 != null ? s3 : p.s3;
@@ -8722,7 +8722,7 @@ function simTXTick(ts) {
         var ctx = cv.getContext('2d');
         var w = cv.width, hh = cv.height;
         ctx.clearRect(0, 0, w, hh);
-        ctx.fillStyle = '#1a120c'; ctx.fillRect(0, 0, w, hh);
+        ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, hh);
         var ox = 40, oy = hh - 20, gx = w - 10, gy = 10;
         function sx(x) { return ox + (x / 18) * (gx - ox); }
         function sy(y) { return oy - (y / (p.devf * 1.2)) * (oy - gy); }

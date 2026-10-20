@@ -162,7 +162,7 @@
         function X(v) { return L + (v - o.xmin) / (o.xmax - o.xmin) * pw; }
         function Y(v) { return T + ph - (v - o.ymin) / (o.ymax - o.ymin) * ph; }
         ctx.save();
-        rrect(ctx, 0, 0, W, H, 14); ctx.fillStyle = '#0d1626'; ctx.fill();
+        rrect(ctx, 0, 0, W, H, 14); ctx.fillStyle = C.bg; ctx.fill();
         label(ctx, o.title, 16, 16, { color: C.text, size: 13, weight: '700' });
         /* rejilla y ticks */
         ctx.strokeStyle = 'rgba(167,180,200,.10)'; ctx.lineWidth = 1;
