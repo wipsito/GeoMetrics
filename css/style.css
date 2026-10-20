@@ -5844,3 +5844,91 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 800px) {
     .teo-ruta-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+
+/* Vista dedicada de ensayo (oculta la lista) */
+.panel-ensayo-vista {
+    display: block;
+    margin-top: 8px;
+    padding: 22px 24px 28px;
+    border-radius: 20px;
+    background: linear-gradient(160deg, rgba(21,31,50,0.98), rgba(11,18,32,0.99));
+    border: 1px solid #2B3A50;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+    min-height: 60vh;
+}
+.ensayo-vista-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(43,58,80,0.8);
+}
+.ensayo-vista-title em {
+    display: block;
+    font-style: normal;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #38BDF8;
+    font-weight: 700;
+}
+.ensayo-vista-title h3 {
+    margin: 4px 0 0;
+    font-size: 24px;
+    color: #F8FAFC;
+}
+
+/* Diagramas visuales en teoría */
+.teo-visual-grid {
+    display: grid;
+    gap: 12px;
+    margin: 16px 0 20px;
+}
+.teo-visual-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.teo-visual-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+.teo-visual-card {
+    background: rgba(15,23,42,0.9);
+    border: 1px solid #2B3A50;
+    border-radius: 16px;
+    padding: 16px 12px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.teo-visual-card strong { color: #F1F5F9; font-size: 13px; }
+.teo-visual-card span { color: #94A3B8; font-size: 11px; line-height: 1.35; }
+.teo-visual-icon {
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.35);
+    color: #38BDF8; font-weight: 800; font-size: 14px;
+}
+.teo-visual-orb {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 2px solid rgba(148,163,184,0.3);
+}
+.teo-orb-solid {
+    background: radial-gradient(circle at 30% 30%, #94a3b8, #334155 60%, #1e293b);
+}
+.teo-orb-water {
+    background: radial-gradient(circle at 30% 30%, #7dd3fc, #0284c7 55%, #0c4a6e);
+}
+.teo-orb-air {
+    background: radial-gradient(circle at 30% 30%, #e2e8f0, #64748b 50%, transparent 70%);
+}
+.teo-visual-blob {
+    width: 52px; height: 40px; border-radius: 40% 60% 50% 50%;
+}
+.teo-blob-liq { background: #38bdf8; opacity: 0.9; }
+.teo-blob-pla { background: #2dd4bf; }
+.teo-blob-ss { background: #fbbf24; }
+.teo-blob-sol { background: #94a3b8; border-radius: 8px; height: 36px; }
+@media (max-width: 800px) {
+    .teo-visual-3, .teo-visual-4 { grid-template-columns: repeat(2, 1fr); }
+}
