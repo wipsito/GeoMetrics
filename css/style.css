@@ -591,61 +591,85 @@ body {
 .menu-grid {
     position: relative;
     z-index: 2;
-
     display: grid;
-
-    grid-template-columns:
-        repeat(3,1fr);
-
-    gap: 22px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+    width: 100%;
 }
 
 .menu-card {
     position: relative;
     z-index: 1;
     text-align: left;
-
-    padding: 28px;
-
-    min-height: 210px;
-
-    background: var(--fondo-card);
-
-    border: 1px solid rgba(255,255,255,0.12);
-
-    border-radius: 18px;
-
+    padding: 26px 24px 28px;
+    min-height: 200px;
+    background: linear-gradient(160deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.95) 100%);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 20px;
     color: var(--blanco);
-
     cursor: pointer;
-
-    transition: 0.3s;
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 
 .menu-card:hover {
-    transform: translateY(-7px);
-
-    border-color: var(--dorado);
-
-    background: rgba(30, 41, 59, 0.25);
+    transform: translateY(-6px);
+    border-color: rgba(59, 130, 246, 0.45);
+    background: linear-gradient(160deg, rgba(37, 50, 75, 0.95) 0%, rgba(21, 31, 50, 0.98) 100%);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
 }
 
 .card-icono {
-    font-size: 38px;
-
-    margin-bottom: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    margin-bottom: 18px;
+    background: linear-gradient(145deg, rgba(59, 130, 246, 0.28), rgba(37, 99, 235, 0.12));
+    border: 1px solid rgba(96, 165, 250, 0.25);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .menu-card h3 {
-    font-size: 22px;
-
-    margin-bottom: 10px;
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    line-height: 1.25;
+    color: #F8FAFC;
 }
 
 .menu-card p {
-    color: #A7B4C8;
+    color: #94A3B8;
+    line-height: 1.55;
+    font-size: 14px;
+    margin: 0;
+}
 
-    line-height: 1.5;
+@media (max-width: 1100px) {
+    .menu-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+@media (max-width: 800px) {
+    .menu-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+    .menu-card {
+        min-height: 170px;
+        padding: 20px;
+    }
+}
+@media (max-width: 520px) {
+    .menu-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 
@@ -2007,13 +2031,20 @@ body {
 ========================================= */
 
 .card-asistente {
-    background: linear-gradient(135deg, rgba(8, 120, 58, 0.3), rgba(30, 41, 59, 0.1)) !important;
-    border-color: rgba(30, 41, 59, 0.4) !important;
+    background: linear-gradient(160deg, rgba(15, 118, 110, 0.22) 0%, rgba(15, 23, 42, 0.95) 55%, rgba(30, 41, 59, 0.9) 100%) !important;
+    border: 1px solid rgba(45, 212, 191, 0.45) !important;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(45, 212, 191, 0.12), 0 0 24px rgba(45, 212, 191, 0.08) !important;
+}
+
+.card-asistente .card-icono {
+    background: linear-gradient(145deg, rgba(45, 212, 191, 0.3), rgba(20, 184, 166, 0.12));
+    border-color: rgba(45, 212, 191, 0.35);
 }
 
 .card-asistente:hover {
-    background: linear-gradient(135deg, rgba(8, 120, 58, 0.5), rgba(30, 41, 59, 0.2)) !important;
-    border-color: var(--dorado) !important;
+    background: linear-gradient(160deg, rgba(15, 118, 110, 0.35) 0%, rgba(21, 31, 50, 0.98) 100%) !important;
+    border-color: rgba(45, 212, 191, 0.7) !important;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3), 0 0 28px rgba(45, 212, 191, 0.15) !important;
 }
 
 .asistente-modal {
@@ -4994,7 +5025,7 @@ button.btn-calcular,
     background: rgba(30, 41, 59, 0.35) !important;
     color: #ffffff !important;
 }
-.aula-card, .ensayo-card, .menu-card, .login-card, .bulbos-card, .sim-maquina-card {
+.aula-card, .ensayo-card, .login-card, .bulbos-card, .sim-maquina-card {
     border-color: rgba(30, 41, 59, 0.55) !important;
     background: rgba(21, 31, 50, 0.92) !important;
 }
@@ -5089,7 +5120,7 @@ button.btn-calcular,
     background: #2B3A50 !important;
     color: #F1F5F9 !important;
 }
-.aula-card, .ensayo-card, .menu-card, .login-card, .bulbos-card, .sim-maquina-card {
+.aula-card, .ensayo-card, .login-card, .bulbos-card, .sim-maquina-card {
     border-color: #2B3A50 !important;
     background: #151F32 !important;
 }
@@ -5348,5 +5379,126 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 960px) {
     #pantallaSimuladores #card-sim-inconfinada #sim-uc-vista-2d {
         grid-template-columns: minmax(0, 1fr) !important;
+    }
+}
+
+
+/* ===== Módulos Centro de Aprendizaje — diseño captura ===== */
+#pantallaMenu.menu-principal,
+#pantallaMenu {
+    background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59, 130, 246, 0.08), transparent 50%),
+        linear-gradient(165deg, #0B1220 0%, #0f172a 45%, #111827 100%) !important;
+}
+
+#pantallaMenu .menu-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 18px !important;
+    width: 100% !important;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+#pantallaMenu .menu-card {
+    all: unset;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    width: 100% !important;
+    min-height: 195px !important;
+    padding: 24px 22px 26px !important;
+    cursor: pointer !important;
+    border-radius: 18px !important;
+    background: #152033 !important;
+    border: 1px solid rgba(71, 85, 105, 0.45) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+    color: #F1F5F9 !important;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+    font-family: inherit !important;
+}
+
+#pantallaMenu .menu-card:hover {
+    transform: translateY(-5px) !important;
+    border-color: rgba(59, 130, 246, 0.55) !important;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.35) !important;
+    background: #1a2740 !important;
+}
+
+#pantallaMenu .card-icono {
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    border-radius: 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 24px !important;
+    line-height: 1 !important;
+    margin: 0 0 16px 0 !important;
+    background: #1e3a5f !important;
+    border: 1px solid rgba(96, 165, 250, 0.2) !important;
+}
+
+#pantallaMenu .menu-card h3 {
+    all: unset !important;
+    display: block !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    margin: 0 0 8px 0 !important;
+    line-height: 1.3 !important;
+    font-family: inherit !important;
+}
+
+#pantallaMenu .menu-card p {
+    all: unset !important;
+    display: block !important;
+    font-size: 13.5px !important;
+    line-height: 1.5 !important;
+    color: #94A3B8 !important;
+    font-family: inherit !important;
+}
+
+/* Civix destacado como en la captura */
+#pantallaMenu .menu-card.card-asistente,
+#pantallaMenu #btnAsistenteAI {
+    background: linear-gradient(165deg, #152a2e 0%, #152033 60%) !important;
+    border: 1.5px solid rgba(45, 212, 191, 0.55) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 0 20px rgba(45, 212, 191, 0.08) !important;
+}
+
+#pantallaMenu .menu-card.card-asistente .card-icono,
+#pantallaMenu #btnAsistenteAI .card-icono {
+    background: #134e4a !important;
+    border-color: rgba(45, 212, 191, 0.35) !important;
+}
+
+#pantallaMenu .menu-card.card-asistente:hover,
+#pantallaMenu #btnAsistenteAI:hover {
+    border-color: rgba(45, 212, 191, 0.85) !important;
+    background: linear-gradient(165deg, #1a3338 0%, #1a2740 60%) !important;
+}
+
+@media (max-width: 1100px) {
+    #pantallaMenu .menu-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+@media (max-width: 780px) {
+    #pantallaMenu .menu-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+    }
+    #pantallaMenu .menu-card {
+        min-height: 160px !important;
+        padding: 18px !important;
+    }
+}
+@media (max-width: 480px) {
+    #pantallaMenu .menu-grid {
+        grid-template-columns: 1fr !important;
     }
 }
