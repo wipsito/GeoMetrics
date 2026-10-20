@@ -1,0 +1,394 @@
+/* =========================================================
+   GeoMetrics — Teoría con enfoque normativo colombiano
+   Complementa css/mezclas.css (clases .dm-*). Prefijo .tn-
+   ========================================================= */
+
+.tn-teoria {
+    --tn-accent: #4d8fd9;
+    --tn-line: rgba(77, 143, 217, .30);
+    --tn-soft: #b8c4d0;
+    color: var(--texto, #f2f5f8);
+}
+
+/* ---------- Portada de la teoría ---------- */
+.tn-hero {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(220px, .75fr);
+    gap: 22px;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 24px 26px;
+    overflow: hidden;
+    border: 1px solid rgba(77, 143, 217, .34);
+    border-radius: 18px;
+    background:
+        radial-gradient(900px 280px at 8% -30%, rgba(77, 143, 217, .30), transparent 62%),
+        linear-gradient(135deg, rgba(0, 51, 102, .72), rgba(9, 23, 38, .92));
+}
+
+.tn-hero::after {
+    content: "";
+    position: absolute;
+    right: -70px;
+    bottom: -110px;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    border: 38px solid rgba(77, 143, 217, .08);
+    pointer-events: none;
+}
+
+.tn-hero > * { position: relative; z-index: 1; }
+.tn-hero h3 { margin: 3px 0 8px; font-size: clamp(23px, 2.5vw, 31px); line-height: 1.15; color: #fff; }
+.tn-hero p { max-width: 760px; margin: 0; color: #d7e2ed; font-size: 14.5px; line-height: 1.65; }
+.tn-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #9fc9f7;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+}
+.tn-eyebrow::before {
+    content: "";
+    width: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--tn-accent);
+}
+
+.tn-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.tn-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 9px;
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, .18);
+    color: #d9e6f2;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .25px;
+}
+
+.tn-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.tn-stats li {
+    padding: 12px 13px;
+    border: 1px solid rgba(255, 255, 255, .10);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, .22);
+}
+.tn-stats strong { display: block; color: #fff; font-size: 19px; line-height: 1.1; }
+.tn-stats em { display: block; margin-top: 4px; color: #aebdca; font-size: 11px; font-style: normal; line-height: 1.35; }
+
+/* ---------- Aviso de alcance ---------- */
+.tn-scope {
+    display: flex;
+    gap: 10px;
+    margin: 0 0 20px;
+    padding: 11px 14px;
+    border: 1px solid rgba(230, 179, 74, .35);
+    border-radius: 10px;
+    background: rgba(230, 179, 74, .08);
+    color: #ead9b1;
+    font-size: 12.5px;
+    line-height: 1.55;
+}
+.tn-scope b { color: #ffe6a8; }
+
+/* ---------- Secciones y subtítulos ---------- */
+.tn-teoria .dm-sec { background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.025)); }
+.tn-teoria .dm-sec > h4 { line-height: 1.25; }
+.tn-teoria .dm-sec h5 {
+    margin: 22px 0 9px;
+    color: #e0edf9;
+    font-size: 14px;
+    letter-spacing: .2px;
+}
+.tn-teoria .dm-sec h6 {
+    margin: 16px 0 6px;
+    color: #cfe3f7;
+    font-size: 12.5px;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+}
+.tn-serif { font-family: Georgia, "Times New Roman", serif; }
+.tn-small { font-size: 12.5px !important; color: #b9c6d2 !important; line-height: 1.6 !important; }
+.tn-nowrap { white-space: nowrap; }
+
+.tn-kicker {
+    display: inline-block;
+    margin-bottom: 4px;
+    color: #8fc1ff;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* ---------- Ecuaciones ---------- */
+.tn-teoria .dm-formula {
+    position: relative;
+    margin: 13px 0;
+    padding: 14px 18px;
+    border-color: rgba(77, 143, 217, .38);
+    background:
+        linear-gradient(180deg, rgba(0, 51, 102, .24), rgba(0, 0, 0, .26));
+    text-align: center;
+    font-size: 16px;
+    line-height: 1.55;
+}
+.tn-teoria .dm-formula::before {
+    content: "ECUACIÓN";
+    position: absolute;
+    top: 6px;
+    left: 10px;
+    color: rgba(143, 193, 255, .62);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+}
+.tn-teoria .dm-formula.tn-formula-plain::before { content: none; }
+
+.tn-math {
+    display: inline-block;
+    max-width: 100%;
+    vertical-align: middle;
+}
+.tn-math-block {
+    display: block;
+    width: 100%;
+    padding: 1px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-align: center;
+    scrollbar-width: thin;
+}
+.tn-math-block .katex-display { margin: .15em 0; }
+.tn-math .katex { color: #f4f8fc; }
+.tn-math .katex .mord.text { color: #f4f8fc; }
+.tn-math-fallback {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.07);
+    color: #ffe0a5;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: .9em;
+    white-space: pre-wrap;
+    text-align: left;
+}
+.tn-eq-tag {
+    margin-left: 10px;
+    color: #8fc1ff;
+    font-size: 11px;
+    font-weight: 700;
+    vertical-align: middle;
+}
+
+/* ---------- Tarjetas internas ---------- */
+.tn-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 11px;
+    margin: 13px 0;
+}
+.tn-grid.tn-2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.tn-mini {
+    padding: 13px 14px;
+    border: 1px solid rgba(255, 255, 255, .10);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, .18);
+}
+.tn-mini b { display: block; margin-bottom: 4px; color: #eaf4ff; font-size: 13px; }
+.tn-mini p, .tn-mini li { margin: 0; color: #c9d5e0 !important; font-size: 12.5px !important; line-height: 1.55 !important; }
+.tn-mini ul { margin: 4px 0 0 16px !important; }
+.tn-mini .tn-icon { display: block; margin-bottom: 5px; font-size: 19px; line-height: 1; }
+
+/* ---------- Avisos y notas ---------- */
+.tn-note {
+    margin: 14px 0;
+    padding: 12px 15px 12px 17px;
+    border-left: 3px solid #4d8fd9;
+    border-radius: 0 10px 10px 0;
+    background: rgba(77, 143, 217, .10);
+    color: #dbe8f5;
+    font-size: 13.5px;
+    line-height: 1.65;
+}
+.tn-note b:first-child { color: #fff; }
+.tn-note.tn-warn { border-left-color: #e6b34a; background: rgba(230, 179, 74, .10); color: #f2e3bf; }
+.tn-note.tn-ok { border-left-color: #5fb98a; background: rgba(95, 185, 138, .10); color: #d4efe1; }
+.tn-note.tn-bad { border-left-color: #e0706b; background: rgba(224, 112, 107, .10); color: #ffd9d5; }
+.tn-note.tn-norm { border-left-color: #a78bfa; background: rgba(167, 139, 250, .09); color: #e5ddff; }
+.tn-note p { margin: 0 0 6px; }
+.tn-note p:last-child { margin-bottom: 0; }
+.tn-note ul, .tn-note ol { margin: 6px 0 0 18px; padding: 0; }
+.tn-note li { margin: 3px 0; }
+
+/* ---------- Ejemplos resueltos ---------- */
+.tn-example {
+    margin: 18px 0 10px;
+    padding: 17px 18px;
+    border: 1px solid rgba(77, 143, 217, .45);
+    border-radius: 13px;
+    background:
+        linear-gradient(180deg, rgba(0, 51, 102, .46), rgba(0, 51, 102, .24));
+}
+.tn-example > h5 {
+    margin: 0 0 8px !important;
+    color: #fff !important;
+    font-size: 14.5px !important;
+}
+.tn-example > h5 span {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: #4d8fd9;
+    color: #001a33;
+    font-size: 11px;
+    font-weight: 800;
+}
+.tn-example p, .tn-example li { font-size: 13.5px !important; line-height: 1.65 !important; }
+.tn-example .dm-formula { margin: 9px 0; padding: 10px 14px; background: rgba(0,0,0,.28); }
+.tn-example .tn-result {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    margin-top: 7px;
+    padding: 7px 11px;
+    border: 1px solid rgba(95, 185, 138, .38);
+    border-radius: 8px;
+    background: rgba(95, 185, 138, .10);
+    color: #d4efe1;
+    font-size: 13px;
+}
+.tn-example .tn-result b { color: #fff; font-size: 16px; }
+
+/* ---------- Tablas ---------- */
+.tn-tablecap {
+    margin: 13px 0 5px;
+    color: #cfe3f7;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+.tn-teoria .dm-table { font-size: 12.5px; }
+.tn-teoria .dm-table th, .tn-teoria .dm-table td { padding: 7px 9px; }
+.tn-teoria .dm-table td.tn-left { text-align: left; }
+.tn-teoria .dm-table td.tn-wrap { white-space: normal; min-width: 170px; }
+.tn-teoria .dm-table tr.tn-total td { border-top: 1px solid rgba(77,143,217,.55); background: rgba(77,143,217,.10); font-weight: 700; color: #fff; }
+.tn-teoria .dm-table caption {
+    caption-side: bottom;
+    padding: 7px 2px 0;
+    color: #9fb3c8;
+    font-size: 11.5px;
+    text-align: left;
+}
+
+/* ---------- Listas de chequeo ---------- */
+.tn-check { margin: 10px 0 12px !important; padding: 0 !important; list-style: none !important; }
+.tn-check li {
+    position: relative;
+    margin: 6px 0 !important;
+    padding-left: 25px;
+    list-style: none;
+}
+.tn-check li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: grid;
+    place-items: center;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: rgba(95, 185, 138, .18);
+    color: #8fe0b4;
+    font-size: 10px;
+    font-weight: 800;
+}
+.tn-check.tn-x li::before { content: "✕"; background: rgba(224, 112, 107, .16); color: #ffb4ae; }
+
+/* ---------- Ruta y bibliografía ---------- */
+.tn-teoria .dm-ruta { margin: 10px 0 4px; }
+.tn-teoria .dm-paso small { min-height: 34px; }
+.tn-teoria .dm-bib { padding-left: 20px; }
+.tn-teoria .dm-bib li { font-size: 13.5px; }
+.tn-teoria .dm-bib code { white-space: normal; }
+
+.tn-normlist { display: grid; gap: 8px; margin: 10px 0 4px; }
+.tn-normlist div {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 9px;
+    background: rgba(0,0,0,.14);
+    font-size: 12.5px;
+    line-height: 1.5;
+}
+.tn-normlist b { color: #9fc9f7; font-size: 11.5px; letter-spacing: .2px; }
+.tn-normlist span { color: #d6e0e9; }
+
+/* ---------- Fórmulas de bolsillo ---------- */
+.tn-formulas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin: 13px 0;
+}
+.tn-formulas > div {
+    padding: 11px 12px;
+    border: 1px solid rgba(77, 143, 217, .24);
+    border-radius: 10px;
+    background: rgba(0, 51, 102, .20);
+    text-align: center;
+    overflow-x: auto;
+}
+.tn-formulas small { display: block; margin-top: 5px; color: #9fb3c8; font-size: 10.5px; line-height: 1.35; }
+
+/* ---------- Adaptación a pantallas ---------- */
+@media (max-width: 920px) {
+    .tn-hero { grid-template-columns: 1fr; padding: 20px; }
+    .tn-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .tn-stats li { padding: 10px; }
+    .tn-stats strong { font-size: 16px; }
+}
+@media (max-width: 640px) {
+    .tn-hero { padding: 16px; border-radius: 14px; }
+    .tn-hero h3 { font-size: 22px; }
+    .tn-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tn-teoria .dm-sec { padding: 15px; }
+    .tn-example, .tn-note { padding: 13px; }
+    .tn-normlist div { grid-template-columns: 1fr; gap: 2px; }
+    .tn-grid, .tn-grid.tn-2, .tn-formulas { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .tn-teoria * { scroll-behavior: auto !important; }
+}
+
+/* ---------- Impresión ---------- */
+@media print {
+    .tn-hero { background: #fff !important; border-color: #bbb; }
+    .tn-hero h3, .tn-hero p, .tn-stats strong, .tn-stats em { color: #111 !important; }
+    .tn-teoria .dm-sec, .tn-example, .tn-note, .tn-mini { background: #fff !important; border-color: #bbb; break-inside: avoid; }
+    .tn-teoria .dm-toc { display: none; }
+    .tn-teoria .dm-teolayout { display: block; }
+    .tn-math .katex { color: #000; }
+}
