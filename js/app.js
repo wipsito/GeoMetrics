@@ -1836,11 +1836,30 @@ function activarTabsSeccion(seccionId) {
 
 function abrirEnsayoSuelos(nombre) {
     var panel = document.getElementById('panel-ensayo');
+    var lista = document.getElementById('ms1-lista');
     var grid = document.querySelector('#ms1-ensayos .ensayos-grid');
+    if (!panel) return;
+    if (lista) lista.style.display = 'none';
     if (grid) grid.style.display = 'none';
-    
-    panel.innerHTML = '<button class="btn-volver-panel btn-volver" onclick="volverAListaEnsayos()">← Ensayos</button>';
-    
+
+    var titulos = {
+        humedad: 'Contenido de Humedad',
+        granulometria: 'Granulometría',
+        limites: 'Límites de Atterberg',
+        gravedad: 'Gravedad Específica',
+        compactacion: 'Compactación Proctor',
+        densidad: 'Densidad de Campo',
+        clasificacion: 'Clasificación SUCS',
+        permeabilidad: 'Permeabilidad'
+    };
+    var titulo = titulos[nombre] || 'Ensayo';
+    panel.className = 'panel-ensayo panel-ensayo-vista';
+    panel.innerHTML =
+        '<div class="ensayo-vista-head">' +
+        '<button type="button" class="btn-volver-panel btn-volver" onclick="volverAListaEnsayos()">← Volver a ensayos</button>' +
+        '<div class="ensayo-vista-title"><em>Mecánica de Suelos I</em><h3>' + titulo + '</h3></div>' +
+        '</div>';
+
     switch(nombre) {
         case 'humedad':
             panel.innerHTML += crearFormularioHumedad();
@@ -1868,19 +1887,25 @@ function abrirEnsayoSuelos(nombre) {
             panel.innerHTML += crearFormularioPermeabilidad();
             break;
     }
-    
+
     panel.style.display = 'block';
+    panel.removeAttribute('hidden');
+    try { panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
     window.scrollTo(0, 0);
 }
 
 function volverAListaEnsayos() {
     var panel = document.getElementById('panel-ensayo');
+    var lista = document.getElementById('ms1-lista');
     var grid = document.querySelector('#ms1-ensayos .ensayos-grid');
     if (panel) {
         panel.style.display = 'none';
         panel.innerHTML = '';
+        panel.className = 'panel-ensayo';
     }
+    if (lista) lista.style.display = '';
     if (grid) grid.style.display = 'grid';
+    window.scrollTo(0, 0);
 }
 
 // =========================================
@@ -5192,18 +5217,37 @@ window.__datosEnsayoMS2 = window.__datosEnsayoMS2 || {};
 
 function volverAListaEnsayosMS2() {
     var panel = document.getElementById('panel-ensayo-ms2');
+    var lista = document.getElementById('ms2-lista');
     var grid = document.getElementById('ms2-ensayos-grid');
-    if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
+    if (panel) {
+        panel.style.display = 'none';
+        panel.innerHTML = '';
+        panel.className = 'panel-ensayo';
+    }
+    if (lista) lista.style.display = '';
     if (grid) grid.style.display = 'grid';
+    window.scrollTo(0, 0);
 }
 
 function abrirEnsayoSuelos2(nombre) {
     var panel = document.getElementById('panel-ensayo-ms2');
+    var lista = document.getElementById('ms2-lista');
     var grid = document.getElementById('ms2-ensayos-grid');
     if (!panel) return;
+    if (lista) lista.style.display = 'none';
     if (grid) grid.style.display = 'none';
+    panel.className = 'panel-ensayo panel-ensayo-vista';
     panel.style.display = 'block';
-    var html = '<button class="btn-volver-panel btn-volver" onclick="volverAListaEnsayosMS2()">← Ensayos</button>';
+    var titulos = {
+        corte: 'Corte Directo',
+        inconfinada: 'Compresión Inconfinada',
+        consolidacion: 'Consolidación',
+        triaxial: 'Ensayo Triaxial'
+    };
+    var html = '<div class="ensayo-vista-head">' +
+        '<button type="button" class="btn-volver-panel btn-volver" onclick="volverAListaEnsayosMS2()">← Volver a ensayos</button>' +
+        '<div class="ensayo-vista-title"><em>Mecánica de Suelos II</em><h3>' + (titulos[nombre] || 'Ensayo') + '</h3></div>' +
+        '</div>';
     if (nombre === 'corte') html += crearFormularioCorteDirecto();
     else if (nombre === 'inconfinada') html += crearFormularioInconfinada();
     else if (nombre === 'consolidacion') html += crearFormularioConsolidacionMS2();
