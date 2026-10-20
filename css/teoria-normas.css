@@ -421,3 +421,12 @@
     font-weight: 700;
     background: rgba(255,255,255,.08);
 }
+
+
+/* Teoría: un solo apartado visible */
+.tn-teoria .dm-sec { display: none; }
+.tn-teoria .dm-sec.is-active { display: block; }
+.tn-teoria .dm-toc a.is-on {
+    background: rgba(0, 51, 102, 0.65);
+    color: #fff;
+}
