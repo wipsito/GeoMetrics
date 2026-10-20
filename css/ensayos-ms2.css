@@ -258,7 +258,7 @@
 #ms2-ensayos .ms2-shell .interpretacion { border-left-color: var(--ms2-accent); }
 #ms2-ensayos .ms2-shell .interpretacion > span { color: var(--ms2-accent); }
 #ms2-ensayos .ms2-shell .btn-grafica { color: var(--ms2-accent); }
-#ms2-ensayos .ms2-shell .grafica-panel canvas { max-width: 100%; height: auto; border-radius: 12px; border: 1px solid #2B3A50; background: #0B1220; }
+#ms2-ensayos .ms2-shell .grafica-panel canvas { max-width: 100%; height: auto; border-radius: 12px; border: 1px solid #2B3A50; background: #151F32; }
 
 /* =========================================================
    VISOR 3D (módulo de máquina)

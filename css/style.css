@@ -2394,7 +2394,7 @@ body {
     max-width: 100%;
     height: 360px;
     display: block;
-    background: #241810;
+    background: #151F32;
     border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.08);
 }
@@ -4833,7 +4833,7 @@ div.ai-detect-result[hidden] {
 }
 .bulbos-plot {
   min-height: 420px;
-  background: #0f1612;
+  background: #151F32;
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.08);
 }

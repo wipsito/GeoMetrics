@@ -3,8 +3,8 @@
    Hub (2D / 3D), panel y simuladores 2D rediseñados
    Paleta: #0B1220 · #151F32 · #1E293B · #2B3A50 · acento por ensayo (--a / --rgb)
 ========================================================= */
-#ms2-simuladores { padding-bottom: 40px; }
-#ms2-simuladores em, #ms2-simuladores i, #ms2-simuladores u { font-style: normal; text-decoration: none; }
+.simhub-tab { padding-bottom: 40px; }
+.simhub-tab em, .simhub-tab i, .simhub-tab u { font-style: normal; text-decoration: none; }
 
 /* ---------------- HERO ---------------- */
 .simhub-hero {
@@ -74,7 +74,7 @@
 /* ---------------- PANEL ---------------- */
 .simhub-shell { --a: #3B82F6; --rgb: 59,130,246; max-width: 1240px; margin: 0 auto; }
 .simhub-topbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
-#ms2-simuladores .simhub-back { margin: 0 !important; padding: 9px 16px !important; border-radius: 10px !important; font-size: 13px; cursor: pointer; }
+.simhub-tab .simhub-back { margin: 0 !important; padding: 9px 16px !important; border-radius: 10px !important; font-size: 13px; cursor: pointer; }
 .simhub-crumbs { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #718096; flex-wrap: wrap; flex: 1; }
 .simhub-crumbs i { opacity: .5; }
 .simhub-crumbs b { color: #F1F5F9; font-weight: 600; }
@@ -158,7 +158,7 @@
 .s2d-tile small { font-size: 11px; color: #718096; }
 
 .s2d-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-.s2d-chart { display: block; width: 100%; border-radius: 14px; border: 1px solid #2B3A50; }
+.s2d-chart { display: block; width: 100%; border-radius: 14px; border: 1px solid #2B3A50; background: #151F32; }
 
 .s2d-summary { padding: 20px 22px 22px; border-radius: 20px; border: 1px solid #2B3A50; background: linear-gradient(160deg, #151F32, #101a2c); transition: border-color .4s, box-shadow .4s; }
 .s2d-summary h5 { margin: 0 0 14px; font-size: 12.5px; letter-spacing: 1.3px; text-transform: uppercase; color: #A7B4C8; }
@@ -198,3 +198,7 @@
     .s2d-play::after, .s2d-led i { animation: none !important; }
     .simcard, .simcard-btn, .s2d-reset { transition: none; }
 }
+
+/* simuladores clásicos de RM (desplegable) */
+.simhub-classic { margin-top: 34px; padding: 14px 18px; border-radius: 14px; border: 1px solid #2B3A50; background: #101a2c; }
+.simhub-classic > summary { cursor: pointer; font-weight: 700; color: #A7B4C8; letter-spacing: .3px; }
