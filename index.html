@@ -10,6 +10,8 @@
     <link rel="apple-touch-icon" href="docs/GeoMetrics.png">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/mezclas.css">
+    <link rel="stylesheet" href="css/teoria-normas.css">
+    
     <link rel="stylesheet" href="css/ensayos-ms2.css">
     <link rel="stylesheet" href="css/sim-ms2.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
@@ -372,157 +374,7 @@
 
         <!-- Ensayos de Mecánica de Suelos I -->
         <section class="tab-content active" id="ms1-teoria">
-            <div class="teoria-layout">
-                <aside class="teoria-nav" aria-label="Contenido teórico">
-                    <p class="teoria-nav-title">CONTENIDO</p>
-                    <button type="button" class="teoria-nav-item active" data-teo="ms1-t1">1. Ruta de trabajo</button>
-                    <button type="button" class="teoria-nav-item" data-teo="ms1-t2">2. Introducción a la Mecánica de Suelos</button>
-                    <button type="button" class="teoria-nav-item" data-teo="ms1-t3">3. Contenido de Humedad (w)</button>
-                    <button type="button" class="teoria-nav-item" data-teo="ms1-t4">4. Análisis Granulométrico</button>
-                    <button type="button" class="teoria-nav-item" data-teo="ms1-t5">5. Límites de Atterberg</button>
-                    <button type="button" class="teoria-nav-item" data-teo="ms1-t6">6. Gravedad Específica (Gs)</button>
-                    <button type="button" class="teoria-nav-item" data-teo="ms1-t7">7. Compactación Proctor</button>
-                    <button type="button" class="teoria-nav-item" data-teo="ms1-t8">8. Densidad de campo</button>
-                    <button type="button" class="teoria-nav-item" data-teo="ms1-t9">9. Clasificación SUCS</button>
-                    <button type="button" class="teoria-nav-item" data-teo="ms1-t10">10. Permeabilidad</button>
-                    <button type="button" class="teoria-nav-item" data-teo="ms1-t11">11. Bibliografía y normas</button>
-                </aside>
-                <div class="teoria-panel-wrap">
-                    <header class="teoria-panel-head">
-                        <h3>Mecánica de Suelos I — Fundamentos Teóricos</h3>
-                        <p>Selecciona un tema en el menú lateral. Cada apartado se despliega de forma independiente (no se muestra toda la teoría a la vez).</p>
-                    </header>
-
-                    <article class="teoria-panel active" id="ms1-t1">
-                        <h4><span class="teo-num">1</span> Ruta de trabajo</h4>
-                        <p>Secuencia recomendada para el laboratorio de Suelos I:</p>
-                        <div class="teo-cards">
-                            <div class="teo-mini"><strong>1. Humedad</strong><span>Masa de agua / masa de sólidos</span></div>
-                            <div class="teo-mini"><strong>2. Granulometría</strong><span>Curva, D10, D30, D60, Cu, Cc</span></div>
-                            <div class="teo-mini"><strong>3. Atterberg</strong><span>LL, LP, IP y carta de plasticidad</span></div>
-                            <div class="teo-mini"><strong>4. SUCS</strong><span>Grupo del suelo y símbolo</span></div>
-                        </div>
-                        <p>Después se complementa con gravedad específica, Proctor, densidad de campo y permeabilidad según el plan de prácticas.</p>
-                    </article>
-
-                                        <article class="teoria-panel" id="ms1-t2" hidden>
-                        <h4><span class="teo-num">2</span> Introducción a la Mecánica de Suelos</h4>
-                        <p>La mecánica de suelos es la rama de la ingeniería civil que estudia el <strong>comportamiento del suelo</strong> como material de construcción y de soporte. El suelo es un material natural trifásico formado por partículas sólidas, agua y aire.</p>
-                        <h5>Composición del suelo</h5>
-                        <ul>
-                            <li><strong>Fase sólida:</strong> partículas minerales y orgánicas (esqueleto del suelo).</li>
-                            <li><strong>Fase líquida:</strong> agua con sales y sustancias disueltas.</li>
-                            <li><strong>Fase gaseosa:</strong> aire y otros gases en los poros.</li>
-                        </ul>
-                        <p>Las propiedades ingenieriles dependen de la relación entre estas fases: contenido de humedad <em>w</em>, índice de poros <em>e</em>, porosidad <em>n</em> y grado de saturación <em>S</em>.</p>
-                        <div class="formula-box">e = V<sub>v</sub> / V<sub>s</sub> &nbsp;&nbsp;|&nbsp;&nbsp; n = V<sub>v</sub> / V<sub>t</sub> &nbsp;&nbsp;|&nbsp;&nbsp; S = V<sub>w</sub> / V<sub>v</sub></div>
-                        <h5>Por qué importa en obra</h5>
-                        <p>Capacidad portante, asentamiento, estabilidad de taludes, drenaje y compactación se diseñan a partir de parámetros medidos en laboratorio y campo. Un error en la caracterización del suelo se traduce en riesgo estructural o sobrecosto.</p>
-                        <p><em>Referencias:</em> Das, <em>Principles of Geotechnical Engineering</em>; guía FLA-23 (Universidad de Pamplona); NSR-10 Título H (estudios geotécnicos).</p>
-                    </article>
-
-                                        <article class="teoria-panel" id="ms1-t3" hidden>
-                        <h4><span class="teo-num">3</span> Contenido de Humedad (w)</h4>
-                        <p>El <strong>contenido de humedad</strong> es la relación entre la masa de agua y la masa de sólidos del suelo, expresada en porcentaje. Controla consistencia, compactación, resistencia y comportamiento volumétrico.</p>
-                        <h5>Definición y fórmulas</h5>
-                        <div class="formula-box">w = (W<sub>w</sub> / W<sub>s</sub>) × 100% = ((W<sub>húmida</sub> − W<sub>seca</sub>) / W<sub>seca</sub>) × 100%</div>
-                        <p>donde W<sub>w</sub> = masa de agua, W<sub>s</sub> = masa de sólidos secos, W<sub>húmida</sub> = masa del suelo húmedo (o recipiente + suelo húmedo, descontando tara).</p>
-                        <h5>Procedimiento de laboratorio (resumen FLA-23 / ASTM)</h5>
-                        <ol>
-                            <li>Pesar recipiente limpio y seco (tara).</li>
-                            <li>Colocar muestra representativa y pesar (recipiente + suelo húmedo).</li>
-                            <li>Secar en horno a 105–110 °C hasta masa constante (típicamente 12–24 h).</li>
-                            <li>Enfriar en desecador y pesar (recipiente + suelo seco).</li>
-                            <li>Calcular w con la fórmula anterior.</li>
-                        </ol>
-                        <h5>Interpretación</h5>
-                        <p>Valores bajos suelen asociarse a suelos secos o granulares; valores altos a finos o condiciones húmedas de campo. La comparación debe hacerse con el tipo de suelo y los criterios del curso / guía oficial.</p>
-                        <p><em>Fuentes:</em> FLA-23 UniPamplona; ASTM D2216 (secado en horno); Das (capítulos de propiedades índice).</p>
-                    </article>
-
-                                        <article class="teoria-panel" id="ms1-t4" hidden>
-                        <h4><span class="teo-num">4</span> Análisis Granulométrico</h4>
-                        <p>Determina la <strong>distribución de tamaños</strong> de las partículas. El resultado principal es la <strong>curva granulométrica</strong>: porcentaje que pasa frente a la abertura del tamiz (eje logarítmico).</p>
-                        <h5>Cálculos básicos</h5>
-                        <div class="formula-box">% retenido = (W<sub>retenida</sub> / W<sub>total</sub>) × 100</div>
-                        <div class="formula-box">% retenido acumulado = suma de % retenidos hasta ese tamiz</div>
-                        <div class="formula-box">% que pasa = 100 − % retenido acumulado</div>
-                        <h5>Parámetros de la curva</h5>
-                        <ul>
-                            <li><strong>D<sub>10</sub>, D<sub>30</sub>, D<sub>60</sub>:</strong> diámetros correspondientes al 10 %, 30 % y 60 % que pasa (por interpolación en la curva).</li>
-                            <li><strong>Coeficiente de uniformidad:</strong> Cu = D<sub>60</sub> / D<sub>10</sub></li>
-                            <li><strong>Coeficiente de curvatura:</strong> Cc = (D<sub>30</sub>)² / (D<sub>10</sub> · D<sub>60</sub>)</li>
-                        </ul>
-                        <p>Cu indica qué tan amplia es la distribución de tamaños; Cc describe la forma de la curva en la zona intermedia. Ambos se usan en la clasificación SUCS de suelos gruesos (GW, SW, etc.).</p>
-                        <p><em>Fuentes:</em> Das; FLA-23; ASTM D6913 / D422 (tamizado).</p>
-                    </article>
-
-                                        <article class="teoria-panel" id="ms1-t5" hidden>
-                        <h4><span class="teo-num">5</span> Límites de Atterberg</h4>
-                        <p>Los límites de consistencia describen la transición del suelo fino entre estados <strong>líquido, plástico y semisólido</strong>.</p>
-                        <ul>
-                            <li><strong>Límite líquido (LL):</strong> humedad en la frontera líquido–plástico (copa de Casagrande o cono).</li>
-                            <li><strong>Límite plástico (LP):</strong> humedad en la frontera plástico–semisólido (rollo de 3 mm).</li>
-                            <li><strong>Índice de plasticidad:</strong> IP = LL − LP</li>
-                        </ul>
-                        <div class="formula-box">IP = LL − LP</div>
-                        <p>La <strong>carta de plasticidad</strong> (Casagrande) ubica el suelo (CL, CH, ML, MH, etc.) según LL e IP. Son esenciales para clasificar finos en el sistema SUCS y para estimar comportamiento plástico.</p>
-                        <p><em>Fuentes:</em> Das; FLA-23; ASTM D4318.</p>
-                    </article>
-
-                                        <article class="teoria-panel" id="ms1-t6" hidden>
-                        <h4><span class="teo-num">6</span> Gravedad Específica (Gs)</h4>
-                        <p>La gravedad específica de los sólidos es la relación entre la densidad de las partículas sólidas y la del agua a 4 °C (adimensional).</p>
-                        <div class="formula-box">G<sub>s</sub> = ρ<sub>s</sub> / ρ<sub>w</sub></div>
-                        <p>Se determina en laboratorio con picnómetro o matraz volumétrico. Valores típicos de suelos minerales oscilan cerca de 2,65–2,75; orgánicos pueden ser menores. Gs interviene en el cálculo de relación de vacíos, grado de saturación y densidades.</p>
-                        <p><em>Fuentes:</em> Das; ASTM D854; FLA-23.</p>
-                    </article>
-
-                                        <article class="teoria-panel" id="ms1-t7" hidden>
-                        <h4><span class="teo-num">7</span> Compactación Proctor</h4>
-                        <p>La compactación aumenta la densidad seca del suelo mediante energía mecánica, mejorando resistencia y reduciendo compresibilidad y permeabilidad.</p>
-                        <div class="formula-box">γ<sub>d</sub> = γ<sub>h</sub> / (1 + w) &nbsp;&nbsp; (con w en decimal)</div>
-                        <p>El ensayo Proctor (estándar o modificado) obtiene la curva γ<sub>d</sub> vs w y localiza la <strong>humedad óptima</strong> y la <strong>densidad seca máxima</strong>. En campo se compara la densidad lograda con la de referencia del laboratorio (grado de compactación).</p>
-                        <p><em>Fuentes:</em> Das; ASTM D698 / D1557; FLA-23.</p>
-                    </article>
-
-                                        <article class="teoria-panel" id="ms1-t8" hidden>
-                        <h4><span class="teo-num">8</span> Densidad de campo</h4>
-                        <p>Verifica en obra si el relleno o la subrasante alcanzaron la densidad exigida por el diseño. Métodos comunes: cono de arena, densímetro nuclear (según normativa local) o volumétricos.</p>
-                        <div class="formula-box">Grado de compactación (%) = (γ<sub>d, campo</sub> / γ<sub>d, máx lab</sub>) × 100</div>
-                        <p>Un grado de compactación insuficiente implica mayor asentamiento y menor capacidad portante. Debe reportarse junto con la humedad de campo.</p>
-                        <p><em>Fuentes:</em> Das; INVIAS / especificaciones de obra; FLA-23.</p>
-                    </article>
-
-                                        <article class="teoria-panel" id="ms1-t9" hidden>
-                        <h4><span class="teo-num">9</span> Clasificación SUCS</h4>
-                        <p>El <strong>Sistema Unificado de Clasificación de Suelos (SUCS)</strong> asigna un símbolo de grupo a partir de granulometría y plasticidad.</p>
-                        <p><strong>Suelos gruesos</strong> (&gt;50 % retenido en N.º 200): gravas (G) y arenas (S) → GW, GP, GM, GC, SW, SP, SM, SC según finos, Cu y Cc.</p>
-                        <p><strong>Suelos finos</strong> (&gt;50 % pasa N.º 200): CL, CH, ML, MH, OL, OH, Pt según LL, IP y carta de plasticidad.</p>
-                        <p>El símbolo resume el comportamiento esperado para diseño geotécnico preliminar y comunicación entre laboratorio y diseñador.</p>
-                        <p><em>Fuentes:</em> Das; ASTM D2487; FLA-23.</p>
-                    </article>
-
-                                        <article class="teoria-panel" id="ms1-t10" hidden>
-                        <h4><span class="teo-num">10</span> Permeabilidad</h4>
-                        <p>Estudia el flujo de agua a través del suelo. El coeficiente de permeabilidad <em>k</em> depende del tamaño de poros, gradación y estructura.</p>
-                        <div class="formula-box">q = k · i · A &nbsp;&nbsp;|&nbsp;&nbsp; i = Δh / L &nbsp;&nbsp;(Ley de Darcy)</div>
-                        <p>Laboratorio: permeámetro de carga constante (granulares) o de carga variable (finos). k es clave en drenaje, consolidación, filtraciones y estabilidad de taludes.</p>
-                        <p><em>Fuentes:</em> Das; FLA-23; ASTM D2434 / D5084.</p>
-                    </article>
-
-                    <article class="teoria-panel" id="ms1-t11" hidden>
-                        <h4><span class="teo-num">11</span> Bibliografía y normas</h4>
-                        <ul>
-                            <li>Das, B. M. — <em>Principles of Geotechnical Engineering</em> (texto guía de suelos)</li>
-                            <li>Guía unificada de laboratorio FLA-23 — Universidad de Pamplona</li>
-                            <li>Normas ASTM / INVIAS aplicables a cada ensayo (humedad, granulometría, Atterberg, Proctor, etc.)</li>
-                            <li>NSR-10 Título H — estudios geotécnicos (contexto normativo colombiano)</li>
-                        </ul>
-                        <p>En Civix y en informes de GeoMetrics, para Suelos I se priorizan estas fuentes y <strong>no</strong> se mezclan con Beer/Hibbeler (Resistencia de Materiales).</p>
-                    </article>
-                </div>
-            </div>
+            <!-- Teoría normativa: se llena con js/teoria-ms1.js + teoria-normas.js -->
         </section>
 
     
@@ -690,16 +542,7 @@
         </section>
 
                 <section class="tab-content active" id="ms2-teoria">
-            <div class="teoria-layout" id="teoria-ms2-root">
-                <aside class="teoria-nav" aria-label="Contenido teórico MS2"></aside>
-                <div class="teoria-panel-wrap">
-                    <header class="teoria-panel-head">
-                        <h3>Mecánica de Suelos II — Fundamentos Teóricos</h3>
-                        <p>Resistencia al corte, consolidación, cimentaciones y estabilidad. Selecciona un tema en el menú.</p>
-                    </header>
-                    <div class="teoria-panels-host" id="teoria-ms2-panels"></div>
-                </div>
-            </div>
+            <!-- Teoría normativa MS2: js/teoria-ms2.js + teoria-normas.js -->
         </section>
 
         <section class="tab-content" id="ms2-ensayos">
@@ -853,16 +696,7 @@
 
         <!-- Teoría de Resistencia de Materiales -->
                 <section class="tab-content" id="rm-teoria">
-            <div class="teoria-layout" id="teoria-rm-root">
-                <aside class="teoria-nav" aria-label="Contenido teórico RM"></aside>
-                <div class="teoria-panel-wrap">
-                    <header class="teoria-panel-head">
-                        <h3>Resistencia de Materiales — Fundamentos Teóricos</h3>
-                        <p>Esfuerzo, deformación, axial, torsión, flexión y columnas. Selecciona un tema en el menú.</p>
-                    </header>
-                    <div class="teoria-panels-host" id="teoria-rm-panels"></div>
-                </div>
-            </div>
+            <!-- Teoría normativa RM: js/teoria-rm.js + teoria-normas.js -->
         </section>
 
         <section class="tab-content active" id="rm-ensayos">
@@ -1988,8 +1822,7 @@
             <div class="modal-perfil-body" id="modalVistaPreviaBody"></div>
         </div>
     </div>
-    <script src="js/teoria-extensa.js"></script>
-    <script src="js/sim3d-prensa.js"></script>
+<script src="js/sim3d-prensa.js"></script>
     <script src="js/lab3d-ensayos.js"></script>
     <script src="js/lab3d-ms1.js"></script>
     <script src="js/lab3d-ms1b.js"></script>
@@ -2007,6 +1840,12 @@
     <script src="js/sim2d-rm.js"></script>
     <script src="js/sim-hub.js"></script>
     <script src="js/teoria-uniforme.js"></script>
+    <script src="js/teoria-ms1.js"></script>
+    <script src="js/teoria-ms2.js"></script>
+    <script src="js/teoria-rm.js"></script>
+    <script src="js/teoria-dm.js"></script>
+    <script src="js/teoria-normas.js"></script>
     <script src="js/chart-theme.js"></script>
 </body>
+
 </html>
