@@ -1,717 +1,355 @@
 /**
  * GeoMetrics — Laboratorio 3D · Resistencia de Materiales
- * 5 escenas registradas sobre el visor GeoLab3D (js/lab3d-ensayos.js).
- *
- * Contrato por escena:
- *   builder(accent) → { root, pins[], set(p, prm) }
- *   set()  → { hud:[4 × {k,v,u}], phase:int }
- *   meta.parts.length DEBE igualar machine.pins.length
- *
- * Datos guardados en window.__datosEnsayoRM:
- *   traccion {d,L0,A0,P,dL,sigma,eps,E,sy,su}
- *   compresion {d,h,P,A,fc}
- *   flexion {L,b,h,P,M,I,Mr}
- *   torsion {d,L,T,thDeg,J,tau,gamma,G}
- *   dureza {escala,lecturas[],promedio}
- *
- * Claves de escena: rm-traccion, rm-compresion, rm-flexion, rm-torsion, rm-dureza.
+ * Máquinas: universal (tracción), prensa (compresión), banco de flexión, banco de torsión, durómetro Rockwell
+ * Toman los valores del simulador 2D correspondiente (GeoSim2D.defs[tipo]).
  */
 (function (global) {
     'use strict';
-    var G3 = global.GeoLab3D;
-    if (!G3 || !G3.register) return;
-    var P = G3.prim;
+    var L3 = global.GeoLab3D;
+    if (!L3 || !L3.kit || !L3.lib) return;
+    var K = L3.kit, L = L3.lib, M = K.M, box = K.box, cyl = K.cyl, clamp = K.clamp, lerp = K.lerp, ease = K.ease, fmt = K.fmt;
+    var paramsFrom = L.paramsFrom, stateOf = L.stateOf, screen = L.screen, bench = L.bench, mats = L.mats, deform = L.deform;
+    function hud4(a, b, c, d) { return [a, b, c, d]; }
+    function sstep(a, b, x) { var t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
 
-    var ACC = {
-        traccion: '#3B82F6', compresion: '#38BDF8', flexion: '#A78BFA', torsion: '#2DD4BF', dureza: '#FBBF24'
-    };
-
-    function datos(k) { try { return (global.__datosEnsayoRM && global.__datosEnsayoRM[k]) || null; } catch (e) { return null; } }
-
-    /* ================================================================== */
-    /*  1 · MÁQUINA UNIVERSAL · ENSAYO DE TRACCIÓN                        */
-    /* ================================================================== */
-    function buildTraccion(accent) {
-        var root = new THREE.Group();
-        var mt = P.materiales();
-        P.plinth(root, 3.6, 2.6, accent);
-
-        /* bancada y columnas */
-        P.box(root, 3.0, 0.2, 2.0, 0, 0.1, 0, mt.frameDark);
-        P.box(root, 2.8, 0.08, 1.8, 0, 0.24, 0, mt.frame);
-        [[-0.9, -0.7], [0.9, -0.7], [-0.9, 0.7], [0.9, 0.7]].forEach(function (p) {
-            P.cyl(root, 0.08, 0.08, 3.4, p[0], 1.9, p[1], mt.chrome, 20);
-            P.cyl(root, 0.11, 0.11, 0.06, p[0], 0.34, p[1], mt.chromeDark, 14);
-            P.cyl(root, 0.11, 0.11, 0.06, p[0], 3.46, p[1], mt.chromeDark, 14);
-        });
-        /* cabezal superior e inferior */
-        P.box(root, 2.2, 0.3, 1.6, 0, 3.6, 0, mt.frame);
-        P.box(root, 2.0, 0.1, 1.4, 0, 3.8, 0, mt.frameLight);
-        P.box(root, 1.0, 0.5, 0.03, 0, 3.6, 0.82, mt.white);
-        var crossTop = P.box(root, 1.6, 0.28, 1.2, 0, 2.55, 0, mt.frameLight);
-        var crossBot = P.box(root, 1.6, 0.28, 1.2, 0, 0.55, 0, mt.frameLight);
-        /* actuador hidráulico */
-        P.cyl(root, 0.26, 0.26, 0.7, 0, 3.35, 0, mt.blue, 28);
-        P.cyl(root, 0.12, 0.12, 0.5, 0, 2.95, 0, mt.chrome, 16);
-
-        /* probeta de tracción (cilindro esbelto) */
-        var spec = new THREE.Group();
-        root.add(spec);
-        var body = P.cyl(spec, 0.1, 0.1, 1.4, 0, 0, 0, mt.chrome, 28);
-        var gripTop = P.cyl(spec, 0.16, 0.16, 0.18, 0, 0.79, 0, mt.blueDeep, 24);
-        var gripBot = P.cyl(spec, 0.16, 0.16, 0.18, 0, -0.79, 0, mt.blueDeep, 24);
-        spec.position.set(0, 1.55, 0);
-
-        /* zona de estricción (se resalta al final) */
-        var neckMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xF43F5E), transparent: true, opacity: 0, depthWrite: false });
-        var neck = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.015, 8, 24), neckMat);
-        neck.rotation.x = Math.PI / 2;
-        neck.position.set(0, 1.55, 0);
-        root.add(neck);
-
-        /* extensómetro (deformímetro axial) */
-        P.box(root, 0.04, 0.5, 0.04, 0.28, 1.55, 0, mt.chromeDark);
-        var dialExt = P.makeDial(root, 0.28, 1.9, 0, 0.16, mt);
-
-        /* panel de control */
-        P.box(root, 0.7, 0.5, 0.5, -1.35, 0.6, 0.6, mt.blueDeep);
-        P.box(root, 0.5, 0.14, 0.02, -1.35, 0.72, 0.86, mt.white);
-        var led = P.cylZ(root, 0.05, 0.05, 0.03, -1.35, 0.55, 0.86, mt.green, 16);
-
-        var pins = [
-            { v: [0, 3.6, 0] },       /* cabezal superior */
-            { v: [0, 2.3, 0] },       /* mordaza superior */
-            { v: [0, 1.55, 0.2] },    /* probeta */
-            { v: [0, 0.8, 0] },       /* mordaza inferior */
-            { v: [0.28, 1.9, 0] },    /* extensómetro */
-            { v: [-1.35, 0.85, 0.6] } /* panel de control */
-        ];
-
-        function set(p, prm) {
-            var load = P.ease(P.seg(p, 0, 0.2));
-            var onset = P.seg(p, 0.2, 0.72);
-            var plast = P.seg(p, 0.72, 0.94);
-            var rot = P.seg(p, 0.94, 1.0);
-
-            var A0 = prm.A0 || 122.7;
-            var sy = prm.sy || 250, su = prm.su || 400, E = (prm.E || 200) * 1000;
-            var epsY = sy / E;
-            var eps = epsY * load + (epsY * 8) * onset + 0.12 * plast + 0.02 * rot;
-            var sigma;
-            if (eps <= epsY) sigma = E * eps;
-            else if (plast < 1) sigma = sy + (su - sy) * (1 - Math.pow(1 - onset, 2));
-            else sigma = su * (1 - 0.28 * rot);
-            var dL = eps * (prm.L0 || 50);
-
-            /* estiramiento visual de la probeta */
-            var stretch = P.clamp(dL / 6, 0, 0.5);
-            body.scale.y = 1 + stretch;
-            body.scale.x = 1 - stretch * 0.35;   /* estricción */
-            body.scale.z = 1 - stretch * 0.35;
-            gripTop.position.y = 0.79 + stretch * 0.7;
-            gripBot.position.y = -0.79 - stretch * 0.7;
-            crossTop.position.y = 2.55 + stretch * 0.7;
-            spec.position.y = 1.55;
-
-            neckMat.opacity = 0.9 * P.clamp((plast - 0.4) / 0.6, 0, 1);
-            dialExt.rotation.z = -(dL) * 0.5;
-            led.material = led.material;
-
-            var ph = p < 0.2 ? 0 : p < 0.72 ? 1 : p < 0.94 ? 2 : 3;
-            return {
-                hud: [
-                    { k: 'σ', v: P.fmt(Math.max(0, sigma), 1), u: 'MPa' },
-                    { k: 'ε', v: P.fmt(eps * 100, 3), u: '%' },
-                    { k: 'ΔL', v: P.fmt(dL, 3), u: 'mm' },
-                    { k: 'P', v: P.fmt(Math.max(0, sigma) * A0 / 1000, 2), u: 'kN' }
-                ],
-                phase: ph
-            };
+    /* ===================================================================
+       1 · TRACCIÓN — máquina universal
+    =================================================================== */
+    L3.register('traccion', {
+        meta: {
+            accent: '#F87171', machine: 'Máquina universal de ensayos (UTM)', machineSub: 'Bastidor de dos columnas, celda de carga, mordazas y extensómetro',
+            norma: 'ASTM E8 / E8M', duration: 22,
+            phases: [
+                { a: 0.00, b: 0.10, t: 'Zona elástica', d: 'σ = E·ε: la probeta se estira y recupera su longitud.' },
+                { a: 0.10, b: 0.72, t: 'Fluencia y endurecimiento', d: 'Deformación plástica permanente hasta la carga máxima.' },
+                { a: 0.72, b: 0.96, t: 'Estricción', d: 'El cuello se afina y la carga baja.' },
+                { a: 0.96, b: 1.01, t: 'Fractura', d: 'La probeta se separa en dos mitades.' }
+            ],
+            parts: [
+                { name: 'Bastidor con columnas', desc: 'Estructura rígida que guía el travesaño móvil.' },
+                { name: 'Celda de carga', desc: 'Mide la fuerza P aplicada a la probeta.' },
+                { name: 'Mordazas', desc: 'Sujetan los extremos de la probeta sin deslizamiento.' },
+                { name: 'Probeta "hueso de perro"', desc: 'Sección reducida donde ocurre la deformación y la rotura.' },
+                { name: 'Extensómetro', desc: 'Mide el alargamiento de la longitud calibrada L₀.' },
+                { name: 'Consola de control', desc: 'Muestra P, σ y ε en tiempo real.' }
+            ],
+            cam: { target: [0, 2.7, 0], home: { theta: 0.55, phi: 1.12, radius: 11 }, frontal: { theta: 0, phi: 1.3, radius: 11.2 }, lateral: { theta: 1.4, phi: 1.2, radius: 10.6 }, detalle: { theta: 0.3, phi: 1.2, radius: 5.2, target: [0, 2.9, 0] } }
+        },
+        params: paramsFrom('traccion'),
+        build: function (accent) {
+            var root = new THREE.Group(), mt = mats();
+            bench(root, 7.4, 4.2, accent);
+            var blue = M(0x4b6a93, 0.5, 0.4);
+            box(root, 3.4, 0.8, 1.7, 0, 0.45, 0, blue);
+            [-1.15, 1.15].forEach(function (x) { cyl(root, 0.1, 0.1, 4.25, x, 2.95, 0, mt.steelL, 20); });
+            box(root, 3.0, 0.3, 1.1, 0, 4.9, 0, blue);
+            cyl(root, 0.25, 0.25, 0.4, 0, 4.55, 0, mt.steelD, 24);
+            var lower = new THREE.Group(); root.add(lower);
+            box(lower, 2.8, 0.3, 1.0, 0, 0, 0, blue); cyl(lower, 0.3, 0.3, 0.6, 0, 0.45, 0, mt.steelD, 24);
+            cyl(root, 0.3, 0.3, 0.6, 0, 4.05, 0, mt.steelD, 24);
+            var steelM = M(0xb8c2cc, 0.85, 0.3), brittleM = M(0x8b929a, 0.5, 0.6);
+            var geo = function () { return new THREE.CylinderGeometry(1, 1, 1, 22, 20); };
+            var upper = new THREE.Mesh(geo(), steelM), lowerH = new THREE.Mesh(geo(), steelM); root.add(upper); root.add(lowerH);
+            var rings = [new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.025, 8, 24), M(0xF87171, 0.3, 0.4)), new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.025, 8, 24), M(0xF87171, 0.3, 0.4))];
+            rings.forEach(function (r) { r.rotation.x = Math.PI / 2; root.add(r); });
+            var cons = new THREE.Group(); cons.position.set(-3.0, 0, 0.6); root.add(cons); box(cons, 1.1, 1.5, 0.7, 0, 0.8, 0, mt.dark);
+            var scr = screen(cons, 0.9, 0.5, 0, 1.05, 0.36, 320, 180);
+            var yTop = 3.75, gripTopBase = 2.35;
+            var pins = [{ v: [1.3, 2.4, 0] }, { v: [0.4, 4.6, 0.3] }, { v: [0.4, 4.05, 0.3] }, { v: [0.2, 3.0, 0] }, { v: [0.35, 3.0, 0.2] }, { v: [-3.0, 1.8, 0.9] }];
+            function set(p, prm) {
+                var S = stateOf(prm, p), Mx = prm.M, m = Mx.m, drop = clamp(S.dL * 0.05, 0, 1.0);
+                lower.position.y = 1.6 - drop;
+                var yBot = gripTopBase - drop, neck = 0;
+                if (!m.brittle && S.e > m.eu) neck = clamp((S.e - m.eu) / (m.ef - m.eu), 0, 1);
+                var gap = S.broke ? S.gap * 0.5 : 0;
+                function half(isUpper) {
+                    return function (x, y, z) {
+                        var u = isUpper ? (0.5 - y) * 0.5 : 0.5 + (0.5 - y) * 0.5;
+                        var sh = clamp((Math.abs(u - 0.5) - 0.3) / 0.12, 0, 1), s = sh * sh * (3 - 2 * sh), f = lerp(0.11, 0.2, s);
+                        f *= 1 - 0.64 * Math.pow(neck, 1.1) * Math.exp(-Math.pow((u - 0.5) / 0.08, 2));
+                        var wy = yTop - u * (yTop - yBot) + (isUpper ? gap / 2 : -gap / 2) * 1;
+                        return [x * f, wy, z * f];
+                    };
+                }
+                upper.material = lowerH.material = m.brittle ? brittleM : steelM;
+                deform(upper, half(true)); deform(lowerH, half(false));
+                var mid = (yTop + yBot) / 2, span = yTop - yBot;
+                rings[0].position.set(0, mid + span * 0.14, 0); rings[1].position.set(0, mid - span * 0.14, 0);
+                rings.forEach(function (r) { r.visible = !S.broke; });
+                scr.draw(Math.round(S.Pk * 10) + '|' + Math.round(S.eps * 10) + S.fase, function (g, W, H) {
+                    g.fillStyle = '#0b1a10'; g.fillRect(0, 0, W, H); g.fillStyle = '#86efac'; g.textAlign = 'left'; g.font = 'bold 26px monospace';
+                    g.fillText('P  ' + fmt(S.Pk, 2) + ' kN', 14, 52); g.fillText('σ  ' + fmt(S.sig, 0) + ' MPa', 14, 96); g.fillText('ε  ' + fmt(S.eps, 2) + ' %', 14, 140);
+                    g.font = 'bold 18px sans-serif'; g.fillStyle = '#fbbf24'; g.fillText(S.fase, 14, 170);
+                });
+                var ph = S.fase === 'Elástica' ? 0 : (S.fase === 'Estricción' ? 2 : (S.fase === 'Fractura' || S.fase === 'Rotura frágil' ? 3 : 1));
+                return { hud: hud4({ k: 'ε', v: fmt(S.eps, 2), u: '%' }, { k: 'σ', v: fmt(S.sig, 1), u: 'MPa' }, { k: 'P', v: fmt(S.Pk, 2), u: 'kN' }, { k: 'ΔL', v: fmt(S.dL, 2), u: 'mm' }), phase: ph };
+            }
+            return { root: root, pins: pins, set: set };
         }
-        return { root: root, pins: pins, set: set };
-    }
+    });
 
-    var META_TRACCION = {
-        accent: ACC.traccion, machine: 'Máquina universal de ensayos',
-        machineSub: 'Marco de 4 columnas con mordazas y extensómetro',
-        norma: 'ASTM E8 · NTC 2', duration: 16,
-        phases: [
-            { a: 0, b: 0.20, t: 'Sujetar la probeta', d: 'Se monta la probeta entre las mordazas y se pone a cero el extensómetro.' },
-            { a: 0.20, b: 0.72, t: 'Carga elástica', d: 'La deformación es proporcional al esfuerzo (zona lineal, módulo E).' },
-            { a: 0.72, b: 0.94, t: 'Fluencia y endurecimiento', d: 'Se alcanza σy y luego el esfuerzo último σu.' },
-            { a: 0.94, b: 1.01, t: 'Estricción y rotura', d: 'La sección se reduce localmente y la probeta falla.' }
-        ],
-        parts: [
-            { name: 'Cabezal superior', desc: 'Transmite la carga de tracción a la probeta.' },
-            { name: 'Mordaza superior', desc: 'Sujeta el extremo superior de la probeta.' },
-            { name: 'Probeta', desc: 'Espécimen normalizado que se somete a tracción.' },
-            { name: 'Mordaza inferior', desc: 'Ancla el extremo inferior (reacción).' },
-            { name: 'Extensómetro', desc: 'Mide el alargamiento ΔL de la probeta.' },
-            { name: 'Panel de control', desc: 'Regula la velocidad y registra fuerza y deformación.' }
-        ],
-        cam: {
-            target: [0, 1.9, 0],
-            home: { theta: 0.7, phi: 1.12, radius: 7.6 },
-            frontal: { theta: 0.0, phi: 1.3, radius: 7.4 },
-            lateral: { theta: 1.5, phi: 1.2, radius: 7.2 },
-            detalle: { theta: 0.5, phi: 1.15, radius: 4.6 }
+    /* ===================================================================
+       2 · COMPRESIÓN — prensa hidráulica
+    =================================================================== */
+    L3.register('compresion', {
+        meta: {
+            accent: '#60A5FA', machine: 'Prensa hidráulica de compresión', machineSub: 'Bastidor, plato superior, pistón hidráulico y manómetro',
+            norma: 'ASTM C39 · ASTM E9', duration: 20,
+            phases: [
+                { a: 0.00, b: 0.50, t: 'Carga axial', d: 'El pistón sube y comprime el cilindro; σ crece con ε.' },
+                { a: 0.50, b: 0.65, t: 'Falla', d: 'Aparecen fisuras o abarrilamiento: se alcanza la resistencia máxima.' },
+                { a: 0.65, b: 1.01, t: 'Post-pico', d: 'La carga cae mientras el material se desintegra o fluye.' }
+            ],
+            parts: [
+                { name: 'Bastidor de la prensa', desc: 'Columnas y travesaño que reaccionan la carga.' },
+                { name: 'Plato superior', desc: 'Superficie fija contra la que se comprime la probeta.' },
+                { name: 'Pistón hidráulico', desc: 'Empuja el plato inferior con presión de aceite.' },
+                { name: 'Probeta cilíndrica', desc: 'Concreto, acero, madera u otro material.' },
+                { name: 'Manómetro', desc: 'Indica la carga aplicada.' },
+                { name: 'Compresómetro', desc: 'Mide el acortamiento ΔL de la probeta.' }
+            ],
+            cam: { target: [0, 2.5, 0], home: { theta: 0.55, phi: 1.12, radius: 10.4 }, frontal: { theta: 0, phi: 1.3, radius: 10.6 }, lateral: { theta: 1.4, phi: 1.2, radius: 10 }, detalle: { theta: 0.3, phi: 1.2, radius: 5, target: [0, 2.5, 0] } }
+        },
+        params: paramsFrom('compresion'),
+        build: function (accent) {
+            var root = new THREE.Group(), mt = mats();
+            bench(root, 7, 4, accent);
+            var red = M(0x9b3b3b, 0.5, 0.45);
+            box(root, 3.6, 0.9, 1.9, 0, 0.5, 0, red);
+            [-1.3, 1.3].forEach(function (x) { cyl(root, 0.12, 0.12, 4.0, x, 2.9, 0, mt.steelL, 20); });
+            box(root, 3.2, 0.34, 1.2, 0, 4.9, 0, red);
+            cyl(root, 0.4, 0.4, 0.2, 0, 4.63, 0, mt.steelD, 28); box(root, 1.5, 0.12, 1.5, 0, 4.5, 0, mt.steelM);
+            var low = new THREE.Group(); root.add(low);
+            box(low, 1.5, 0.12, 1.5, 0, 0.06, 0, mt.steelM);
+            var piston = cyl(root, 0.34, 0.34, 1, 0, 2, 0, mt.steelM, 24);
+            var specMat = L.speckle('#8d9296', 4800, 60, 200, 3, 2, 1), specSteel = M(0xb8c2cc, 0.85, 0.3), specWood = L.speckle('#b08052', 3000, 80, 190, 3, 1, 3);
+            var spec = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 30, 24), specMat); spec.castShadow = true; root.add(spec);
+            var crackG = new THREE.Group(), crackMat = new THREE.MeshBasicMaterial({ color: 0x15100d, transparent: true, opacity: 0, side: THREE.DoubleSide });
+            var crack = new THREE.Mesh(new THREE.RingGeometry(0.985, 1.015, 56), crackMat); crack.rotation.x = -Math.PI / 2; crackG.add(crack); root.add(crackG);
+            var shards = []; for (var i = 0; i < 8; i++) { var sh = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.05, 0.06), M(0x8d9296, 0, 0.9)); sh.visible = false; root.add(sh); shards.push(sh); }
+            var gauge = K.makeDial(root, -2.4, 2.5, 0.6, 0.55, { chrome: mt.steelL, white: mt.white, accent: M(0x60A5FA, 0.3, 0.4), black: mt.dark, red: mt.red });
+            box(root, 0.16, 0.9, 0.16, -2.4, 1.7, 0.6, mt.steelD);
+            var scr = screen(root, 0.9, 0.3, 2.5, 1.3, 0.62, 256, 80); box(root, 1.0, 0.7, 0.5, 2.5, 1.1, 0.35, mt.dark);
+            var pins = [{ v: [1.3, 3.6, 0] }, { v: [0.9, 4.6, 0.5] }, { v: [0.2, 1.3, 0.3] }, { v: [0.5, 2.6, 0.5] }, { v: [-2.4, 3.2, 0.6] }, { v: [2.5, 1.7, 0.6] }];
+            function set(p, prm) {
+                var S = stateOf(prm, p), Mx = prm.M, m = Mx.m, R = clamp(0.28 + prm.P.d / 160 * 0.3, 0.3, 0.6), H0 = clamp(R * 2 * m.ratio, 0.9, 2.1);
+                var bot0 = 4.45 - H0, short = clamp(S.e * (m.fail === 'barrel' ? 1.2 : 55), 0, 0.32) * H0;
+                var bot = bot0 + short, h = 4.45 - bot;
+                low.position.y = bot - 0.12; piston.scale.y = Math.max(0.05, bot - 0.12 - 0.95); piston.position.y = 0.95 + piston.scale.y / 2;
+                spec.material = m.fail === 'barrel' || m.fail === 'shear' ? specSteel : (m.fail === 'crush' ? specWood : specMat);
+                var bul = m.fail === 'barrel' ? clamp(S.e * 1.6, 0, 0.3) : clamp(S.fail * 0.06, 0, 0.08);
+                deform(spec, function (x, y, z) { var t = y + 0.5, f = R * (1 + bul * Math.sin(Math.PI * t) + short * 0.4); return [x * f, bot + t * h, z * f]; });
+                var cone = m.fail === 'cone' || m.fail === 'shear';
+                crackMat.opacity = cone ? 0.9 * sstep(0, 0.4, S.fail) : 0; crackG.position.set(0, bot + h / 2, 0); crackG.rotation.z = m.fail === 'shear' ? 0.78 : 1.0;
+                crack.scale.set(R / Math.cos(crackG.rotation.z) * 1.0, R, 1); crack.scale.set(R / Math.cos(crackG.rotation.z), R, 1);
+                shards.forEach(function (sh, i) { var on = m.fail === 'cone' && S.fail > 0.15 && p < 1; sh.visible = on; var f = ((p * 40 + i * 0.13) % 1); sh.position.set((i % 2 ? 1 : -1) * (R + 0.1 + f * 0.5), bot + h * 0.5 - f * 1.2, ((i * 37) % 10 - 5) * 0.06); });
+                gauge.rotation.z = -clamp(S.Pk / Math.max(Mx.Pmax, 1), 0, 1.1) * 4.2;
+                scr.lcd(fmt(S.Pk, 0) + ' kN', 'CARGA', '#93c5fd');
+                var ph = S.fail <= 0.02 ? 0 : (S.fail < 1 ? 1 : 2);
+                return { hud: hud4({ k: 'ε', v: fmt(S.eps, 3), u: '%' }, { k: 'σ', v: fmt(S.sig, 1), u: 'MPa' }, { k: 'P', v: fmt(S.Pk, 1), u: 'kN' }, { k: 'ΔL', v: fmt(S.dL, 2), u: 'mm' }), phase: ph };
+            }
+            return { root: root, pins: pins, set: set };
         }
-    };
-    function paramsTraccion() {
-        var d = datos('traccion');
-        var o = { d: 12.5, L0: 50, A0: 122.7, sy: 285, su: 448, E: 200, real: false };
-        if (d) {
-            if (isFinite(d.d)) o.d = d.d;
-            if (isFinite(d.L0)) o.L0 = d.L0;
-            if (isFinite(d.A0)) o.A0 = d.A0;
-            if (isFinite(d.sy)) o.sy = d.sy;
-            if (isFinite(d.su)) o.su = d.su;
-            if (isFinite(d.E)) o.E = d.E;
-            o.real = isFinite(d.su) || isFinite(d.sy);
+    });
+
+    /* ===================================================================
+       3 · FLEXIÓN — banco de tres puntos
+    =================================================================== */
+    L3.register('flexion', {
+        meta: {
+            accent: '#FBBF24', machine: 'Banco de flexión en 3 puntos', machineSub: 'Apoyos con rodillos, cabezal de carga y deflectómetro',
+            norma: 'ASTM C78 · ASTM D790', duration: 20,
+            phases: [
+                { a: 0.00, b: 0.90, t: 'Carga creciente', d: 'La viga se curva: compresión arriba, tracción abajo; δ crece con P.' },
+                { a: 0.90, b: 1.01, t: 'Rotura / fluencia', d: 'Se alcanza el módulo de ruptura (o la fluencia en el acero).' }
+            ],
+            parts: [
+                { name: 'Apoyos con rodillos', desc: 'Apoyos simples separados la luz L.' },
+                { name: 'Viga de ensayo', desc: 'Material a flexionar (acero, madera o concreto).' },
+                { name: 'Cabezal de carga', desc: 'Aplica la carga puntual P en el centro.' },
+                { name: 'Actuador', desc: 'Empuja el cabezal con velocidad controlada.' },
+                { name: 'Deflectómetro', desc: 'Mide la deflexión δ en el centro.' },
+                { name: 'Consola', desc: 'Lectura de P, δ y esfuerzo máximo.' }
+            ],
+            cam: { target: [0, 1.9, 0], home: { theta: 0.5, phi: 1.12, radius: 10.2 }, frontal: { theta: 0, phi: 1.28, radius: 10.4 }, lateral: { theta: 1.3, phi: 1.2, radius: 9.6 }, detalle: { theta: 0.3, phi: 1.2, radius: 5.4, target: [0, 1.6, 0] } }
+        },
+        params: paramsFrom('flexion'),
+        build: function (accent) {
+            var root = new THREE.Group(), mt = mats();
+            bench(root, 8.2, 3.6, accent);
+            var blue = M(0x5a7aa0, 0.5, 0.4);
+            box(root, 6.0, 0.36, 1.5, 0, 0.24, 0, blue);
+            [-2.6, 2.6].forEach(function (x) { box(root, 0.3, 3.6, 0.5, x, 2.1, -0.6, blue); }); box(root, 5.5, 0.32, 0.6, 0, 3.95, -0.6, blue);
+            [-1.7, 1.7].forEach(function (x) { box(root, 0.5, 0.35, 0.8, x, 0.6, 0, mt.steelD); var rl = cyl(root, 0.14, 0.14, 0.9, x, 0.9, 0, mt.steelL, 18); rl.rotation.x = Math.PI / 2; });
+            var wood = L.speckle('#c9955e', 3000, 90, 200, 3, 3, 1), conc = L.speckle('#8d9296', 4800, 60, 200, 3, 3, 1), steel = M(0xb8c2cc, 0.85, 0.3);
+            var beam = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1, 60, 4, 1), conc); beam.castShadow = true; root.add(beam);
+            var nose = new THREE.Group(); root.add(nose);
+            var nz = cyl(nose, 0.14, 0.14, 0.9, 0, 0, 0, mt.steelL, 18); nz.rotation.x = Math.PI / 2; box(nose, 0.5, 0.4, 0.8, 0, 0.36, 0, mt.steelD); cyl(nose, 0.13, 0.13, 1.2, 0, 1.1, 0, mt.steelM, 16);
+            cyl(root, 0.3, 0.3, 0.5, 0, 3.6, 0, mt.steelD, 20);
+            var crackM = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.5, 0.62), M(0x1d1411, 0, 1)); crackM.visible = false; root.add(crackM);
+            var dialG = K.makeDial(root, 0, 0.55, 1.0, 0.45, { chrome: mt.steelL, white: mt.white, accent: M(0xFBBF24, 0.3, 0.4), black: mt.dark, red: mt.red });
+            cyl(root, 0.04, 0.04, 0.5, 0, 0.35, 0.3, mt.steelL, 8);
+            var scr = screen(root, 1.1, 0.4, 3.1, 1.3, 0.8, 320, 120); box(root, 1.2, 0.8, 0.5, 3.1, 1.0, 0.55, mt.dark);
+            var pins = [{ v: [-1.7, 1.1, 0.6] }, { v: [-0.8, 1.7, 0.4] }, { v: [0, 2.2, 0.5] }, { v: [0, 3.5, 0.3] }, { v: [0, 1.0, 1.0] }, { v: [3.1, 1.9, 0.8] }];
+            function set(p, prm) {
+                var S = stateOf(prm, p), Mx = prm.M, P = prm.P, span = 3.4, hh = clamp(P.h / P.L * span, 0.3, 0.9), bw = 0.6;
+                beam.material = P.mat === 'acero' ? steel : (P.mat === 'madera' ? wood : conc);
+                var dm = 0.45, d = clamp(S.dl / Math.max(Mx.dmax, 1e-6), 0, 3) * dm * (S.plastic ? 0.7 : 1);
+                if (S.broken) d = dm;
+                var yb = 1.05 + hh / 2;     /* centro de la viga sobre los rodillos */
+                deform(beam, function (x, y, z) {
+                    var X = x * (span + 0.8), t = clamp((X + span / 2) / span, 0, 1), dd;
+                    if (S.broken) { dd = d * 1.8 * (1 - Math.abs(2 * t - 1)); var gx = X > 0 ? 0.04 : -0.04; return [X + gx, yb + y * hh - dd * (1 - Math.abs(t - 0.5) * 0) * 0 - dd, z * bw]; }
+                    dd = d * 4 * t * (1 - t); if (X < -span / 2 || X > span / 2) dd = 0;
+                    return [X, yb + y * hh - dd, z * bw];
+                });
+                nose.position.y = yb + hh / 2 + 0.15 - d + 0.0;
+                crackM.visible = S.broken; crackM.position.set(0, yb - d, 0); crackM.scale.y = hh / 0.5;
+                dialG.rotation.z = -clamp(d / dm, 0, 1.2) * 4;
+                scr.draw(Math.round(S.Pk * 100) + '|' + Math.round(S.dl * 10) + S.fase, function (g, W, H) {
+                    g.fillStyle = '#0b1a10'; g.fillRect(0, 0, W, H); g.fillStyle = '#fde68a'; g.font = 'bold 24px monospace'; g.textAlign = 'left';
+                    g.fillText('P ' + fmt(S.Pk, 2) + ' kN', 12, 40); g.fillText('δ ' + fmt(S.dl, 2) + ' mm', 12, 76); g.fillStyle = '#86efac'; g.font = 'bold 18px sans-serif'; g.fillText('σ ' + fmt(S.sg, 1) + ' MPa · ' + S.fase, 12, 106);
+                });
+                return { hud: hud4({ k: 'P', v: fmt(S.Pk, 2), u: 'kN' }, { k: 'δ', v: fmt(S.dl, 2), u: 'mm' }, { k: 'σ máx', v: fmt(S.sg, 1), u: 'MPa' }, { k: 'M', v: fmt(S.Mk, 3), u: 'kN·m' }), phase: p < 0.9 ? 0 : 1 };
+            }
+            return { root: root, pins: pins, set: set };
         }
-        o.nota = o.real
-            ? 'Con tus resultados: σy = ' + P.fmt(o.sy, 1) + ' MPa · σu = ' + P.fmt(o.su, 1) + ' MPa'
-            : 'Valores típicos de ejemplo (acero estructural). Pulsa CALCULAR para usar tus datos.';
-        return o;
-    }
+    });
 
-    /* ================================================================== */
-    /*  2 · PRENSA DE COMPRESIÓN (probeta de concreto)                    */
-    /* ================================================================== */
-    function buildCompresion(accent) {
-        var root = new THREE.Group();
-        var mt = P.materiales();
-        P.plinth(root, 3.4, 2.6, accent);
-
-        P.box(root, 2.8, 0.2, 2.0, 0, 0.1, 0, mt.frameDark);
-        P.box(root, 2.6, 0.08, 1.8, 0, 0.24, 0, mt.frame);
-        [[-0.85, -0.65], [0.85, -0.65], [-0.85, 0.65], [0.85, 0.65]].forEach(function (p) {
-            P.cyl(root, 0.08, 0.08, 3.0, p[0], 1.75, p[1], mt.chrome, 20);
-        });
-        /* cabezal superior fijo */
-        P.box(root, 2.2, 0.3, 1.6, 0, 3.2, 0, mt.frame);
-        P.box(root, 2.0, 0.1, 1.4, 0, 3.4, 0, mt.frameLight);
-        P.cyl(root, 0.32, 0.32, 0.4, 0, 2.8, 0, mt.blue, 28);
-        P.cyl(root, 0.28, 0.28, 0.12, 0, 2.55, 0, mt.plate, 36);
-        /* plato inferior móvil */
-        P.cyl(root, 0.32, 0.32, 0.12, 0, 0.5, 0, mt.plate, 36);
-        var piston = P.cyl(root, 0.14, 0.14, 0.5, 0, 0.28, 0, mt.chrome, 20);
-
-        /* probeta cúbica/ cilíndrica de concreto */
-        var cubeMat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, metalness: 0.05, roughness: 0.9 });
-        var cube = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), cubeMat);
-        cube.position.set(0, 1.45, 0);
-        root.add(cube);
-        /* fisuras progresivas */
-        var crackMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x1f2937), transparent: true, opacity: 0 });
-        var crack1 = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.8, 0.02), crackMat);
-        crack1.position.set(0.1, 1.45, 0.41);
-        root.add(crack1);
-        var crack2 = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.8, 0.012), crackMat);
-        crack2.position.set(-0.41, 1.45, -0.1);
-        crack2.rotation.z = 0.2;
-        root.add(crack2);
-
-        /* marco de medición (deformímetro) */
-        P.box(root, 0.04, 0.7, 0.04, 0.6, 1.45, 0, mt.chromeDark);
-        var dialC = P.makeDial(root, 0.6, 1.9, 0, 0.16, mt);
-
-        /* panel / manómetro */
-        P.box(root, 0.7, 0.5, 0.5, -1.3, 0.6, 0.6, mt.blueDeep);
-        P.cylZ(root, 0.14, 0.14, 0.06, -1.3, 0.68, 0.86, mt.white, 24);
-
-        var pins = [
-            { v: [0, 3.2, 0] },       /* cabezal superior */
-            { v: [0, 2.6, 0] },       /* plato fijo */
-            { v: [0, 1.45, 0.45] },   /* probeta */
-            { v: [0, 0.5, 0] },       /* plato inferior */
-            { v: [0.6, 1.9, 0] },     /* deformímetro */
-            { v: [-1.3, 0.85, 0.6] }  /* manómetro */
-        ];
-
-        function set(p, prm) {
-            var carga = P.ease(P.seg(p, 0, 0.8));
-            var falla = P.seg(p, 0.8, 1.0);
-
-            var fc = prm.fc || 40;
-            var A = prm.A || Math.PI * Math.pow((prm.d || 150) / 2, 2);
-            var sigma = fc * carga * (1 - 0.3 * falla);
-            var eps = carga * 0.0022 + falla * 0.001;   /* ≈ 0,2 % */
-            var P_kN = sigma * A / 1000;
-
-            /* acortamiento y abarrilamiento */
-            var acort = carga * 0.02 + falla * 0.02;
-            cube.scale.y = 1 - acort;
-            cube.scale.x = 1 + acort * 0.6;
-            cube.scale.z = 1 + acort * 0.6;
-            /* el plato inferior sube */
-            piston.scale.y = 1 - acort;
-
-            crackMat.opacity = 0.95 * P.clamp((falla - 0.2) / 0.8, 0, 1);
-            crack1.scale.y = cube.scale.y;
-            crack2.scale.y = cube.scale.y;
-            dialC.rotation.z = -carga * 3.2;
-
-            var ph = p < 0.5 ? 0 : p < 0.8 ? 1 : 2;
-            return {
-                hud: [
-                    { k: 'σ', v: P.fmt(Math.max(0, sigma), 1), u: 'MPa' },
-                    { k: 'Carga', v: P.fmt(Math.max(0, P_kN), 1), u: 'kN' },
-                    { k: 'ε', v: P.fmt(eps * 100, 3), u: '%' },
-                    { k: 'fc', v: P.fmt(fc, 1), u: 'MPa' }
-                ],
-                phase: ph
-            };
+    /* ===================================================================
+       4 · TORSIÓN — banco de torsión
+    =================================================================== */
+    L3.register('torsion', {
+        meta: {
+            accent: '#C084FC', machine: 'Banco de torsión con goniómetro', machineSub: 'Cabezal fijo, cabezal giratorio con motor y torquímetro',
+            norma: 'ASTM E143', duration: 20,
+            phases: [
+                { a: 0.00, b: 0.12, t: 'Zona elástica', d: 'γ = τ/G: las rayas se inclinan proporcionalmente al torque.' },
+                { a: 0.12, b: 0.97, t: 'Fluencia por torsión', d: 'El material fluye; el torque crece lentamente hasta τu.' },
+                { a: 0.97, b: 1.01, t: 'Fractura', d: 'La barra se corta en un plano perpendicular a su eje.' }
+            ],
+            parts: [
+                { name: 'Cabezal fijo', desc: 'Sujeta un extremo e impide el giro.' },
+                { name: 'Mandril (mordaza)', desc: 'Agarra la barra sin deslizamiento.' },
+                { name: 'Probeta con rayas', desc: 'Las rayas rectas se vuelven hélices al torcerse.' },
+                { name: 'Cabezal giratorio con motor', desc: 'Aplica el torque T girando un extremo.' },
+                { name: 'Goniómetro', desc: 'Disco graduado: ángulo de giro φ.' },
+                { name: 'Torquímetro', desc: 'Mide el torque aplicado.' }
+            ],
+            cam: { target: [0, 1.6, 0], home: { theta: 0.55, phi: 1.12, radius: 10.4 }, frontal: { theta: 0, phi: 1.32, radius: 10.6 }, lateral: { theta: 1.1, phi: 1.2, radius: 10 }, detalle: { theta: 0.3, phi: 1.2, radius: 5, target: [0, 1.5, 0] } }
+        },
+        params: paramsFrom('torsion'),
+        build: function (accent) {
+            var root = new THREE.Group(), mt = mats();
+            bench(root, 9.2, 3.8, accent);
+            var blue = M(0x5b4a8a, 0.5, 0.4);
+            box(root, 7.4, 0.4, 1.5, 0, 0.26, 0, blue);
+            box(root, 1.3, 1.9, 1.3, -3.2, 1.45, 0, blue);
+            var chL = cyl(root, 0.3, 0.3, 0.7, -2.4, 1.6, 0, mt.steelD, 24); chL.rotation.z = Math.PI / 2;
+            var tail = new THREE.Group(); tail.position.set(3.2, 1.6, 0); root.add(tail);
+            box(root, 1.5, 1.9, 1.3, 3.2, 1.45, 0, blue);
+            var chR = cyl(tail, 0.3, 0.3, 0.7, -0.8, 0, 0, mt.steelD, 24); chR.rotation.z = Math.PI / 2;
+            /* disco goniómetro con marca en el cabezal giratorio */
+            var disc = cyl(tail, 0.75, 0.75, 0.08, 0.2, 0, 0, mt.white, 48); disc.rotation.z = Math.PI / 2;
+            var mark = box(tail, 0.1, 0.5, 0.06, 0.26, 0.42, 0, M(0xbe123c, 0.2, 0.5));
+            var stripes = document.createElement('canvas'); stripes.width = 256; stripes.height = 8; var sg = stripes.getContext('2d');
+            sg.fillStyle = '#b8c2cc'; sg.fillRect(0, 0, 256, 8); sg.fillStyle = '#1e293b'; for (var k = 1; k < 6; k++) sg.fillRect(k * 42, 0, 5, 8); sg.fillStyle = '#F43F5E'; sg.fillRect(0, 0, 8, 8);
+            var st = new THREE.CanvasTexture(stripes); st.wrapS = THREE.RepeatWrapping;
+            var specGeo = new THREE.CylinderGeometry(1, 1, 1, 36, 60); specGeo.rotateZ(Math.PI / 2);
+            var spec = new THREE.Mesh(specGeo, new THREE.MeshStandardMaterial({ map: st, metalness: 0.5, roughness: 0.4 })); spec.castShadow = true; root.add(spec);
+            var tq = K.makeDial(root, -3.2, 2.9, 0.7, 0.5, { chrome: mt.steelL, white: mt.white, accent: M(0xC084FC, 0.3, 0.4), black: mt.dark, red: mt.red });
+            var scr = screen(root, 1.0, 0.36, 3.2, 0.9, 0.67, 288, 104);
+            var pins = [{ v: [-3.2, 2.6, 0.5] }, { v: [-2.4, 1.95, 0.3] }, { v: [0, 1.9, 0.3] }, { v: [3.2, 2.6, 0.5] }, { v: [3.4, 2.4, 0.5] }, { v: [-3.2, 3.3, 0.7] }];
+            function set(p, prm) {
+                var S = stateOf(prm, p), P = prm.P, R = clamp(0.12 + P.d / 50 * 0.22, 0.14, 0.34), Lm = 4.4, x0 = -2.05;
+                var phi = Math.min(S.phi, Math.PI * 7), tw = phi;
+                var gap = S.broke ? 0.1 : 0, xr = x0 + Lm;
+                deform(spec, function (x, y, z) {
+                    var t = (x + 0.5), X = x0 + t * Lm + (t > 0.5 ? gap : 0), a = tw * t, ca = Math.cos(a), sa = Math.sin(a), yy = y * R, zz = z * R;
+                    return [X, 1.6 + yy * ca - zz * sa, yy * sa + zz * ca];
+                });
+                tail.position.x = xr + 0.8 + gap; tail.rotation.x = tw;
+                chL.position.x = x0 - 0.2;
+                tq.rotation.z = -clamp(S.T / Math.max(prm.M.Tu, 1), 0, 1.2) * 4.2;
+                scr.draw(Math.round(S.T) + '|' + Math.round(S.phiD) + S.fase, function (g, W, H) {
+                    g.fillStyle = '#0b1a10'; g.fillRect(0, 0, W, H); g.fillStyle = '#e9d5ff'; g.font = 'bold 26px monospace'; g.textAlign = 'left';
+                    g.fillText('T ' + fmt(S.T, 1) + ' N·m', 12, 42); g.fillText('φ ' + fmt(S.phiD, 0) + '°', 12, 80); g.fillStyle = '#86efac'; g.font = 'bold 16px sans-serif'; g.fillText(S.fase, 190, 80);
+                });
+                return { hud: hud4({ k: 'φ', v: fmt(S.phiD, 1), u: '°' }, { k: 'T', v: fmt(S.T, 1), u: 'N·m' }, { k: 'τ máx', v: fmt(S.tau, 1), u: 'MPa' }, { k: 'γ', v: fmt(S.gam, 4), u: 'rad' }), phase: S.broke ? 2 : (S.fase === 'Elástica' ? 0 : 1) };
+            }
+            return { root: root, pins: pins, set: set };
         }
-        return { root: root, pins: pins, set: set };
-    }
+    });
 
-    var META_COMPRESION = {
-        accent: ACC.compresion, machine: 'Prensa de compresión',
-        machineSub: 'Marco con platos y deformímetro para probetas de concreto',
-        norma: 'ASTM C39 · NTC 673', duration: 14,
-        phases: [
-            { a: 0, b: 0.50, t: 'Colocar y cargar la probeta', d: 'Se aplica carga axial a velocidad controlada.' },
-            { a: 0.50, b: 0.80, t: 'Zona cercana a la rotura', d: 'Aparecen fisuras y el esfuerzo se aproxima a su máximo.' },
-            { a: 0.80, b: 1.01, t: 'Falla por compresión', d: 'La probeta se fractura; se registra fc.' }
-        ],
-        parts: [
-            { name: 'Cabezal superior', desc: 'Transmite la carga de compresión.' },
-            { name: 'Plato fijo superior', desc: 'Apoya la cara superior de la probeta.' },
-            { name: 'Probeta de concreto', desc: 'Cilindro o cubo que se ensaya a compresión.' },
-            { name: 'Plato móvil inferior', desc: 'Sube aplicando la carga axial.' },
-            { name: 'Deformímetro', desc: 'Mide el acortamiento de la probeta.' },
-            { name: 'Manómetro', desc: 'Indica la carga aplicada por la prensa.' }
-        ],
-        cam: {
-            target: [0, 1.6, 0],
-            home: { theta: 0.7, phi: 1.12, radius: 6.8 },
-            frontal: { theta: 0.0, phi: 1.3, radius: 6.6 },
-            lateral: { theta: 1.5, phi: 1.2, radius: 6.4 },
-            detalle: { theta: 0.5, phi: 1.15, radius: 4.2 }
+    /* ===================================================================
+       5 · DUREZA — durómetro Rockwell
+    =================================================================== */
+    L3.register('dureza', {
+        meta: {
+            accent: '#2DD4BF', machine: 'Durómetro Rockwell', machineSub: 'Bastidor en C, indentador, yunque con husillo, carátula y pesas',
+            norma: 'ASTM E18', duration: 20,
+            phases: [
+                { a: 0.00, b: 0.15, t: 'Precarga (10 kgf)', d: 'El indentador toca y fija la referencia h₀.' },
+                { a: 0.15, b: 0.50, t: 'Carga mayor', d: 'Se suma la carga hasta el total (150 kgf en HRC, 100 kgf en HRB).' },
+                { a: 0.50, b: 0.75, t: 'Mantener', d: 'La carga se sostiene unos segundos.' },
+                { a: 0.75, b: 0.90, t: 'Retirar la carga mayor', d: 'Se recupera la parte elástica; queda la precarga.' },
+                { a: 0.90, b: 1.01, t: 'Lectura', d: 'HR = N − e/0,002 mm, con e la profundidad permanente.' }
+            ],
+            parts: [
+                { name: 'Bastidor en C', desc: 'Rígido: evita que el equipo se deforme bajo carga.' },
+                { name: 'Indentador', desc: 'Cono de diamante (HRC) o bola de acero (HRB).' },
+                { name: 'Probeta', desc: 'Superficie plana y pulida del material ensayado.' },
+                { name: 'Yunque con husillo', desc: 'Eleva la probeta hasta aplicar la precarga.' },
+                { name: 'Carátula', desc: 'Muestra la profundidad y la dureza HR.' },
+                { name: 'Pesas de carga', desc: 'Generan la carga mayor mediante palanca.' }
+            ],
+            cam: { target: [0, 2.2, 0], home: { theta: 0.6, phi: 1.1, radius: 9.4 }, frontal: { theta: 0, phi: 1.25, radius: 9.6 }, lateral: { theta: 1.5, phi: 1.2, radius: 9 }, detalle: { theta: 0.5, phi: 1.15, radius: 4.4, target: [0, 1.7, 0.2] } }
+        },
+        params: paramsFrom('dureza'),
+        build: function (accent) {
+            var root = new THREE.Group(), mt = mats();
+            bench(root, 6.6, 3.6, accent);
+            var body = M(0x4d7f86, 0.5, 0.42);
+            /* silueta en C simplificada: columna trasera + brazo superior + base */
+            box(root, 0.7, 4.9, 1.0, -1.3, 2.6, 0, body);
+            box(root, 3.6, 0.8, 1.0, 0.3, 4.75, 0, body); box(root, 3.4, 0.7, 1.5, -0.1, 0.4, 0, body);
+            cyl(root, 0.32, 0.32, 0.9, 0.9, 4.35, 0, mt.steelD, 24);
+            var ind = new THREE.Group(); root.add(ind);
+            cyl(ind, 0.1, 0.1, 0.9, 0, 0.45, 0, mt.steelL, 14); var tip = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3, 14), M(0xbfe9ff, 0.2, 0.2)); tip.rotation.x = Math.PI; tip.position.y = -0.15; ind.add(tip);
+            var sphere = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), mt.steelL); sphere.position.y = -0.08; ind.add(sphere);
+            ind.position.set(0.9, 3.0, 0);
+            /* yunque + husillo + probeta */
+            var anv = new THREE.Group(); root.add(anv); cyl(anv, 0.12, 0.12, 2.2, 0.9, -0.8, 0, mt.steelM, 14); cyl(anv, 0.42, 0.4, 0.14, 0.9, 0.3, 0, mt.steelL, 28);
+            var blockM = M(0xb7c1cd, 0.85, 0.25); var block = box(anv, 0.9, 0.3, 0.9, 0.9, 0.52, 0, blockM);
+            var dent = new THREE.Mesh(new THREE.CircleGeometry(0.05, 16), M(0x0b0f14, 0, 1)); dent.rotation.x = -Math.PI / 2; dent.position.set(0.9, 0.672, 0); dent.visible = false; anv.add(dent);
+            var wheel = cyl(root, 0.5, 0.5, 0.12, 0.9, 0.55, 0.9, mt.dark, 24); wheel.rotation.x = Math.PI / 2;
+            /* carátula */
+            var dc = document.createElement('canvas'); dc.width = dc.height = 256; var dg = dc.getContext('2d'), dtex = new THREE.CanvasTexture(dc);
+            var face = new THREE.Mesh(new THREE.CircleGeometry(0.62, 40), new THREE.MeshBasicMaterial({ map: dtex })); face.position.set(0.3, 4.75, 0.52); root.add(face);
+            var ring = new THREE.Mesh(new THREE.TorusGeometry(0.64, 0.05, 10, 40), mt.steelL); ring.position.set(0.3, 4.75, 0.52); root.add(ring);
+            var lastD = '';
+            function drawDial(depth, hr, show, esc) {
+                var key = Math.round(depth) + '|' + show + esc; if (key === lastD) return; lastD = key;
+                dg.fillStyle = '#f4f6f8'; dg.fillRect(0, 0, 256, 256); dg.strokeStyle = '#1e293b'; dg.fillStyle = '#1e293b'; dg.textAlign = 'center'; dg.font = 'bold 15px sans-serif';
+                for (var i = 0; i <= 50; i++) { var a = Math.PI * 0.75 + i / 50 * Math.PI * 1.5, big = i % 5 === 0; dg.lineWidth = big ? 3 : 1.4; dg.beginPath(); dg.moveTo(128 + Math.cos(a) * (big ? 96 : 108), 128 + Math.sin(a) * (big ? 96 : 108)); dg.lineTo(128 + Math.cos(a) * 118, 128 + Math.sin(a) * 118); dg.stroke(); if (big && i % 10 === 0) dg.fillText(String(i * 2), 128 + Math.cos(a) * 80, 128 + Math.sin(a) * 80 + 5); }
+                var na = Math.PI * 0.75 + clamp(depth / 160, 0, 1) * Math.PI * 1.5;
+                dg.strokeStyle = '#be123c'; dg.lineWidth = 5; dg.beginPath(); dg.moveTo(128, 128); dg.lineTo(128 + Math.cos(na) * 100, 128 + Math.sin(na) * 100); dg.stroke();
+                dg.fillStyle = '#0f172a'; dg.font = 'bold 26px sans-serif'; dg.fillText(show ? hr + ' ' + esc : 'HR' + esc, 128, 190); dtex.needsUpdate = true;
+            }
+            /* pesas */
+            var weights = []; for (var w = 0; w < 5; w++) { var wm = cyl(root, 0.32, 0.32, 0.12, -1.3, 5.3 + w * 0.14, -0.3, mt.steelD, 20); weights.push(wm); }
+            var pins = [{ v: [-1.3, 3.0, 0.6] }, { v: [0.9, 3.3, 0.4] }, { v: [0.9, 1.3, 0.6] }, { v: [0.9, 0.6, 0.8] }, { v: [0.3, 5.5, 0.6] }, { v: [-1.3, 6.0, -0.3] }];
+            function set(p, prm) {
+                var S = stateOf(prm, p), Mx = prm.M, lift = S.depth / 150 * 0.28;
+                ind.position.y = 2.75 - lift; tip.visible = Mx.C0; sphere.visible = !Mx.C0;
+                anv.position.y = 1.78;
+                var showHR = p >= 0.9; drawDial(S.depth, S.hrv, showHR, Mx.C0 ? 'HRC' : 'HRB');
+                var nW = clamp(Math.round(S.load / Mx.total * 5), 0, 5); weights.forEach(function (wm, i) { wm.visible = i < Math.max(1, nW); });
+                dent.visible = p >= 0.75; dent.scale.setScalar(Math.max(0.3, Mx.e / 90 * 1.2));
+                wheel.rotation.y = p * 20;
+                return { hud: hud4({ k: 'Carga', v: fmt(S.load, 0), u: 'kgf' }, { k: 'Prof.', v: fmt(S.depth, 1), u: 'µm' }, { k: 'HR', v: showHR ? S.hrv + (Mx.C0 ? ' HRC' : ' HRB') : '—', u: '' }, { k: 'Fase', v: S.fase, u: '' }), phase: S.ph };
+            }
+            return { root: root, pins: pins, set: set };
         }
-    };
-    function paramsCompresion() {
-        var d = datos('compresion');
-        var o = { d: 150, h: 300, A: Math.PI * Math.pow(75, 2), fc: 40, real: false };
-        if (d) {
-            if (isFinite(d.d)) { o.d = d.d; o.A = Math.PI * Math.pow(d.d / 2, 2); }
-            if (isFinite(d.h)) o.h = d.h;
-            if (isFinite(d.A)) o.A = d.A;
-            if (isFinite(d.fc)) o.fc = d.fc;
-            o.real = !!d.fc;
-        }
-        o.nota = o.real
-            ? 'Con tus resultados: fc = ' + P.fmt(o.fc, 1) + ' MPa'
-            : 'Valores típicos de ejemplo (fc ≈ 40 MPa). Pulsa CALCULAR para usar tus datos.';
-        return o;
-    }
-
-    /* ================================================================== */
-    /*  3 · ENSAYO DE FLEXIÓN (viga simplemente apoyada)                  */
-    /* ================================================================== */
-    function buildFlexion(accent) {
-        var root = new THREE.Group();
-        var mt = P.materiales();
-        P.plinth(root, 4.2, 2.6, accent);
-
-        P.box(root, 3.8, 0.2, 1.8, 0, 0.1, 0, mt.frameDark);
-        P.box(root, 3.6, 0.08, 1.6, 0, 0.24, 0, mt.frame);
-
-        /* apoyos (rodillo y articulación) */
-        P.cylZ(root, 0.14, 0.14, 0.5, -1.35, 0.42, 0, mt.chrome, 24);
-        P.box(root, 0.2, 0.16, 0.5, -1.35, 0.32, 0, mt.frameDark);
-        P.cylZ(root, 0.14, 0.14, 0.5, 1.35, 0.42, 0, mt.chrome, 24);
-        P.box(root, 0.2, 0.16, 0.5, 1.35, 0.32, 0, mt.frameDark);
-
-        /* viga */
-        var beam = new THREE.Group();
-        root.add(beam);
-        var beamMat = new THREE.MeshStandardMaterial({ color: 0xb0a48c, metalness: 0.05, roughness: 0.85 });
-        var viga = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.3, 0.4), beamMat);
-        viga.position.set(0, 0.72, 0);
-        beam.add(viga);
-        /* marcadores de tercios */
-        [-0.5, 0.5].forEach(function (x) { P.box(beam, 0.02, 0.32, 0.42, x, 0.72, 0, mt.accent); });
-
-        /* marco de carga con dos puntos (tercios) */
-        P.box(root, 1.8, 0.2, 1.2, 0, 2.4, 0, mt.frame);
-        P.box(root, 1.6, 0.08, 1.0, 0, 2.56, 0, mt.frameLight);
-        P.cyl(root, 0.2, 0.2, 0.4, 0, 2.15, 0, mt.blue, 24);
-        var rodL = P.cyl(root, 0.06, 0.06, 0.5, -0.5, 1.9, 0, mt.chrome, 14);
-        var rodR = P.cyl(root, 0.06, 0.06, 0.5, 0.5, 1.9, 0, mt.chrome, 14);
-        P.box(root, 0.4, 0.1, 0.5, -0.5, 1.6, 0, mt.chromeDark);
-        P.box(root, 0.4, 0.1, 0.5, 0.5, 1.6, 0, mt.chromeDark);
-
-        /* comparador de flecha central */
-        P.box(root, 0.04, 0.4, 0.04, 0, 0.35, 0.4, mt.chromeDark);
-        var dialF = P.makeDial(root, 0, 0.5, 0.42, 0.14, mt);
-
-        /* fisura central */
-        var crackMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x1f2937), transparent: true, opacity: 0 });
-        var crack = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.3, 0.3), crackMat);
-        crack.position.set(0, 0.57, 0);
-        beam.add(crack);
-
-        var pins = [
-            { v: [0, 2.4, 0] },       /* marco de carga */
-            { v: [-0.5, 1.6, 0] },    /* punto de carga izq. */
-            { v: [0, 0.72, 0.45] },   /* viga */
-            { v: [-1.35, 0.42, 0] },  /* apoyo fijo */
-            { v: [1.35, 0.42, 0] },   /* apoyo móvil */
-            { v: [0, 0.75, 0.42] }    /* comparador central */
-        ];
-
-        function set(p, prm) {
-            var carga = P.ease(P.seg(p, 0, 0.8));
-            var falla = P.seg(p, 0.8, 1.0);
-
-            var L = prm.L || 450, b = prm.b || 150, hgt = prm.h || 150, Ptot = prm.P || 40;   /* kN */
-            var Pn = Ptot / 2;
-            /* flexión en los tercios: M = P·L/6, σ = M·c/I */
-            var M = Pn * (L / 1000) / 3;      /* kN·m */
-            var c = (hgt / 1000) / 2;
-            var I = (b / 1000) * Math.pow(hgt / 1000, 3) / 12;
-            var sigma = (M * c / I) / 1000 * carga;   /* MPa */
-            var flecha = (23 * Pn * Math.pow(L / 1000, 3)) / (1296 * (prm.E || 200e6) * I) * 1000;  /* mm aprox */
-            flecha = flecha * carga;
-
-            /* deformación visual de la viga */
-            var sag = carga * 0.22 + falla * 0.05;
-            /* curvamos la viga con ligera rotación en los extremos + descenso */
-            viga.position.y = 0.72 - sag;
-            viga.rotation.z = 0;
-            beam.position.y = -sag * 0.5;
-            /* empujamos los puntos de carga hacia abajo */
-            rodL.scale.y = Math.max(0.2, 1 - sag * 1.2);
-            rodR.scale.y = Math.max(0.2, 1 - sag * 1.2);
-            rodL.position.y = 1.9 - sag * 0.4;
-            rodR.position.y = 1.9 - sag * 0.4;
-
-            crackMat.opacity = 0.95 * P.clamp((falla - 0.3) / 0.7, 0, 1);
-            dialF.rotation.z = -flecha * 0.05;
-
-            var ph = p < 0.5 ? 0 : p < 0.8 ? 1 : 2;
-            return {
-                hud: [
-                    { k: 'M', v: P.fmt(M * carga, 2), u: 'kN·m' },
-                    { k: 'σf', v: P.fmt(sigma, 1), u: 'MPa' },
-                    { k: 'δ', v: P.fmt(flecha, 2), u: 'mm' },
-                    { k: 'Mr', v: P.fmt(prm.Mr || 20, 1), u: 'MPa' }
-                ],
-                phase: ph
-            };
-        }
-        return { root: root, pins: pins, set: set };
-    }
-
-    var META_FLEXION = {
-        accent: ACC.flexion, machine: 'Marco de flexión (viga en 3 puntos)',
-        machineSub: 'Apoyos en los extremos y carga en los tercios',
-        norma: 'ASTM C78 · NTC 2871', duration: 15,
-        phases: [
-            { a: 0, b: 0.50, t: 'Cargar la viga', d: 'La carga se aplica en los tercios del vano.' },
-            { a: 0.50, b: 0.80, t: 'Flexión elástica', d: 'La viga se curva; se mide la flecha central.' },
-            { a: 0.80, b: 1.01, t: 'Agrietamiento y rotura', d: 'Aparece la fisura en la zona de máximo momento.' }
-        ],
-        parts: [
-            { name: 'Marco de carga', desc: 'Aplica la fuerza total sobre la viga.' },
-            { name: 'Puntos de carga', desc: 'Transmiten la carga en los tercios del vano.' },
-            { name: 'Viga', desc: 'Espécimen prismático que se ensaya a flexión.' },
-            { name: 'Apoyo fijo', desc: 'Articulación que restringe el desplazamiento vertical.' },
-            { name: 'Apoyo móvil', desc: 'Rodillo que permite la rotación y el deslizamiento.' },
-            { name: 'Comparador central', desc: 'Mide la flecha en el centro del vano.' }
-        ],
-        cam: {
-            target: [0, 1.2, 0],
-            home: { theta: 0.7, phi: 1.12, radius: 7.2 },
-            frontal: { theta: 0.0, phi: 1.3, radius: 7.0 },
-            lateral: { theta: 1.5, phi: 1.2, radius: 6.8 },
-            detalle: { theta: 0.5, phi: 1.15, radius: 4.4 }
-        }
-    };
-    function paramsFlexion() {
-        var d = datos('flexion');
-        var o = { L: 450, b: 150, h: 150, P: 40, Mr: 20, E: 200e6, real: false };
-        if (d) {
-            if (isFinite(d.L)) o.L = d.L;
-            if (isFinite(d.b)) o.b = d.b;
-            if (isFinite(d.h)) o.h = d.h;
-            if (isFinite(d.P)) o.P = d.P;
-            if (isFinite(d.Mr)) o.Mr = d.Mr;
-            o.real = isFinite(d.Mr);
-        }
-        o.nota = o.real
-            ? 'Con tus resultados: Mr = ' + P.fmt(o.Mr, 1) + ' MPa'
-            : 'Valores típicos de ejemplo (Mr ≈ 20 MPa). Pulsa CALCULAR para usar tus datos.';
-        return o;
-    }
-
-    /* ================================================================== */
-    /*  4 · ENSAYO DE TORSIÓN (probeta cilíndrica)                        */
-    /* ================================================================== */
-    function buildTorsion(accent) {
-        var root = new THREE.Group();
-        var mt = P.materiales();
-        P.plinth(root, 4.0, 2.4, accent);
-
-        P.box(root, 3.6, 0.2, 1.8, 0, 0.1, 0, mt.frameDark);
-        P.box(root, 3.4, 0.08, 1.6, 0, 0.24, 0, mt.frame);
-
-        /* cabezal fijo izquierdo */
-        P.box(root, 0.6, 1.0, 1.0, -1.5, 0.9, 0, mt.frame);
-        P.box(root, 0.5, 0.16, 0.8, -1.5, 0.6, 0, mt.frameLight);
-        /* cabezal móvil derecho (gira) */
-        var headR = new THREE.Group();
-        headR.position.set(1.5, 0.9, 0);
-        root.add(headR);
-        P.box(headR, 0.6, 1.0, 1.0, 0, 0, 0, mt.frame);
-        P.box(headR, 0.5, 0.16, 0.8, 0, -0.3, 0, mt.frameLight);
-        P.box(headR, 0.4, 0.4, 0.4, 0, 0.7, 0, mt.blueDeep);
-        /* volante */
-        var wheel = new THREE.Group();
-        wheel.position.set(2.2, 0.9, 0);
-        root.add(wheel);
-        P.cylX(wheel, 0.5, 0.5, 0.06, 0, 0, 0, mt.blue, 36);
-        for (var i = 0; i < 4; i++) P.box(wheel, 0.05, 0.06, 0.9, 0, 0, 0, mt.blueDeep);
-        P.cylX(wheel, 0.08, 0.08, 0.12, 0, 0, 0, mt.chromeDark, 16);
-
-        /* probeta cilíndrica */
-        var spec = new THREE.Group();
-        root.add(spec);
-        P.cylX(spec, 0.12, 0.12, 2.4, 0, 0.9, 0, mt.chrome, 32);
-        /* líneas de referencia (giran con la probeta) */
-        var markers = [];
-        [-0.6, 0, 0.6].forEach(function (x) {
-            var m = P.cylX(spec, 0.125, 0.125, 0.03, x, 0.9, 0, mt.accent, 32);
-            markers.push(m);
-        });
-
-        /* medidor de ángulo */
-        var dialT = P.makeDial(root, 1.5, 1.9, 0.6, 0.2, mt);
-
-        var pins = [
-            { v: [-1.5, 0.9, 0] },    /* cabezal fijo */
-            { v: [1.5, 0.9, 0] },     /* cabezal móvil */
-            { v: [0, 1.1, 0.2] },     /* probeta */
-            { v: [2.2, 0.9, 0] },     /* volante */
-            { v: [1.5, 1.9, 0.6] },   /* medidor de ángulo */
-            { v: [0, 0.3, 1.0] }      /* base */
-        ];
-
-        function set(p, prm) {
-            var carga = P.ease(P.seg(p, 0, 0.85));
-            var falla = P.seg(p, 0.85, 1.0);
-
-            var T = (prm.T || 0.6) * carga;         /* kN·m */
-            var d = (prm.d || 50) / 1000;
-            var J = Math.PI * Math.pow(d, 4) / 32;
-            var tau = (T * 1000) * (d / 2) / (J * 1e6);   /* MPa */
-            var G = prm.G || 79.3e3;                   /* MPa */
-            var gamma = tau / G;
-            var thDeg = prm.thDeg != null ? prm.thDeg : (gamma * (prm.L || 1000) / (d / 2)) * 180 / Math.PI;
-
-            headR.rotation.x = carga * (thDeg * Math.PI / 180);
-            wheel.rotation.x = carga * (thDeg * Math.PI / 180) * 2.5;
-            spec.rotation.x = headR.rotation.x * 0.5;
-            dialT.rotation.z = -carga * 3.6;
-
-            /* deformación helicoidal al acercarse a la falla */
-            markers.forEach(function (m, i) { m.rotation.x = falla * 0.4 * (i - 1); });
-
-            var ph = p < 0.5 ? 0 : p < 0.85 ? 1 : 2;
-            return {
-                hud: [
-                    { k: 'T', v: P.fmt(T * 1000, 0), u: 'N·m' },
-                    { k: 'τ', v: P.fmt(Math.max(0, tau), 1), u: 'MPa' },
-                    { k: 'γ', v: gamma.toExponential(2), u: '—' },
-                    { k: 'θ', v: P.fmt(carga * thDeg, 2), u: '°' }
-                ],
-                phase: ph
-            };
-        }
-        return { root: root, pins: pins, set: set };
-    }
-
-    var META_TORSION = {
-        accent: ACC.torsion, machine: 'Banco de torsión',
-        machineSub: 'Cabezal fijo, cabezal giratorio con volante y medidor angular',
-        norma: 'ASTM E143 · NTC 3655', duration: 15,
-        phases: [
-            { a: 0, b: 0.50, t: 'Aplicar torque', d: 'El cabezal gira transmitiendo el momento torsor.' },
-            { a: 0.50, b: 0.85, t: 'Deformación angular', d: 'Se registra el giro θ y el esfuerzo cortante τ.' },
-            { a: 0.85, b: 1.01, t: 'Falla por torsión', d: 'El material alcanza su resistencia y se retuerce.' }
-        ],
-        parts: [
-            { name: 'Cabezal fijo', desc: 'Sujeta el extremo que no gira.' },
-            { name: 'Cabezal móvil', desc: 'Transmite el momento torsor a la probeta.' },
-            { name: 'Probeta cilíndrica', desc: 'Espécimen que trabaja a cortante por torsión.' },
-            { name: 'Volante', desc: 'Acciona el giro del cabezal móvil.' },
-            { name: 'Medidor de ángulo', desc: 'Mide el giro relativo θ entre extremos.' },
-            { name: 'Base del banco', desc: 'Soporte rígido del conjunto.' }
-        ],
-        cam: {
-            target: [0, 0.9, 0],
-            home: { theta: 0.7, phi: 1.14, radius: 7.4 },
-            frontal: { theta: 0.0, phi: 1.32, radius: 7.2 },
-            lateral: { theta: 1.5, phi: 1.2, radius: 7.0 },
-            detalle: { theta: 0.5, phi: 1.16, radius: 4.6 }
-        }
-    };
-    function paramsTorsion() {
-        var d = datos('torsion');
-        var o = { d: 50, L: 1000, T: 0.6, thDeg: 6, tau: 50, G: 79.3e3, real: false };
-        if (d) {
-            if (isFinite(d.d)) o.d = d.d;
-            if (isFinite(d.L)) o.L = d.L;
-            if (isFinite(d.T)) o.T = d.T;
-            if (isFinite(d.thDeg)) o.thDeg = d.thDeg;
-            if (isFinite(d.tau)) o.tau = d.tau;
-            if (isFinite(d.G)) o.G = d.G;
-            o.real = isFinite(d.tau);
-        }
-        o.nota = o.real
-            ? 'Con tus resultados: τ = ' + P.fmt(o.tau, 1) + ' MPa · θ = ' + P.fmt(o.thDeg, 2) + '°'
-            : 'Valores típicos de ejemplo (τ ≈ 50 MPa). Pulsa CALCULAR para usar tus datos.';
-        return o;
-    }
-
-    /* ================================================================== */
-    /*  5 · DURÓMETRO ROCKWELL                                            */
-    /* ================================================================== */
-    function buildDureza(accent) {
-        var root = new THREE.Group();
-        var mt = P.materiales();
-        P.plinth(root, 3.0, 2.4, accent);
-
-        P.box(root, 2.4, 0.2, 2.0, 0, 0.1, 0, mt.frameDark);
-        P.box(root, 2.2, 0.08, 1.8, 0, 0.24, 0, mt.frame);
-
-        /* columna y cabezal del durómetro */
-        P.cyl(root, 0.16, 0.2, 1.6, -0.8, 1.0, 0, mt.frame, 24);
-        P.box(root, 1.6, 0.4, 1.2, 0.2, 1.9, 0, mt.frame);
-        P.box(root, 1.4, 0.12, 1.0, 0.2, 2.14, 0, mt.frameLight);
-        /* carátula del durómetro */
-        var dial = P.makeDial(root, 0.5, 1.95, 0.62, 0.3, mt);
-
-        /* husillo y penetrador */
-        var spindle = P.cyl(root, 0.06, 0.06, 0.9, 0.2, 1.25, 0, mt.chrome, 16);
-        var tip = new THREE.Group();
-        root.add(tip);
-        var tipCone = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 20), new THREE.MeshStandardMaterial({ color: 0xd0d5dc, metalness: 0.9, roughness: 0.15 }));
-        tipCone.position.set(0.2, 0.75, 0);
-        tip.add(tipCone);
-
-        /* yunque y probeta */
-        P.cyl(root, 0.3, 0.34, 0.12, 0.2, 0.32, 0, mt.plate, 32);
-        var probeta = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.16, 0.6), new THREE.MeshStandardMaterial({ color: 0x9aa3ad, metalness: 0.85, roughness: 0.3 }));
-        probeta.position.set(0.2, 0.46, 0);
-        root.add(probeta);
-        /* huella */
-        var mark = P.cyl(root, 0.03, 0.03, 0.01, 0.2, 0.54, 0, mt.red, 16);
-        mark.scale.y = 0.001;
-
-        /* manivela de carga */
-        var lever = P.cylX(root, 0.05, 0.05, 0.6, 1.1, 0.9, 0, mt.chromeDark, 14);
-        P.cylX(root, 0.12, 0.12, 0.1, 1.4, 0.9, 0, mt.black, 20);
-
-        var pins = [
-            { v: [0.5, 2.4, 0.62] },   /* carátula */
-            { v: [0.2, 1.9, 0] },      /* cabezal */
-            { v: [0.2, 0.75, 0] },     /* penetrador */
-            { v: [0.2, 0.46, 0.3] },   /* probeta */
-            { v: [0.2, 0.32, 0] },     /* yunque */
-            { v: [1.1, 0.9, 0] }       /* manivela */
-        ];
-
-        function set(p, prm) {
-            var carga = P.ease(P.seg(p, 0, 0.5));      /* carga preliminar + mayor */
-            var medicion = P.seg(p, 0.5, 0.9);
-            var descarga = P.seg(p, 0.9, 1.0);
-
-            var lect = (prm.lecturas && prm.lecturas.length) ? prm.lecturas : [32, 33, 31.5];
-            var escala = prm.escala || 'HRC';
-            var idx = Math.min(lect.length - 1, Math.floor(medicion * lect.length));
-            var valor = Medicion(lect, medicion);
-
-            /* el penetrador desciende y deja huella */
-            var down = carga * 0.12 + medicion * 0.02;
-            spindle.position.y = 1.25 - down * 0.4;
-            tip.position.y = -down;
-            tipCone.position.y = 0.75 - down * 0.6;
-            probeta.position.y = 0.46 - down * 0.1;
-            mark.scale.y = medicion > 0.05 ? 1 : 0.001;
-            dial.rotation.z = -carga * 2.4 + valor * 0.05;
-            lever.rotation.y = carga * 1.6;
-
-            var ph = p < 0.5 ? 0 : p < 0.9 ? 1 : 2;
-            return {
-                hud: [
-                    { k: 'Escala', v: String(escala), u: '' },
-                    { k: 'Lectura', v: P.fmt(valor, 1), u: '' },
-                    { k: 'Ensayo', v: String(Math.min(lect.length, Math.ceil(medicion * lect.length) || 1)), u: 'de ' + lect.length },
-                    { k: 'Promedio', v: P.fmt(prom(lect), 1), u: escala }
-                ],
-                phase: ph
-            };
-        }
-        return { root: root, pins: pins, set: set };
-    }
-    function Medicion(lect, t) {
-        /* interpola las lecturas conforme avanza la medición */
-        var x = t * (lect.length - 1);
-        var i = Math.floor(x), f = x - i;
-        var a = lect[i], b = lect[Math.min(lect.length - 1, i + 1)];
-        return a + (b - a) * f;
-    }
-    function prom(l) { var s = 0; for (var i = 0; i < l.length; i++) s += l[i]; return l.length ? s / l.length : 0; }
-
-    var META_DUREZA = {
-        accent: ACC.dureza, machine: 'Durómetro Rockwell',
-        machineSub: 'Penetrador de cono, yunque y carátula analógica',
-        norma: 'ASTM E18 · NTC 588', duration: 12,
-        phases: [
-            { a: 0, b: 0.50, t: 'Carga preliminar y mayor', d: 'Se aplica la carga inicial y luego la carga mayor.' },
-            { a: 0.50, b: 0.90, t: 'Medir la dureza', d: 'Se leen las unidades en la carátula del durómetro.' },
-            { a: 0.90, b: 1.01, t: 'Descargar y tomar lecturas', d: 'Se retira la carga y se promedian las lecturas.' }
-        ],
-        parts: [
-            { name: 'Carátula del durómetro', desc: 'Indica las unidades de dureza Rockwell.' },
-            { name: 'Cabezal', desc: 'Soporte del husillo y del sistema de carga.' },
-            { name: 'Penetrador', desc: 'Cono de diamante que deja la huella.' },
-            { name: 'Probeta', desc: 'Pieza metálica cuya dureza se mide.' },
-            { name: 'Yunque', desc: 'Apoyo rígido donde se asienta la probeta.' },
-            { name: 'Manivela de carga', desc: 'Aplica la carga mayor controlada.' }
-        ],
-        cam: {
-            target: [0.3, 1.2, 0],
-            home: { theta: 0.7, phi: 1.12, radius: 6.0 },
-            frontal: { theta: 0.0, phi: 1.3, radius: 5.8 },
-            lateral: { theta: 1.5, phi: 1.2, radius: 5.6 },
-            detalle: { theta: 0.5, phi: 1.15, radius: 3.6 }
-        }
-    };
-    function paramsDureza() {
-        var d = datos('dureza');
-        var o = { escala: 'HRC', lecturas: [32, 33, 31.5], real: false };
-        if (d && d.lecturas && d.lecturas.length) {
-            o.lecturas = d.lecturas.slice();
-            if (d.escala) o.escala = d.escala;
-            o.real = true;
-        }
-        o.nota = o.real
-            ? 'Con tus resultados: promedio = ' + P.fmt(prom(o.lecturas), 1) + ' ' + o.escala
-            : 'Valores típicos de ejemplo (HRC ≈ 32). Pulsa CALCULAR para usar tus datos.';
-        return o;
-    }
-
-    /* ================================================================== */
-    /*  REGISTRO                                                          */
-    /* ================================================================== */
-    G3.register('rm-traccion', META_TRACCION, buildTraccion, paramsTraccion);
-    G3.register('rm-compresion', META_COMPRESION, buildCompresion, paramsCompresion);
-    G3.register('rm-flexion', META_FLEXION, buildFlexion, paramsFlexion);
-    G3.register('rm-torsion', META_TORSION, buildTorsion, paramsTorsion);
-    G3.register('rm-dureza', META_DUREZA, buildDureza, paramsDureza);
-
+    });
 })(window);
