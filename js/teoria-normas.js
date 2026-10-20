@@ -109,12 +109,42 @@
         }, 110);
     }
 
-    function bind(root, mod) {
+    function showTeoriaSection(root, mod, id) {
+        if (!root || !id) return;
+        var secs = root.querySelectorAll('.dm-sec');
+        secs.forEach(function (s) {
+            var on = s.id === mod.prefix + '-t-' + id;
+            s.classList.toggle('is-active', on);
+            s.hidden = !on;
+            s.style.display = on ? 'block' : 'none';
+        });
         root.querySelectorAll('.dm-toc a').forEach(function (a) {
+            var on = a.getAttribute('data-t') === id;
+            a.classList.toggle('is-on', on);
+            a.setAttribute('aria-current', on ? 'true' : 'false');
+        });
+        try {
+            var body = root.querySelector('.dm-teobody');
+            if (body) body.scrollTop = 0;
+            root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (e) {}
+        try { renderMath(root); } catch (e) {}
+    }
+
+    function bind(root, mod) {
+        /* Solo un apartado visible a la vez */
+        var firstId = 'ruta';
+        root.querySelectorAll('.dm-sec').forEach(function (s, i) {
+            var on = i === 0;
+            s.classList.toggle('is-active', on);
+            s.hidden = !on;
+            s.style.display = on ? 'block' : 'none';
+        });
+        root.querySelectorAll('.dm-toc a').forEach(function (a, i) {
+            a.classList.toggle('is-on', i === 0);
             a.addEventListener('click', function (e) {
                 e.preventDefault();
-                var t = doc.getElementById(mod.prefix + '-t-' + a.getAttribute('data-t'));
-                if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                showTeoriaSection(root, mod, a.getAttribute('data-t'));
             });
         });
         root.querySelectorAll('[data-go]').forEach(function (a) {
@@ -123,19 +153,6 @@
                 openEnsayo(mod, a.getAttribute('data-go'));
             });
         });
-        if ('IntersectionObserver' in global) {
-            var links = {};
-            root.querySelectorAll('.dm-toc a').forEach(function (a) { links[a.getAttribute('data-t')] = a; });
-            var io = new IntersectionObserver(function (es) {
-                es.forEach(function (en) {
-                    if (!en.isIntersecting) return;
-                    Object.keys(links).forEach(function (k) { links[k].classList.remove('is-on'); });
-                    var k = en.target.id.replace(mod.prefix + '-t-', '');
-                    if (links[k]) links[k].classList.add('is-on');
-                });
-            }, { rootMargin: '-15% 0px -70% 0px' });
-            root.querySelectorAll('.dm-sec').forEach(function (s) { io.observe(s); });
-        }
     }
 
     /* ---------- tablas ACI dinámicas ---------- */
