@@ -284,14 +284,18 @@
     function el(tag, cls, html) { var e = doc.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
-    /* ------------------- MOTOR 2D (compartido con MS2) ------------------- */
-    function Runner(def, host) {
+    /* ------------------- MOTOR 2D (compartido con MS1 y MS2) ------------------- */
+    function Runner(def, host, dataStore) {
         var self = this;
         this.def = def; this.p = 0; this.running = false; this.tick = 0; this.last = 0; this.raf = 0; this.speed = 1; this.dead = false;
-        this.P = {};
+        this.P = {}; this.dataStore = dataStore || '__datosEnsayoMS2';
         def.fields.forEach(function (f) { self.P[f.id] = f.value; });
         this.fromData = null;
-        try { var bag = global.__datosEnsayoMS2 && global.__datosEnsayoMS2[def.key]; this.fromData = bag && def.fromData ? def.fromData(bag) : null; } catch (e) {}
+        try {
+            var store = global[self.dataStore];
+            var bag = store && store[def.key];
+            this.fromData = bag && def.fromData ? def.fromData(bag) : null;
+        } catch (e) {}
         if (this.fromData) Object.keys(this.fromData).forEach(function (k) { self.P[k] = self.fromData[k]; });
 
         var html =
@@ -401,6 +405,7 @@
         d.readouts.forEach(function (r) {
             var v = S[r.k];
             if (self.def.key === 'triaxial' && r.k === 'u' && self.P.tipo !== 'CU') { self.tiles[r.k].textContent = '—'; return; }
+            if (r.txt) { self.tiles[r.k].textContent = v == null ? '—' : String(v); return; }
             self.tiles[r.k].textContent = p <= 0 && r.k !== 'sn' && r.k !== 's3' ? H.fmt(0, r.dec) : H.fmt(v, r.dec);
         });
         var st = d.estado(S, p);
@@ -490,7 +495,7 @@
                 if (!global.GeoLab3D) host.innerHTML = '<p class="login-hint">El módulo 3D no está disponible.</p>';
                 else current.inst = global.GeoLab3D.mount(host, current.key);
             } else {
-                current.runner = new Runner(d, body);
+                current.runner = new Runner(d, body, cfg.dataStore);
             }
         }
 
@@ -533,7 +538,8 @@
             hub: 'simhub-ms1', panel: 'simhub-panel-ms1', grid: 'simhub-grid-ms1',
             label: 'Mecánica de Suelos I', tabId: 'ms1-simuladores',
             keys: ['humedad', 'granulometria', 'limites', 'gravedad', 'compactacion', 'densidad', 'clasificacion', 'permeabilidad'],
-            tabsRoots: ['pantallaSuelos'], backBtns: ['btnVolverSuelos'], machineHint: 'Equipo completo'
+            tabsRoots: ['pantallaSuelos'], backBtns: ['btnVolverSuelos'], machineHint: 'Equipo completo',
+            dataStore: '__datosEnsayo'
         });
 
         /* RM: las tarjetas ya existen en el HTML; solo se engancha el 3D */
@@ -549,6 +555,8 @@
             function abrir3d(tipo) {
                 var grid = $('rm-sims-grid');
                 if (!panel || !global.GeoLab3D) { if (grid) grid.style.display = ''; return; }
+                var sceneKey = 'rm-' + tipo;
+                if (!global.GeoLab3D.meta[sceneKey]) sceneKey = tipo;
                 if (grid) grid.style.display = 'none';
                 panel.style.display = 'block';
                 var shell = el('div', 'simhub-shell');
