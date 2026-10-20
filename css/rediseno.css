@@ -1,0 +1,341 @@
+/* =========================================================
+   GeoMetrics · REDISEÑO
+   Dirección de arte unificada: fondo azul marino, superficies
+   #151F32, acento azul #3B82F6 / teal #2DD4BF, tipografía
+   Sora (títulos) + Inter (texto). Se carga DESPUÉS de
+   style.css para ordenar y modernizar el sistema visual.
+   ========================================================= */
+
+/* ---------- 1. Tokens ---------- */
+:root {
+    --fondo: #0B1220;
+    --fondo-2: #151F32;
+    --fondo-card: #151F32;
+    --superficie: #1E293B;
+    --superficie-2: #17233a;
+    --borde: #2B3A50;
+    --borde-fuerte: #3a4d6b;
+    --texto: #F1F5F9;
+    --texto-suave: #A7B4C8;
+    --texto-discreto: #718096;
+    --accion: #3B82F6;
+    --accion-hover: #2563EB;
+    --acento: #2DD4BF;
+    --exito: #22C55E;
+    --advertencia: #FBBF24;
+    --error: #F87171;
+    --radio: 18px;
+    --radio-sm: 12px;
+    --sombra: 0 22px 50px rgba(0, 0, 0, .45);
+    --sombra-acento: 0 18px 44px rgba(59, 130, 246, .22);
+    --fuente-txt: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --fuente-tit: 'Sora', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* fondo de las gráficas (pedido: el azul del fondo) */
+    --grafica-bg: #0B1220;
+    --grafica-grid: rgba(255, 255, 255, .10);
+}
+
+/* ---------- 2. Base tipográfica ---------- */
+body {
+    font-family: var(--fuente-txt);
+    color: var(--texto);
+    background:
+        radial-gradient(1200px 640px at 12% -8%, rgba(59, 130, 246, .16), transparent 62%),
+        radial-gradient(1000px 620px at 92% 6%, rgba(45, 212, 191, .10), transparent 60%),
+        radial-gradient(900px 700px at 50% 118%, rgba(37, 99, 235, .10), transparent 65%),
+        var(--fondo);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+h1, h2, h3, h4, h5, h6, .seccion-titulo h2, .ensayo-cabecera h2 {
+    font-family: var(--fuente-tit);
+    letter-spacing: -.35px;
+}
+code, pre, .formula, .formula-box, kbd, samp { font-family: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; }
+
+/* ---------- 3. Vistas / pantallas ---------- */
+.menu-principal, .pantalla-seccion, .pantalla-curso, .pantalla-suelos, .aula-pantalla {
+    background: transparent !important;
+}
+.pantalla-curso, .pantalla-seccion { position: relative; }
+.pantalla-curso::before, .pantalla-seccion::before {
+    content: "";
+    position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+        linear-gradient(rgba(167, 180, 200, .045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(167, 180, 200, .045) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(120% 70% at 50% 0%, #000 15%, transparent 78%);
+    -webkit-mask-image: radial-gradient(120% 70% at 50% 0%, #000 15%, transparent 78%);
+}
+.pantalla-curso > *, .pantalla-seccion > * { position: relative; z-index: 1; }
+
+/* Cabecera de sección */
+.seccion-encabezado {
+    display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+    padding: 22px 26px; margin-bottom: 22px;
+    border-radius: 22px; border: 1px solid var(--borde);
+    background:
+        radial-gradient(560px 220px at 0% 0%, rgba(59, 130, 246, .20), transparent 70%),
+        radial-gradient(520px 220px at 100% 120%, rgba(45, 212, 191, .14), transparent 70%),
+        linear-gradient(135deg, #151F32 0%, #101a2c 100%);
+    box-shadow: var(--sombra);
+    overflow: hidden;
+}
+.seccion-titulo { display: flex; align-items: center; gap: 18px; }
+.seccion-icono {
+    width: 64px; height: 64px; flex: 0 0 auto;
+    display: grid; place-items: center; font-size: 30px;
+    border-radius: 18px; border: 1px solid rgba(59, 130, 246, .45);
+    background: linear-gradient(160deg, rgba(59, 130, 246, .26), rgba(45, 212, 191, .12));
+    box-shadow: inset 0 0 22px rgba(59, 130, 246, .2), 0 10px 26px rgba(0, 0, 0, .35);
+}
+.seccion-titulo h2 { margin: 0 0 4px; font-size: clamp(24px, 3vw, 34px); line-height: 1.12; color: var(--texto); }
+.seccion-titulo p { margin: 0; color: var(--texto-suave); font-size: 14.5px; max-width: 620px; }
+
+/* ---------- 4. Tabs de sección ---------- */
+.submenu-tabs {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px !important;
+    padding: 8px; width: fit-content; max-width: 100%;
+    border-radius: 16px; border: 1px solid var(--borde);
+    background: rgba(21, 31, 50, .72);
+    backdrop-filter: blur(8px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+.tab-btn {
+    position: relative; padding: 11px 26px !important; font: inherit; font-size: 14px !important; font-weight: 700;
+    letter-spacing: .6px; color: var(--texto-suave) !important; cursor: pointer;
+    background: transparent !important; border: 1px solid transparent !important; border-radius: 11px !important;
+    transition: color .2s, background .2s, border-color .2s, box-shadow .2s, transform .2s;
+}
+.tab-btn:hover { color: var(--texto) !important; background: rgba(59, 130, 246, .12) !important; border-color: rgba(59, 130, 246, .3) !important; }
+.tab-btn.active {
+    color: #06101f !important;
+    background: linear-gradient(135deg, #60A5FA, #3B82F6) !important;
+    border-color: rgba(96, 165, 250, .9) !important;
+    box-shadow: 0 10px 26px rgba(59, 130, 246, .45);
+}
+.tab-btn.active::after {
+    content: ""; position: absolute; left: 18px; right: 18px; bottom: -9px; height: 3px; border-radius: 3px;
+    background: linear-gradient(90deg, transparent, var(--acento), transparent); opacity: .85;
+}
+.tab-btn:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; }
+
+/* ---------- 5. Tarjetas de módulo (menú) ---------- */
+.menu-card {
+    position: relative; overflow: hidden;
+    padding: 26px 24px !important; min-height: 208px;
+    border-radius: 20px !important; border: 1px solid var(--borde) !important;
+    background: linear-gradient(160deg, #18243a 0%, #111a2b 100%) !important;
+    transition: transform .25s, border-color .25s, box-shadow .25s;
+}
+.menu-card::before {
+    content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accion), transparent);
+}
+.menu-card::after {
+    content: ""; position: absolute; width: 240px; height: 240px; right: -90px; top: -110px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(59, 130, 246, .30), transparent 70%); pointer-events: none;
+}
+.menu-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(96, 165, 250, .75) !important;
+    box-shadow: var(--sombra-acento);
+}
+.menu-card h3 { margin: 12px 0 8px; font-size: 21px; color: var(--texto) !important; }
+.menu-card p { color: var(--texto-suave); font-size: 14px; line-height: 1.55; }
+.menu-etiqueta, .menu-card span { color: var(--acento) !important; }
+.menu-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.card-asistente { border-color: rgba(45, 212, 191, .5) !important; }
+.card-asistente::before { background: linear-gradient(90deg, var(--acento), transparent); }
+.card-asistente::after { background: radial-gradient(circle, rgba(45, 212, 191, .28), transparent 70%); }
+.card-asistente .card-icono { border-color: rgba(45, 212, 191, .45); background: linear-gradient(160deg, rgba(45, 212, 191, .2), rgba(59, 130, 246, .1)); }
+.card-icono {
+    display: grid; place-items: center; width: 62px; height: 62px; margin-bottom: 16px !important;
+    font-size: 30px !important; border-radius: 18px;
+    background: linear-gradient(160deg, rgba(59, 130, 246, .22), rgba(45, 212, 191, .10));
+    border: 1px solid rgba(59, 130, 246, .4);
+    box-shadow: inset 0 0 20px rgba(59, 130, 246, .18), 0 10px 24px rgba(0, 0, 0, .32);
+}
+
+/* ---------- 6. Tarjetas de ensayo ---------- */
+.ensayos-grid { gap: 20px !important; }
+.ensayo-card {
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+    min-height: 226px; padding: 24px 22px 20px !important;
+    text-align: left; font: inherit; cursor: pointer; color: var(--texto);
+    border-radius: 20px !important; border: 1px solid var(--borde) !important;
+    background: linear-gradient(160deg, #17233a 0%, #111a2b 100%) !important;
+    transition: transform .25s, border-color .25s, box-shadow .25s;
+}
+.ensayo-card::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+    background: linear-gradient(180deg, var(--accion), rgba(45, 212, 191, .25));
+}
+.ensayo-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(96, 165, 250, .7) !important;
+    box-shadow: var(--sombra-acento);
+}
+.ensayo-icono {
+    display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 6px;
+    font-size: 27px; border-radius: 16px;
+    background: rgba(59, 130, 246, .14); border: 1px solid rgba(59, 130, 246, .4);
+}
+.ensayo-card h3 { margin: 6px 0 4px; font-size: 19px; color: var(--texto) !important; }
+.ensayo-card p { margin: 0; color: var(--texto-suave); font-size: 13.5px; line-height: 1.55; }
+.ensayo-card span, .ensayo-card .ensayo-card-cta {
+    margin-top: auto; padding-top: 14px;
+    font-size: 11.5px !important; font-weight: 800; letter-spacing: 1.2px; color: var(--acento) !important;
+}
+.ensayo-card:hover span { letter-spacing: 1.6px; }
+.sim-card .btn-calcular, .sim-card button { margin-top: auto; }
+
+/* ---------- 7. Paneles, formularios y botones ---------- */
+.datos-panel, .resultado-panel, .formula-panel, .grafica-panel, .panel-ensayo > section {
+    border-radius: 20px !important;
+    border: 1px solid var(--borde) !important;
+    background: linear-gradient(160deg, #151F32, #101a2c) !important;
+}
+.datos-panel h4, .resultado-panel h4, .grafica-panel h4 {
+    font-family: var(--fuente-tit); letter-spacing: .4px; color: var(--texto) !important;
+}
+input, select, textarea {
+    border-radius: 10px !important; border-color: var(--borde) !important;
+    background: #0B1220 !important; color: var(--texto) !important;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accion) !important; box-shadow: 0 0 0 3px rgba(59, 130, 246, .22); outline: none; }
+.btn-calcular {
+    border-radius: 12px !important; font-weight: 700 !important; letter-spacing: .4px;
+    background: linear-gradient(135deg, #60A5FA, #3B82F6) !important; border: 1px solid rgba(96, 165, 250, .7) !important;
+    color: #06101f !important; box-shadow: 0 10px 26px rgba(59, 130, 246, .35);
+    transition: transform .18s, box-shadow .2s, background .2s;
+}
+.btn-calcular:hover { transform: translateY(-2px); background: linear-gradient(135deg, #3B82F6, #2563EB) !important; box-shadow: 0 14px 32px rgba(37, 99, 235, .45); }
+.btn-limpiar, .btn-secundario, .btn-volver, .btn-volver-ensayo {
+    border-radius: 12px !important; font-weight: 600 !important;
+    background: rgba(30, 41, 59, .85) !important; border: 1px solid var(--borde) !important; color: var(--texto-suave) !important;
+    transition: border-color .2s, color .2s, transform .18s;
+}
+.btn-limpiar:hover, .btn-volver:hover, .btn-secundario:hover { border-color: var(--accion) !important; color: var(--texto) !important; transform: translateY(-1px); }
+
+/* Resultados */
+.resultado-principal strong { color: var(--acento) !important; font-family: var(--fuente-tit); }
+.interpretacion { border-left: 3px solid var(--acento) !important; background: rgba(45, 212, 191, .07) !important; border-radius: 0 12px 12px 0; }
+.formula { color: var(--acento) !important; background: rgba(11, 18, 32, .8) !important; border-radius: 10px; }
+.formula-box { background: #0B1220 !important; border-left: 3px solid var(--acento) !important; border-radius: 0 12px 12px 0; }
+
+/* ---------- 8. Gráficas: fondo azul (--grafica-bg) ---------- */
+.grafica-panel canvas,
+#canvas-granulo,
+.rm-machine-canvas, .rm-live-canvas, .rm-grafica-panel canvas, .rm-grafica-panel,
+.bulbos-plot,
+.sim-maquina-canvas, .sim-curva-canvas,
+.s2d-chart, .s2d-stage,
+.dm-chartpanel canvas, .dm-stage canvas, .dm-graph canvas,
+.ms2-shell .grafica-panel canvas {
+    background: var(--grafica-bg) !important;
+    border: 1px solid var(--borde) !important;
+    border-radius: 14px !important;
+}
+.grafica-panel { background: linear-gradient(160deg, #151F32, #101a2c) !important; border: 1px solid var(--borde) !important; border-radius: 20px !important; }
+
+/* ---------- 9. Tablas y listas de datos ---------- */
+table thead th { background: rgba(59, 130, 246, .16) !important; color: var(--texto) !important; }
+table tbody tr:nth-child(even) { background: rgba(255, 255, 255, .022); }
+table td, table th { border-color: var(--borde) !important; }
+
+/* ---------- 10. Teoría (post-proceso de teoria-uniforme.js) ---------- */
+.teoria-container { border-radius: 20px; }
+.teoria-seccion {
+    padding: 20px 24px; margin-bottom: 16px; border-radius: 18px;
+    border: 1px solid var(--borde); background: linear-gradient(160deg, #151F32, #101a2c);
+}
+.teoria-seccion h4 { color: var(--acento) !important; margin: 0 0 10px; font-size: 18px; }
+.teoria-seccion p, .teoria-seccion li { color: #dbe3ee; line-height: 1.65; }
+.teoria-container > h3 { font-size: clamp(22px, 2.6vw, 30px); margin-bottom: 18px; }
+.dm-teoria, .dm, .dm-teolayout { --dm-acc: var(--accion); --dm-line: rgba(59, 130, 246, .35); --dm-card: linear-gradient(160deg, #151F32, #101a2c); }
+.dm-sec, .dm-panel, .dm-card { border-radius: 18px !important; }
+.dm-sec > h4 span, .dm-num { background: var(--accion) !important; color: #06101f !important; }
+.dm-toc a.active { color: var(--acento) !important; }
+
+/* ---------- 11. LMS (aula): tarjetas y chats ---------- */
+.aula-card, .login-card { border-radius: 20px !important; border: 1px solid var(--borde) !important; background: linear-gradient(160deg, #151F32, #101a2c) !important; }
+.login-tab.active { background: linear-gradient(135deg, #60A5FA, #3B82F6) !important; color: #06101f !important; }
+.chat-burbuja.propia { background: linear-gradient(135deg, #3B82F6, #2563EB) !important; }
+.chat-burbuja.ajena { background: #1E293B !important; border: 1px solid var(--borde) !important; }
+.badge-ok { background: rgba(34, 197, 94, .18) !important; color: #22C55E !important; }
+.badge-pend { background: rgba(251, 191, 36, .16) !important; color: #FBBF24 !important; }
+
+/* ---------- 12. Simuladores: hubs MS1 / MS2 / RM ---------- */
+#ms1-simuladores, #ms2-simuladores, #rm-simuladores { padding-bottom: 40px; }
+#ms1-simuladores em, #ms1-simuladores i, #ms1-simuladores u,
+#rm-simuladores em, #rm-simuladores i, #rm-simuladores u { font-style: normal; text-decoration: none; }
+/* las tarjetas del hub RM ya son .simcard dentro de un grid: anulan el look de .ensayo-card */
+#rm-sims-grid.ensayos-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+#rm-sims-grid .ensayo-card::before { content: none; }
+#rm-sim3d { margin-top: 18px; }
+#rm-sims-grid .simcard { min-height: 0; }
+
+/* botón "← Simuladores" del panel: mismo aspecto en los tres hubs */
+#ms1-simuladores .simhub-back, #ms2-simuladores .simhub-back, #rm-simuladores .simhub-back, #rm-sim3d .simhub-back {
+    margin: 0 !important; padding: 9px 16px !important; border-radius: 10px !important; font-size: 13px; cursor: pointer;
+}
+
+/* Estadísticas del hero también en MS1/RM */
+.simhub-hero-stats li strong { font-family: var(--fuente-tit); }
+
+/* ---------- 13. Visor 3D: pista de zoom con la rueda ---------- */
+.lab3d-stage { position: relative; }
+.lab3d-stage::after {
+    content: "🖱 Rueda para zoom · arrastra para rotar";
+    position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+    padding: 6px 14px; font-size: 11.5px; letter-spacing: .4px; color: #cbd5e1;
+    background: rgba(8, 14, 26, .78); border: 1px solid var(--borde); border-radius: 999px;
+    backdrop-filter: blur(6px); pointer-events: none; opacity: .9;
+    transition: opacity .3s;
+}
+.lab3d-stage.is-drag::after, .lab3d-stage:hover::after { opacity: 0; }
+.lab3d-canvas canvas { display: block; width: 100%; height: 100%; }
+
+/* ---------- 17. Limpieza de residuos de la paleta antigua (marrón/verde) ---------- */
+.inicio {
+    background:
+        radial-gradient(1000px 560px at 14% -6%, rgba(59, 130, 246, .22), transparent 62%),
+        radial-gradient(900px 560px at 90% 10%, rgba(45, 212, 191, .14), transparent 62%),
+        linear-gradient(145deg, #0B1220 0%, #151F32 48%, #0B1220 100%) !important;
+}
+.capa-2 { background: #0e1729 !important; }
+.capa-3 { background: #101a2c !important; }
+.bulbos-plot, #canvas-granulo { background: var(--grafica-bg) !important; }
+.tamiz-check input { accent-color: var(--accion) !important; }
+.sim-lecturas span { color: var(--texto-suave) !important; }
+.formula, .formula-box, .teoria-seccion, .interpretacion { color: var(--texto) !important; }
+
+/* ---------- 18. Footer ---------- */
+.menu-footer, .inicio-footer { color: var(--texto-discreto) !important; }
+
+/* ---------- 19. Scrollbar ---------- */
+* { scrollbar-width: thin; scrollbar-color: #2B3A50 transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: #2B3A50; border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--borde-fuerte); background-clip: content-box; }
+
+/* ---------- 20. Responsive ---------- */
+@media (max-width: 1100px) {
+    .seccion-encabezado { padding: 20px; }
+    #rm-sims-grid.ensayos-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+}
+@media (max-width: 760px) {
+    .seccion-encabezado { flex-direction: column; align-items: flex-start; }
+    .submenu-tabs { width: 100%; }
+    .tab-btn { flex: 1 1 auto; text-align: center; }
+    #rm-sims-grid.ensayos-grid { grid-template-columns: 1fr; }
+    .seccion-icono { width: 54px; height: 54px; font-size: 25px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .menu-card, .ensayo-card, .tab-btn, .btn-calcular { transition: none; }
+}

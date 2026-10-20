@@ -84,19 +84,9 @@ body {
 }
 
 .logo-top {
-    height: 88px;
+    height: 56px;
     width: auto;
-    max-width: 160px;
     object-fit: contain;
-}
-.logo-top[alt="Ingeniería Civil"],
-.topbar-right .logo-top {
-    height: 96px;
-    max-width: 170px;
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 6px 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
 }
 
 .inicio-hero {
@@ -248,23 +238,13 @@ body {
     }
 
     .logo-top {
-        height: 64px;
-        max-width: 120px;
-    }
-    .topbar-right .logo-top {
-        height: 72px;
-        max-width: 130px;
+        height: 44px;
     }
 }
 
 @media (max-width: 500px) {
     .logo-top {
-        height: 52px;
-        max-width: 100px;
-    }
-    .topbar-right .logo-top {
-        height: 58px;
-        max-width: 110px;
+        height: 36px;
     }
 
     .logo-label {
@@ -288,21 +268,15 @@ body {
 }
 
 .logo-menu {
-    height: 72px;
+    height: 45px;
     width: auto;
-    max-width: 140px;
     object-fit: contain;
 }
 
 .logo-menu-civil {
-    height: 96px;
+    height: 72px;
     width: auto;
-    max-width: 160px;
     object-fit: contain;
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 6px 8px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
 }
 
 .menu-encabezado {
@@ -2014,14 +1988,11 @@ body {
     }
     
     .logo-menu {
-        height: 88px;
-        max-width: 110px;
+        height: 35px;
     }
 
     .logo-menu-civil {
-        height: 72px;
-        max-width: 120px;
-        padding: 4px 6px;
+        height: 56px;
     }
     
     .menu-encabezado {
@@ -5378,60 +5349,4 @@ input:focus, select:focus, textarea:focus {
     #pantallaSimuladores #card-sim-inconfinada #sim-uc-vista-2d {
         grid-template-columns: minmax(0, 1fr) !important;
     }
-}
-
-/* Logo Ingeniería Civil: fondo blanco para ver detalle */
-.logo-civil-bg,
-.topbar-right .logo-top,
-.logo-menu-civil {
-    background: #ffffff !important;
-    border-radius: 12px;
-    padding: 6px 8px;
-    box-sizing: content-box;
-}
-
-
-/* ===== Logos más grandes + Civil fondo blanco ===== */
-.logo-top {
-    height: 88px !important;
-    width: auto !important;
-    max-width: 170px !important;
-    object-fit: contain !important;
-}
-.topbar-right .logo-top,
-.logo-civil-bg,
-img.logo-top[alt="Ingeniería Civil"] {
-    height: 100px !important;
-    max-width: 180px !important;
-    background: #ffffff !important;
-    border-radius: 12px !important;
-    padding: 8px 10px !important;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.18) !important;
-    box-sizing: content-box !important;
-}
-.logo-menu {
-    height: 78px !important;
-    width: auto !important;
-    max-width: 150px !important;
-    object-fit: contain !important;
-}
-.logo-menu-civil {
-    height: 100px !important;
-    max-width: 170px !important;
-    background: #ffffff !important;
-    border-radius: 12px !important;
-    padding: 8px 10px !important;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.15) !important;
-    box-sizing: content-box !important;
-    object-fit: contain !important;
-}
-@media (max-width: 800px) {
-    .logo-top { height: 64px !important; max-width: 120px !important; }
-    .topbar-right .logo-top, .logo-civil-bg { height: 72px !important; max-width: 130px !important; }
-    .logo-menu { height: 56px !important; }
-    .logo-menu-civil { height: 72px !important; max-width: 120px !important; }
-}
-@media (max-width: 500px) {
-    .logo-top { height: 52px !important; max-width: 100px !important; }
-    .topbar-right .logo-top, .logo-civil-bg { height: 58px !important; max-width: 110px !important; }
 }
