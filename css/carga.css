@@ -1,0 +1,338 @@
+/* Pantalla de carga interactiva - GeoMetrics */
+.pantalla-carga {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 99999;
+    background: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.15), transparent 60%),
+                radial-gradient(ellipse at bottom, rgba(45, 212, 191, 0.12), transparent 60%),
+                linear-gradient(180deg, #0B1220 0%, #0a101c 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+.pantalla-carga.oculto {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.carga-fondo {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 1400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 80px;
+}
+
+.carga-suelo {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 200%;
+    height: 120px;
+    background: 
+        repeating-linear-gradient(
+            90deg,
+            #1a2332 0px,
+            #1a2332 40px,
+            #151d2e 40px,
+            #151d2e 80px
+        );
+    border-top: 3px solid #2DD4BF;
+    box-shadow: 0 -10px 40px rgba(45, 212, 191, 0.2);
+    animation: suelo-move 8s linear infinite;
+}
+
+@keyframes suelo-move {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+.carga-escena {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    margin-bottom: 40px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+}
+
+.retroexcavadora {
+    position: absolute;
+    bottom: 40px;
+    left: -200px;
+    width: 320px;
+    height: 180px;
+    filter: drop-shadow(0 20px 40px rgba(59, 130, 246, 0.3));
+    animation: retro-mover 6s ease-in-out 2.8s forwards;
+    z-index: 2;
+}
+
+@keyframes retro-mover {
+    0% { left: -200px; }
+    60% { left: calc(50% - 160px); }
+    100% { left: calc(50% - 160px); }
+}
+
+.retro-body {
+    fill: url(#retroGrad);
+    stroke: #2DD4BF;
+    stroke-width: 2;
+}
+
+.retro-cabina {
+    fill: rgba(30, 41, 59, 0.9);
+    stroke: #3B82F6;
+    stroke-width: 2;
+}
+
+.retro-rueda {
+    fill: #0B1220;
+    stroke: #718096;
+    stroke-width: 3;
+    transform-origin: center;
+    animation: rueda-girar 0.6s linear infinite;
+}
+
+.retro-rueda.parada {
+    animation-play-state: paused;
+}
+
+@keyframes rueda-girar {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.retro-brazo {
+    fill: none;
+    stroke: url(#retroGrad);
+    stroke-width: 12;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.retro-cuchara {
+    fill: url(#retroGrad);
+    stroke: #2DD4BF;
+    stroke-width: 2;
+}
+
+.ingeniero {
+    position: absolute;
+    bottom: 85px;
+    left: calc(50% - 140px);
+    width: 40px;
+    height: 60px;
+    opacity: 0;
+    z-index: 3;
+    animation: ingeniero-subir 1.8s ease-out 0.5s forwards;
+}
+
+.ingeniero.cabina {
+    animation: ingeniero-entrar 1s ease-in-out 2.2s forwards, ingeniero-conducir 3s ease-in-out 3.2s forwards;
+}
+
+.ingeniero-cuerpo {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 24px;
+    background: linear-gradient(180deg, #FBBF24 0%, #F59E0B 100%);
+    border-radius: 6px 6px 3px 3px;
+    border: 2px solid #92400E;
+}
+
+.ingeniero-cabeza {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 18px;
+    background: radial-gradient(circle at 40% 35%, #FDE68A 0%, #F59E0B 70%);
+    border-radius: 50%;
+    border: 2px solid #92400E;
+}
+
+.ingeniero-casco {
+    position: absolute;
+    bottom: 34px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 12px;
+    background: linear-gradient(180deg, #FCD34D 0%, #F59E0B 100%);
+    border-radius: 50% 50% 40% 40%;
+    border: 2px solid #92400E;
+}
+
+.ingeniero-brazos {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 26px;
+    height: 8px;
+    background: #F59E0B;
+    border-radius: 4px;
+    border: 2px solid #92400E;
+}
+
+.ingeniero-piernas {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 10px;
+    background: #1E293B;
+    border-radius: 2px 2px 4px 4px;
+    border: 2px solid #0B1220;
+}
+
+@keyframes ingeniero-subir {
+    0% {
+        opacity: 0;
+        left: -80px;
+        bottom: 60px;
+        transform: scale(0.8);
+    }
+    30% {
+        opacity: 1;
+    }
+    70% {
+        left: calc(50% - 180px);
+        bottom: 120px;
+        transform: scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        left: calc(50% - 150px);
+        bottom: 110px;
+        transform: scale(0.95);
+    }
+}
+
+@keyframes ingeniero-entrar {
+    0% {
+        left: calc(50% - 150px);
+        bottom: 110px;
+        opacity: 1;
+        transform: scale(0.95);
+    }
+    60% {
+        left: calc(50% - 130px);
+        bottom: 95px;
+        transform: scale(0.9);
+    }
+    100% {
+        left: calc(50% - 125px);
+        bottom: 92px;
+        opacity: 0;
+        transform: scale(0.85);
+    }
+}
+
+@keyframes ingeniero-conducir {
+    0% {
+        opacity: 0;
+        left: calc(50% - 125px);
+        bottom: 92px;
+    }
+    20% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 1;
+        left: calc(50% - 80px);
+        bottom: 92px;
+    }
+}
+
+.carga-texto {
+    position: relative;
+    z-index: 5;
+    color: #F1F5F9;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+}
+
+.puntos {
+    display: inline-flex;
+    width: 24px;
+}
+
+.puntos::after {
+    content: '...';
+    animation: puntos-anim 1.5s steps(4, end) infinite;
+    overflow: hidden;
+    display: inline-block;
+}
+
+@keyframes puntos-anim {
+    0% { width: 0; }
+    100% { width: 24px; }
+}
+
+.carga-barra {
+    position: relative;
+    width: 280px;
+    height: 4px;
+    background: rgba(45, 212, 191, 0.2);
+    border-radius: 2px;
+    margin-top: 16px;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(45, 212, 191, 0.3);
+}
+
+.carga-barra-progreso {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #3B82F6 0%, #2DD4BF 100%);
+    animation: barra-progreso 4s ease-in-out forwards;
+    box-shadow: 0 0 15px rgba(45, 212, 191, 0.6);
+}
+
+@keyframes barra-progreso {
+    0% { width: 0%; }
+    30% { width: 35%; }
+    60% { width: 70%; }
+    100% { width: 100%; }
+}
+
+@media (max-width: 768px) {
+    .retroexcavadora {
+        width: 260px;
+        height: 150px;
+    }
+    
+    .carga-escena {
+        height: 320px;
+    }
+    
+    .carga-suelo {
+        height: 80px;
+    }
+}
