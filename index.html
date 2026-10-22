@@ -18,7 +18,9 @@
     <link rel="stylesheet" href="css/suelos1.css">
 
 <!-- ═══════════════ GeoMetrics · Pantalla de carga (retroexcavadora) ═══════════════
-     Va ANTES de los scripts que bloquean la carga (EmailJS, Firebase, SheetJS, Plotly) para que se pinte al instante. -->
+     Va ANTES de los scripts que bloquean la carga (EmailJS, Firebase, SheetJS, Plotly) para que se pinte al instante.
+     La máquina está dividida en capas; el movimiento usa transform/opacity (compositor) para que siga fluido
+     aunque el hilo principal esté ocupado ejecutando los scripts de la página. -->
 <style id="gml-css">
 html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 #gm-loader { position: fixed; inset: 0; z-index: 2147483000; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -31,177 +33,219 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 #gm-loader.gml-out { opacity: 0; visibility: hidden; pointer-events: none; }
 #gm-loader, #gm-loader * { box-sizing: border-box; }
 #gm-loader i, #gm-loader b, #gm-loader em { font-style: normal; }
+#gm-loader svg { display: block; overflow: visible; }
 
 #gm-loader .gml-brand { position: absolute; top: clamp(24px, 7vh, 68px); left: 0; right: 0; text-align: center; pointer-events: none; }
 #gm-loader .gml-brand b { display: block; font-size: clamp(30px, 5.2vw, 56px); font-weight: 800; letter-spacing: -.8px; line-height: 1.05;
     background: linear-gradient(90deg, #F1F5F9 10%, #7DD3FC 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 #gm-loader .gml-brand span { display: block; margin-top: 10px; font-size: clamp(10px, 1.3vw, 13px); font-weight: 600; letter-spacing: .34em; text-transform: uppercase; color: #7C8AA5; }
 
-#gm-loader { --gh: clamp(54px, 9vh, 84px); --mw: clamp(290px, 34vw, 560px); }
+#gm-loader { --gh: clamp(54px, 9vh, 84px); }
 #gm-loader .gml-world { position: relative; width: 100%; height: clamp(250px, 42vh, 400px); margin-top: clamp(40px, 8vh, 90px); }
 #gm-loader .gml-ground { position: absolute; left: 0; right: 0; bottom: 0; height: var(--gh);
     background:
         linear-gradient(180deg, #9a6f45 0 5px, #7a5232 5px 9px, transparent 9px),
         radial-gradient(circle at 12% 40%, rgba(255,255,255,.10) 0 1.5px, transparent 2px) 0 0 / 38px 22px,
         radial-gradient(circle at 70% 70%, rgba(0,0,0,.28) 0 2px, transparent 2.5px) 0 0 / 46px 26px,
-        linear-gradient(180deg, #5d3f27 0%, #3a281a 55%, #21170f 100%);
-    box-shadow: 0 -18px 40px rgba(56,189,248,.07); }
-#gm-loader .gml-machine { position: absolute; left: 0; bottom: var(--gh); width: var(--mw); cursor: pointer; will-change: transform; outline: none; -webkit-tap-highlight-color: transparent; }
-#gm-loader .gml-machine svg { display: block; width: 100%; height: auto; overflow: visible; }
-#gm-loader.gml-run .gml-machine svg { animation: gmlShake .18s linear infinite; }
-#gm-loader .gml-fx { position: absolute; inset: 0; pointer-events: none; }
-#gm-loader .gml-dust, #gm-loader .gml-smoke { position: absolute; border-radius: 50%; pointer-events: none; }
-#gm-loader .gml-dust { width: 16px; height: 16px; margin: -8px 0 0 -8px; background: rgba(176,140,100,.55); animation: gmlDust .85s ease-out forwards; }
-#gm-loader .gml-smoke { width: 20px; height: 20px; margin: -10px 0 0 -10px; background: rgba(148,163,184,.55); animation: gmlSmoke 1.5s ease-out forwards; }
-@keyframes gmlDust { to { transform: translate(-30px, -16px) scale(2.6); opacity: 0; } }
-@keyframes gmlSmoke { to { transform: translate(-16px, -70px) scale(2.8); opacity: 0; } }
-@keyframes gmlShake { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.1px); } }
+        linear-gradient(180deg, #5d3f27 0%, #3a281a 55%, #21170f 100%); }
 
-#gm-loader .gml-beam { opacity: 0; transition: opacity .5s ease; }
+/* la máquina: tamaño de diseño fijo 560×262 y escala por JS (así todo el dibujo usa px de diseño) */
+#gm-loader .gml-rig { position: absolute; left: 0; bottom: var(--gh); width: 560px; height: 262px; transform-origin: 0 100%; cursor: pointer;
+    outline: none; will-change: transform; transition: transform .55s linear; -webkit-tap-highlight-color: transparent; contain: layout style; }
+#gm-loader .gml-in { position: absolute; inset: 0; }
+#gm-loader.gml-run .gml-in { animation: gmlShake .17s linear infinite; }
+#gm-loader .gml-in > svg, #gm-loader .gml-in > div { position: absolute; left: 0; top: 0; }
+#gm-loader .gml-layer { width: 560px; height: 262px; pointer-events: none; }
+#gm-loader .gml-wheel { will-change: transform; transform-origin: 50% 50%; pointer-events: none; }
+#gm-loader .gml-loader { transform-origin: 352px 176px; will-change: transform; }
+#gm-loader .gml-engs { width: 60px; height: 120px; transform-origin: 30px 112px; will-change: transform; pointer-events: none; }
+#gm-loader .gml-sit { width: 110px; height: 110px; left: 186px !important; top: 96px !important; pointer-events: none; }
+#gm-loader .gml-beam { left: 424px !important; top: 134px !important; width: 270px; height: 78px; pointer-events: none; opacity: 0; transition: opacity .5s ease;
+    background: linear-gradient(90deg, rgba(255,247,204,.62), rgba(255,247,204,0)); clip-path: polygon(0 40%, 100% 0, 100% 100%, 0 60%); will-change: opacity; }
 #gm-loader.gml-run .gml-beam { opacity: 1; }
-#gm-loader .gml-beacon { animation: gmlBeacon 1s steps(1) infinite; }
-@keyframes gmlBeacon { 0% { opacity: 1; } 50% { opacity: .22; } }
-#gm-loader .gml-arm { transform-box: view-box; transform-origin: 300px 180px; }
-#gm-loader .gml-machine.gml-honk-fx .gml-arm { animation: gmlArm .9s ease-in-out; }
-@keyframes gmlArm { 0%, 100% { transform: rotate(0); } 35% { transform: rotate(-9deg); } 65% { transform: rotate(-9deg); } }
-#gm-loader .gml-honk { position: absolute; left: 47%; top: -2%; padding: 7px 14px; border-radius: 14px 14px 14px 3px; font-weight: 800; font-size: clamp(12px, 1.6vw, 17px); letter-spacing: .04em;
-    color: #0B1220; background: #FDE68A; box-shadow: 0 8px 24px rgba(251,191,36,.35); opacity: 0; transform: translateY(8px) scale(.8); pointer-events: none; white-space: nowrap; }
+#gm-loader .gml-honk { left: 188px !important; top: 6px !important; padding: 7px 14px; border-radius: 14px 14px 14px 3px; font-weight: 800; font-size: 19px; letter-spacing: .04em;
+    color: #0B1220; background: #FDE68A; box-shadow: 0 8px 24px rgba(251,191,36,.35); opacity: 0; pointer-events: none; white-space: nowrap; }
 #gm-loader .gml-honk.on { animation: gmlHonk 1s ease-out; }
 @keyframes gmlHonk { 0% { opacity: 0; transform: translateY(8px) scale(.8); } 15% { opacity: 1; transform: translateY(-6px) scale(1.08); } 75% { opacity: 1; transform: translateY(-10px) scale(1); } 100% { opacity: 0; transform: translateY(-18px) scale(1); } }
+@keyframes gmlShake { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.2px); } }
+
+/* ingeniero: ciclo de marcha (piernas y brazos) */
+#gm-loader .gml-engs .lf, #gm-loader .gml-engs .lb, #gm-loader .gml-engs .af, #gm-loader .gml-engs .ab { transform-box: fill-box; transform-origin: 50% 0%; }
+@keyframes gmlStepA { 0%, 100% { transform: rotate(-34deg); } 50% { transform: rotate(34deg); } }
+@keyframes gmlStepB { 0%, 100% { transform: rotate(34deg); } 50% { transform: rotate(-34deg); } }
+@keyframes gmlStepC { 0%, 100% { transform: rotate(-46deg); } 50% { transform: rotate(46deg); } }
+@keyframes gmlStepD { 0%, 100% { transform: rotate(46deg); } 50% { transform: rotate(-46deg); } }
+@keyframes gmlBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.4px); } }
+#gm-loader .gml-engs.walk .lf, #gm-loader .gml-engs.walk .ab { animation: gmlStepA .4s ease-in-out infinite; }
+#gm-loader .gml-engs.walk .lb, #gm-loader .gml-engs.walk .af { animation: gmlStepB .4s ease-in-out infinite; }
+#gm-loader .gml-engs.walk .bd { animation: gmlBob .2s ease-in-out infinite; }
+#gm-loader .gml-engs.climb .lf, #gm-loader .gml-engs.climb .ab { animation: gmlStepC .34s ease-in-out infinite; }
+#gm-loader .gml-engs.climb .lb, #gm-loader .gml-engs.climb .af { animation: gmlStepD .34s ease-in-out infinite; }
+
+/* partículas */
+#gm-loader .gml-fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+#gm-loader .gml-dust, #gm-loader .gml-smoke { position: absolute; border-radius: 50%; pointer-events: none; will-change: transform, opacity; }
+#gm-loader .gml-dust { width: 16px; height: 16px; margin: -8px 0 0 -8px; background: rgba(176,140,100,.55); animation: gmlDust .85s ease-out forwards; }
+#gm-loader .gml-smoke { width: 20px; height: 20px; margin: -10px 0 0 -10px; background: rgba(148,163,184,.55); animation: gmlSmoke 1.5s ease-out forwards; }
+@keyframes gmlDust { to { transform: translate(-36px, -7px) scale(2.5); opacity: 0; } }
+@keyframes gmlSmoke { to { transform: translate(-16px, -70px) scale(2.8); opacity: 0; } }
 
 #gm-loader .gml-progress { width: min(460px, 74vw); margin-top: clamp(22px, 4.5vh, 44px); text-align: center; }
 #gm-loader .gml-bar { position: relative; height: 8px; border-radius: 999px; background: rgba(148,163,184,.18); overflow: hidden; }
-#gm-loader .gml-bar i { position: absolute; inset: 0; border-radius: 999px; transform-origin: 0 50%; transform: scaleX(0);
+#gm-loader .gml-bar i { position: absolute; inset: 0; border-radius: 999px; transform-origin: 0 50%; transform: scaleX(0); transition: transform .3s linear; will-change: transform;
     background: linear-gradient(90deg, #F59E0B, #FDE68A); box-shadow: 0 0 18px rgba(251,191,36,.55); }
 #gm-loader .gml-line { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin-top: 12px; font-size: 13px; color: #A7B4C8; }
 #gm-loader .gml-line b { font-weight: 600; letter-spacing: .02em; text-align: left; }
 #gm-loader .gml-pct { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 15px; color: #FDE68A; }
 #gm-loader .gml-hint { margin-top: 10px; font-size: 11.5px; letter-spacing: .04em; color: #64748B; }
-
-@media (max-width: 560px) { #gm-loader { --mw: clamp(270px, 76vw, 420px); } }
-@media (prefers-reduced-motion: reduce) { #gm-loader.gml-run .gml-machine svg, #gm-loader .gml-beacon { animation: none; } }
+@media (prefers-reduced-motion: reduce) { #gm-loader.gml-run .gml-in { animation: none; } }
 </style>
 <noscript><style>#gm-loader { display: none !important; } html.gml-lock, html.gml-lock body { overflow: auto !important; }</style></noscript>
 
 <div id="gm-loader" role="status" aria-live="polite" aria-label="Cargando GeoMetrics">
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+        <linearGradient id="gmlY" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC62E"/><stop offset="1" stop-color="#F5A100"/></linearGradient>
+        <linearGradient id="gmlB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2F7FE6"/><stop offset="1" stop-color="#1A5CBD"/></linearGradient>
+        <linearGradient id="gmlBk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4A94F0"/><stop offset="1" stop-color="#1B58B5"/></linearGradient>
+        <linearGradient id="gmlGl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BFE0F5" stop-opacity=".55"/><stop offset="1" stop-color="#7FB6DE" stop-opacity=".28"/></linearGradient>
+    </defs></svg>
+
     <div class="gml-brand"><b>GeoMetrics</b><span>Laboratorio Virtual · Ingeniería Civil</span></div>
 
     <div class="gml-world">
         <div class="gml-ground"></div>
         <div class="gml-fx"></div>
-        <div class="gml-machine" role="button" tabindex="0" aria-label="Tocar la bocina de la retroexcavadora">
-            <svg viewBox="0 0 560 262" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <defs>
-                    <linearGradient id="gmlY" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD54A"/><stop offset="1" stop-color="#F2A900"/></linearGradient>
-                    <linearGradient id="gmlYd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F7B500"/><stop offset="1" stop-color="#D98A00"/></linearGradient>
-                    <linearGradient id="gmlGlass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#BAE6FD" stop-opacity=".42"/><stop offset="1" stop-color="#38BDF8" stop-opacity=".13"/></linearGradient>
-                    <linearGradient id="gmlBeam" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FEF3C7" stop-opacity=".62"/><stop offset="1" stop-color="#FEF3C7" stop-opacity="0"/></linearGradient>
-                    <g id="gml-head">
-                        <circle cx="-9" cy="-83" r="3.2" fill="#E3B386"/>
-                        <circle cx="0" cy="-84" r="11" fill="#F2C79B"/>
-                        <circle cx="11" cy="-83" r="2.3" fill="#F2C79B"/>
-                        <circle cx="5.2" cy="-85.5" r="1.8" fill="#0F172A"/>
-                        <path d="M2.5 -79 Q6.5 -76 9.5 -79.5" fill="none" stroke="#7C2D12" stroke-width="1.6" stroke-linecap="round"/>
-                        <path d="M-13 -91 Q-13 -108 0 -108 Q13 -108 13 -91 Z" fill="#F8FAFC"/>
-                        <rect x="-13" y="-99" width="26" height="3.2" fill="#38BDF8"/>
-                        <rect x="-1.8" y="-108" width="3.6" height="17" fill="#E2E8F0"/>
-                        <rect x="-14" y="-92" width="34" height="4.6" rx="2.3" fill="#CBD5E1"/>
-                    </g>
-                </defs>
 
-                <ellipse cx="300" cy="260" rx="232" ry="6" fill="rgba(0,0,0,.42)"/>
-
-                <!-- brazo trasero (retro) -->
+        <div class="gml-rig" role="button" tabindex="0" aria-label="Tocar la bocina de la retroexcavadora"><div class="gml-in">
+            <!-- 1 · capa trasera: sombra, brazo retro, pata estabilizadora, chasis, escalones -->
+            <svg class="gml-layer" viewBox="0 0 560 262" aria-hidden="true">
+                <ellipse cx="288" cy="260" rx="256" ry="7" fill="rgba(2,6,14,.55)"/>
+                <rect x="122" y="178" width="18" height="74" rx="3" fill="url(#gmlY)"/><rect x="122" y="188" width="18" height="6" fill="#C98300"/>
+                <rect x="115" y="250" width="32" height="7" rx="2" fill="#2F3A48"/>
                 <g stroke-linecap="round" stroke-linejoin="round" fill="none">
-                    <path d="M150 170 L92 94" stroke="#1E293B" stroke-width="22"/><path d="M92 94 L46 150" stroke="#1E293B" stroke-width="18"/>
-                    <path d="M150 170 L92 94" stroke="url(#gmlY)" stroke-width="15"/><path d="M92 94 L46 150" stroke="url(#gmlY)" stroke-width="11"/>
-                    <path d="M148 152 L118 110" stroke="#64748B" stroke-width="7"/><path d="M148 152 L118 110" stroke="#CBD5E1" stroke-width="3"/>
+                    <path d="M150 172 L84 48" stroke="#D98B00" stroke-width="23"/><path d="M84 48 L30 148" stroke="#D98B00" stroke-width="17"/>
+                    <path d="M150 172 L84 48" stroke="url(#gmlY)" stroke-width="18"/><path d="M84 48 L30 148" stroke="url(#gmlY)" stroke-width="12"/>
+                    <path d="M138 150 L96 84" stroke="#8C97A5" stroke-width="8"/><path d="M138 150 L96 84" stroke="#CBD3DD" stroke-width="3.2"/>
+                    <path d="M100 66 L56 116" stroke="#8C97A5" stroke-width="7"/><path d="M100 66 L56 116" stroke="#CBD3DD" stroke-width="3"/>
                 </g>
-                <path d="M28 142 L64 152 L60 190 Q38 202 20 180 Z" fill="url(#gmlYd)" stroke="#1E293B" stroke-width="3" stroke-linejoin="round"/>
-                <path d="M24 186 l5 8 l5 -6 M38 194 l5 8 l5 -8" fill="none" stroke="#1E293B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                <circle cx="150" cy="170" r="7" fill="#1E293B"/><circle cx="92" cy="94" r="6" fill="#1E293B"/>
+                <circle cx="84" cy="48" r="9" fill="#C98300"/><circle cx="150" cy="172" r="8" fill="#C98300"/>
+                <path d="M10 146 L50 150 Q60 178 36 198 Q14 202 8 178 Z" fill="#364151"/>
+                <path d="M16 198 l4 10 l5 -9 M27 200 l4 10 l5 -9 M38 196 l4 10 l5 -9" fill="#202A36" stroke="#202A36" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M150 198 H440 V228 Q440 234 434 234 H156 Q150 234 150 228 Z" fill="#1A58B2"/>
+                <path d="M302 200 V240" stroke="#7A8594" stroke-width="5" stroke-linecap="round"/>
+                <rect x="262" y="238" width="40" height="6" rx="2" fill="#B2BCC8"/><rect x="266" y="218" width="36" height="6" rx="2" fill="#B2BCC8"/>
+            </svg>
 
-                <!-- chasis y escalones -->
-                <rect x="128" y="186" width="360" height="30" rx="8" fill="#334155" stroke="#1E293B" stroke-width="3"/>
-                <path d="M304 190 V240" stroke="#475569" stroke-width="4" stroke-linecap="round"/>
-                <rect x="270" y="236" width="36" height="6" rx="2" fill="#94A3B8" stroke="#1E293B" stroke-width="1.5"/>
-                <rect x="274" y="212" width="32" height="6" rx="2" fill="#94A3B8" stroke="#1E293B" stroke-width="1.5"/>
+            <!-- 2 · ruedas (giran con la GPU) -->
+            <svg class="gml-wheel" id="gml-wR" style="left:144px;top:150px" width="112" height="112" viewBox="0 0 112 112" aria-hidden="true">
+                <circle cx="56" cy="56" r="56" fill="#17212D"/>
+                <circle cx="56" cy="56" r="50" fill="none" stroke="#0C131B" stroke-width="12" stroke-dasharray="11 7"/>
+                <circle cx="56" cy="56" r="36" fill="#212D3B"/>
+                <circle cx="56" cy="56" r="27" fill="#F5A800"/><circle cx="56" cy="56" r="27" fill="none" stroke="#C98300" stroke-width="3"/>
+                <path d="M56 43 V29 M67 62 L79 69 M45 62 L33 69" stroke="#C98300" stroke-width="4" stroke-linecap="round"/>
+                <circle cx="56" cy="56" r="13" fill="#2A3544"/>
+                <g fill="#8A5F00"><circle cx="75.5" cy="56" r="2.6"/><circle cx="65.8" cy="72.9" r="2.6"/><circle cx="46.2" cy="72.9" r="2.6"/><circle cx="36.5" cy="56" r="2.6"/><circle cx="46.2" cy="39.1" r="2.6"/><circle cx="65.8" cy="39.1" r="2.6"/></g>
+            </svg>
+            <svg class="gml-wheel" id="gml-wF" style="left:382px;top:190px" width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+                <circle cx="36" cy="36" r="36" fill="#17212D"/>
+                <circle cx="36" cy="36" r="32" fill="none" stroke="#0C131B" stroke-width="9" stroke-dasharray="8 5"/>
+                <circle cx="36" cy="36" r="24" fill="#212D3B"/>
+                <circle cx="36" cy="36" r="17.5" fill="#F5A800"/><circle cx="36" cy="36" r="17.5" fill="none" stroke="#C98300" stroke-width="2.4"/>
+                <path d="M36 27 V19 M43.8 40.5 L50.5 44.4 M28.2 40.5 L21.5 44.4" stroke="#C98300" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="36" cy="36" r="8.5" fill="#2A3544"/>
+                <g fill="#8A5F00"><circle cx="48.5" cy="36" r="1.9"/><circle cx="36" cy="48.5" r="1.9"/><circle cx="23.5" cy="36" r="1.9"/><circle cx="36" cy="23.5" r="1.9"/></g>
+            </svg>
 
-                <!-- ruedas -->
-                <g id="gml-wR">
-                    <circle cx="210" cy="206" r="56" fill="#0F172A"/>
-                    <circle cx="210" cy="206" r="51" fill="none" stroke="#1F2937" stroke-width="9" stroke-dasharray="9 6"/>
-                    <circle cx="210" cy="206" r="33" fill="url(#gmlYd)" stroke="#1E293B" stroke-width="3"/>
-                    <g fill="#1E293B"><circle cx="232" cy="206" r="3.4"/><circle cx="221" cy="225" r="3.4"/><circle cx="199" cy="225" r="3.4"/><circle cx="188" cy="206" r="3.4"/><circle cx="199" cy="187" r="3.4"/><circle cx="221" cy="187" r="3.4"/><circle cx="210" cy="206" r="9"/></g>
-                </g>
-                <g id="gml-wF">
-                    <circle cx="452" cy="228" r="34" fill="#0F172A"/>
-                    <circle cx="452" cy="228" r="30.5" fill="none" stroke="#1F2937" stroke-width="6" stroke-dasharray="7 5"/>
-                    <circle cx="452" cy="228" r="19" fill="url(#gmlYd)" stroke="#1E293B" stroke-width="2.6"/>
-                    <g fill="#1E293B"><circle cx="464" cy="228" r="2.8"/><circle cx="452" cy="240" r="2.8"/><circle cx="440" cy="228" r="2.8"/><circle cx="452" cy="216" r="2.8"/><circle cx="452" cy="228" r="6"/></g>
-                </g>
-                <path d="M144 206 A66 66 0 0 1 276 206" fill="none" stroke="#1E293B" stroke-width="11" stroke-linecap="round"/><path d="M144 206 A66 66 0 0 1 276 206" fill="none" stroke="url(#gmlY)" stroke-width="6" stroke-linecap="round"/>
-                <path d="M412 228 A42 42 0 0 1 492 228" fill="none" stroke="#1E293B" stroke-width="10" stroke-linecap="round"/><path d="M412 228 A42 42 0 0 1 492 228" fill="none" stroke="url(#gmlY)" stroke-width="5.5" stroke-linecap="round"/>
+            <!-- 3 · guardafangos, capó, escape y parte baja de la cabina -->
+            <svg class="gml-layer" viewBox="0 0 560 262" aria-hidden="true">
+                <path d="M126 216 Q126 138 200 138 Q274 138 274 216 L254 216 Q254 160 200 158 Q146 160 146 216 Z" fill="url(#gmlB)"/>
+                <path d="M146 216 Q146 160 200 158 Q254 160 254 216" fill="none" stroke="#1553A6" stroke-width="3"/>
+                <path d="M378 228 A40 40 0 0 1 458 228" fill="none" stroke="#D98B00" stroke-width="11" stroke-linecap="round"/>
+                <path d="M378 228 A40 40 0 0 1 458 228" fill="none" stroke="url(#gmlY)" stroke-width="7" stroke-linecap="round"/>
+                <rect x="176" y="172" width="148" height="34" rx="4" fill="url(#gmlB)"/><rect x="176" y="198" width="148" height="8" fill="#1553A6"/>
+                <path d="M322 150 L384 150 Q426 158 432 188 L432 206 L322 206 Z" fill="url(#gmlY)"/>
+                <path d="M322 150 L338 138 L388 142 L402 154 Z" fill="#FFD25A"/>
+                <path d="M338 170 L398 178 L398 196 L338 194 Z" fill="#1F2937"/><path d="M346 178 H390 M346 186 H390" stroke="#3A4656" stroke-width="2.4"/>
+                <path d="M322 150 L322 206" stroke="#C98300" stroke-width="3"/>
+                <rect x="418" y="168" width="10" height="12" rx="2.4" fill="#FFF7CC"/>
+                <path d="M328 150 V104 Q328 94 338 94 Q344 94 344 100 V150" fill="#56667A"/><path d="M331 148 V106" stroke="#8798AD" stroke-width="2.4" stroke-linecap="round"/>
+                <rect x="326" y="92" width="20" height="6" rx="3" fill="#3A4859"/>
+            </svg>
 
-                <!-- capó, escape y faro -->
-                <path d="M314 148 L410 148 Q440 148 443 176 L443 194 L314 194 Z" fill="url(#gmlY)" stroke="#1E293B" stroke-width="3" stroke-linejoin="round"/>
-                <path d="M334 164 h46 M334 174 h46 M334 184 h46" stroke="#B87D00" stroke-width="3" stroke-linecap="round"/>
-                <rect x="352" y="112" width="8" height="38" fill="#64748B"/><rect x="349" y="107" width="14" height="7" rx="2" fill="#334155"/>
-                <rect x="431" y="156" width="12" height="36" rx="3" fill="#1E293B"/><path d="M434 162 h6 M434 170 h6 M434 178 h6 M434 186 h6" stroke="#64748B" stroke-width="1.8"/>
-                <circle cx="437" cy="166" r="6.2" fill="#FEF9C3" stroke="#1E293B" stroke-width="2"/>
-                <path class="gml-beam" d="M443 160 L700 108 L700 236 L443 174 Z" fill="url(#gmlBeam)"/>
+            <!-- 3b · brazo y cuchara delanteros (se levantan al tocar la bocina) -->
+            <svg class="gml-layer gml-loader" viewBox="0 0 560 262" aria-hidden="true">
+                <path d="M352 178 L474 216" stroke="#D98B00" stroke-width="18" stroke-linecap="round"/><path d="M352 178 L474 216" stroke="url(#gmlY)" stroke-width="13" stroke-linecap="round"/>
+                <path d="M336 154 L446 192" stroke="#8C97A5" stroke-width="8" stroke-linecap="round"/><path d="M336 154 L446 192" stroke="#CBD3DD" stroke-width="3.2" stroke-linecap="round"/>
+                <circle cx="352" cy="178" r="7" fill="#C98300"/>
+                <path d="M440 190 L552 200 Q570 244 538 258 L446 254 Z" fill="url(#gmlBk)"/>
+                <path d="M448 202 L544 210 L532 246 L452 243 Z" fill="#14407F"/>
+                <path d="M440 190 L552 200" stroke="#8DBBF8" stroke-width="4.5" stroke-linecap="round"/>
+                <path d="M448 256 L538 259" stroke="#6FA8F5" stroke-width="5" stroke-linecap="round"/>
+                <circle cx="474" cy="216" r="7" fill="#C98300"/><circle cx="500" cy="226" r="3" fill="#8DBBF8"/>
+            </svg>
 
-                <!-- brazo y cuchara delanteros -->
-                <g class="gml-arm">
-                    <path d="M296 182 L476 202" stroke="#1E293B" stroke-width="18" stroke-linecap="round"/><path d="M296 182 L476 202" stroke="url(#gmlY)" stroke-width="12" stroke-linecap="round"/>
-                    <path d="M334 160 L432 180" stroke="#64748B" stroke-width="7" stroke-linecap="round"/><path d="M334 160 L432 180" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round"/>
-                    <path d="M468 178 L538 184 Q556 222 524 250 L470 246 Z" fill="url(#gmlYd)" stroke="#1E293B" stroke-width="3" stroke-linejoin="round"/>
-                    <path d="M486 248 l6 9 l6 -9 M502 249 l6 9 l6 -9 M518 250 l6 8 l6 -8" fill="none" stroke="#1E293B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                    <circle cx="476" cy="202" r="7" fill="#1E293B"/>
-                </g>
+            <!-- 4 · interior de la cabina -->
+            <svg class="gml-layer" viewBox="0 0 560 262" aria-hidden="true">
+                <rect x="186" y="78" width="124" height="126" fill="#2B3A4D"/>
+                <rect x="195" y="98" width="17" height="14" rx="6" fill="#46566B"/><rect x="196" y="110" width="14" height="68" rx="6" fill="#46566B"/>
+                <rect x="196" y="170" width="50" height="12" rx="5" fill="#566780"/><rect x="214" y="182" width="14" height="22" fill="#1F2937"/>
+                <rect x="278" y="138" width="34" height="66" rx="5" fill="#1A2330"/>
+                <path d="M292 172 L272 140" stroke="#0F1620" stroke-width="5" stroke-linecap="round"/>
+                <rect x="262" y="198" width="14" height="5" rx="2" fill="#1F2937"/>
+            </svg>
 
-                <!-- interior de la cabina -->
-                <rect x="158" y="182" width="156" height="14" rx="3" fill="url(#gmlY)" stroke="#1E293B" stroke-width="2.5"/>
-                <rect x="181" y="100" width="17" height="14" rx="6" fill="#374151"/><rect x="182" y="112" width="14" height="66" rx="6" fill="#374151"/>
-                <rect x="182" y="168" width="48" height="12" rx="5" fill="#4B5563"/><rect x="198" y="180" width="14" height="6" fill="#1F2937"/>
-                <rect x="282" y="134" width="24" height="52" rx="4" fill="#0F172A"/>
-                <path d="M292 168 L268 136" stroke="#0F172A" stroke-width="5" stroke-linecap="round"/>
-                <rect x="256" y="183" width="14" height="5" rx="2" fill="#1F2937"/>
-
-                <!-- ingeniero de pie (camina, sube y entra a la cabina) -->
-                <g id="gml-eng" transform="translate(-400 262)">
-                    <g id="gml-armB"><rect x="-4" y="-66" width="8" height="27" rx="4" fill="#94A3B8"/><circle cx="0" cy="-38" r="4.6" fill="#E3B386"/></g>
-                    <g id="gml-legB"><rect x="-5" y="-40" width="10" height="33" rx="4" fill="#1E3A8A"/><rect x="-5" y="-9" width="17" height="9" rx="3" fill="#111827"/></g>
+            <!-- 5a · ingeniero de pie: camina, sube y entra a la cabina -->
+            <svg class="gml-engs walk" id="gml-engs" style="transform:translate(-400px,150px)" width="60" height="120" viewBox="0 0 60 120" aria-hidden="true">
+                <g transform="translate(30 112)"><g class="bd">
+                    <g class="ab"><rect x="-4" y="-66" width="8" height="27" rx="4" fill="#94A3B8"/><circle cx="0" cy="-38" r="4.6" fill="#E3B386"/></g>
+                    <g class="lb"><rect x="-5" y="-40" width="10" height="33" rx="4" fill="#1E3A8A"/><rect x="-5" y="-9" width="17" height="9" rx="3" fill="#111827"/></g>
                     <rect x="-13" y="-72" width="26" height="34" rx="9" fill="#F97316"/>
                     <rect x="-13" y="-62" width="26" height="4" fill="#FDE68A"/><rect x="-13" y="-50" width="26" height="4" fill="#FDE68A"/><rect x="-13" y="-42" width="26" height="4" fill="#0F172A"/>
-                    <g id="gml-legF"><rect x="-5" y="-40" width="10" height="33" rx="4" fill="#2563EB"/><rect x="-5" y="-9" width="17" height="9" rx="3" fill="#1F2937"/></g>
-                    <use href="#gml-head"/>
-                    <g id="gml-armF"><rect x="-4" y="-66" width="8" height="27" rx="4" fill="#CBD5E1"/><circle cx="0" cy="-38" r="4.6" fill="#F2C79B"/></g>
-                </g>
+                    <g class="lf"><rect x="-5" y="-40" width="10" height="33" rx="4" fill="#2563EB"/><rect x="-5" y="-9" width="17" height="9" rx="3" fill="#1F2937"/></g>
+                    <circle cx="-9" cy="-83" r="3.2" fill="#E3B386"/><circle cx="0" cy="-84" r="11" fill="#F2C79B"/><circle cx="11" cy="-83" r="2.3" fill="#F2C79B"/>
+                    <circle cx="5.2" cy="-85.5" r="1.8" fill="#0F172A"/><path d="M2.5 -79 Q6.5 -76 9.5 -79.5" fill="none" stroke="#7C2D12" stroke-width="1.6" stroke-linecap="round"/>
+                    <path d="M-13 -91 Q-13 -108 0 -108 Q13 -108 13 -91 Z" fill="#F8FAFC"/><rect x="-13" y="-99" width="26" height="3.2" fill="#38BDF8"/>
+                    <rect x="-1.8" y="-108" width="3.6" height="17" fill="#E2E8F0"/><rect x="-14" y="-92" width="34" height="4.6" rx="2.3" fill="#CBD5E1"/>
+                    <g class="af"><rect x="-4" y="-66" width="8" height="27" rx="4" fill="#CBD5E1"/><circle cx="0" cy="-38" r="4.6" fill="#F2C79B"/></g>
+                </g></g>
+            </svg>
 
-                <!-- ingeniero sentado al volante -->
-                <g id="gml-sit" style="display:none" transform="translate(206 166)">
+            <!-- 5b · ingeniero sentado al volante -->
+            <svg class="gml-sit" id="gml-sit" style="display:none" viewBox="0 0 110 110" aria-hidden="true">
+                <g transform="translate(30 70)">
                     <path d="M2 -32 L30 -18 L56 -34" fill="none" stroke="#94A3B8" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
                     <path d="M0 0 L32 2 L36 16" fill="none" stroke="#1E3A8A" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
                     <rect x="35" y="14" width="17" height="9" rx="3" fill="#111827"/>
                     <rect x="-13" y="-38" width="26" height="40" rx="9" fill="#F97316"/>
                     <rect x="-13" y="-26" width="26" height="4" fill="#FDE68A"/><rect x="-13" y="-14" width="26" height="4" fill="#FDE68A"/>
-                    <use href="#gml-head" transform="translate(2 35)"/>
+                    <g transform="translate(2 35)">
+                        <circle cx="-9" cy="-83" r="3.2" fill="#E3B386"/><circle cx="0" cy="-84" r="11" fill="#F2C79B"/><circle cx="11" cy="-83" r="2.3" fill="#F2C79B"/>
+                        <circle cx="5.2" cy="-85.5" r="1.8" fill="#0F172A"/><path d="M2.5 -79 Q6.5 -76 9.5 -79.5" fill="none" stroke="#7C2D12" stroke-width="1.6" stroke-linecap="round"/>
+                        <path d="M-13 -91 Q-13 -108 0 -108 Q13 -108 13 -91 Z" fill="#F8FAFC"/><rect x="-13" y="-99" width="26" height="3.2" fill="#38BDF8"/>
+                        <rect x="-1.8" y="-108" width="3.6" height="17" fill="#E2E8F0"/><rect x="-14" y="-92" width="34" height="4.6" rx="2.3" fill="#CBD5E1"/>
+                    </g>
                     <path d="M2 -32 L30 -18 L58 -36" fill="none" stroke="#CBD5E1" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
                     <circle cx="58" cy="-36" r="4.8" fill="#F2C79B"/>
+                    <g transform="rotate(-20 56 -40)"><ellipse cx="56" cy="-40" rx="5.5" ry="19" fill="none" stroke="#0F172A" stroke-width="7"/><ellipse cx="56" cy="-40" rx="5.5" ry="19" fill="none" stroke="#CBD5E1" stroke-width="3.2"/><circle cx="56" cy="-40" r="3.4" fill="#F59E0B" stroke="#0F172A" stroke-width="1.5"/></g>
                 </g>
-                <!-- volante delante de las manos -->
-                <g id="gml-steer" transform="rotate(-20 266 128)"><ellipse cx="266" cy="128" rx="5.5" ry="19" fill="none" stroke="#0F172A" stroke-width="7"/><ellipse cx="266" cy="128" rx="5.5" ry="19" fill="none" stroke="#CBD5E1" stroke-width="3.2"/><circle cx="266" cy="128" r="3.4" fill="#F59E0B" stroke="#0F172A" stroke-width="1.5"/></g>
-
-                <!-- vidrios, parantes y techo de la cabina -->
-                <rect x="169" y="74" width="137" height="112" fill="url(#gmlGlass)"/>
-                <path d="M192 80 L232 80 L198 184 L174 184 Z" fill="rgba(255,255,255,.07)"/>
-                <rect x="160" y="72" width="9" height="116" rx="2" fill="#1E293B"/><rect x="306" y="72" width="9" height="116" rx="2" fill="#1E293B"/>
-                <rect x="154" y="58" width="166" height="16" rx="7" fill="url(#gmlY)" stroke="#1E293B" stroke-width="3"/>
-                <rect x="228" y="48" width="16" height="11" rx="5" fill="#FB923C" class="gml-beacon"/>
             </svg>
+
+            <!-- 6 · vidrios, estructura azul y techo amarillo de la cabina -->
+            <svg class="gml-layer" viewBox="0 0 560 262" aria-hidden="true">
+                <rect x="186" y="76" width="124" height="126" fill="url(#gmlGl)"/>
+                <path d="M200 82 L236 82 L204 198 L190 198 Z" fill="rgba(255,255,255,.10)"/>
+                <rect x="172" y="68" width="14" height="136" rx="2" fill="url(#gmlB)"/>
+                <rect x="264" y="68" width="8" height="136" fill="#1A58B2"/>
+                <path d="M306 68 L322 68 L330 206 L312 206 Z" fill="#1A58B2"/>
+                <rect x="172" y="64" width="150" height="12" rx="3" fill="#1A58B2"/><rect x="172" y="198" width="150" height="8" rx="2" fill="#1553A6"/>
+                <rect x="250" y="148" width="5" height="16" rx="2" fill="#0F1620"/>
+                <rect x="162" y="50" width="170" height="16" rx="5" fill="#D98B00"/><rect x="162" y="49" width="170" height="13" rx="5" fill="url(#gmlY)"/>
+                <rect x="296" y="53" width="11" height="8" rx="2" fill="#FFF7CC"/><rect x="314" y="53" width="11" height="8" rx="2" fill="#FFF7CC"/>
+            </svg>
+
+            <div class="gml-beam"></div>
             <div class="gml-honk">¡PIII!</div>
-        </div>
+        </div></div>
     </div>
 
     <div class="gml-progress">
@@ -225,79 +269,83 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
     function lerp(a, b, t) { return a + (b - a) * t; }
     function ease(t) { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); }
-    function easeOut(t) { t = clamp(t, 0, 1); return 1 - Math.pow(1 - t, 3); }
-    function easeIn(t) { t = clamp(t, 0, 1); return t * t * t; }
 
-    var machine = q('.gml-machine'), world = q('.gml-world'), ground = q('.gml-ground'), fx = q('.gml-fx');
-    var eng = q('#gml-eng'), sit = q('#gml-sit'), legF = q('#gml-legF'), legB = q('#gml-legB'), armF = q('#gml-armF'), armB = q('#gml-armB');
-    var wR = q('#gml-wR'), wF = q('#gml-wF'), steer = q('#gml-steer');
-    var bar = q('.gml-bar i'), pct = q('.gml-pct'), msg = q('.gml-line b'), honkEl = q('.gml-honk');
+    var rig = q('.gml-rig'), world = q('.gml-world'), fx = q('.gml-fx'), engs = q('#gml-engs'), sit = q('#gml-sit');
+    var wR = q('#gml-wR'), wF = q('#gml-wF'), arm = q('.gml-loader'), honkEl = q('.gml-honk');
+    var bar = q('.gml-bar i'), pct = q('.gml-pct'), msg = q('.gml-line b');
 
-    var T0 = performance.now(), loaded = document.readyState === 'complete', finished = false, raf = 0;
+    var T0 = performance.now(), loaded = document.readyState === 'complete', finished = false, timers = [], iv = 0;
     window.addEventListener('load', function () { loaded = true; });
+    function later(ms, fn) { timers.push(setTimeout(fn, Math.max(0, ms))); }
 
-    /* ---------- medidas (en px de pantalla y en unidades del dibujo) ---------- */
-    var vw, mw, sc, gh, L0, L1, startX, TL, DRIVE_MIN = reduce ? 0 : 1250;
+    /* ---------- medidas ---------- */
+    var vw, vh, sc, gh, wh, L0, L1, startX, TL, DRIVE_MIN = reduce ? 0 : 1250;
     function measure() {
-        vw = root.clientWidth; mw = machine.offsetWidth; sc = mw / 560; gh = ground.offsetHeight;
-        L0 = Math.round(vw * 0.13);
-        L1 = Math.max(L0 + 60, vw - mw - Math.round(vw * 0.09));
-        startX = -((L0 + 80) / sc);
+        vw = root.clientWidth; vh = root.clientHeight;
+        var mw = vw <= 560 ? clamp(vw * 0.76, 270, 420) : clamp(vw * 0.34, 290, 560);
+        sc = mw / 560; gh = world.querySelector('.gml-ground').offsetHeight; wh = world.clientHeight;
+        L0 = Math.round(vw * 0.13); L1 = Math.max(L0 + 60, vw - mw - Math.round(vw * 0.09));
+        startX = -((L0 + 70) / sc);
         var W = clamp((292 - startX) / 700 * 1000, 600, 1000);
-        TL = reduce ? { walk: 0, climb: 0, cab: 0, seat: 0, start: 0 } : { walk: W, climb: W + 520, cab: W + 820, seat: W + 820, start: W + 1200 };
+        TL = reduce ? { walk: 0, climb: 0, cab: 0, start: 0 } : { walk: W, climb: W + 520, cab: W + 820, start: W + 1200 };
     }
     measure();
-    window.addEventListener('resize', measure);
+    function place(x) { rig.style.transform = 'translate3d(' + x.toFixed(1) + 'px,0,0) scale(' + sc.toFixed(4) + ')'; }
 
-    /* ---------- poses del ingeniero ---------- */
-    function swing(ph, amp, armAmp) {
-        var a = Math.sin(ph) * amp, b = Math.sin(ph) * armAmp;
-        legF.setAttribute('transform', 'rotate(' + a.toFixed(1) + ' 0 -40)');
-        legB.setAttribute('transform', 'rotate(' + (-a).toFixed(1) + ' 0 -40)');
-        armF.setAttribute('transform', 'rotate(' + (-b).toFixed(1) + ' 0 -66)');
-        armB.setAttribute('transform', 'rotate(' + b.toFixed(1) + ' 0 -66)');
+    /* ---------- ingeniero: todo el recorrido es UNA animación del compositor ---------- */
+    function tf(x, y, f) { return 'translate(' + (x - 30).toFixed(1) + 'px,' + (y - 112).toFixed(1) + 'px) scaleX(' + f + ')'; }
+    function seat() {
+        engs.style.display = 'none'; sit.style.display = '';
+        if (sit.animate && !reduce) sit.animate([{ transform: 'translateY(-9px)' }, { transform: 'translateY(0)' }], { duration: 220, easing: 'ease-out' });
     }
-    function engineer(t) {
-        if (t >= TL.seat) {
-            if (eng.style.display !== 'none') { eng.style.display = 'none'; sit.style.display = ''; }
-            var pop = clamp((t - TL.seat) / 220, 0, 1);
-            sit.setAttribute('transform', 'translate(206 ' + (166 - 9 * (1 - easeOut(pop))).toFixed(1) + ')');
-            return;
+    if (reduce) { seat(); place(Math.round(vw * 0.36)); }
+    else {
+        place(L0);
+        var D = TL.cab, o2 = TL.climb / D;
+        engs.style.transform = tf(startX, 262, 1);
+        if (engs.animate) {
+            engs.animate([
+                { offset: 0, transform: tf(startX, 262, 1) },
+                { offset: TL.walk / D, transform: tf(292, 262, 1) },
+                { offset: o2, transform: tf(286, 204, 1) },
+                { offset: Math.min(0.9995, o2 + 0.0008), transform: tf(286, 204, -1) },
+                { offset: 1, transform: tf(232, 204, -1) }
+            ], { duration: D, easing: 'linear', fill: 'forwards' });
         }
-        var x, y, flip = 1, ph, amp, arm, bob = 0;
-        if (t < TL.walk) {                                        /* camina hasta el escalón */
-            var u = t / TL.walk; x = lerp(startX, 292, u); y = 262; ph = x * 0.15; amp = 36; arm = 30; bob = Math.abs(Math.sin(ph)) * 2.2;
-        } else if (t < TL.climb) {                               /* sube los escalones */
-            var c = (t - TL.walk) / 520; x = 292 - 6 * c; y = 262 - 72 * c; ph = c * 15; amp = 46; arm = 44; bob = 0;
-        } else {                                                  /* entra a la cabina y se dirige al asiento */
-            var k = (t - TL.climb) / 300; x = lerp(288, 226, ease(k)); y = 190; flip = -1; ph = x * 0.15; amp = 26; arm = 20; bob = Math.abs(Math.sin(ph)) * 1.6;
-        }
-        swing(ph, amp, arm);
-        eng.setAttribute('transform', 'translate(' + x.toFixed(1) + ' ' + (y - bob).toFixed(1) + ') scale(' + flip + ' 1)');
+        later(TL.walk, function () { engs.classList.remove('walk'); engs.classList.add('climb'); });
+        later(TL.climb, function () { engs.classList.remove('climb'); engs.classList.add('walk'); });
+        later(TL.cab, function () { engs.classList.remove('walk'); seat(); });
     }
 
-    /* ---------- progreso ---------- */
-    function target(t) {
-        if (loaded || document.readyState === 'complete') return 1;
-        var rs = document.readyState, base = rs === 'interactive' ? 0.6 : 0.12;
-        return Math.min(0.93, base + 0.3 * (1 - Math.exp(-(t / 1000) / 2.2)));
+    /* ---------- ruedas ---------- */
+    var aR = null, aF = null;
+    if (wR.animate && !reduce) {
+        var kf = [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], op = { duration: 1000, iterations: Infinity };
+        aR = wR.animate(kf, op); aF = wF.animate(kf, op); aR.playbackRate = 0; aF.playbackRate = 0;
     }
-    var MSGS = [[0.30, 'Preparando el laboratorio…'], [0.65, 'Cargando módulos y simuladores…'], [0.97, 'Calibrando instrumentos…'], [2, '¡Listo para trabajar!']];
-    var lastMsg = '';
-    function ui(p) {
-        bar.style.transform = 'scaleX(' + p.toFixed(4) + ')';
-        pct.textContent = Math.round(p * 100) + '%';
-        for (var i = 0; i < MSGS.length; i++) if (p < MSGS[i][0]) { if (MSGS[i][1] !== lastMsg) { lastMsg = MSGS[i][1]; msg.textContent = lastMsg; } break; }
+    function spin(pxPerSec) {
+        if (!aR) return;
+        var rev = pxPerSec / (2 * Math.PI * 56 * sc);            /* vueltas/s de la rueda trasera */
+        aR.playbackRate = rev; aF.playbackRate = rev * 56 / 36;
     }
 
-    /* ---------- partículas (polvo y humo de escape) ---------- */
+    /* ---------- partículas ---------- */
     function puff(cls, px, py) {
         var d = document.createElement('i'); d.className = cls; d.style.left = px.toFixed(0) + 'px'; d.style.top = py.toFixed(0) + 'px';
         fx.appendChild(d); setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 1600);
     }
+    var xNow = L0;
+    function curX() {                                                   /* posición real (animada) de la máquina */
+        try {
+            var m = getComputedStyle(rig).transform; if (!m || m === 'none') return xNow;
+            var p = m.slice(m.indexOf('(') + 1, -1).split(',');
+            return parseFloat(m.indexOf('matrix3d') === 0 ? p[12] : p[4]) || 0;
+        } catch (e) { return xNow; }
+    }
+    function smoke() { puff('gml-smoke', xNow + 336 * sc, wh - gh - (262 - 90) * sc); }
 
-    /* ---------- interacción: bocina ---------- */
-    var audio;
+    /* ---------- bocina ---------- */
+    var audio, engineOn = false;
     function beep() {
         try {
             var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -312,24 +360,31 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     }
     function honk() {
         beep();
-        honkEl.classList.remove('on'); machine.classList.remove('gml-honk-fx'); void honkEl.offsetWidth;
-        honkEl.classList.add('on'); machine.classList.add('gml-honk-fx');
-        if (engineStarted) for (var i = 0; i < 3; i++) puff('gml-smoke', xNow + 356 * sc, worldH() - gh - (262 - 108) * sc);
+        honkEl.classList.remove('on'); void honkEl.offsetWidth; honkEl.classList.add('on');
+        if (arm.animate && !reduce) arm.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(-9deg)', offset: .35 }, { transform: 'rotate(-9deg)', offset: .65 }, { transform: 'rotate(0deg)' }], { duration: 900, easing: 'ease-in-out' });
+        if (engineOn) { smoke(); setTimeout(smoke, 90); }
     }
-    machine.addEventListener('click', honk);
-    machine.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); honk(); } });
+    rig.addEventListener('click', honk);
+    rig.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); honk(); } });
 
-    /* ---------- bucle principal ---------- */
-    var display = 0, last = performance.now(), xNow = L0, lastX = L0, wheelA = 0, wheelB = 0;
-    var engineStarted = false, exitT0 = 0, dustAcc = 0, smokeAcc = 0;
-    function worldH() { return world.clientHeight; }
-
-    function startEngine() {
-        engineStarted = true; root.classList.add('gml-run');
-        for (var i = 0; i < 5; i++) setTimeout(function () { puff('gml-smoke', xNow + 356 * sc, worldH() - gh - (262 - 108) * sc); }, i * 90);
+    /* ---------- progreso ---------- */
+    function target(t) {
+        if (loaded || document.readyState === 'complete') return 1;
+        var rs = document.readyState, base = rs === 'interactive' ? 0.6 : 0.12;
+        return Math.min(0.93, base + 0.3 * (1 - Math.exp(-(t / 1000) / 2.2)));
     }
+    var MSGS = [[0.30, 'Preparando el laboratorio…'], [0.65, 'Cargando módulos y simuladores…'], [0.97, 'Calibrando instrumentos…'], [2, '¡Listo para trabajar!']];
+    var lastMsg = '', lastPct = -1;
+    function ui(p) {
+        bar.style.transform = 'scaleX(' + p.toFixed(3) + ')';
+        var r = Math.round(p * 100); if (r !== lastPct) { lastPct = r; pct.textContent = r + '%'; }
+        for (var i = 0; i < MSGS.length; i++) if (p < MSGS[i][0]) { if (MSGS[i][1] !== lastMsg) { lastMsg = MSGS[i][1]; msg.textContent = lastMsg; } break; }
+    }
+
+    /* ---------- cierre ---------- */
     function finish() {
-        if (finished) return; finished = true; cancelAnimationFrame(raf);
+        if (finished) return; finished = true;
+        clearInterval(iv); timers.forEach(clearTimeout);
         root.classList.add('gml-out');
         setTimeout(function () {
             if (root.parentNode) root.parentNode.removeChild(root);
@@ -339,56 +394,49 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         }, 480);
     }
 
-    function frame(now) {
+    /* ---------- reloj de baja frecuencia: solo actualiza destinos; la GPU interpola ---------- */
+    var display = 0, last = performance.now(), prevX = L0, exiting = false, tickN = 0, engineStarted = false;
+    function tick() {
         if (finished) return;
-        var dt = Math.min(0.05, (now - last) / 1000); last = now;
+        var now = performance.now(), dt = clamp((now - last) / 1000, 0.016, 0.6); last = now;
         var t = now - T0;
-        if (t > 15000) loaded = true;                                  /* tope de seguridad */
-
+        if (t > 15000) loaded = true;                                        /* tope de seguridad */
         var tgt = target(t);
         display = Math.max(display, display + (tgt - display) * (1 - Math.exp(-dt * 3.4)));
         if (tgt >= 1 && display > 0.994) display = 1;
         ui(display);
+        tickN++;
 
-        if (!reduce) engineer(t); else if (sit.style.display === 'none') { eng.style.display = 'none'; sit.style.display = ''; sit.setAttribute('transform', 'translate(206 166)'); }
+        if (reduce) { if (loaded && t > 400) finish(); return; }
+        if (exiting) return;
 
-        var x;
-        if (t < TL.start) { x = L0; }
-        else {
-            if (!engineStarted) startEngine();
-            if (!exitT0) {
-                var drive = ease(clamp((t - TL.start) / Math.max(DRIVE_MIN, 1), 0, 1));
-                if (DRIVE_MIN === 0) drive = 1;
-                var dp = Math.min(display, drive);
-                x = lerp(L0, L1, dp);
-                if (loaded && dp >= 0.999) { exitT0 = now; }
-            } else {
-                var e = clamp((now - exitT0) / 520, 0, 1);
-                x = lerp(L1, vw + 90, easeIn(e));
-                if (e > 0.45) root.classList.add('gml-out');
-                if (e >= 1) { finish(); return; }
+        if (t >= TL.start && !engineStarted) {
+            engineStarted = engineOn = true; root.classList.add('gml-run');
+            for (var i = 0; i < 4; i++) setTimeout(smoke, i * 90);
+        }
+        var x = L0;
+        if (t >= TL.start) {
+            var LA = 550;                                                      /* ms por delante: la GPU llega ahí aunque el hilo principal se bloquee */
+            var dispF = display + (tgt - display) * (1 - Math.exp(-LA / 1000 * 3.4));
+            var drive = ease((t + LA - TL.start) / DRIVE_MIN);
+            var dp = Math.min(dispF, drive);
+            x = lerp(L0, L1, dp);
+            if (loaded && dp >= 0.999) {
+                exiting = true; engineOn = true;
+                rig.style.transition = 'transform .52s cubic-bezier(.5,0,1,.6)'; place(vw + 140); spin(vw * 1.4);
+                later(230, function () { root.classList.add('gml-out'); }); later(1000, finish);
+                return;
             }
         }
-        if (reduce && !exitT0) { x = Math.round(vw * 0.36); if (loaded) { finish(); return; } }
-        xNow = x;
-        machine.style.transform = 'translate3d(' + x.toFixed(1) + 'px,0,0)';
-
-        /* ruedas y partículas según lo avanzado */
-        var dx = x - lastX; lastX = x;
-        if (dx > 0 && sc) {
-            wheelA += (dx / sc) / 56 * 57.2958; wheelB += (dx / sc) / 34 * 57.2958;
-            wR.setAttribute('transform', 'rotate(' + wheelA.toFixed(1) + ' 210 206)');
-            wF.setAttribute('transform', 'rotate(' + wheelB.toFixed(1) + ' 452 228)');
-            dustAcc += dt;
-            if (dustAcc > 0.07 && !reduce) { dustAcc = 0; puff('gml-dust', x + 150 * sc, worldH() - gh - 4 - Math.random() * 6); }
-        }
-        if (engineStarted && !reduce) {
-            smokeAcc += dt; if (smokeAcc > (dx > 0.2 ? 0.22 : 0.5)) { smokeAcc = 0; puff('gml-smoke', x + 356 * sc, worldH() - gh - (262 - 108) * sc); }
-            steer.setAttribute('transform', 'rotate(' + (-20 + Math.sin(t * 0.007) * 6).toFixed(1) + ' 266 128)');
-        }
-        raf = requestAnimationFrame(frame);
+        place(x);
+        var cx = curX(), sp = (cx - prevX) / (dt || 0.1); prevX = cx; xNow = cx;
+        spin(Math.max(0, sp));
+        if (sp > 30) { puff('gml-dust', cx + 150 * sc, wh - gh - 4 - Math.random() * 5); if (tickN % 2 === 0) puff('gml-dust', cx + 138 * sc, wh - gh - 8 - Math.random() * 6); }
+        if (engineStarted && tickN % 3 === 0) smoke();
     }
-    raf = requestAnimationFrame(frame);
+    iv = setInterval(tick, 100);
+    tick();
+    window.addEventListener('resize', function () { measure(); if (!exiting) place(xNow); });
 })();
 </script>
 <!-- ═══════════════ fin pantalla de carga ═══════════════ -->
