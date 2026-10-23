@@ -1188,11 +1188,6 @@
               '<button type="button" data-zoom="1" title="Alejar" aria-label="Alejar">－</button>' +
             '</div>' +
             '<div class="lab3d-hud"></div>' +
-            '<div class="lab3d-paso" aria-live="polite">' +
-              '<span class="lab3d-paso-n">Paso 1 / ' + meta.phases.length + '</span>' +
-              '<strong class="lab3d-paso-t">' + esc(meta.phases[0].t) + '</strong>' +
-              '<small class="lab3d-paso-d">' + esc(meta.phases[0].d) + '</small>' +
-            '</div>' +
             '<div class="lab3d-loading"><div class="lab3d-spin"></div><span>Preparando la máquina 3D…</span></div>' +
             '<div class="lab3d-fail" hidden></div>' +
             '<div class="lab3d-controls">' +
@@ -1213,6 +1208,17 @@
             '<h5>Paso a paso del laboratorio</h5><p class="lab3d-pasos-hint">Haz clic en un paso para saltar a esa etapa. Al iniciar el ensayo, la secuencia se recorre automáticamente.</p><ol class="lab3d-phases">' + phasesHtml + '</ol>' +
             '<p class="lab3d-note"></p>' +
           '</aside>' +
+          '<div class="lab3d-footer">' +
+            '<div class="lab3d-paso" aria-live="polite">' +
+              '<span class="lab3d-paso-n">Paso 1 / ' + meta.phases.length + '</span>' +
+              '<strong class="lab3d-paso-t">' + esc(meta.phases[0].t) + '</strong>' +
+              '<small class="lab3d-paso-d">' + esc(meta.phases[0].d) + '</small>' +
+            '</div>' +
+            '<div class="lab3d-resultados">' +
+              '<h5>Valores registrados</h5>' +
+              '<div class="lab3d-res-grid"></div>' +
+            '</div>' +
+          '</div>' +
         '</div>';
     }
 
@@ -1302,6 +1308,16 @@
                 h.k.textContent = r.hud[i].k;
                 h.v.textContent = r.hud[i].v;
                 h.u.textContent = r.hud[i].u;
+            }
+            /* Panel inferior: mismos valores registrados */
+            var resGrid = host.querySelector('.lab3d-res-grid');
+            if (resGrid) {
+                var html = '';
+                for (var ri = 0; ri < r.hud.length; ri++) {
+                    html += '<div class="lab3d-res-tile"><span>' + esc(r.hud[ri].k) + '</span><strong>' +
+                        esc(String(r.hud[ri].v)) + '</strong><small>' + esc(r.hud[ri].u || '') + '</small></div>';
+                }
+                resGrid.innerHTML = html;
             }
             scrub.value = String(Math.round(inst.p * 1000));
             pctEl.textContent = Math.round(inst.p * 100) + ' %';
