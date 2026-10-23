@@ -163,34 +163,37 @@ function inicializarApp() {
             if (typeof abrirModuloRM === 'function') abrirModuloRM(this.dataset.ensayoRm, 'sim');
         });
     });
-    // Al cambiar de pestaña en RM: mostrar siempre la lista de esa pestaña
+    // Al cambiar de pestaña en RM: cerrar ensayo/sim abierto y mostrar solo la lista
     document.querySelectorAll('#pantallaResistencia .tab-btn').forEach(function(tab) {
         tab.addEventListener('click', function() {
             var t = tab.getAttribute('data-tab');
             if (typeof detenerSimRM === 'function') detenerSimRM();
             if (t === 'rm-ensayos') {
-                var pSim = document.getElementById('panel-sim-rm');
-                if (pSim) { pSim.innerHTML = ''; pSim.style.display = 'none'; }
-                var gEn = document.querySelector('#rm-ensayos .ensayos-grid');
-                if (gEn) gEn.style.display = 'grid';
-                var pEn = document.getElementById('panel-ensayo-rm');
-                // si no hay ensayo abierto, asegurar lista visible
-                if (pEn && (!pEn.innerHTML || pEn.innerHTML.trim() === '')) {
-                    pEn.style.display = 'none';
+                if (typeof rmCerrarPanel === 'function') rmCerrarPanel('ensayo');
+                else {
+                    var pEn = document.getElementById('panel-ensayo-rm');
+                    if (pEn) { pEn.innerHTML = ''; pEn.style.display = 'none'; }
+                    var gEn = document.querySelector('#rm-ensayos .ensayos-grid') || document.getElementById('rm-ensayos-grid');
                     if (gEn) gEn.style.display = 'grid';
                 }
+                var pSim = document.getElementById('panel-sim-rm');
+                if (pSim) { pSim.innerHTML = ''; pSim.style.display = 'none'; }
             } else if (t === 'rm-simuladores') {
-                var pEn2 = document.getElementById('panel-ensayo-rm');
-                if (pEn2) { pEn2.innerHTML = ''; pEn2.style.display = 'none'; }
-                var gSim = document.querySelector('#rm-simuladores .simuladores-grid') ||
-                           document.querySelector('#rm-simuladores > .ensayos-grid');
-                if (gSim) gSim.style.display = 'grid';
-                var pSim2 = document.getElementById('panel-sim-rm');
-                if (pSim2 && (!pSim2.innerHTML || pSim2.innerHTML.trim() === '')) {
-                    pSim2.style.display = 'none';
+                if (typeof rmCerrarPanel === 'function') rmCerrarPanel('sim');
+                else {
+                    var pSim2 = document.getElementById('panel-sim-rm');
+                    if (pSim2) { pSim2.innerHTML = ''; pSim2.style.display = 'none'; }
+                    var gSim = document.querySelector('#rm-simuladores .simuladores-grid') ||
+                               document.querySelector('#rm-simuladores > .ensayos-grid');
                     if (gSim) gSim.style.display = 'grid';
                 }
+                var pEn2 = document.getElementById('panel-ensayo-rm');
+                if (pEn2) { pEn2.innerHTML = ''; pEn2.style.display = 'none'; }
             } else if (t === 'rm-teoria') {
+                if (typeof rmCerrarPanel === 'function') {
+                    rmCerrarPanel('ensayo');
+                    rmCerrarPanel('sim');
+                }
                 if (typeof rmRestaurarListas === 'function') rmRestaurarListas();
             }
         });
