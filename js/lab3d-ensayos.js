@@ -17,7 +17,8 @@
     /* ------------------------------------------------------------------ */
     var THREE_SRCS = [
         'https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/three.js/r147/three.min.js'
+        'https://cdnjs.cloudflare.com/ajax/libs/three.js/r147/three.min.js',
+        'https://unpkg.com/three@0.147.0/build/three.min.js'
     ];
     var threePromise = null;
 
@@ -25,17 +26,23 @@
         return new Promise(function (res, rej) {
             var s = document.createElement('script');
             s.src = src;
-            s.onload = res;
+            s.async = true;
+            s.onload = function () { res(); };
             s.onerror = function () { rej(new Error('No se pudo cargar ' + src)); };
             document.head.appendChild(s);
         });
     }
 
     function ensureThree() {
-        if (global.THREE) return Promise.resolve();
+        if (global.THREE) return Promise.resolve(global.THREE);
         if (!threePromise) {
-            threePromise = loadScript(THREE_SRCS[0])
-                .catch(function () { return loadScript(THREE_SRCS[1]); })
+            threePromise = THREE_SRCS.reduce(function (chain, src) {
+                return chain.catch(function () { return loadScript(src); });
+            }, Promise.reject())
+                .then(function () {
+                    if (!global.THREE) throw new Error('three.js cargó pero window.THREE no está disponible');
+                    return global.THREE;
+                })
                 .catch(function (e) { threePromise = null; throw e; });
         }
         return threePromise;
@@ -1232,6 +1239,21 @@
         var partsList = q('.lab3d-parts');
         var phaseItems = host.querySelectorAll('.lab3d-phases li');
         var noteEl = q('.lab3d-note');
+        var inst = {
+            tipo: tipo, host: host, disposed: false, playing: false,
+            p: 0, speed: 1, prm: PARAMS[tipo](), lastPhase: -2,
+            renderer: null, scene: null, camera: null, machine: null,
+            raf: 0, last: 0, hudEls: [], pinEls: [], pinVecs: [],
+            cam: null, goal: null, ready: false, dragging: false,
+            cleanups: []
+        };
+        instances.push(inst);
+
+        function on(el, ev, fn, opt) {
+            el.addEventListener(ev, fn, opt);
+            inst.cleanups.push(function () { el.removeEventListener(ev, fn, opt); });
+        }
+
         /* Clic en un paso → saltar a esa etapa del ensayo */
         Array.prototype.forEach.call(phaseItems, function (li) {
             on(li, 'click', function () {
@@ -1248,21 +1270,6 @@
                 if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); li.click(); }
             });
         });
-
-        var inst = {
-            tipo: tipo, host: host, disposed: false, playing: false,
-            p: 0, speed: 1, prm: PARAMS[tipo](), lastPhase: -2,
-            renderer: null, scene: null, camera: null, machine: null,
-            raf: 0, last: 0, hudEls: [], pinEls: [], pinVecs: [],
-            cam: null, goal: null, ready: false, dragging: false,
-            cleanups: []
-        };
-        instances.push(inst);
-
-        function on(el, ev, fn, opt) {
-            el.addEventListener(ev, fn, opt);
-            inst.cleanups.push(function () { el.removeEventListener(ev, fn, opt); });
-        }
 
         function setNota() {
             noteEl.innerHTML = '<b>' + (inst.prm.real ? 'Datos del ensayo' : 'Modo demostración') + '</b> ' + esc(inst.prm.nota) +
