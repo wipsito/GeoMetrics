@@ -266,7 +266,21 @@
 .lab3d {
     --lab-accent: #3B82F6;
     --lab-h: clamp(420px, 62vh, 600px);
-    display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; align-items: start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 330px;
+    grid-template-areas:
+        "stage info"
+        "footer footer";
+    gap: 18px;
+    align-items: start;
+}
+.lab3d-stage { grid-area: stage; }
+.lab3d-info { grid-area: info; }
+.lab3d-footer {
+    grid-area: footer;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 14px;
 }
 .lab3d-stage {
     position: relative; padding-top: var(--lab-h); border-radius: 20px; overflow: hidden;
@@ -411,8 +425,15 @@
 
 /* ---------------- RESPONSIVE ---------------- */
 @media (max-width: 1060px) {
-    .lab3d { grid-template-columns: 1fr; }
+    .lab3d {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "stage"
+            "info"
+            "footer";
+    }
     .lab3d-info { max-height: none; }
+    .lab3d-footer { grid-template-columns: 1fr; }
 }
 @media (max-width: 860px) {
     #ms2-ensayos .ms2-hero { flex-direction: column; padding: 24px 22px; }
