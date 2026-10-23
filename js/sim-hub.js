@@ -23,7 +23,121 @@
     function $(id) { return doc.getElementById(id); }
     function el(tag, cls, html) { var e = doc.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-    function glyphOf(k) { var d = G.defs[k]; return GLYPH[k] || (d && d.glyph) || ''; }
+    
+    /* Paso a paso educativo por ensayo (2D) */
+    var STEPS = {
+        corte: [
+            { a: 0.00, b: 0.12, t: 'Preparar la muestra', d: 'Tallar o compactar la muestra. Verificar área A de la caja de corte.' },
+            { a: 0.12, b: 0.25, t: 'Montar en la caja', d: 'Colocar la muestra entre las dos mitades y las piedras porosas si aplica.' },
+            { a: 0.25, b: 0.40, t: 'Aplicar carga normal σn', d: 'Cargar pesas: σn = N / A. Verificar centrado.' },
+            { a: 0.40, b: 0.50, t: 'Consolidar bajo σn', d: 'Esperar asentamiento y anotar δv inicial.' },
+            { a: 0.50, b: 0.90, t: 'Cortar a velocidad constante', d: 'El carro avanza; el anillo mide Fh → τ = Fh / A.' },
+            { a: 0.90, b: 1.01, t: 'Registrar pico y residual', d: 'Anotar τ pico, residual, δh y δv. Repetir con otras σn.' }
+        ],
+        inconfinada: [
+            { a: 0.00, b: 0.12, t: 'Preparar la probeta', d: 'Cilindro de suelo con caras planas; H/D ≈ 2.' },
+            { a: 0.12, b: 0.25, t: 'Medir geometría', d: 'Registrar D y L0. Calcular A = π·(D/2)².' },
+            { a: 0.25, b: 0.35, t: 'Colocar en la prensa', d: 'Centrar entre platos (σ₃ = 0). Montar deformímetro.' },
+            { a: 0.35, b: 0.75, t: 'Cargar axialmente', d: 'Leer pares (ΔL, P) hasta la falla.' },
+            { a: 0.75, b: 0.90, t: 'Detectar qu', d: 'qu = σ máximo = P/A. Anotar ε en falla.' },
+            { a: 0.90, b: 1.01, t: 'Calcular cu', d: 'cu = qu / 2. Documentar el modo de falla.' }
+        ],
+        consolidacion: [
+            { a: 0.00, b: 0.15, t: 'Preparar el edómetro', d: 'Anillo, piedras porosas y muestra saturada. Carga de asiento.' },
+            { a: 0.15, b: 0.25, t: 'Registrar e0 y H0', d: 'Poner a cero el deformímetro tras la carga de asiento.' },
+            { a: 0.25, b: 0.75, t: 'Incrementos de carga', d: 'Duplicar σ\' en cada escalón y leer asentamiento hasta estabilizar.' },
+            { a: 0.75, b: 0.90, t: 'Curva e–log σ\'', d: 'Calcular e en cada escalón; obtener Cc, Cr y σ\'p.' },
+            { a: 0.90, b: 1.01, t: 'Determinar Cv', d: 'Método log t o √t → t50 → coeficiente de consolidación Cv.' }
+        ],
+        triaxial: [
+            { a: 0.00, b: 0.12, t: 'Preparar la probeta', d: 'Membrana de látex, cabezales y sellos O-ring.' },
+            { a: 0.12, b: 0.28, t: 'Montar en la cámara', d: 'Llenar con agua, conectar drenaje y contrapresión.' },
+            { a: 0.28, b: 0.42, t: 'Aplicar σ₃', d: 'Presión de cámara según UU / CU / CD.' },
+            { a: 0.42, b: 0.80, t: 'Carga axial σ₁', d: 'Avance controlado del vástago; leer P, ΔL y u o ΔV.' },
+            { a: 0.80, b: 0.92, t: 'Falla', d: 'Pico de resistencia; plano ≈ 45° + φ/2.' },
+            { a: 0.92, b: 1.01, t: 'Envolvente de Mohr', d: 'Repetir a varias σ₃ y obtener c y φ.' }
+        ],
+        humedad: [
+            { a: 0.00, b: 0.20, t: 'Preparar cápsula', d: 'Pesar la cápsula limpia y seca (M_c).' },
+            { a: 0.20, b: 0.40, t: 'Agregar suelo húmedo', d: 'Colocar la muestra y pesar cápsula + suelo húmedo (M_h).' },
+            { a: 0.40, b: 0.75, t: 'Secar en horno', d: 'Llevar a 105–110 °C hasta masa constante.' },
+            { a: 0.75, b: 0.90, t: 'Pesar suelo seco', d: 'Enfriar y pesar cápsula + suelo seco (M_s).' },
+            { a: 0.90, b: 1.01, t: 'Calcular w', d: 'w = (M_h − M_s) / (M_s − M_c) × 100 %.' }
+        ],
+        granulometria: [
+            { a: 0.00, b: 0.15, t: 'Preparar la muestra', d: 'Secar, desmenuzar y pesar la muestra total.' },
+            { a: 0.15, b: 0.35, t: 'Apilar los tamices', d: 'Ordenar de mayor a menor abertura (p. ej. 3/8" → N.º 200).' },
+            { a: 0.35, b: 0.65, t: 'Agitar y pesar retenidos', d: 'Agitar, retirar cada tamiz y pesar la masa retenida.' },
+            { a: 0.65, b: 0.85, t: 'Calcular % que pasa', d: 'Obtener % retenido, acumulado y % que pasa.' },
+            { a: 0.85, b: 1.01, t: 'Curva y coeficientes', d: 'Trazar curva granulométrica; calcular D10, D30, D60, Cu y Cc.' }
+        ],
+        limites: [
+            { a: 0.00, b: 0.25, t: 'Límite líquido', d: 'Copa de Casagrande: anotar golpes y humedad; obtener LL.' },
+            { a: 0.25, b: 0.55, t: 'Límite plástico', d: 'Rollitos de 3 mm hasta agrietar; obtener LP.' },
+            { a: 0.55, b: 0.80, t: 'Índice de plasticidad', d: 'IP = LL − LP.' },
+            { a: 0.80, b: 1.01, t: 'Interpretar', d: 'Clasificar plasticidad y relacionar con el comportamiento del suelo.' }
+        ],
+        gravedad: [
+            { a: 0.00, b: 0.25, t: 'Calibrar picnómetro', d: 'Pesar picnómetro vacío y lleno de agua a temperatura controlada.' },
+            { a: 0.25, b: 0.55, t: 'Suelo + agua', d: 'Introducir suelo seco, saturar, eliminar aire y pesar.' },
+            { a: 0.55, b: 0.85, t: 'Calcular Gs', d: 'Gs = Ms / (Ms + Mw − Msw) (corregir por temperatura si aplica).' },
+            { a: 0.85, b: 1.01, t: 'Verificar', d: 'Comparar con rangos típicos del tipo de suelo.' }
+        ],
+        compactacion: [
+            { a: 0.00, b: 0.20, t: 'Preparar series de humedad', d: 'Mezclar porciones de suelo a distintos contenidos de agua.' },
+            { a: 0.20, b: 0.55, t: 'Compactar en el molde', d: 'Capas y golpes según Proctor estándar o modificado.' },
+            { a: 0.55, b: 0.80, t: 'Determinar γd y w', d: 'Pesar el molde, obtener humedad y densidad seca de cada punto.' },
+            { a: 0.80, b: 1.01, t: 'Curva de compactación', d: 'Trazar γd vs w; obtener w óptima y γd máxima.' }
+        ],
+        densidad: [
+            { a: 0.00, b: 0.30, t: 'Excavar y recuperar', d: 'Método del cono de arena o volumétrico en campo.' },
+            { a: 0.30, b: 0.60, t: 'Pesar y medir volumen', d: 'Obtener masa húmeda y volumen del hueco.' },
+            { a: 0.60, b: 0.85, t: 'Humedad de campo', d: 'Determinar w de una porción representativa.' },
+            { a: 0.85, b: 1.01, t: 'Grado de compactación', d: 'γd campo / γd máx × 100 %.' }
+        ],
+        clasificacion: [
+            { a: 0.00, b: 0.35, t: 'Datos de laboratorio', d: 'Usar granulometría y límites de Atterberg.' },
+            { a: 0.35, b: 0.70, t: 'Carta de plasticidad', d: 'Ubicar el punto (LL, IP) en la carta de Casagrande.' },
+            { a: 0.70, b: 1.01, t: 'Símbolo SUCS', d: 'Asignar grupo (GW, CL, SM, etc.) y descripción.' }
+        ],
+        permeabilidad: [
+            { a: 0.00, b: 0.25, t: 'Montar la muestra', d: 'Carga constante o variable según el tipo de suelo.' },
+            { a: 0.25, b: 0.60, t: 'Medir caudal / tiempo', d: 'Registrar nivel de agua y tiempo de percolación.' },
+            { a: 0.60, b: 0.85, t: 'Calcular k', d: 'Ley de Darcy: k = (Q·L)/(A·h·t) o fórmula de carga variable.' },
+            { a: 0.85, b: 1.01, t: 'Interpretar', d: 'Comparar k con rangos típicos (arcillas, arenas, gravas).' }
+        ],
+        traccion: [
+            { a: 0.00, b: 0.20, t: 'Preparar la probeta', d: 'Medir sección y longitud calibrada.' },
+            { a: 0.20, b: 0.40, t: 'Montar en la máquina', d: 'Fijar mordazas y extensómetro.' },
+            { a: 0.40, b: 0.80, t: 'Ensayo de tracción', d: 'Cargar hasta rotura registrando σ–ε.' },
+            { a: 0.80, b: 1.01, t: 'Propiedades mecánicas', d: 'E, σy, σu, ductilidad y tipo de falla.' }
+        ],
+        compresion: [
+            { a: 0.00, b: 0.25, t: 'Preparar el cilindro', d: 'Verificar esbeltez y caras planas.' },
+            { a: 0.25, b: 0.50, t: 'Centrar en la prensa', d: 'Alinear carga axial para evitar excentricidad.' },
+            { a: 0.50, b: 0.85, t: 'Cargar a compresión', d: 'Registrar curva esfuerzo–deformación.' },
+            { a: 0.85, b: 1.01, t: 'Resistencia y módulo', d: 'Obtener resistencia a la compresión y comportamiento post-pico.' }
+        ],
+        flexion: [
+            { a: 0.00, b: 0.25, t: 'Montar la viga', d: 'Apoyos y punto de carga según el esquema (3 o 4 puntos).' },
+            { a: 0.25, b: 0.55, t: 'Aplicar carga', d: 'Incrementar la carga y medir la deflexión central.' },
+            { a: 0.55, b: 0.85, t: 'Diagrama M y σ', d: 'Relacionar momento flector con esfuerzo σ = M·c / I.' },
+            { a: 0.85, b: 1.01, t: 'Falla por flexión', d: 'Observar fisuración o plastificación en la fibra extrema.' }
+        ],
+        torsion: [
+            { a: 0.00, b: 0.25, t: 'Fijar la barra', d: 'Un extremo fijo, el otro con brazo de torsión.' },
+            { a: 0.25, b: 0.60, t: 'Aplicar torque', d: 'Registrar ángulo de giro θ y momento T.' },
+            { a: 0.60, b: 0.85, t: 'Esfuerzo cortante', d: 'τ = T·ρ / J en la sección.' },
+            { a: 0.85, b: 1.01, t: 'Falla por torsión', d: 'Observar el modo de falla del material.' }
+        ],
+        dureza: [
+            { a: 0.00, b: 0.30, t: 'Preparar la superficie', d: 'Superficie limpia y plana del material.' },
+            { a: 0.30, b: 0.65, t: 'Aplicar la carga', d: 'Indentador Brinell / Rockwell / Vickers según norma.' },
+            { a: 0.65, b: 1.01, t: 'Leer la dureza', d: 'Medir la huella o la profundidad y obtener el número de dureza.' }
+        ]
+    };
+
+function glyphOf(k) { var d = G.defs[k]; return GLYPH[k] || (d && d.glyph) || ''; }
     function machineOf(k) { var d = G.defs[k]; return MACHINE[k] || (d && d.machine) || d.title; }
 
     /* ====================== HUB (uno por asignatura) ====================== */
@@ -150,6 +264,7 @@
                 '<div class="s2d-btns"><button type="button" class="s2d-play"><span>▶</span> Iniciar ensayo</button><button type="button" class="s2d-reset" title="Reiniciar">↺</button></div>' +
                 '<label class="s2d-row"><span>Velocidad de animación</span><select class="s2d-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>' +
                 '<label class="s2d-row"><span>Línea de tiempo</span><input type="range" class="s2d-scrub" min="0" max="1000" value="0"></label>' +
+                pasosHtml(def.key) +
               '</aside>' +
               '<section class="s2d-main">' +
                 '<div class="s2d-stagewrap"><canvas class="s2d-stage" aria-label="Simulación de la máquina"></canvas>' +
@@ -185,13 +300,46 @@
         this.scrub.addEventListener('input', function () { self.pause(); self.p = self.scrub.value / 1000; self.draw(); });
         this.onResize = function () { self.draw(); };
         global.addEventListener('resize', this.onResize);
+        this.steps = STEPS[def.key] || [];
+        this.lastPh = -1;
+        host.querySelectorAll('.s2d-pasos li').forEach(function (li) {
+            li.addEventListener('click', function () {
+                var i = parseInt(li.getAttribute('data-ph'), 10);
+                var st = self.steps[i];
+                if (!st) return;
+                self.pause();
+                self.p = (st.a + st.b) / 2;
+                if (self.scrub) self.scrub.value = Math.round(self.p * 1000);
+                self.draw();
+            });
+        });
         this.recalc();
     }
     function paintRange(inp) {
         var pct = (inp.value - inp.min) / (inp.max - inp.min) * 100;
         inp.style.setProperty('--pct', pct + '%');
     }
-    function fieldHtml(f, v) {
+    
+    function pasosHtml(key) {
+        var steps = STEPS[key];
+        if (!steps || !steps.length) return '';
+        var lis = steps.map(function (s, i) {
+            return '<li data-ph="' + i + '"><span class="s2d-ph-n">Paso ' + (i + 1) + '</span><div><b>' + esc(s.t) + '</b><small>' + esc(s.d) + '</small></div></li>';
+        }).join('');
+        return '<div class="s2d-pasos" data-key="' + key + '">' +
+            '<h5>Paso a paso del laboratorio</h5>' +
+            '<p class="s2d-pasos-hint">Al iniciar el ensayo se recorre cada etapa. Haz clic en un paso para saltar.</p>' +
+            '<div class="s2d-paso-banner"><span>Paso 1 / ' + steps.length + '</span><strong>' + esc(steps[0].t) + '</strong><small>' + esc(steps[0].d) + '</small></div>' +
+            '<ol>' + lis + '</ol></div>';
+    }
+    function phaseIndex(steps, p) {
+        var idx = 0;
+        if (!steps) return 0;
+        for (var i = 0; i < steps.length; i++) if (p >= steps[i].a) idx = i;
+        return idx;
+    }
+
+function fieldHtml(f, v) {
         if (f.type === 'select') {
             return '<label class="s2d-field"><span class="s2d-flab">' + esc(f.label) + '</span><select data-fid="' + f.id + '">' +
                 f.options.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>';
@@ -259,6 +407,23 @@
         this.led.className = 's2d-led ' + st.cls; this.led.querySelector('b').textContent = st.txt;
         this.root.classList.toggle('is-finished', p >= 1);
         if (!this.running) this.scrub.value = Math.round(p * 1000); else this.scrub.value = Math.round(p * 1000);
+        /* Actualizar paso a paso del laboratorio */
+        if (this.steps && this.steps.length) {
+            var ph = phaseIndex(this.steps, p);
+            if (ph !== this.lastPh) {
+                this.lastPh = ph;
+                var items = this.root.querySelectorAll('.s2d-pasos li');
+                for (var i = 0; i < items.length; i++) {
+                    items[i].classList.toggle('is-on', i === ph);
+                    items[i].classList.toggle('is-done', i < ph);
+                }
+                var ban = this.root.querySelector('.s2d-paso-banner');
+                if (ban && this.steps[ph]) {
+                    ban.innerHTML = '<span>Paso ' + (ph + 1) + ' / ' + this.steps.length + '</span><strong>' +
+                        esc(this.steps[ph].t) + '</strong><small>' + esc(this.steps[ph].d) + '</small>';
+                }
+            }
+        }
     };
     Runner.prototype.destroy = function () {
         this.dead = true; this.running = false;

@@ -82,9 +82,12 @@
             norma: 'ASTM D2166 · INV E-152',
             duration: 14,
             phases: [
-                { a: 0.00, b: 0.08, t: 'Colocar la probeta', d: 'Cilindro libre de suelo entre platos (σ₃ = 0).' },
-                { a: 0.08, b: 0.65, t: 'Cargar axialmente', d: 'Deformación controlada; se leen ΔL y carga P.' },
-                { a: 0.65, b: 1.01, t: 'Falla de la probeta', d: 'Aparece el plano de falla; qu = σ máx.' }
+                { a: 0.00, b: 0.12, t: 'Preparar la probeta', d: 'Tallar un cilindro de suelo (relación altura/diámetro ≈ 2). Verificar caras planas y perpendiculares al eje.' },
+                { a: 0.12, b: 0.22, t: 'Medir geometría', d: 'Registrar diámetro D y altura L0. Calcular el área A = π·(D/2)² para obtener esfuerzos.' },
+                { a: 0.22, b: 0.32, t: 'Colocar en la prensa', d: 'Centrar la probeta entre los platos. No hay presión de confinamiento (σ₃ = 0). Montar el deformímetro axial.' },
+                { a: 0.32, b: 0.70, t: 'Cargar axialmente', d: 'Aplicar carga a velocidad controlada. Leer pares (ΔL, P) en varios incrementos hasta la falla.' },
+                { a: 0.70, b: 0.88, t: 'Detectar el pico qu', d: 'La resistencia no confinada qu es el esfuerzo máximo σ = P/A. Anotar la deformación ε en falla.' },
+                { a: 0.88, b: 1.01, t: 'Calcular cu y registrar', d: 'cu = qu / 2 (condiciones no drenadas, φ ≈ 0). Documentar el modo de falla (bulbo, plano inclinado, etc.).' }
             ],
             parts: [
                 { name: "Bastidor de acero", desc: "Columnas y travesaño rígidos que reaccionan la carga axial." },
@@ -109,9 +112,11 @@
             norma: 'ASTM D2435 · INV E-151',
             duration: 22,
             phases: [
-                { a: 0.00, b: 0.08, t: 'Montar anillo y saturar', d: 'Muestra entre piedras porosas, celda con agua.' },
-                { a: 0.08, b: 0.96, t: 'Incrementos de carga', d: 'Cada escalón duplica σ\'; se lee el asentamiento en el tiempo.' },
-                { a: 0.96, b: 1.01, t: 'Fin del último incremento', d: 'Se obtiene la curva e – log σ\'.' }
+                { a: 0.00, b: 0.12, t: 'Preparar el edómetro', d: 'Colocar piedras porosas, anillo de consolidación y la muestra saturada. Verificar el contacto con el vástago de carga.' },
+                { a: 0.12, b: 0.22, t: 'Carga de asiento', d: 'Aplicar una pequeña carga de asiento y poner a cero el deformímetro. Registrar e0 y H0.' },
+                { a: 0.22, b: 0.75, t: 'Incrementos de carga', d: 'Duplicar la carga en cada escalón (p. ej. 12.5 → 25 → 50 → 100 kPa). En cada escalón leer el asentamiento hasta estabilizar.' },
+                { a: 0.75, b: 0.90, t: 'Curva e-log σ\'', d: 'Calcular la relación de vacíos e en cada escalón y trazar e frente a log σ\'. Identificar Cc, Cr y la presión de preconsolidación σ\'p.' },
+                { a: 0.90, b: 1.01, t: 'Determinar Cv', d: 'Con el método de Casagrande (log t) o Taylor (√t) obtener t50 y calcular el coeficiente de consolidación Cv.' }
             ],
             parts: [
                 { name: "Brazo de carga (palanca)", desc: "Multiplica la carga de las pesas sobre la muestra." },
@@ -137,9 +142,12 @@
             norma: 'ASTM D2850 / D4767 · INV E-153',
             duration: 20,
             phases: [
-                { a: 0.00, b: 0.30, t: 'Llenar y presurizar la cámara', d: 'Se aplica la presión de confinamiento σ₃.' },
-                { a: 0.30, b: 0.85, t: 'Aplicar carga axial', d: 'El vástago aumenta σ₁ a velocidad constante.' },
-                { a: 0.85, b: 1.01, t: 'Falla de la probeta', d: 'Plano a 45° + φ/2; se registra σ₁ en falla.' }
+                { a: 0.00, b: 0.12, t: 'Preparar la probeta', d: 'Tallar el cilindro, colocar membranas de látex y cabezales. Verificar sellos O-ring para aislar el agua de la cámara.' },
+                { a: 0.12, b: 0.25, t: 'Montar en la cámara', d: 'Instalar la probeta en la base, llenar la cámara con agua y cerrar la tapa. Conectar líneas de drenaje y contrapresión.' },
+                { a: 0.25, b: 0.38, t: 'Aplicar confinamiento σ₃', d: 'Elevar la presión de cámara hasta el valor de ensayo. Según el tipo (UU, CU, CD) consolidar o no la muestra.' },
+                { a: 0.38, b: 0.80, t: 'Carga axial (σ₁)', d: 'Avanzar el vástago a velocidad controlada. Registrar carga axial, ΔL y, si aplica, cambio de volumen o presión de poros.' },
+                { a: 0.80, b: 0.92, t: 'Falla de la probeta', d: 'Identificar el pico de resistencia. El plano de falla se orienta cerca de 45° + φ/2 respecto a la horizontal.' },
+                { a: 0.92, b: 1.01, t: 'Círculos de Mohr y envolvente', d: 'Repetir a distintas σ₃. Construir círculos de Mohr y obtener c y φ de la envolvente de Coulomb.' }
             ],
             parts: [
                 { name: "Marco de carga", desc: "Columnas y travesaño que reaccionan la carga axial." },
@@ -1153,7 +1161,8 @@
     function plantilla(meta, tipo) {
         var partsHtml = '';
         var phasesHtml = meta.phases.map(function (f, i) {
-            return '<li data-ph="' + i + '"><span class="lab3d-ph-n">' + (i + 1) + '</span><div><b>' +
+            return '<li data-ph="' + i + '" role="button" tabindex="0" title="Ir a este paso">' +
+                '<span class="lab3d-ph-n">Paso ' + (i + 1) + '</span><div><b>' +
                 esc(f.t) + '</b><small>' + esc(f.d) + '</small></div></li>';
         }).join('');
         return '' +
@@ -1172,6 +1181,11 @@
               '<button type="button" data-zoom="1" title="Alejar" aria-label="Alejar">－</button>' +
             '</div>' +
             '<div class="lab3d-hud"></div>' +
+            '<div class="lab3d-paso" aria-live="polite">' +
+              '<span class="lab3d-paso-n">Paso 1 / ' + meta.phases.length + '</span>' +
+              '<strong class="lab3d-paso-t">' + esc(meta.phases[0].t) + '</strong>' +
+              '<small class="lab3d-paso-d">' + esc(meta.phases[0].d) + '</small>' +
+            '</div>' +
             '<div class="lab3d-loading"><div class="lab3d-spin"></div><span>Preparando la máquina 3D…</span></div>' +
             '<div class="lab3d-fail" hidden></div>' +
             '<div class="lab3d-controls">' +
@@ -1189,7 +1203,7 @@
             '<div class="lab3d-info-head"><span>Ficha de la máquina</span><strong>' + esc(meta.machine) + '</strong>' +
               '<em>' + esc(meta.machineSub) + '</em><code>' + esc(meta.norma) + '</code></div>' +
             '<h5>Componentes</h5><ol class="lab3d-parts"></ol>' +
-            '<h5>Secuencia del ensayo</h5><ol class="lab3d-phases">' + phasesHtml + '</ol>' +
+            '<h5>Paso a paso del laboratorio</h5><p class="lab3d-pasos-hint">Haz clic en un paso para saltar a esa etapa. Al iniciar el ensayo, la secuencia se recorre automáticamente.</p><ol class="lab3d-phases">' + phasesHtml + '</ol>' +
             '<p class="lab3d-note"></p>' +
           '</aside>' +
         '</div>';
@@ -1218,6 +1232,22 @@
         var partsList = q('.lab3d-parts');
         var phaseItems = host.querySelectorAll('.lab3d-phases li');
         var noteEl = q('.lab3d-note');
+        /* Clic en un paso → saltar a esa etapa del ensayo */
+        Array.prototype.forEach.call(phaseItems, function (li) {
+            on(li, 'click', function () {
+                var i = parseInt(li.getAttribute('data-ph'), 10);
+                var ph = meta.phases[i];
+                if (!ph) return;
+                inst.playing = false;
+                updatePlayBtn();
+                inst.p = (ph.a + ph.b) / 2;
+                if (scrub) scrub.value = Math.round(inst.p * 1000);
+                apply();
+            });
+            on(li, 'keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); li.click(); }
+            });
+        });
 
         var inst = {
             tipo: tipo, host: host, disposed: false, playing: false,
@@ -1253,6 +1283,12 @@
         function apply() {
             if (!inst.machine) return;
             var r = inst.machine.set(inst.p, inst.prm);
+            /* Fase educativa según META.phases (paso a paso del laboratorio) */
+            var phIdx = 0;
+            for (var pi = 0; pi < meta.phases.length; pi++) {
+                if (inst.p >= meta.phases[pi].a) phIdx = pi;
+            }
+            r.phase = phIdx;
             for (var i = 0; i < r.hud.length; i++) {
                 var h = inst.hudEls[i];
                 if (!h) continue;
@@ -1268,9 +1304,21 @@
                     phaseItems[j].classList.toggle('is-on', j === r.phase);
                     phaseItems[j].classList.toggle('is-done', j < r.phase);
                 }
+                var pasoEl = host.querySelector('.lab3d-paso');
+                if (pasoEl && meta.phases[r.phase]) {
+                    var ph = meta.phases[r.phase];
+                    var nEl = pasoEl.querySelector('.lab3d-paso-n');
+                    var tEl = pasoEl.querySelector('.lab3d-paso-t');
+                    var dEl = pasoEl.querySelector('.lab3d-paso-d');
+                    if (nEl) nEl.textContent = 'Paso ' + (r.phase + 1) + ' / ' + meta.phases.length;
+                    if (tEl) tEl.textContent = ph.t;
+                    if (dEl) dEl.textContent = ph.d;
+                    pasoEl.classList.add('is-pulse');
+                    setTimeout(function () { try { pasoEl.classList.remove('is-pulse'); } catch (e) {} }, 450);
+                }
             }
             var done = inst.p >= 0.999;
-            var txt = inst.p <= 0.001 ? 'Listo' : done ? 'Ensayo finalizado' : meta.phases[r.phase].t;
+            var txt = inst.p <= 0.001 ? 'Listo — inicia el ensayo para ver el paso a paso' : done ? 'Ensayo finalizado' : meta.phases[r.phase].t;
             stateTxt.textContent = txt;
             stateEl.classList.toggle('is-run', inst.playing);
             stateEl.classList.toggle('is-done', done);
