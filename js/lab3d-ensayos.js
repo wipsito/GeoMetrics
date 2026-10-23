@@ -59,10 +59,14 @@
             norma: 'ASTM D3080 · INV E-154',
             duration: 18,
             phases: [
-                { a: 0.00, b: 0.18, t: 'Aplicar carga normal', d: 'Se cargan las pesas del colgador: σn = N / A.' },
-                { a: 0.18, b: 0.30, t: 'Consolidar bajo σn', d: 'La muestra se asienta antes de iniciar el corte.' },
-                { a: 0.30, b: 0.95, t: 'Cortar a velocidad constante', d: 'El carro desplaza la mitad inferior; el anillo mide la fuerza cortante.' },
-                { a: 0.95, b: 1.01, t: 'Registrar τ, δh y δv', d: 'Se anota la resistencia pico y la residual.' }
+                { a: 0.00, b: 0.10, t: 'Preparar la muestra', d: 'Recorta o prepara la muestra con dimensiones apropiadas. (ASTM D3080)' },
+                { a: 0.10, b: 0.20, t: 'Instalar en la caja', d: 'Coloca el suelo en la caja con los elementos porosos requeridos.' },
+                { a: 0.20, b: 0.35, t: 'Aplicar carga normal σn', d: 'Aplica la tensión normal y permite la consolidación requerida. σn = N / A.' },
+                { a: 0.35, b: 0.55, t: 'Cortar a velocidad constante', d: 'Desplaza horizontalmente una mitad de la caja a la velocidad establecida.' },
+                { a: 0.55, b: 0.68, t: 'Registrar mediciones', d: 'Mide desplazamiento horizontal, fuerza cortante y desplazamiento vertical.' },
+                { a: 0.68, b: 0.80, t: 'Calcular esfuerzos', d: 'τ = T / A. Aplica corrección de área cuando corresponda.' },
+                { a: 0.80, b: 0.90, t: 'Identificar resistencia', d: 'Construye la curva esfuerzo cortante–desplazamiento y aplica el criterio de resistencia.' },
+                { a: 0.90, b: 1.01, t: 'Obtener c y φ', d: 'Repite a distintas σn. Ajusta la envolvente τf = c + σn · tan(φ).' }
             ],
             parts: [
                 { name: "Mitad superior de la caja (fija)", desc: "Retenida por la mordaza y el anillo; no se desplaza." },
@@ -89,12 +93,14 @@
             norma: 'ASTM D2166 · INV E-152',
             duration: 14,
             phases: [
-                { a: 0.00, b: 0.12, t: 'Preparar la probeta', d: 'Tallar un cilindro de suelo (relación altura/diámetro ≈ 2). Verificar caras planas y perpendiculares al eje.' },
-                { a: 0.12, b: 0.22, t: 'Medir geometría', d: 'Registrar diámetro D y altura L0. Calcular el área A = π·(D/2)² para obtener esfuerzos.' },
-                { a: 0.22, b: 0.32, t: 'Colocar en la prensa', d: 'Centrar la probeta entre los platos. No hay presión de confinamiento (σ₃ = 0). Montar el deformímetro axial.' },
-                { a: 0.32, b: 0.70, t: 'Cargar axialmente', d: 'Aplicar carga a velocidad controlada. Leer pares (ΔL, P) en varios incrementos hasta la falla.' },
-                { a: 0.70, b: 0.88, t: 'Detectar el pico qu', d: 'La resistencia no confinada qu es el esfuerzo máximo σ = P/A. Anotar la deformación ε en falla.' },
-                { a: 0.88, b: 1.01, t: 'Calcular cu y registrar', d: 'cu = qu / 2 (condiciones no drenadas, φ ≈ 0). Documentar el modo de falla (bulbo, plano inclinado, etc.).' }
+                { a: 0.00, b: 0.10, t: 'Preparar la probeta', d: 'Probeta cilíndrica con dimensiones del método. (ASTM D2166)' },
+                { a: 0.10, b: 0.20, t: 'Medir geometría', d: 'Registra diámetro, altura inicial L0 y masa.' },
+                { a: 0.20, b: 0.30, t: 'Instalar en la prensa', d: 'Centra la probeta entre los platos (σ₃ = 0).' },
+                { a: 0.30, b: 0.50, t: 'Cargar axialmente', d: 'Aplica deformación axial a la velocidad especificada.' },
+                { a: 0.50, b: 0.62, t: 'Registrar P y ΔL', d: 'Mide carga axial P y acortamiento ΔL.' },
+                { a: 0.62, b: 0.74, t: 'Calcular ε y área corregida', d: 'ε = ΔL / L0; Acorr = A0 / (1 − ε).' },
+                { a: 0.74, b: 0.86, t: 'Calcular esfuerzo σ', d: 'σ = P / Acorr. Construye la curva esfuerzo–deformación.' },
+                { a: 0.86, b: 1.01, t: 'Identificar qu y cu', d: 'qu = máximo esfuerzo axial. cu ≈ qu / 2 en condiciones apropiadas.' }
             ],
             parts: [
                 { name: "Bastidor de acero", desc: "Columnas y travesaño rígidos que reaccionan la carga axial." },
@@ -119,11 +125,13 @@
             norma: 'ASTM D2435 · INV E-151',
             duration: 22,
             phases: [
-                { a: 0.00, b: 0.12, t: 'Preparar el edómetro', d: 'Colocar piedras porosas, anillo de consolidación y la muestra saturada. Verificar el contacto con el vástago de carga.' },
-                { a: 0.12, b: 0.22, t: 'Carga de asiento', d: 'Aplicar una pequeña carga de asiento y poner a cero el deformímetro. Registrar e0 y H0.' },
-                { a: 0.22, b: 0.75, t: 'Incrementos de carga', d: 'Duplicar la carga en cada escalón (p. ej. 12.5 → 25 → 50 → 100 kPa). En cada escalón leer el asentamiento hasta estabilizar.' },
-                { a: 0.75, b: 0.90, t: 'Curva e-log σ\'', d: 'Calcular la relación de vacíos e en cada escalón y trazar e frente a log σ\'. Identificar Cc, Cr y la presión de preconsolidación σ\'p.' },
-                { a: 0.90, b: 1.01, t: 'Determinar Cv', d: 'Con el método de Casagrande (log t) o Taylor (√t) obtener t50 y calcular el coeficiente de consolidación Cv.' }
+                { a: 0.00, b: 0.12, t: 'Preparar la muestra', d: 'Recorta la muestra para el anillo conservando la estructura. (ASTM D2435)' },
+                { a: 0.12, b: 0.24, t: 'Montar en el edómetro', d: 'Coloca la muestra entre piedras porosas e instala el conjunto.' },
+                { a: 0.24, b: 0.36, t: 'Carga de asiento', d: 'Aplica la carga de asiento establecida y pon a cero el deformímetro.' },
+                { a: 0.36, b: 0.58, t: 'Incrementos de carga', d: 'Aplica incrementos de tensión vertical según el programa del ensayo.' },
+                { a: 0.58, b: 0.72, t: 'Medir tiempo y asentamiento', d: 'Registra desplazamientos a los tiempos establecidos en cada incremento.' },
+                { a: 0.72, b: 0.84, t: 'Calcular índice de vacíos e', d: 'Usa la geometría inicial y el cambio de altura: e = e0 − ΔH / Hs.' },
+                { a: 0.84, b: 1.01, t: 'Interpretar Cc, σ\'p y Cv', d: 'Curvas e–log σ\' y asentamiento–tiempo. Obtén Cc, Cr/Cs, σ\'p y Cv.' }
             ],
             parts: [
                 { name: "Brazo de carga (palanca)", desc: "Multiplica la carga de las pesas sobre la muestra." },
@@ -149,12 +157,15 @@
             norma: 'ASTM D2850 / D4767 · INV E-153',
             duration: 20,
             phases: [
-                { a: 0.00, b: 0.12, t: 'Preparar la probeta', d: 'Tallar el cilindro, colocar membranas de látex y cabezales. Verificar sellos O-ring para aislar el agua de la cámara.' },
-                { a: 0.12, b: 0.25, t: 'Montar en la cámara', d: 'Instalar la probeta en la base, llenar la cámara con agua y cerrar la tapa. Conectar líneas de drenaje y contrapresión.' },
-                { a: 0.25, b: 0.38, t: 'Aplicar confinamiento σ₃', d: 'Elevar la presión de cámara hasta el valor de ensayo. Según el tipo (UU, CU, CD) consolidar o no la muestra.' },
-                { a: 0.38, b: 0.80, t: 'Carga axial (σ₁)', d: 'Avanzar el vástago a velocidad controlada. Registrar carga axial, ΔL y, si aplica, cambio de volumen o presión de poros.' },
-                { a: 0.80, b: 0.92, t: 'Falla de la probeta', d: 'Identificar el pico de resistencia. El plano de falla se orienta cerca de 45° + φ/2 respecto a la horizontal.' },
-                { a: 0.92, b: 1.01, t: 'Círculos de Mohr y envolvente', d: 'Repetir a distintas σ₃. Construir círculos de Mohr y obtener c y φ de la envolvente de Coulomb.' }
+                { a: 0.00, b: 0.10, t: 'Preparar la probeta', d: 'Obtén y mide una probeta cilíndrica. (ASTM D2850 / D4767)' },
+                { a: 0.10, b: 0.20, t: 'Instalar membrana', d: 'Coloca membrana, piedras porosas y conexiones de drenaje.' },
+                { a: 0.20, b: 0.30, t: 'Cerrar la cámara', d: 'Monta la cámara y comprueba estanqueidad.' },
+                { a: 0.30, b: 0.42, t: 'Aplicar confinamiento σ₃', d: 'Aplica la presión lateral σ₃ indicada.' },
+                { a: 0.42, b: 0.52, t: 'Consolidar si corresponde', d: 'CU y CD: fase de consolidación. UU: sin consolidación previa.' },
+                { a: 0.52, b: 0.60, t: 'Definir drenaje', d: 'UU no drenado; CU consolidado–corte no drenado; CD consolidado–corte drenado.' },
+                { a: 0.60, b: 0.78, t: 'Aplicar carga axial', d: 'Incrementa la carga a la velocidad establecida.' },
+                { a: 0.78, b: 0.88, t: 'Registrar datos', d: 'Carga, deformación, σ₃ y, si procede, presión de poros y cambio volumétrico.' },
+                { a: 0.88, b: 1.01, t: 'Círculos de Mohr y c–φ', d: 'σ₁ = σ₃ + q. Construye círculos de Mohr y obtiene parámetros resistentes.' }
             ],
             parts: [
                 { name: "Marco de carga", desc: "Columnas y travesaño que reaccionan la carga axial." },

@@ -24,118 +24,174 @@
     function el(tag, cls, html) { var e = doc.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
     function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     
-    /* Paso a paso educativo por ensayo (2D) */
+    /* Paso a paso según Guía detallada de ensayos GeoMetrics (17 ensayos) */
     var STEPS = {
-        corte: [
-            { a: 0.00, b: 0.12, t: 'Preparar la muestra', d: 'Tallar o compactar la muestra. Verificar área A de la caja de corte.' },
-            { a: 0.12, b: 0.25, t: 'Montar en la caja', d: 'Colocar la muestra entre las dos mitades y las piedras porosas si aplica.' },
-            { a: 0.25, b: 0.40, t: 'Aplicar carga normal σn', d: 'Cargar pesas: σn = N / A. Verificar centrado.' },
-            { a: 0.40, b: 0.50, t: 'Consolidar bajo σn', d: 'Esperar asentamiento y anotar δv inicial.' },
-            { a: 0.50, b: 0.90, t: 'Cortar a velocidad constante', d: 'El carro avanza; el anillo mide Fh → τ = Fh / A.' },
-            { a: 0.90, b: 1.01, t: 'Registrar pico y residual', d: 'Anotar τ pico, residual, δh y δv. Repetir con otras σn.' }
-        ],
-        inconfinada: [
-            { a: 0.00, b: 0.12, t: 'Preparar la probeta', d: 'Cilindro de suelo con caras planas; H/D ≈ 2.' },
-            { a: 0.12, b: 0.25, t: 'Medir geometría', d: 'Registrar D y L0. Calcular A = π·(D/2)².' },
-            { a: 0.25, b: 0.35, t: 'Colocar en la prensa', d: 'Centrar entre platos (σ₃ = 0). Montar deformímetro.' },
-            { a: 0.35, b: 0.75, t: 'Cargar axialmente', d: 'Leer pares (ΔL, P) hasta la falla.' },
-            { a: 0.75, b: 0.90, t: 'Detectar qu', d: 'qu = σ máximo = P/A. Anotar ε en falla.' },
-            { a: 0.90, b: 1.01, t: 'Calcular cu', d: 'cu = qu / 2. Documentar el modo de falla.' }
-        ],
-        consolidacion: [
-            { a: 0.00, b: 0.15, t: 'Preparar el edómetro', d: 'Anillo, piedras porosas y muestra saturada. Carga de asiento.' },
-            { a: 0.15, b: 0.25, t: 'Registrar e0 y H0', d: 'Poner a cero el deformímetro tras la carga de asiento.' },
-            { a: 0.25, b: 0.75, t: 'Incrementos de carga', d: 'Duplicar σ\' en cada escalón y leer asentamiento hasta estabilizar.' },
-            { a: 0.75, b: 0.90, t: 'Curva e–log σ\'', d: 'Calcular e en cada escalón; obtener Cc, Cr y σ\'p.' },
-            { a: 0.90, b: 1.01, t: 'Determinar Cv', d: 'Método log t o √t → t50 → coeficiente de consolidación Cv.' }
-        ],
-        triaxial: [
-            { a: 0.00, b: 0.12, t: 'Preparar la probeta', d: 'Membrana de látex, cabezales y sellos O-ring.' },
-            { a: 0.12, b: 0.28, t: 'Montar en la cámara', d: 'Llenar con agua, conectar drenaje y contrapresión.' },
-            { a: 0.28, b: 0.42, t: 'Aplicar σ₃', d: 'Presión de cámara según UU / CU / CD.' },
-            { a: 0.42, b: 0.80, t: 'Carga axial σ₁', d: 'Avance controlado del vástago; leer P, ΔL y u o ΔV.' },
-            { a: 0.80, b: 0.92, t: 'Falla', d: 'Pico de resistencia; plano ≈ 45° + φ/2.' },
-            { a: 0.92, b: 1.01, t: 'Envolvente de Mohr', d: 'Repetir a varias σ₃ y obtener c y φ.' }
-        ],
         humedad: [
-            { a: 0.00, b: 0.20, t: 'Preparar cápsula', d: 'Pesar la cápsula limpia y seca (M_c).' },
-            { a: 0.20, b: 0.40, t: 'Agregar suelo húmedo', d: 'Colocar la muestra y pesar cápsula + suelo húmedo (M_h).' },
-            { a: 0.40, b: 0.75, t: 'Secar en horno', d: 'Llevar a 105–110 °C hasta masa constante.' },
-            { a: 0.75, b: 0.90, t: 'Pesar suelo seco', d: 'Enfriar y pesar cápsula + suelo seco (M_s).' },
-            { a: 0.90, b: 1.01, t: 'Calcular w', d: 'w = (M_h − M_s) / (M_s − M_c) × 100 %.' }
+            { a: 0.00, b: 0.12, t: 'Preparar el recipiente', d: 'Limpia y seca el recipiente; registra su masa Mc. (INV E-122 / ASTM D2216)' },
+            { a: 0.12, b: 0.25, t: 'Pesar el suelo húmedo', d: 'Pesa recipiente más suelo húmedo: Mch.' },
+            { a: 0.25, b: 0.50, t: 'Secar en horno', d: 'Introduce la muestra en el horno a 110 ± 5 °C hasta masa constante.' },
+            { a: 0.50, b: 0.65, t: 'Enfriar y pesar', d: 'Registra la masa del recipiente más suelo seco: Mcs.' },
+            { a: 0.65, b: 0.82, t: 'Calcular masas', d: 'Mh = Mch − Mc; Ms = Mcs − Mc; Mw = Mh − Ms.' },
+            { a: 0.82, b: 1.01, t: 'Calcular humedad w', d: 'w = (Mw / Ms) × 100 %. El contenido de humedad se expresa respecto a la masa seca.' }
         ],
         granulometria: [
-            { a: 0.00, b: 0.15, t: 'Preparar la muestra', d: 'Secar, desmenuzar y pesar la muestra total.' },
-            { a: 0.15, b: 0.35, t: 'Apilar los tamices', d: 'Ordenar de mayor a menor abertura (p. ej. 3/8" → N.º 200).' },
-            { a: 0.35, b: 0.65, t: 'Agitar y pesar retenidos', d: 'Agitar, retirar cada tamiz y pesar la masa retenida.' },
-            { a: 0.65, b: 0.85, t: 'Calcular % que pasa', d: 'Obtener % retenido, acumulado y % que pasa.' },
-            { a: 0.85, b: 1.01, t: 'Curva y coeficientes', d: 'Trazar curva granulométrica; calcular D10, D30, D60, Cu y Cc.' }
+            { a: 0.00, b: 0.10, t: 'Preparar la muestra', d: 'Seca y desmenuza los terrones sin triturar partículas. (INV E-123 / ASTM D6913)' },
+            { a: 0.10, b: 0.18, t: 'Pesar masa inicial', d: 'Registra la masa seca inicial de la muestra.' },
+            { a: 0.18, b: 0.28, t: 'Organizar tamices', d: 'Apila los tamices de mayor a menor abertura y coloca un fondo colector.' },
+            { a: 0.28, b: 0.45, t: 'Tamizar', d: 'Agita el conjunto. Si se requiere, lava el material sobre el tamiz N.º 200.' },
+            { a: 0.45, b: 0.58, t: 'Pesar retenidos', d: 'Pesa el material retenido en cada tamiz y el del fondo. Verifica balance de masas.' },
+            { a: 0.58, b: 0.72, t: 'Calcular porcentajes', d: '% retenido, retenido acumulado y % que pasa = 100 − % retenido acumulado.' },
+            { a: 0.72, b: 0.85, t: 'Graficar curva', d: 'Eje X logarítmico (tamaño) y eje Y % que pasa.' },
+            { a: 0.85, b: 0.93, t: 'Obtener D10, D30, D60', d: 'Lee o interpola los diámetros de la curva granulométrica.' },
+            { a: 0.93, b: 1.01, t: 'Calcular Cu y Cc', d: 'Cu = D60/D10; Cc = D30²/(D10×D60). Interpreta la gradación.' }
         ],
         limites: [
-            { a: 0.00, b: 0.25, t: 'Límite líquido', d: 'Copa de Casagrande: anotar golpes y humedad; obtener LL.' },
-            { a: 0.25, b: 0.55, t: 'Límite plástico', d: 'Rollitos de 3 mm hasta agrietar; obtener LP.' },
-            { a: 0.55, b: 0.80, t: 'Índice de plasticidad', d: 'IP = LL − LP.' },
-            { a: 0.80, b: 1.01, t: 'Interpretar', d: 'Clasificar plasticidad y relacionar con el comportamiento del suelo.' }
+            { a: 0.00, b: 0.12, t: 'Preparar pasta (LL)', d: 'Mezcla la fracción exigida con agua hasta pasta homogénea. (INV E-125)' },
+            { a: 0.12, b: 0.24, t: 'Ranura en la copa', d: 'Coloca la pasta en la copa de Casagrande y forma la ranura normalizada.' },
+            { a: 0.24, b: 0.36, t: 'Golpes hasta cierre', d: 'Acciona el aparato y registra el número de golpes para cerrar la ranura.' },
+            { a: 0.36, b: 0.48, t: 'Curva de fluidez', d: 'Repite a varias humedades. LL = humedad a 25 golpes (método multipunto).' },
+            { a: 0.48, b: 0.62, t: 'Enrollar hilos (LP)', d: 'Forma hilos por enrollado hasta ≈ 3,2 mm. (INV E-126)' },
+            { a: 0.62, b: 0.78, t: 'Humedad en desmoronamiento', d: 'Cuando el suelo se desmorone, determina su humedad = LP.' },
+            { a: 0.78, b: 1.01, t: 'Índice de plasticidad', d: 'IP = LL − LP. Ubica en la carta de plasticidad si corresponde.' }
         ],
         gravedad: [
-            { a: 0.00, b: 0.25, t: 'Calibrar picnómetro', d: 'Pesar picnómetro vacío y lleno de agua a temperatura controlada.' },
-            { a: 0.25, b: 0.55, t: 'Suelo + agua', d: 'Introducir suelo seco, saturar, eliminar aire y pesar.' },
-            { a: 0.55, b: 0.85, t: 'Calcular Gs', d: 'Gs = Ms / (Ms + Mw − Msw) (corregir por temperatura si aplica).' },
-            { a: 0.85, b: 1.01, t: 'Verificar', d: 'Comparar con rangos típicos del tipo de suelo.' }
+            { a: 0.00, b: 0.12, t: 'Preparar y secar', d: 'Muestra representativa seca según el método. (INV E-128 / ASTM D854)' },
+            { a: 0.12, b: 0.24, t: 'Pesar picnómetro vacío', d: 'Registra M1.' },
+            { a: 0.24, b: 0.36, t: 'Añadir suelo seco', d: 'Pesa el picnómetro con suelo: M2.' },
+            { a: 0.36, b: 0.52, t: 'Añadir agua y desairear', d: 'Agrega agua y elimina el aire atrapado por el procedimiento establecido.' },
+            { a: 0.52, b: 0.68, t: 'Completar y pesar M3', d: 'Completa hasta la marca, controla temperatura y registra M3 (picnómetro + suelo + agua).' },
+            { a: 0.68, b: 0.84, t: 'Pesar solo con agua M4', d: 'Llena el picnómetro solo con agua hasta la misma marca y registra M4.' },
+            { a: 0.84, b: 1.01, t: 'Calcular Gs', d: 'Gs = (M2−M1) / [(M4−M1)−(M3−M2)]. Aplica correcciones de temperatura.' }
         ],
         compactacion: [
-            { a: 0.00, b: 0.20, t: 'Preparar series de humedad', d: 'Mezclar porciones de suelo a distintos contenidos de agua.' },
-            { a: 0.20, b: 0.55, t: 'Compactar en el molde', d: 'Capas y golpes según Proctor estándar o modificado.' },
-            { a: 0.55, b: 0.80, t: 'Determinar γd y w', d: 'Pesar el molde, obtener humedad y densidad seca de cada punto.' },
-            { a: 0.80, b: 1.01, t: 'Curva de compactación', d: 'Trazar γd vs w; obtener w óptima y γd máxima.' }
+            { a: 0.00, b: 0.08, t: 'Preparar el suelo', d: 'Desmenuza y aplica criterios de tamaño máximo. (INV E-141/142 · ASTM D698/D1557)' },
+            { a: 0.08, b: 0.18, t: 'Preparar humedades', d: 'Divide la muestra y añade distintas cantidades de agua; homogeneiza.' },
+            { a: 0.18, b: 0.28, t: 'Pesar el molde', d: 'Registra masa del molde vacío y conoce su volumen calibrado.' },
+            { a: 0.28, b: 0.45, t: 'Compactar por capas', d: 'Coloca el suelo en capas y aplica los golpes del método (estándar o modificado).' },
+            { a: 0.45, b: 0.55, t: 'Nivelar y pesar', d: 'Enrasa y pesa el molde con suelo compactado.' },
+            { a: 0.55, b: 0.65, t: 'Densidad húmeda', d: 'ρh = masa húmeda del suelo / volumen del molde.' },
+            { a: 0.65, b: 0.75, t: 'Determinar humedad', d: 'Extrae porción representativa y mide w.' },
+            { a: 0.75, b: 0.85, t: 'Densidad seca', d: 'ρd = ρh / (1 + w) con w en decimal.' },
+            { a: 0.85, b: 0.93, t: 'Repetir puntos', d: 'Repite para varias humedades que definan la curva.' },
+            { a: 0.93, b: 1.01, t: 'Curva Proctor', d: 'Grafica ρd vs w. Obtén γd máx y w óptima en el máximo de la curva.' }
         ],
         densidad: [
-            { a: 0.00, b: 0.30, t: 'Excavar y recuperar', d: 'Método del cono de arena o volumétrico en campo.' },
-            { a: 0.30, b: 0.60, t: 'Pesar y medir volumen', d: 'Obtener masa húmeda y volumen del hueco.' },
-            { a: 0.60, b: 0.85, t: 'Humedad de campo', d: 'Determinar w de una porción representativa.' },
-            { a: 0.85, b: 1.01, t: 'Grado de compactación', d: 'γd campo / γd máx × 100 %.' }
+            { a: 0.00, b: 0.10, t: 'Preparar la superficie', d: 'Lugar representativo y nivelado para la placa. (INV E-161 · cono de arena)' },
+            { a: 0.10, b: 0.20, t: 'Instalar placa base', d: 'Coloca y fija la placa base.' },
+            { a: 0.20, b: 0.35, t: 'Excavar el hueco', d: 'Excava según el método y recoge todo el suelo sin pérdidas.' },
+            { a: 0.35, b: 0.45, t: 'Pesar suelo húmedo', d: 'Registra la masa húmeda total extraída.' },
+            { a: 0.45, b: 0.58, t: 'Llenar con arena', d: 'Llena el hueco con arena calibrada; descuenta cono y base.' },
+            { a: 0.58, b: 0.70, t: 'Calcular volumen', d: 'Vh = Marena / ρarena.' },
+            { a: 0.70, b: 0.82, t: 'Humedad de campo', d: 'Mide w de una porción representativa.' },
+            { a: 0.82, b: 0.92, t: 'Densidades ρh y ρd', d: 'ρh = Msuelo/Vh; ρd = ρh/(1+w).' },
+            { a: 0.92, b: 1.01, t: '% de compactación', d: '% = (γd campo / γd máx Proctor) × 100. Compara con especificación de obra.' }
         ],
         clasificacion: [
-            { a: 0.00, b: 0.35, t: 'Datos de laboratorio', d: 'Usar granulometría y límites de Atterberg.' },
-            { a: 0.35, b: 0.70, t: 'Carta de plasticidad', d: 'Ubicar el punto (LL, IP) en la carta de Casagrande.' },
-            { a: 0.70, b: 1.01, t: 'Símbolo SUCS', d: 'Asignar grupo (GW, CL, SM, etc.) y descripción.' }
+            { a: 0.00, b: 0.12, t: 'Revisar finos', d: 'Determina el % que pasa el tamiz N.º 200. (ASTM D2487 · SUCS)' },
+            { a: 0.12, b: 0.25, t: 'Grueso o fino', d: 'Aplica los límites SUCS para decidir si el suelo es de grano grueso o fino.' },
+            { a: 0.25, b: 0.40, t: 'Grava o arena', d: 'En suelos gruesos, determina si predomina grava o arena.' },
+            { a: 0.40, b: 0.55, t: 'Evaluar gradación', d: 'Usa D10, D30, D60, Cu y Cc cuando proceda.' },
+            { a: 0.55, b: 0.70, t: 'Evaluar plasticidad', d: 'Usa LL e IP para el comportamiento de los finos.' },
+            { a: 0.70, b: 0.85, t: 'Carta de plasticidad', d: 'Ubica LL e IP y aplica las reglas de clasificación.' },
+            { a: 0.85, b: 1.01, t: 'Asignar símbolo SUCS', d: 'Determina el símbolo (GW, CL, SM…) y redacta la descripción justificada.' }
         ],
         permeabilidad: [
-            { a: 0.00, b: 0.25, t: 'Montar la muestra', d: 'Carga constante o variable según el tipo de suelo.' },
-            { a: 0.25, b: 0.60, t: 'Medir caudal / tiempo', d: 'Registrar nivel de agua y tiempo de percolación.' },
-            { a: 0.60, b: 0.85, t: 'Calcular k', d: 'Ley de Darcy: k = (Q·L)/(A·h·t) o fórmula de carga variable.' },
-            { a: 0.85, b: 1.01, t: 'Interpretar', d: 'Comparar k con rangos típicos (arcillas, arenas, gravas).' }
+            { a: 0.00, b: 0.12, t: 'Instalar muestra', d: 'Mide longitud L y área A. (ASTM D2434 / D5084)' },
+            { a: 0.12, b: 0.25, t: 'Saturar', d: 'Satura la muestra y verifica que no existan fugas.' },
+            { a: 0.25, b: 0.40, t: 'Carga hidráulica h', d: 'Carga constante: establece y mide la diferencia de carga h.' },
+            { a: 0.40, b: 0.55, t: 'Medir caudal', d: 'Recoge volumen V durante un tiempo t.' },
+            { a: 0.55, b: 0.70, t: 'Calcular k (constante)', d: 'k = (V × L) / (A × h × t). Verifica unidades.' },
+            { a: 0.70, b: 0.85, t: 'Carga variable (si aplica)', d: 'Registra h1, h2 y t. k = (a×L/(A×t)) × ln(h1/h2).' },
+            { a: 0.85, b: 1.01, t: 'Revisar resultado', d: 'Verifica temperatura, saturación, fugas y coherencia de k.' }
+        ],
+        corte: [
+            { a: 0.00, b: 0.10, t: 'Preparar la muestra', d: 'Recorta o prepara la muestra con dimensiones apropiadas. (ASTM D3080)' },
+            { a: 0.10, b: 0.20, t: 'Instalar en la caja', d: 'Coloca el suelo en la caja con los elementos porosos requeridos.' },
+            { a: 0.20, b: 0.35, t: 'Aplicar carga normal σn', d: 'Aplica la tensión normal y permite la consolidación/estabilización requerida. σn = N/A.' },
+            { a: 0.35, b: 0.55, t: 'Cortar a velocidad constante', d: 'Desplaza horizontalmente una mitad de la caja a la velocidad establecida.' },
+            { a: 0.55, b: 0.68, t: 'Registrar mediciones', d: 'Mide desplazamiento horizontal, fuerza cortante y desplazamiento vertical.' },
+            { a: 0.68, b: 0.80, t: 'Calcular esfuerzos', d: 'τ = T/A. Aplica corrección de área cuando corresponda.' },
+            { a: 0.80, b: 0.90, t: 'Identificar resistencia', d: 'Curva esfuerzo cortante–desplazamiento; aplica el criterio de resistencia del ensayo.' },
+            { a: 0.90, b: 1.01, t: 'Obtener c y φ', d: 'Repite a distintas σn. Ajusta la envolvente τf = c + σn·tan(φ).' }
+        ],
+        inconfinada: [
+            { a: 0.00, b: 0.10, t: 'Preparar la probeta', d: 'Probeta cilíndrica con dimensiones del método. (ASTM D2166)' },
+            { a: 0.10, b: 0.20, t: 'Medir geometría', d: 'Registra diámetro, altura inicial L0 y masa.' },
+            { a: 0.20, b: 0.30, t: 'Instalar en la prensa', d: 'Centra la probeta entre los platos (σ₃ = 0).' },
+            { a: 0.30, b: 0.50, t: 'Cargar axialmente', d: 'Aplica deformación axial a la velocidad especificada.' },
+            { a: 0.50, b: 0.62, t: 'Registrar P y ΔL', d: 'Mide carga axial P y acortamiento ΔL.' },
+            { a: 0.62, b: 0.74, t: 'Calcular ε y área corregida', d: 'ε = ΔL/L0; Acorr = A0/(1−ε).' },
+            { a: 0.74, b: 0.86, t: 'Calcular esfuerzo σ', d: 'σ = P / Acorr. Construye la curva esfuerzo–deformación.' },
+            { a: 0.86, b: 1.01, t: 'Identificar qu y cu', d: 'qu = máximo esfuerzo axial. cu ≈ qu/2 en condiciones apropiadas.' }
+        ],
+        consolidacion: [
+            { a: 0.00, b: 0.12, t: 'Preparar la muestra', d: 'Recorta la muestra para el anillo conservando la estructura. (ASTM D2435)' },
+            { a: 0.12, b: 0.24, t: 'Montar en el edómetro', d: 'Coloca la muestra entre piedras porosas e instala el conjunto.' },
+            { a: 0.24, b: 0.36, t: 'Carga de asiento', d: 'Aplica la carga de asiento establecida y pon a cero el deformímetro.' },
+            { a: 0.36, b: 0.58, t: 'Incrementos de carga', d: 'Aplica incrementos de tensión vertical según el programa del ensayo.' },
+            { a: 0.58, b: 0.72, t: 'Medir tiempo y asentamiento', d: 'Registra desplazamientos a los tiempos establecidos en cada incremento.' },
+            { a: 0.72, b: 0.84, t: 'Calcular e', d: 'Usa la geometría inicial y el cambio de altura: e = e0 − ΔH/Hs.' },
+            { a: 0.84, b: 1.01, t: 'Interpretar parámetros', d: 'Curvas e–log σ′ y asentamiento–tiempo. Obtén Cc, Cr/Cs, σ′p y Cv.' }
+        ],
+        triaxial: [
+            { a: 0.00, b: 0.10, t: 'Preparar la probeta', d: 'Obtén y mide una probeta cilíndrica. (ASTM D2850 / D4767)' },
+            { a: 0.10, b: 0.20, t: 'Instalar membrana', d: 'Coloca membrana, piedras porosas y conexiones de drenaje.' },
+            { a: 0.20, b: 0.30, t: 'Cerrar la cámara', d: 'Monta la cámara y comprueba estanqueidad.' },
+            { a: 0.30, b: 0.42, t: 'Aplicar confinamiento σ₃', d: 'Aplica la presión lateral σ₃ indicada.' },
+            { a: 0.42, b: 0.52, t: 'Consolidar si corresponde', d: 'CU y CD: fase de consolidación. UU: sin consolidación previa.' },
+            { a: 0.52, b: 0.60, t: 'Definir drenaje', d: 'UU no drenado; CU consolidado–corte no drenado; CD consolidado–corte drenado.' },
+            { a: 0.60, b: 0.78, t: 'Aplicar carga axial', d: 'Incrementa la carga a la velocidad establecida.' },
+            { a: 0.78, b: 0.88, t: 'Registrar datos', d: 'Carga, deformación, σ₃ y, si procede, presión de poros y cambio volumétrico.' },
+            { a: 0.88, b: 1.01, t: 'Círculos de Mohr y c–φ', d: 'σ₁ = σ₃ + q. Construye círculos de Mohr y obtiene parámetros resistentes.' }
         ],
         traccion: [
-            { a: 0.00, b: 0.20, t: 'Preparar la probeta', d: 'Medir sección y longitud calibrada.' },
-            { a: 0.20, b: 0.40, t: 'Montar en la máquina', d: 'Fijar mordazas y extensómetro.' },
-            { a: 0.40, b: 0.80, t: 'Ensayo de tracción', d: 'Cargar hasta rotura registrando σ–ε.' },
-            { a: 0.80, b: 1.01, t: 'Propiedades mecánicas', d: 'E, σy, σu, ductilidad y tipo de falla.' }
+            { a: 0.00, b: 0.10, t: 'Seleccionar probeta', d: 'Geometría compatible con el material y la norma. (ASTM E8/E8M)' },
+            { a: 0.10, b: 0.22, t: 'Medir A0 y L0', d: 'Registra área inicial A0 y longitud de referencia L0.' },
+            { a: 0.22, b: 0.34, t: 'Sujetar en mordazas', d: 'Instala la probeta alineada en las mordazas.' },
+            { a: 0.34, b: 0.45, t: 'Configurar ensayo', d: 'Define velocidad y adquisición de datos según el método.' },
+            { a: 0.45, b: 0.65, t: 'Aplicar tracción', d: 'Incrementa la carga axial de forma controlada.' },
+            { a: 0.65, b: 0.78, t: 'Registrar P y ΔL', d: 'Mide fuerza P y alargamiento ΔL.' },
+            { a: 0.78, b: 0.90, t: 'Calcular σ y ε', d: 'σ = P/A0; ε = ΔL/L0. Grafica esfuerzo–deformación.' },
+            { a: 0.90, b: 1.01, t: 'Propiedades mecánicas', d: 'E = Δσ/Δε (región elástica), fluencia, resistencia máxima y alargamiento.' }
         ],
         compresion: [
-            { a: 0.00, b: 0.25, t: 'Preparar el cilindro', d: 'Verificar esbeltez y caras planas.' },
-            { a: 0.25, b: 0.50, t: 'Centrar en la prensa', d: 'Alinear carga axial para evitar excentricidad.' },
-            { a: 0.50, b: 0.85, t: 'Cargar a compresión', d: 'Registrar curva esfuerzo–deformación.' },
-            { a: 0.85, b: 1.01, t: 'Resistencia y módulo', d: 'Obtener resistencia a la compresión y comportamiento post-pico.' }
+            { a: 0.00, b: 0.12, t: 'Preparar la probeta', d: 'Geometría y condición exigidas por el método. (p. ej. ASTM C39 para concreto)' },
+            { a: 0.12, b: 0.24, t: 'Medir A0 y L0', d: 'Registra área transversal inicial y altura inicial.' },
+            { a: 0.24, b: 0.36, t: 'Revisar extremos', d: 'Verifica planicidad, perpendicularidad y acondicionamiento.' },
+            { a: 0.36, b: 0.48, t: 'Centrar en la prensa', d: 'Coloca la probeta alineada entre los platos.' },
+            { a: 0.48, b: 0.70, t: 'Aplicar compresión', d: 'Carga a la velocidad prescrita hasta falla o criterio de terminación.' },
+            { a: 0.70, b: 0.85, t: 'Registrar y calcular', d: 'σc = P/A0; εc = ΔL/L0. Obtén fc = Pmáx/A0.' },
+            { a: 0.85, b: 1.01, t: 'Informar falla', d: 'Registra carga máxima, resistencia y modo de falla.' }
         ],
         flexion: [
-            { a: 0.00, b: 0.25, t: 'Montar la viga', d: 'Apoyos y punto de carga según el esquema (3 o 4 puntos).' },
-            { a: 0.25, b: 0.55, t: 'Aplicar carga', d: 'Incrementar la carga y medir la deflexión central.' },
-            { a: 0.55, b: 0.85, t: 'Diagrama M y σ', d: 'Relacionar momento flector con esfuerzo σ = M·c / I.' },
-            { a: 0.85, b: 1.01, t: 'Falla por flexión', d: 'Observar fisuración o plastificación en la fibra extrema.' }
+            { a: 0.00, b: 0.12, t: 'Preparar la probeta', d: 'Geometría apropiada al método. (p. ej. ASTM C78 para concreto)' },
+            { a: 0.12, b: 0.25, t: 'Medir b, d y luz', d: 'Registra ancho b, altura d y dimensiones de la luz L.' },
+            { a: 0.25, b: 0.40, t: 'Instalar apoyos', d: 'Coloca la probeta sobre los apoyos a la luz indicada.' },
+            { a: 0.40, b: 0.52, t: 'Configurar carga', d: 'Ubica el punto o puntos de carga según el método (3 o 4 puntos).' },
+            { a: 0.52, b: 0.72, t: 'Cargar', d: 'Incrementa la carga a la velocidad especificada.' },
+            { a: 0.72, b: 0.88, t: 'Registrar deflexión', d: 'Mide carga, deflexión y ubicación de la falla.' },
+            { a: 0.88, b: 1.01, t: 'Calcular resistencia', d: 'Caso carga central: σmáx = 3PL/(2bd²). Informa modo de falla.' }
         ],
         torsion: [
-            { a: 0.00, b: 0.25, t: 'Fijar la barra', d: 'Un extremo fijo, el otro con brazo de torsión.' },
-            { a: 0.25, b: 0.60, t: 'Aplicar torque', d: 'Registrar ángulo de giro θ y momento T.' },
-            { a: 0.60, b: 0.85, t: 'Esfuerzo cortante', d: 'τ = T·ρ / J en la sección.' },
-            { a: 0.85, b: 1.01, t: 'Falla por torsión', d: 'Observar el modo de falla del material.' }
+            { a: 0.00, b: 0.12, t: 'Preparar la probeta', d: 'Geometría compatible con el equipo de torsión.' },
+            { a: 0.12, b: 0.25, t: 'Medir sección', d: 'Registra longitud útil y dimensiones de la sección.' },
+            { a: 0.25, b: 0.40, t: 'Instalar', d: 'Sujeta la probeta evitando desalineaciones.' },
+            { a: 0.40, b: 0.60, t: 'Aplicar torque', d: 'Incrementa el momento torsor de forma controlada.' },
+            { a: 0.60, b: 0.75, t: 'Registrar T y θ', d: 'Mide torque T y ángulo de giro θ.' },
+            { a: 0.75, b: 0.88, t: 'Calcular τ y G', d: 'τmáx = T·R/J; G = T·L/(J·θ) en régimen elástico (eje circular).' },
+            { a: 0.88, b: 1.01, t: 'Curva y falla', d: 'Grafica T–θ. Registra torque máximo y modo de falla.' }
         ],
         dureza: [
-            { a: 0.00, b: 0.30, t: 'Preparar la superficie', d: 'Superficie limpia y plana del material.' },
-            { a: 0.30, b: 0.65, t: 'Aplicar la carga', d: 'Indentador Brinell / Rockwell / Vickers según norma.' },
-            { a: 0.65, b: 1.01, t: 'Leer la dureza', d: 'Medir la huella o la profundidad y obtener el número de dureza.' }
+            { a: 0.00, b: 0.12, t: 'Seleccionar escala', d: 'Elige escala, penetrador y carga adecuados. (ASTM E18 · Rockwell)' },
+            { a: 0.12, b: 0.25, t: 'Preparar superficie', d: 'Limpia; verifica espesor, planicidad y condición superficial.' },
+            { a: 0.25, b: 0.38, t: 'Instalar probeta', d: 'Apoya la probeta de forma estable en el durómetro.' },
+            { a: 0.38, b: 0.52, t: 'Carga preliminar', d: 'El equipo aplica la carga inicial de la escala.' },
+            { a: 0.52, b: 0.68, t: 'Carga total', d: 'Añade la carga principal según el procedimiento.' },
+            { a: 0.68, b: 0.82, t: 'Mantener y descargar', d: 'Mantén el tiempo indicado y retira la carga adicional.' },
+            { a: 0.82, b: 1.01, t: 'Leer dureza Rockwell', d: 'Lee el valor con su escala. Repite respetando distancias a bordes y otras huellas.' }
         ]
     };
+
 
 function glyphOf(k) { var d = G.defs[k]; return GLYPH[k] || (d && d.glyph) || ''; }
     function machineOf(k) { var d = G.defs[k]; return MACHINE[k] || (d && d.machine) || d.title; }
