@@ -3785,7 +3785,7 @@ function _prepCanvas(id, hintId, okMsg) {
     canvas.width = Math.floor(cssW * dpr);
     canvas.height = Math.floor(cssH * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#0a1f14';
+    ctx.fillStyle = '#0B1220';
     ctx.fillRect(0, 0, cssW, cssH);
     if (hintId) {
         var h = document.getElementById(hintId);
@@ -4777,7 +4777,7 @@ function actualizarSimFlujo() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     
-    ctx.fillStyle = '#1a3a1a';
+    ctx.fillStyle = '#0B1220';
     ctx.fillRect(0, 0, w, h);
     
     // Líneas de flujo
@@ -4832,7 +4832,7 @@ function actualizarSimConsolidacion() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     
-    ctx.fillStyle = '#1a1a2a';
+    ctx.fillStyle = '#0B1220';
     ctx.fillRect(0, 0, w, h);
     
     // Ejes
@@ -5277,17 +5277,17 @@ function crearFormularioCorteDirecto() {
         <p class="login-hint" style="margin:4px 0 8px;">Si tienes la fuerza N en kN: σn (kPa) = N / A. Aquí introduces ya el esfuerzo σn.</p>
         <h4>Puntos de falla (mín. 2, ideal 3)</h4>
         <label>Ensayo 1 — σn (kPa)</label>
-        <input type="number" id="cd-pv1" value="` + f2(sn1) + `" step="0.01">
+        <input type="number" id="cd-pv1" placeholder="Ej. ` + f2(sn1) + `" step="0.01">
         <label>Ensayo 1 — τ última (kPa)</label>
-        <input type="number" id="cd-ph1" value="` + f2(t1) + `" step="0.01">
+        <input type="number" id="cd-ph1" placeholder="Ej. ` + f2(t1) + `" step="0.01">
         <label>Ensayo 2 — σn (kPa)</label>
-        <input type="number" id="cd-pv2" value="` + f2(sn2) + `" step="0.01">
+        <input type="number" id="cd-pv2" placeholder="Ej. ` + f2(sn2) + `" step="0.01">
         <label>Ensayo 2 — τ última (kPa)</label>
-        <input type="number" id="cd-ph2" value="` + f2(t2) + `" step="0.01">
+        <input type="number" id="cd-ph2" placeholder="Ej. ` + f2(t2) + `" step="0.01">
         <label>Ensayo 3 — σn (kPa) (opcional)</label>
-        <input type="number" id="cd-pv3" value="` + f2(sn3) + `" step="0.01">
+        <input type="number" id="cd-pv3" placeholder="Ej. ` + f2(sn3) + `" step="0.01">
         <label>Ensayo 3 — τ última (kPa)</label>
-        <input type="number" id="cd-ph3" value="` + f2(t3) + `" step="0.01">
+        <input type="number" id="cd-ph3" placeholder="Ej. ` + f2(t3) + `" step="0.01">
         <div class="botones-calculo">
           <button class="btn-calcular" onclick="calcularCorteDirecto()">CALCULAR</button>
           <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayoMS2('corte')">GUARDAR DATOS</button>
@@ -7146,28 +7146,28 @@ function crearFormularioInconfinada() {
     });
     return `
     <h3>Ensayo de Compresión Inconfinada</h3>
-    <p class="login-hint">Guía FLA-23 · cu = qu / 2 · φ ≈ 0. Valores de ejemplo aleatorios al abrir el ensayo.</p>
+    <p class="login-hint">Guía FLA-23 · cu = qu / 2 · φ ≈ 0 (no drenado)</p>
     <div class="laboratorio-panel">
       <div class="datos-panel">
         <h4>Geometría de la muestra</h4>
         <label>Diámetro (mm)</label>
-        <input type="number" id="uc-d" value="` + f1(D) + `" step="0.1">
+        <input type="number" id="uc-d" placeholder="Ej. ` + f1(D) + `" step="0.1">
         <label>Altura L0 (mm)</label>
-        <input type="number" id="uc-l0" value="` + f1(L0) + `" step="0.1">
+        <input type="number" id="uc-l0" placeholder="Ej. ` + f1(L0) + `" step="0.1">
         <h4>Lecturas (deformación y carga)</h4>
         <p class="login-hint">Pares ΔL (mm) y carga P (N). Al menos 4 puntos hasta falla.</p>
         <label>ΔL1, P1</label>
-        <div style="display:flex;gap:8px"><input type="number" id="uc-dl1" value="` + f2(pts[0].dL) + `" step="0.01"><input type="number" id="uc-p1" value="` + f1(pts[0].P) + `" step="0.1"></div>
+        <div style="display:flex;gap:8px"><input type="number" id="uc-dl1" placeholder="Ej. ` + f2(pts[0].dL) + `" step="0.01"><input type="number" id="uc-p1" placeholder="Ej. ` + f1(pts[0].P) + `" step="0.1"></div>
         <label>ΔL2, P2</label>
-        <div style="display:flex;gap:8px"><input type="number" id="uc-dl2" value="` + f2(pts[1].dL) + `" step="0.01"><input type="number" id="uc-p2" value="` + f1(pts[1].P) + `" step="0.1"></div>
+        <div style="display:flex;gap:8px"><input type="number" id="uc-dl2" placeholder="Ej. ` + f2(pts[1].dL) + `" step="0.01"><input type="number" id="uc-p2" placeholder="Ej. ` + f1(pts[1].P) + `" step="0.1"></div>
         <label>ΔL3, P3</label>
-        <div style="display:flex;gap:8px"><input type="number" id="uc-dl3" value="` + f2(pts[2].dL) + `" step="0.01"><input type="number" id="uc-p3" value="` + f1(pts[2].P) + `" step="0.1"></div>
+        <div style="display:flex;gap:8px"><input type="number" id="uc-dl3" placeholder="Ej. ` + f2(pts[2].dL) + `" step="0.01"><input type="number" id="uc-p3" placeholder="Ej. ` + f1(pts[2].P) + `" step="0.1"></div>
         <label>ΔL4, P4</label>
-        <div style="display:flex;gap:8px"><input type="number" id="uc-dl4" value="` + f2(pts[3].dL) + `" step="0.01"><input type="number" id="uc-p4" value="` + f1(pts[3].P) + `" step="0.1"></div>
+        <div style="display:flex;gap:8px"><input type="number" id="uc-dl4" placeholder="Ej. ` + f2(pts[3].dL) + `" step="0.01"><input type="number" id="uc-p4" placeholder="Ej. ` + f1(pts[3].P) + `" step="0.1"></div>
         <label>ΔL5, P5 (opcional)</label>
-        <div style="display:flex;gap:8px"><input type="number" id="uc-dl5" value="` + f2(pts[4].dL) + `" step="0.01"><input type="number" id="uc-p5" value="` + f1(pts[4].P) + `" step="0.1"></div>
+        <div style="display:flex;gap:8px"><input type="number" id="uc-dl5" placeholder="Ej. ` + f2(pts[4].dL) + `" step="0.01"><input type="number" id="uc-p5" placeholder="Ej. ` + f1(pts[4].P) + `" step="0.1"></div>
         <label>ΔL6, P6 (opcional)</label>
-        <div style="display:flex;gap:8px"><input type="number" id="uc-dl6" value="` + f2(pts[5].dL) + `" step="0.01"><input type="number" id="uc-p6" value="` + f1(pts[5].P) + `" step="0.1"></div>
+        <div style="display:flex;gap:8px"><input type="number" id="uc-dl6" placeholder="Ej. ` + f2(pts[5].dL) + `" step="0.01"><input type="number" id="uc-p6" placeholder="Ej. ` + f1(pts[5].P) + `" step="0.1"></div>
         <div class="botones-calculo">
           <button class="btn-calcular" onclick="calcularInconfinada()">CALCULAR</button>
           <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayoMS2('inconfinada')">GUARDAR DATOS</button>
@@ -7236,13 +7236,13 @@ function graficaInconfinada() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1c1410'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
     var maxE = Math.max.apply(null, d.pts.map(function(p) { return p.eps; })) * 1.15;
     var maxS = Math.max(d.qu * 1.2, 1);
     var ox = 55, oy = h - 40, gx = w - 30, gy = 25;
     function sx(x) { return ox + (x / maxE) * (gx - ox); }
     function sy(y) { return oy - (y / maxS) * (oy - gy); }
-    ctx.strokeStyle = '#666'; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
+    ctx.strokeStyle = '#64748B'; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
     ctx.strokeStyle = '#e8b84a'; ctx.lineWidth = 2; ctx.beginPath();
     d.pts.forEach(function(p, i) {
         var x = sx(p.eps), y = sy(p.sig);
@@ -7273,25 +7273,25 @@ function crearFormularioConsolidacionMS2() {
       <div class="datos-panel">
         <h4>Datos iniciales</h4>
         <label>Altura inicial H0 (mm)</label>
-        <input type="number" id="co-h0" value="` + f2(H0) + `" step="0.01">
+        <input type="number" id="co-h0" placeholder="Ej. ` + f2(H0) + `" step="0.01">
         <label>Relación de vacíos inicial e0</label>
-        <input type="number" id="co-e0" value="` + f3(e0) + `" step="0.001">
+        <input type="number" id="co-e0" placeholder="Ej. ` + f3(e0) + `" step="0.001">
         <h4>Incrementos de carga (σ' en kPa y e final)</h4>
         <label>σ'1 , e1</label>
-        <div style="display:flex;gap:8px"><input type="number" id="co-s1" value="` + sigs[0] + `"><input type="number" id="co-e1" value="` + f3(es[0]) + `" step="0.001"></div>
+        <div style="display:flex;gap:8px"><input type="number" id="co-s1" placeholder="Ej. ` + sigs[0] + `"><input type="number" id="co-e1" placeholder="Ej. ` + f3(es[0]) + `" step="0.001"></div>
         <label>σ'2 , e2</label>
-        <div style="display:flex;gap:8px"><input type="number" id="co-s2" value="` + sigs[1] + `"><input type="number" id="co-e2" value="` + f3(es[1]) + `" step="0.001"></div>
+        <div style="display:flex;gap:8px"><input type="number" id="co-s2" placeholder="Ej. ` + sigs[1] + `"><input type="number" id="co-e2" placeholder="Ej. ` + f3(es[1]) + `" step="0.001"></div>
         <label>σ'3 , e3</label>
-        <div style="display:flex;gap:8px"><input type="number" id="co-s3" value="` + sigs[2] + `"><input type="number" id="co-e3" value="` + f3(es[2]) + `" step="0.001"></div>
+        <div style="display:flex;gap:8px"><input type="number" id="co-s3" placeholder="Ej. ` + sigs[2] + `"><input type="number" id="co-e3" placeholder="Ej. ` + f3(es[2]) + `" step="0.001"></div>
         <label>σ'4 , e4</label>
-        <div style="display:flex;gap:8px"><input type="number" id="co-s4" value="` + sigs[3] + `"><input type="number" id="co-e4" value="` + f3(es[3]) + `" step="0.001"></div>
+        <div style="display:flex;gap:8px"><input type="number" id="co-s4" placeholder="Ej. ` + sigs[3] + `"><input type="number" id="co-e4" placeholder="Ej. ` + f3(es[3]) + `" step="0.001"></div>
         <label>σ'5 , e5 (opcional)</label>
-        <div style="display:flex;gap:8px"><input type="number" id="co-s5" value="` + sigs[4] + `"><input type="number" id="co-e5" value="` + f3(es[4]) + `" step="0.001"></div>
+        <div style="display:flex;gap:8px"><input type="number" id="co-s5" placeholder="Ej. ` + sigs[4] + `"><input type="number" id="co-e5" placeholder="Ej. ` + f3(es[4]) + `" step="0.001"></div>
         <h4>Para Cv (un incremento)</h4>
         <label>H drenaje (mm) — H0/2 si doble drenaje</label>
-        <input type="number" id="co-hdr" value="` + f2(hdr) + `" step="0.01">
+        <input type="number" id="co-hdr" placeholder="Ej. ` + f2(hdr) + `" step="0.01">
         <label>t50 (min)</label>
-        <input type="number" id="co-t50" value="` + f2(t50) + `" step="0.1">
+        <input type="number" id="co-t50" placeholder="Ej. ` + f2(t50) + `" step="0.1">
         <div class="botones-calculo">
           <button class="btn-calcular" onclick="calcularConsolidacionMS2()">CALCULAR</button>
           <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayoMS2('consolidacion')">GUARDAR DATOS</button>
@@ -7360,7 +7360,7 @@ function graficaConsolidacionMS2() {
     var ctx = canvas.getContext('2d');
     var w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#1c1410'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
     var logs = d.pts.map(function(p) { return Math.log10(p.s); });
     var minL = Math.min.apply(null, logs) - 0.1, maxL = Math.max.apply(null, logs) + 0.1;
     var minE = Math.min.apply(null, d.pts.map(function(p) { return p.e; })) - 0.05;
@@ -7368,7 +7368,7 @@ function graficaConsolidacionMS2() {
     var ox = 55, oy = h - 40, gx = w - 30, gy = 25;
     function sx(logS) { return ox + ((logS - minL) / (maxL - minL)) * (gx - ox); }
     function sy(e) { return oy - ((e - minE) / (maxE - minE)) * (oy - gy); }
-    ctx.strokeStyle = '#666'; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
+    ctx.strokeStyle = '#64748B'; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
     ctx.strokeStyle = '#e8b84a'; ctx.lineWidth = 2; ctx.beginPath();
     d.pts.forEach(function(p, i) {
         var x = sx(Math.log10(p.s)), y = sy(p.e);
@@ -7887,19 +7887,19 @@ function crearFormularioTriaxial() {
         </select>
         <h4>Ensayo 1</h4>
         <label>σ₃ (kPa)</label>
-        <input type="number" id="tx-s3-1" value="` + f0(s3s[0]) + `" step="1">
+        <input type="number" id="tx-s3-1" placeholder="Ej. ` + f0(s3s[0]) + `" step="1">
         <label>σ₁ en falla (kPa)</label>
-        <input type="number" id="tx-s1-1" value="` + f0(s1s[0]) + `" step="1">
+        <input type="number" id="tx-s1-1" placeholder="Ej. ` + f0(s1s[0]) + `" step="1">
         <h4>Ensayo 2</h4>
         <label>σ₃ (kPa)</label>
-        <input type="number" id="tx-s3-2" value="` + f0(s3s[1]) + `" step="1">
+        <input type="number" id="tx-s3-2" placeholder="Ej. ` + f0(s3s[1]) + `" step="1">
         <label>σ₁ en falla (kPa)</label>
-        <input type="number" id="tx-s1-2" value="` + f0(s1s[1]) + `" step="1">
+        <input type="number" id="tx-s1-2" placeholder="Ej. ` + f0(s1s[1]) + `" step="1">
         <h4>Ensayo 3 (opcional)</h4>
         <label>σ₃ (kPa)</label>
-        <input type="number" id="tx-s3-3" value="` + f0(s3s[2]) + `" step="1">
+        <input type="number" id="tx-s3-3" placeholder="Ej. ` + f0(s3s[2]) + `" step="1">
         <label>σ₁ en falla (kPa)</label>
-        <input type="number" id="tx-s1-3" value="` + f0(s1s[2]) + `" step="1">
+        <input type="number" id="tx-s1-3" placeholder="Ej. ` + f0(s1s[2]) + `" step="1">
         <div class="botones-calculo">
           <button class="btn-calcular" onclick="calcularTriaxial()">CALCULAR</button>
           <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayoMS2('triaxial')">GUARDAR DATOS</button>
@@ -7981,7 +7981,7 @@ function graficaTriaxial() {
     var ox = 60, oy = h - 45, gx = w - 25, gy = 25;
     function sx(x) { return ox + (x / maxS) * (gx - ox); }
     function sy(y) { return oy - (y / maxT) * (oy - gy); }
-    ctx.strokeStyle = '#666'; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
+    ctx.strokeStyle = '#64748B'; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
     // envelope
     ctx.strokeStyle = '#e8b84a'; ctx.lineWidth = 2.5;
     ctx.beginPath();
