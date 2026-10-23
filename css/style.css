@@ -5934,7 +5934,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 
-/* Gráficas MS2 — mismo fondo que la interfaz */
+/* Gráficas MS2 — fondo alineado a la interfaz */
 .grafica-panel canvas,
 canvas#canvas-corte,
 canvas#canvas-inconf,
@@ -5944,6 +5944,6 @@ canvas#canvas-triaxial {
     border-radius: 12px;
 }
 .grafica-panel {
-    background: linear-gradient(160deg, rgba(21,31,50,0.95), rgba(11,18,32,0.98));
+    background: linear-gradient(160deg, rgba(21, 31, 50, 0.95), rgba(11, 18, 32, 0.98));
     border: 1px solid #2B3A50;
 }
