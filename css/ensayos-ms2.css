@@ -344,10 +344,7 @@
 .lab3d-views button:hover { background: #1E293B; color: #fff; }
 .lab3d-views button.on { background: var(--lab-accent); color: #0B1220; }
 
-.lab3d-hud {
-    position: absolute; left: 14px; right: 14px; top: calc(var(--lab-h) - 76px);
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; pointer-events: none;
-}
+.lab3d-hud { display: none !important; }
 .lab3d-hud > div {
     padding: 8px 12px; border-radius: 12px; background: rgba(21,31,50,.9); border: 1px solid #2B3A50; backdrop-filter: blur(6px);
 }
