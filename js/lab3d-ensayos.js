@@ -1159,7 +1159,7 @@
         return '' +
         '<div class="lab3d" data-tipo="' + tipo + '" style="--lab-accent:' + meta.accent + '">' +
           '<div class="lab3d-stage">' +
-            '<div class="lab3d-canvas" role="img" aria-label="' + esc(meta.machine) + ' en 3D"></div>' +
+            '<div class="lab3d-canvas" role="img" aria-label="' + esc(meta.machine) + ' en 3D" title="Arrastra: orbitar · Rueda: zoom · Ctrl+rueda: mover izq/der"></div>' +
             '<div class="lab3d-pins"></div>' +
             '<div class="lab3d-tag"><span>Máquina asignada</span><strong>' + esc(meta.machine) + '</strong></div>' +
             '<div class="lab3d-state"><i></i><b>Listo</b></div>' +
@@ -1481,10 +1481,33 @@
                 on(dom, 'pointercancel', endDrag);
                 on(dom, 'pointerleave', endDrag);
                 on(dom, 'wheel', function (e) {
-                    /* la rueda hace zoom sobre la máquina (acerca / aleja de forma proporcional) */
                     e.preventDefault();
                     var dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
-                    inst.goal.radius = clamp(inst.goal.radius * Math.exp(dy * 0.0014), 1.3, 24);
+                    var dx = e.deltaMode === 1 ? e.deltaX * 33 : e.deltaX;
+                    /* Ctrl + scroll (o shift + scroll horizontal): desplazar cámara izquierda/derecha */
+                    if (e.ctrlKey || e.metaKey) {
+                        var th = inst.goal.theta;
+                        /* vector "derecha" en el plano horizontal según el ángulo orbital */
+                        var rx = Math.cos(th);
+                        var rz = -Math.sin(th);
+                        var step = dy * 0.012 * Math.max(0.5, inst.goal.radius * 0.08);
+                        inst.goal.tx = clamp(inst.goal.tx + rx * step, -8, 8);
+                        inst.goal.tz = clamp(inst.goal.tz + rz * step, -8, 8);
+                        /* scroll horizontal nativo (trackpad) también panea */
+                        if (dx) {
+                            inst.goal.tx = clamp(inst.goal.tx - Math.sin(th) * dx * 0.01, -8, 8);
+                            inst.goal.tz = clamp(inst.goal.tz - Math.cos(th) * dx * 0.01, -8, 8);
+                        }
+                    } else if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 0) {
+                        /* trackpad: gesto horizontal sin Ctrl = pan izquierda/derecha */
+                        var th2 = inst.goal.theta;
+                        var step2 = dx * 0.01 * Math.max(0.5, inst.goal.radius * 0.08);
+                        inst.goal.tx = clamp(inst.goal.tx - Math.sin(th2) * step2, -8, 8);
+                        inst.goal.tz = clamp(inst.goal.tz - Math.cos(th2) * step2, -8, 8);
+                    } else {
+                        /* rueda normal: zoom */
+                        inst.goal.radius = clamp(inst.goal.radius * Math.exp(dy * 0.0014), 1.3, 24);
+                    }
                 }, { passive: false });
 
                 if (global.ResizeObserver) {
