@@ -17,8 +17,7 @@
     /* ------------------------------------------------------------------ */
     var THREE_SRCS = [
         'https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js',
-        'https://cdnjs.cloudflare.com/ajax/libs/three.js/r147/three.min.js',
-        'https://unpkg.com/three@0.147.0/build/three.min.js'
+        'https://cdnjs.cloudflare.com/ajax/libs/three.js/r147/three.min.js'
     ];
     var threePromise = null;
 
@@ -26,23 +25,17 @@
         return new Promise(function (res, rej) {
             var s = document.createElement('script');
             s.src = src;
-            s.async = true;
-            s.onload = function () { res(); };
+            s.onload = res;
             s.onerror = function () { rej(new Error('No se pudo cargar ' + src)); };
             document.head.appendChild(s);
         });
     }
 
     function ensureThree() {
-        if (global.THREE) return Promise.resolve(global.THREE);
+        if (global.THREE) return Promise.resolve();
         if (!threePromise) {
-            threePromise = THREE_SRCS.reduce(function (chain, src) {
-                return chain.catch(function () { return loadScript(src); });
-            }, Promise.reject())
-                .then(function () {
-                    if (!global.THREE) throw new Error('three.js cargó pero window.THREE no está disponible');
-                    return global.THREE;
-                })
+            threePromise = loadScript(THREE_SRCS[0])
+                .catch(function () { return loadScript(THREE_SRCS[1]); })
                 .catch(function (e) { threePromise = null; throw e; });
         }
         return threePromise;
@@ -59,14 +52,10 @@
             norma: 'ASTM D3080 · INV E-154',
             duration: 18,
             phases: [
-                { a: 0.00, b: 0.10, t: 'Preparar la muestra', d: 'Recorta o prepara la muestra con dimensiones apropiadas. (ASTM D3080)' },
-                { a: 0.10, b: 0.20, t: 'Instalar en la caja', d: 'Coloca el suelo en la caja con los elementos porosos requeridos.' },
-                { a: 0.20, b: 0.35, t: 'Aplicar carga normal σn', d: 'Aplica la tensión normal y permite la consolidación requerida. σn = N / A.' },
-                { a: 0.35, b: 0.55, t: 'Cortar a velocidad constante', d: 'Desplaza horizontalmente una mitad de la caja a la velocidad establecida.' },
-                { a: 0.55, b: 0.68, t: 'Registrar mediciones', d: 'Mide desplazamiento horizontal, fuerza cortante y desplazamiento vertical.' },
-                { a: 0.68, b: 0.80, t: 'Calcular esfuerzos', d: 'τ = T / A. Aplica corrección de área cuando corresponda.' },
-                { a: 0.80, b: 0.90, t: 'Identificar resistencia', d: 'Construye la curva esfuerzo cortante–desplazamiento y aplica el criterio de resistencia.' },
-                { a: 0.90, b: 1.01, t: 'Obtener c y φ', d: 'Repite a distintas σn. Ajusta la envolvente τf = c + σn · tan(φ).' }
+                { a: 0.00, b: 0.18, t: 'Aplicar carga normal', d: 'Se cargan las pesas del colgador: σn = N / A.' },
+                { a: 0.18, b: 0.30, t: 'Consolidar bajo σn', d: 'La muestra se asienta antes de iniciar el corte.' },
+                { a: 0.30, b: 0.95, t: 'Cortar a velocidad constante', d: 'El carro desplaza la mitad inferior; el anillo mide la fuerza cortante.' },
+                { a: 0.95, b: 1.01, t: 'Registrar τ, δh y δv', d: 'Se anota la resistencia pico y la residual.' }
             ],
             parts: [
                 { name: "Mitad superior de la caja (fija)", desc: "Retenida por la mordaza y el anillo; no se desplaza." },
@@ -93,14 +82,9 @@
             norma: 'ASTM D2166 · INV E-152',
             duration: 14,
             phases: [
-                { a: 0.00, b: 0.10, t: 'Preparar la probeta', d: 'Probeta cilíndrica con dimensiones del método. (ASTM D2166)' },
-                { a: 0.10, b: 0.20, t: 'Medir geometría', d: 'Registra diámetro, altura inicial L0 y masa.' },
-                { a: 0.20, b: 0.30, t: 'Instalar en la prensa', d: 'Centra la probeta entre los platos (σ₃ = 0).' },
-                { a: 0.30, b: 0.50, t: 'Cargar axialmente', d: 'Aplica deformación axial a la velocidad especificada.' },
-                { a: 0.50, b: 0.62, t: 'Registrar P y ΔL', d: 'Mide carga axial P y acortamiento ΔL.' },
-                { a: 0.62, b: 0.74, t: 'Calcular ε y área corregida', d: 'ε = ΔL / L0; Acorr = A0 / (1 − ε).' },
-                { a: 0.74, b: 0.86, t: 'Calcular esfuerzo σ', d: 'σ = P / Acorr. Construye la curva esfuerzo–deformación.' },
-                { a: 0.86, b: 1.01, t: 'Identificar qu y cu', d: 'qu = máximo esfuerzo axial. cu ≈ qu / 2 en condiciones apropiadas.' }
+                { a: 0.00, b: 0.08, t: 'Colocar la probeta', d: 'Cilindro libre de suelo entre platos (σ₃ = 0).' },
+                { a: 0.08, b: 0.65, t: 'Cargar axialmente', d: 'Deformación controlada; se leen ΔL y carga P.' },
+                { a: 0.65, b: 1.01, t: 'Falla de la probeta', d: 'Aparece el plano de falla; qu = σ máx.' }
             ],
             parts: [
                 { name: "Bastidor de acero", desc: "Columnas y travesaño rígidos que reaccionan la carga axial." },
@@ -125,13 +109,9 @@
             norma: 'ASTM D2435 · INV E-151',
             duration: 22,
             phases: [
-                { a: 0.00, b: 0.12, t: 'Preparar la muestra', d: 'Recorta la muestra para el anillo conservando la estructura. (ASTM D2435)' },
-                { a: 0.12, b: 0.24, t: 'Montar en el edómetro', d: 'Coloca la muestra entre piedras porosas e instala el conjunto.' },
-                { a: 0.24, b: 0.36, t: 'Carga de asiento', d: 'Aplica la carga de asiento establecida y pon a cero el deformímetro.' },
-                { a: 0.36, b: 0.58, t: 'Incrementos de carga', d: 'Aplica incrementos de tensión vertical según el programa del ensayo.' },
-                { a: 0.58, b: 0.72, t: 'Medir tiempo y asentamiento', d: 'Registra desplazamientos a los tiempos establecidos en cada incremento.' },
-                { a: 0.72, b: 0.84, t: 'Calcular índice de vacíos e', d: 'Usa la geometría inicial y el cambio de altura: e = e0 − ΔH / Hs.' },
-                { a: 0.84, b: 1.01, t: 'Interpretar Cc, σ\'p y Cv', d: 'Curvas e–log σ\' y asentamiento–tiempo. Obtén Cc, Cr/Cs, σ\'p y Cv.' }
+                { a: 0.00, b: 0.08, t: 'Montar anillo y saturar', d: 'Muestra entre piedras porosas, celda con agua.' },
+                { a: 0.08, b: 0.96, t: 'Incrementos de carga', d: 'Cada escalón duplica σ\'; se lee el asentamiento en el tiempo.' },
+                { a: 0.96, b: 1.01, t: 'Fin del último incremento', d: 'Se obtiene la curva e – log σ\'.' }
             ],
             parts: [
                 { name: "Brazo de carga (palanca)", desc: "Multiplica la carga de las pesas sobre la muestra." },
@@ -157,15 +137,9 @@
             norma: 'ASTM D2850 / D4767 · INV E-153',
             duration: 20,
             phases: [
-                { a: 0.00, b: 0.10, t: 'Preparar la probeta', d: 'Obtén y mide una probeta cilíndrica. (ASTM D2850 / D4767)' },
-                { a: 0.10, b: 0.20, t: 'Instalar membrana', d: 'Coloca membrana, piedras porosas y conexiones de drenaje.' },
-                { a: 0.20, b: 0.30, t: 'Cerrar la cámara', d: 'Monta la cámara y comprueba estanqueidad.' },
-                { a: 0.30, b: 0.42, t: 'Aplicar confinamiento σ₃', d: 'Aplica la presión lateral σ₃ indicada.' },
-                { a: 0.42, b: 0.52, t: 'Consolidar si corresponde', d: 'CU y CD: fase de consolidación. UU: sin consolidación previa.' },
-                { a: 0.52, b: 0.60, t: 'Definir drenaje', d: 'UU no drenado; CU consolidado–corte no drenado; CD consolidado–corte drenado.' },
-                { a: 0.60, b: 0.78, t: 'Aplicar carga axial', d: 'Incrementa la carga a la velocidad establecida.' },
-                { a: 0.78, b: 0.88, t: 'Registrar datos', d: 'Carga, deformación, σ₃ y, si procede, presión de poros y cambio volumétrico.' },
-                { a: 0.88, b: 1.01, t: 'Círculos de Mohr y c–φ', d: 'σ₁ = σ₃ + q. Construye círculos de Mohr y obtiene parámetros resistentes.' }
+                { a: 0.00, b: 0.30, t: 'Llenar y presurizar la cámara', d: 'Se aplica la presión de confinamiento σ₃.' },
+                { a: 0.30, b: 0.85, t: 'Aplicar carga axial', d: 'El vástago aumenta σ₁ a velocidad constante.' },
+                { a: 0.85, b: 1.01, t: 'Falla de la probeta', d: 'Plano a 45° + φ/2; se registra σ₁ en falla.' }
             ],
             parts: [
                 { name: "Marco de carga", desc: "Columnas y travesaño que reaccionan la carga axial." },
@@ -1179,14 +1153,13 @@
     function plantilla(meta, tipo) {
         var partsHtml = '';
         var phasesHtml = meta.phases.map(function (f, i) {
-            return '<li data-ph="' + i + '" role="button" tabindex="0" title="Ir a este paso">' +
-                '<span class="lab3d-ph-n">Paso ' + (i + 1) + '</span><div><b>' +
+            return '<li data-ph="' + i + '"><span class="lab3d-ph-n">' + (i + 1) + '</span><div><b>' +
                 esc(f.t) + '</b><small>' + esc(f.d) + '</small></div></li>';
         }).join('');
         return '' +
         '<div class="lab3d" data-tipo="' + tipo + '" style="--lab-accent:' + meta.accent + '">' +
           '<div class="lab3d-stage">' +
-            '<div class="lab3d-canvas" role="img" aria-label="' + esc(meta.machine) + ' en 3D" title="Arrastra: orbitar · Rueda: zoom · Ctrl+rueda: mover izq/der"></div>' +
+            '<div class="lab3d-canvas" role="img" aria-label="' + esc(meta.machine) + ' en 3D"></div>' +
             '<div class="lab3d-pins"></div>' +
             '<div class="lab3d-tag"><span>Máquina asignada</span><strong>' + esc(meta.machine) + '</strong></div>' +
             '<div class="lab3d-state"><i></i><b>Listo</b></div>' +
@@ -1216,20 +1189,9 @@
             '<div class="lab3d-info-head"><span>Ficha de la máquina</span><strong>' + esc(meta.machine) + '</strong>' +
               '<em>' + esc(meta.machineSub) + '</em><code>' + esc(meta.norma) + '</code></div>' +
             '<h5>Componentes</h5><ol class="lab3d-parts"></ol>' +
-            '<h5>Paso a paso del laboratorio</h5><p class="lab3d-pasos-hint">Haz clic en un paso para saltar a esa etapa. Al iniciar el ensayo, la secuencia se recorre automáticamente.</p><ol class="lab3d-phases">' + phasesHtml + '</ol>' +
+            '<h5>Secuencia del ensayo</h5><ol class="lab3d-phases">' + phasesHtml + '</ol>' +
             '<p class="lab3d-note"></p>' +
           '</aside>' +
-          '<div class="lab3d-footer">' +
-            '<div class="lab3d-paso" aria-live="polite">' +
-              '<span class="lab3d-paso-n">Paso 1 / ' + meta.phases.length + '</span>' +
-              '<strong class="lab3d-paso-t">' + esc(meta.phases[0].t) + '</strong>' +
-              '<small class="lab3d-paso-d">' + esc(meta.phases[0].d) + '</small>' +
-            '</div>' +
-            '<div class="lab3d-resultados">' +
-              '<h5>Valores registrados</h5>' +
-              '<div class="lab3d-res-grid"></div>' +
-            '</div>' +
-          '</div>' +
         '</div>';
     }
 
@@ -1256,6 +1218,7 @@
         var partsList = q('.lab3d-parts');
         var phaseItems = host.querySelectorAll('.lab3d-phases li');
         var noteEl = q('.lab3d-note');
+
         var inst = {
             tipo: tipo, host: host, disposed: false, playing: false,
             p: 0, speed: 1, prm: PARAMS[tipo](), lastPhase: -2,
@@ -1270,23 +1233,6 @@
             el.addEventListener(ev, fn, opt);
             inst.cleanups.push(function () { el.removeEventListener(ev, fn, opt); });
         }
-
-        /* Clic en un paso → saltar a esa etapa del ensayo */
-        Array.prototype.forEach.call(phaseItems, function (li) {
-            on(li, 'click', function () {
-                var i = parseInt(li.getAttribute('data-ph'), 10);
-                var ph = meta.phases[i];
-                if (!ph) return;
-                inst.playing = false;
-                updatePlayBtn();
-                inst.p = (ph.a + ph.b) / 2;
-                if (scrub) scrub.value = Math.round(inst.p * 1000);
-                apply();
-            });
-            on(li, 'keydown', function (e) {
-                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); li.click(); }
-            });
-        });
 
         function setNota() {
             noteEl.innerHTML = '<b>' + (inst.prm.real ? 'Datos del ensayo' : 'Modo demostración') + '</b> ' + esc(inst.prm.nota) +
@@ -1307,28 +1253,12 @@
         function apply() {
             if (!inst.machine) return;
             var r = inst.machine.set(inst.p, inst.prm);
-            /* Fase educativa según META.phases (paso a paso del laboratorio) */
-            var phIdx = 0;
-            for (var pi = 0; pi < meta.phases.length; pi++) {
-                if (inst.p >= meta.phases[pi].a) phIdx = pi;
-            }
-            r.phase = phIdx;
             for (var i = 0; i < r.hud.length; i++) {
                 var h = inst.hudEls[i];
                 if (!h) continue;
                 h.k.textContent = r.hud[i].k;
                 h.v.textContent = r.hud[i].v;
                 h.u.textContent = r.hud[i].u;
-            }
-            /* Panel inferior: mismos valores registrados */
-            var resGrid = host.querySelector('.lab3d-res-grid');
-            if (resGrid) {
-                var html = '';
-                for (var ri = 0; ri < r.hud.length; ri++) {
-                    html += '<div class="lab3d-res-tile"><span>' + esc(r.hud[ri].k) + '</span><strong>' +
-                        esc(String(r.hud[ri].v)) + '</strong><small>' + esc(r.hud[ri].u || '') + '</small></div>';
-                }
-                resGrid.innerHTML = html;
             }
             scrub.value = String(Math.round(inst.p * 1000));
             pctEl.textContent = Math.round(inst.p * 100) + ' %';
@@ -1338,21 +1268,9 @@
                     phaseItems[j].classList.toggle('is-on', j === r.phase);
                     phaseItems[j].classList.toggle('is-done', j < r.phase);
                 }
-                var pasoEl = host.querySelector('.lab3d-paso');
-                if (pasoEl && meta.phases[r.phase]) {
-                    var ph = meta.phases[r.phase];
-                    var nEl = pasoEl.querySelector('.lab3d-paso-n');
-                    var tEl = pasoEl.querySelector('.lab3d-paso-t');
-                    var dEl = pasoEl.querySelector('.lab3d-paso-d');
-                    if (nEl) nEl.textContent = 'Paso ' + (r.phase + 1) + ' / ' + meta.phases.length;
-                    if (tEl) tEl.textContent = ph.t;
-                    if (dEl) dEl.textContent = ph.d;
-                    pasoEl.classList.add('is-pulse');
-                    setTimeout(function () { try { pasoEl.classList.remove('is-pulse'); } catch (e) {} }, 450);
-                }
             }
             var done = inst.p >= 0.999;
-            var txt = inst.p <= 0.001 ? 'Listo — inicia el ensayo para ver el paso a paso' : done ? 'Ensayo finalizado' : meta.phases[r.phase].t;
+            var txt = inst.p <= 0.001 ? 'Listo' : done ? 'Ensayo finalizado' : meta.phases[r.phase].t;
             stateTxt.textContent = txt;
             stateEl.classList.toggle('is-run', inst.playing);
             stateEl.classList.toggle('is-done', done);
@@ -1563,33 +1481,10 @@
                 on(dom, 'pointercancel', endDrag);
                 on(dom, 'pointerleave', endDrag);
                 on(dom, 'wheel', function (e) {
+                    /* la rueda hace zoom sobre la máquina (acerca / aleja de forma proporcional) */
                     e.preventDefault();
                     var dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
-                    var dx = e.deltaMode === 1 ? e.deltaX * 33 : e.deltaX;
-                    /* Ctrl + scroll (o shift + scroll horizontal): desplazar cámara izquierda/derecha */
-                    if (e.ctrlKey || e.metaKey) {
-                        var th = inst.goal.theta;
-                        /* vector "derecha" en el plano horizontal según el ángulo orbital */
-                        var rx = Math.cos(th);
-                        var rz = -Math.sin(th);
-                        var step = dy * 0.012 * Math.max(0.5, inst.goal.radius * 0.08);
-                        inst.goal.tx = clamp(inst.goal.tx + rx * step, -8, 8);
-                        inst.goal.tz = clamp(inst.goal.tz + rz * step, -8, 8);
-                        /* scroll horizontal nativo (trackpad) también panea */
-                        if (dx) {
-                            inst.goal.tx = clamp(inst.goal.tx - Math.sin(th) * dx * 0.01, -8, 8);
-                            inst.goal.tz = clamp(inst.goal.tz - Math.cos(th) * dx * 0.01, -8, 8);
-                        }
-                    } else if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 0) {
-                        /* trackpad: gesto horizontal sin Ctrl = pan izquierda/derecha */
-                        var th2 = inst.goal.theta;
-                        var step2 = dx * 0.01 * Math.max(0.5, inst.goal.radius * 0.08);
-                        inst.goal.tx = clamp(inst.goal.tx - Math.sin(th2) * step2, -8, 8);
-                        inst.goal.tz = clamp(inst.goal.tz - Math.cos(th2) * step2, -8, 8);
-                    } else {
-                        /* rueda normal: zoom */
-                        inst.goal.radius = clamp(inst.goal.radius * Math.exp(dy * 0.0014), 1.3, 24);
-                    }
+                    inst.goal.radius = clamp(inst.goal.radius * Math.exp(dy * 0.0014), 1.3, 24);
                 }, { passive: false });
 
                 if (global.ResizeObserver) {
