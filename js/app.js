@@ -3104,9 +3104,11 @@ function crearFormularioGranulometria() {
                 <input type="number" id="g-p200" step="0.01" placeholder="Masa que pasa el último tamiz">
 
                 <div class="botones-calculo">
+                    <button type="button" class="btn-secundario" onclick="cargarEjemploGranulometria()">VALORES DE EJEMPLO</button>
                     <button class="btn-calcular" onclick="calcularGranulometria()">CALCULAR</button>
                     <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayo('granulometria')">GUARDAR DATOS</button>
                     <button type="button" class="btn-informe-pdf" id="btnInforme-granulometria" onclick="generarInformeEnsayoPDF('granulometria')">Descargar informe</button>
+                    <button type="button" class="btn-secundario" onclick="graficaGranulometria()">GENERAR GRÁFICA</button>
                     <button class="btn-limpiar" onclick="limpiarCampo('g')">LIMPIAR</button>
                 </div>
                 <div class="mensaje-error" id="g-error"></div>
@@ -3509,6 +3511,39 @@ function calcularHumedad() {
     window.__datosEnsayo.h = { recipiente: r, humeda: h, seca: s, agua: agua, suelo: sueloSeco, w: w };
 }
 
+
+/** Carga un ejemplo didáctico (muestra 1000 g) y calcula + grafica */
+function cargarEjemploGranulometria() {
+    // Tamices del ejemplo clásico FLA / práctica UniPamplona
+    var ejemploIds = ['3_8in', 'n4', 'n10', 'n20', 'n40', 'n60', 'n100', 'n200'];
+    var masas = {
+        '3_8in': 15,
+        'n4': 45,
+        'n10': 120,
+        'n20': 150,
+        'n40': 180,
+        'n60': 140,
+        'n100': 110,
+        'n200': 90
+    };
+    document.querySelectorAll('.g-tamiz-opt').forEach(function(cb) {
+        cb.checked = ejemploIds.indexOf(cb.value) >= 0;
+    });
+    if (typeof aplicarTamicesSeleccionados === 'function') aplicarTamicesSeleccionados();
+    var total = document.getElementById('g-total');
+    if (total) total.value = '1000';
+    var fondo = document.getElementById('g-p200');
+    if (fondo) fondo.value = '150';
+    Object.keys(masas).forEach(function(id) {
+        var el = document.getElementById('g-ret-' + id) || document.getElementById('g-m-' + id);
+        if (el) el.value = String(masas[id]);
+    });
+    setTimeout(function() {
+        if (typeof calcularGranulometria === 'function') calcularGranulometria();
+        if (typeof graficaGranulometria === 'function') graficaGranulometria();
+    }, 40);
+}
+
 function calcularGranulometria() {
     window.__datosEnsayo = window.__datosEnsayo || {};
     var total = parse('g-total');
@@ -3649,6 +3684,7 @@ function calcularGranulometria() {
 
     window.__datosEnsayo.g = {
         curva: curva,
+        filas: curva,
         tabla: tabla,
         total: total,
         gPct: gPct, aPct: aPct, fPct: fPct,
@@ -3656,6 +3692,7 @@ function calcularGranulometria() {
         tipo: tipo,
         tamicesIds: sieves.map(function(s) { return s.id; })
     };
+    try { if (typeof graficaGranulometria === 'function') graficaGranulometria(); } catch (eG) {}
 }
 
 function calcularLimites() {
@@ -3869,230 +3906,253 @@ function graficaHumedad() {
 
 function graficaGranulometria() {
     var d = window.__datosEnsayo && window.__datosEnsayo.g;
-    if (!d || !d.curva) {
-        var hint = document.getElementById('hint-granulo');
-        if (hint) hint.textContent = 'Primero pulsa CALCULAR.';
+    var series = (d && (d.curva || d.filas)) || [];
+    if (!d || !series.length) {
+        var h0 = document.getElementById('hint-granulo');
+        if (h0) h0.textContent = 'Primero carga valores (o usa VALORES DE EJEMPLO) y pulsa CALCULAR.';
         return;
     }
-    var canvas = document.getElementById('canvas-granulo');
-    if (!canvas) return;
-    var ctx = canvas.getContext('2d');
-    var dpr = window.devicePixelRatio || 1;
-    var cssW = Math.max(canvas.clientWidth || 900, 720);
-    var cssH = 520;
-    canvas.width = Math.floor(cssW * dpr);
-    canvas.height = Math.floor(cssH * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    var w = cssW, h = cssH;
-
-    // Plantilla papel logarítmico (fondo blanco)
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, w, h);
-
-    // Título
-    ctx.fillStyle = '#111';
-    ctx.font = 'bold 18px Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText('Analisis de Granulometria', w / 2, 14);
-
-    var pad = { l: 70, r: 28, t: 52, b: 55 };
+    var g = (typeof _prepCanvas === 'function') ? _prepCanvas('canvas-granulo', 'hint-granulo') : null;
+    if (!g) {
+        var cv = document.getElementById('canvas-granulo');
+        if (!cv) return;
+        var ctx0 = cv.getContext('2d');
+        var rect = cv.getBoundingClientRect();
+        var W = Math.max(640, Math.floor(rect.width || 900));
+        var H = 520;
+        var ratio = window.devicePixelRatio || 1;
+        cv.width = W * ratio; cv.height = H * ratio;
+        cv.style.width = W + 'px'; cv.style.height = H + 'px';
+        ctx0.setTransform(ratio, 0, 0, ratio, 0, 0);
+        g = { ctx: ctx0, w: W, h: H };
+    }
+    var ctx = g.ctx, w = g.w, h = g.h;
+    var pad = { t: 48, r: 28, b: 62, l: 64 };
     var plotW = w - pad.l - pad.r;
     var plotH = h - pad.t - pad.b;
 
-    // Eje X log: 100 mm (izq) → 0.01 mm (der) — plantilla del curso
-    var dMax = 100;
-    var dMin = 0.01;
-    var minLog = Math.log10(dMin);
-    var maxLog = Math.log10(dMax);
+    // Fondo oscuro GeoMetrics
+    var bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#0B1220');
+    bg.addColorStop(1, '#0F172A');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Panel de gráfica
+    roundRect(ctx, pad.l - 8, pad.t - 12, plotW + 16, plotH + 24, 14, 'rgba(21,31,50,0.95)', '#2B3A50');
+
+    var dMax = 100, dMin = 0.01;
     function xOf(diam) {
-        var dd = Math.max(Math.min(diam, dMax), dMin);
-        return pad.l + ((maxLog - Math.log10(dd)) / (maxLog - minLog)) * plotW;
+        var ld = Math.log10(Math.max(dMin, Math.min(dMax, diam)));
+        var l0 = Math.log10(dMin), l1 = Math.log10(dMax);
+        return pad.l + plotW * ((l1 - ld) / (l1 - l0)); // mayor diámetro a la izquierda (estilo papel log)
     }
     function yOf(pasa) {
-        var p = Math.max(0, Math.min(100, pasa));
-        return pad.t + plotH - (p / 100) * plotH;
+        return pad.t + plotH * (1 - Math.max(0, Math.min(100, pasa)) / 100);
     }
 
-    // Marco
-    ctx.strokeStyle = '#222';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(pad.l, pad.t, plotW, plotH);
-
-    // Rejilla horizontal cada 2% (fina) y 10% (gruesa)
-    for (var p = 0; p <= 100; p += 2) {
+    // Rejilla horizontal
+    for (var p = 0; p <= 100; p += 5) {
         var yy = yOf(p);
         var major = (p % 10 === 0);
-        ctx.strokeStyle = major ? '#888' : '#d8d8d8';
-        ctx.lineWidth = major ? 0.9 : 0.45;
+        ctx.strokeStyle = major ? 'rgba(148,163,184,0.28)' : 'rgba(100,116,139,0.12)';
+        ctx.lineWidth = major ? 1 : 0.6;
         ctx.beginPath();
         ctx.moveTo(pad.l, yy);
         ctx.lineTo(pad.l + plotW, yy);
         ctx.stroke();
         if (major) {
-            ctx.fillStyle = '#222';
-            ctx.font = '11px Arial';
+            ctx.fillStyle = '#94A3B8';
+            ctx.font = '600 11px Inter, system-ui, sans-serif';
             ctx.textAlign = 'right';
             ctx.textBaseline = 'middle';
-            ctx.fillText(p.toFixed(2).replace('.', ','), pad.l - 8, yy);
+            ctx.fillText(String(p), pad.l - 10, yy);
         }
     }
 
-    // Rejilla vertical logarítmica (décadas + subdivisiones 2..9)
+    // Rejilla vertical log
     var decades = [100, 10, 1, 0.1, 0.01];
     decades.forEach(function(dec) {
         for (var m = 1; m <= 9; m++) {
-            var diam = dec * (m / 10) * 10; // dec * m when m is 1..9 for decade starting at dec
-            // For dec=100: 100,200..900 but we only want within range: 100, then 20..90 for decade 10?
-            // Standard: for decade [10,100]: lines at 20,30,..90 and major at 10,100
-            diam = dec * m;
-            if (m > 1) diam = dec * m; // 2*10=20 when dec=10
-            // Actually: decade base B has lines B, 2B, 3B, ... 9B
-            // For B=10: 10,20,...,90; for B=1: 1,2,...,9
-            diam = (m === 1) ? dec : dec * m;
-            // Wait: if dec is the left edge of decade (100,10,1,0.1,0.01):
-            // lines at 1*dec, 2*dec, ... 9*dec
-            diam = m * dec;
-            if (diam > dMax + 1e-12 || diam < dMin - 1e-12) continue;
-            // avoid double-drawing decade starts
+            var diam = m * dec;
+            if (diam > dMax + 1e-9 || diam < dMin - 1e-9) continue;
             var xx = xOf(diam);
-            if (xx < pad.l - 0.5 || xx > pad.l + plotW + 0.5) continue;
             var isDecade = (m === 1);
-            ctx.strokeStyle = isDecade ? '#666' : '#d0d0d0';
-            ctx.lineWidth = isDecade ? 0.9 : 0.45;
+            ctx.strokeStyle = isDecade ? 'rgba(148,163,184,0.35)' : 'rgba(100,116,139,0.14)';
+            ctx.lineWidth = isDecade ? 1.1 : 0.55;
             ctx.beginPath();
             ctx.moveTo(xx, pad.t);
             ctx.lineTo(xx, pad.t + plotH);
             ctx.stroke();
         }
     });
-    // Fix: above loop for dec=100 draws 100,200,..900 — 200>100 skip. Good.
-    // for dec=10: 10,20,...,90. Good.
 
-    // Etiquetas X principales
+    // Ejes
+    ctx.strokeStyle = '#64748B';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, pad.t);
+    ctx.lineTo(pad.l, pad.t + plotH);
+    ctx.lineTo(pad.l + plotW, pad.t + plotH);
+    ctx.stroke();
+
+    // Etiquetas X
     var xLabels = [
-        { d: 100, t: '100' },
-        { d: 10, t: '10' },
-        { d: 1, t: '1' },
-        { d: 0.1, t: '0,1' },
-        { d: 0.01, t: '0,01' }
+        { d: 100, t: '100' }, { d: 10, t: '10' }, { d: 1, t: '1' },
+        { d: 0.1, t: '0,1' }, { d: 0.075, t: '#200' }, { d: 0.01, t: '0,01' }
     ];
-    ctx.fillStyle = '#222';
-    ctx.font = '12px Arial';
+    ctx.fillStyle = '#CBD5E1';
+    ctx.font = '600 11px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     xLabels.forEach(function(lb) {
-        ctx.fillText(lb.t, xOf(lb.d), pad.t + plotH + 8);
+        ctx.fillText(lb.t, xOf(lb.d), pad.t + plotH + 10);
     });
-    ctx.font = 'bold 13px Arial';
-    ctx.fillText('Diametro del tamiz en mm', pad.l + plotW / 2, h - 22);
+    ctx.fillStyle = '#E2E8F0';
+    ctx.font = '700 12px Inter, system-ui, sans-serif';
+    ctx.fillText('Diámetro del tamiz (mm) — escala logarítmica', pad.l + plotW / 2, h - 22);
 
     // Etiqueta Y
     ctx.save();
     ctx.translate(18, pad.t + plotH / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillStyle = '#222';
-    ctx.font = 'bold 13px Arial';
+    ctx.fillStyle = '#E2E8F0';
+    ctx.font = '700 12px Inter, system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Porcentaje que pasa', 0, 0);
+    ctx.fillText('% que pasa', 0, 0);
     ctx.restore();
 
-    // Datos: solo tamices; último punto = #200 (0.075 mm)
-    var pts = (d.curva || []).filter(function(p) {
-        return p.d > 0 && p.pasa != null && p.name !== 'Fondo' && p.name !== 'finos' && p.d >= 0.075 - 1e-9;
-    }).slice().sort(function(a, b) { return b.d - a.d; });
+    // Título
+    ctx.fillStyle = '#F1F5F9';
+    ctx.font = '800 15px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('Curva granulométrica', pad.l, pad.t - 18);
+    ctx.fillStyle = '#64748B';
+    ctx.font = '600 11px Inter, system-ui, sans-serif';
+    ctx.fillText('Hasta tamiz N.º 200 (0,075 mm)', pad.l + 210, pad.t - 18);
 
-    function curvaSuaveXY(points) {
-        if (points.length < 2) {
-            return points.map(function(p) { return { x: xOf(p.d), y: yOf(p.pasa) }; });
+    // Puntos (solo hasta #200)
+    var pts = [];
+    series.forEach(function(f) {
+        if (!f || f.d == null || f.pasa == null) return;
+        if (f.d < 0.075 - 1e-9) return; // no graficar fondo
+        pts.push({ d: f.d, pasa: f.pasa, name: f.name || '' });
+    });
+    pts.sort(function(a, b) { return b.d - a.d; });
+
+    function curvaSuaveXY(arr) {
+        if (arr.length < 3) {
+            return arr.map(function(p) { return { x: xOf(p.d), y: yOf(p.pasa) }; });
         }
-        var logPts = points.map(function(p) {
-            return { lx: Math.log10(Math.max(p.d, 0.075)), py: p.pasa };
-        });
         var out = [];
-        var segs = 56;
-        for (var i = 0; i < logPts.length - 1; i++) {
-            var p0 = logPts[Math.max(0, i - 1)];
-            var p1 = logPts[i];
-            var p2 = logPts[i + 1];
-            var p3 = logPts[Math.min(logPts.length - 1, i + 2)];
-            for (var s = 0; s < segs; s++) {
-                var t = s / segs;
+        var N = 24;
+        for (var i = 0; i < arr.length - 1; i++) {
+            var p0 = arr[Math.max(0, i - 1)];
+            var p1 = arr[i];
+            var p2 = arr[i + 1];
+            var p3 = arr[Math.min(arr.length - 1, i + 2)];
+            for (var s = 0; s < N; s++) {
+                var t = s / N;
                 var t2 = t * t, t3 = t2 * t;
-                var lx = 0.5 * ((2 * p1.lx) + (-p0.lx + p2.lx) * t +
-                    (2 * p0.lx - 5 * p1.lx + 4 * p2.lx - p3.lx) * t2 +
-                    (-p0.lx + 3 * p1.lx - 3 * p2.lx + p3.lx) * t3);
-                var py = 0.5 * ((2 * p1.py) + (-p0.py + p2.py) * t +
-                    (2 * p0.py - 5 * p1.py + 4 * p2.py - p3.py) * t2 +
-                    (-p0.py + 3 * p1.py - 3 * p2.py + p3.py) * t3);
-                py = Math.max(0, Math.min(100, py));
-                out.push({ x: xOf(Math.pow(10, lx)), y: yOf(py) });
+                var x = 0.5 * ((2 * p1.d) + (-p0.d + p2.d) * t + (2 * p0.d - 5 * p1.d + 4 * p2.d - p3.d) * t2 + (-p0.d + 3 * p1.d - 3 * p2.d + p3.d) * t3);
+                var y = 0.5 * ((2 * p1.pasa) + (-p0.pasa + p2.pasa) * t + (2 * p0.pasa - 5 * p1.pasa + 4 * p2.pasa - p3.pasa) * t2 + (-p0.pasa + 3 * p1.pasa - 3 * p2.pasa + p3.pasa) * t3);
+                out.push({ x: xOf(x), y: yOf(y) });
             }
         }
-        var last = points[points.length - 1];
+        var last = arr[arr.length - 1];
         out.push({ x: xOf(last.d), y: yOf(last.pasa) });
-        if (out.length > 6) {
-            var sm = out.slice();
-            for (var pass = 0; pass < 4; pass++) {
-                var tmp = sm.slice();
-                for (var i2 = 2; i2 < sm.length - 2; i2++) {
-                    tmp[i2] = {
-                        x: (sm[i2-2].x + sm[i2-1].x + sm[i2].x + sm[i2+1].x + sm[i2+2].x) / 5,
-                        y: (sm[i2-2].y + sm[i2-1].y + sm[i2].y + sm[i2+1].y + sm[i2+2].y) / 5
-                    };
-                }
-                sm = tmp;
-            }
-            sm[0] = out[0];
-            sm[sm.length - 1] = out[out.length - 1];
-            return sm;
-        }
         return out;
     }
 
     if (pts.length) {
         var smooth = curvaSuaveXY(pts);
-        ctx.strokeStyle = '#111';
-        ctx.lineWidth = 2.2;
+        // Relleno bajo la curva
+        ctx.beginPath();
+        smooth.forEach(function(pt, i) {
+            if (i === 0) ctx.moveTo(pt.x, pt.y);
+            else ctx.lineTo(pt.x, pt.y);
+        });
+        ctx.lineTo(smooth[smooth.length - 1].x, pad.t + plotH);
+        ctx.lineTo(smooth[0].x, pad.t + plotH);
+        ctx.closePath();
+        var fill = ctx.createLinearGradient(0, pad.t, 0, pad.t + plotH);
+        fill.addColorStop(0, 'rgba(59,130,246,0.28)');
+        fill.addColorStop(1, 'rgba(45,212,191,0.04)');
+        ctx.fillStyle = fill;
+        ctx.fill();
+
+        // Línea
+        ctx.strokeStyle = '#38BDF8';
+        ctx.lineWidth = 2.8;
         ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
+        ctx.shadowColor = 'rgba(56,189,248,0.45)';
+        ctx.shadowBlur = 10;
         ctx.beginPath();
         smooth.forEach(function(pt, i) {
             if (i === 0) ctx.moveTo(pt.x, pt.y);
             else ctx.lineTo(pt.x, pt.y);
         });
         ctx.stroke();
+        ctx.shadowBlur = 0;
 
+        // Puntos
         pts.forEach(function(p, idx) {
             var x = xOf(p.d), y = yOf(p.pasa);
             var esUltimo = idx === pts.length - 1;
             ctx.beginPath();
-            ctx.arc(x, y, esUltimo ? 6.5 : 5.5, 0, Math.PI * 2);
-            ctx.fillStyle = '#fff';
+            ctx.arc(x, y, esUltimo ? 6.5 : 5.2, 0, Math.PI * 2);
+            ctx.fillStyle = esUltimo ? '#2DD4BF' : '#0B1220';
             ctx.fill();
-            ctx.strokeStyle = '#111';
-            ctx.lineWidth = esUltimo ? 2 : 1.6;
+            ctx.strokeStyle = esUltimo ? '#5EEAD4' : '#38BDF8';
+            ctx.lineWidth = 2;
             ctx.stroke();
         });
     }
 
-    // Leyenda discreta
-    ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    ctx.strokeStyle = '#555';
-    ctx.lineWidth = 1;
-    ctx.fillRect(pad.l + 10, pad.t + 10, 150, 36);
-    ctx.strokeRect(pad.l + 10, pad.t + 10, 150, 36);
-    ctx.beginPath();
-    ctx.arc(pad.l + 26, pad.t + 28, 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff';
-    ctx.fill();
-    ctx.strokeStyle = '#111';
-    ctx.stroke();
-    ctx.fillStyle = '#111';
-    ctx.font = '11px Arial';
+    // Marcadores D10 D30 D60
+    function markD(val, label, color) {
+        if (val == null || !(val > 0)) return;
+        var x = xOf(val);
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(x, pad.t);
+        ctx.lineTo(x, pad.t + plotH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = color;
+        ctx.font = '700 10px Inter, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(label, x, pad.t - 2);
+    }
+    markD(d.D10, 'D₁₀', '#FBBF24');
+    markD(d.D30, 'D₃₀', '#A78BFA');
+    markD(d.D60, 'D₆₀', '#FB7185');
+
+    // Leyenda
+    var lx = pad.l + plotW - 168, ly = pad.t + 12;
+    roundRect(ctx, lx, ly, 156, 72, 10, 'rgba(11,18,32,0.88)', '#2B3A50');
+    ctx.fillStyle = '#E2E8F0';
+    ctx.font = '700 11px Inter, system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Por mallas (hasta #200)', pad.l + 38, pad.t + 28);
+    ctx.fillText('% que pasa', lx + 14, ly + 18);
+    ctx.strokeStyle = '#38BDF8';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(lx + 14, ly + 34);
+    ctx.lineTo(lx + 40, ly + 34);
+    ctx.stroke();
+    ctx.fillStyle = '#94A3B8';
+    ctx.font = '600 10px Inter, system-ui, sans-serif';
+    ctx.fillText('Curva suavizada', lx + 46, ly + 37);
+    if (d.Cu != null) {
+        ctx.fillStyle = '#CBD5E1';
+        ctx.fillText('Cu = ' + (Number(d.Cu).toFixed(2)) + (d.Cc != null ? '   Cc = ' + Number(d.Cc).toFixed(2) : ''), lx + 14, ly + 56);
+    }
 
     try {
         window.__graficaGenerada = window.__graficaGenerada || {};
@@ -4100,7 +4160,25 @@ function graficaGranulometria() {
         window.__graficaGenerada['granulometria'] = true;
     } catch (eG) {}
     var hintEl = document.getElementById('hint-granulo');
-    if (hintEl) hintEl.textContent = 'Papel logarítmico (100–0,01 mm) · último punto: tamiz N.º 200.';
+    if (hintEl) {
+        var msg = 'Papel logarítmico · último punto #200 (0,075 mm)';
+        if (d.D10) msg += ' · D10=' + Number(d.D10).toFixed(3) + ' mm';
+        if (d.D30) msg += ' · D30=' + Number(d.D30).toFixed(3) + ' mm';
+        if (d.D60) msg += ' · D60=' + Number(d.D60).toFixed(3) + ' mm';
+        hintEl.textContent = msg;
+    }
+
+    function roundRect(ctx, x, y, w, h, r, fill, stroke) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.arcTo(x + w, y, x + w, y + h, r);
+        ctx.arcTo(x + w, y + h, x, y + h, r);
+        ctx.arcTo(x, y + h, x, y, r);
+        ctx.arcTo(x, y, x + w, y, r);
+        ctx.closePath();
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke(); }
+    }
 }
 
 function graficaLimites() {
