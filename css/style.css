@@ -5961,3 +5961,15 @@ canvas#canvas-triaxial {
 #rm-simuladores.is-detail > #panel-sim-rm {
     display: block !important;
 }
+
+
+/* ms2-card-cta color blanco */
+.ms2-card .ms2-card-cta,
+#ms2-ensayos .ms2-card-cta,
+#rm-ensayos .ms2-card-cta,
+#ms1-ensayos .ms2-card-cta {
+    color: #FFFFFF !important;
+}
+.ms2-card .ms2-card-cta i {
+    color: #FFFFFF !important;
+}
