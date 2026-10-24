@@ -266,21 +266,7 @@
 .lab3d {
     --lab-accent: #3B82F6;
     --lab-h: clamp(420px, 62vh, 600px);
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 330px;
-    grid-template-areas:
-        "stage info"
-        "footer footer";
-    gap: 18px;
-    align-items: start;
-}
-.lab3d-stage { grid-area: stage; }
-.lab3d-info { grid-area: info; }
-.lab3d-footer {
-    grid-area: footer;
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-    gap: 14px;
+    display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; align-items: start;
 }
 .lab3d-stage {
     position: relative; padding-top: var(--lab-h); border-radius: 20px; overflow: hidden;
@@ -344,7 +330,10 @@
 .lab3d-views button:hover { background: #1E293B; color: #fff; }
 .lab3d-views button.on { background: var(--lab-accent); color: #0B1220; }
 
-.lab3d-hud { display: none !important; }
+.lab3d-hud {
+    position: absolute; left: 14px; right: 14px; top: calc(var(--lab-h) - 76px);
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; pointer-events: none;
+}
 .lab3d-hud > div {
     padding: 8px 12px; border-radius: 12px; background: rgba(21,31,50,.9); border: 1px solid #2B3A50; backdrop-filter: blur(6px);
 }
@@ -422,15 +411,8 @@
 
 /* ---------------- RESPONSIVE ---------------- */
 @media (max-width: 1060px) {
-    .lab3d {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-            "stage"
-            "info"
-            "footer";
-    }
+    .lab3d { grid-template-columns: 1fr; }
     .lab3d-info { max-height: none; }
-    .lab3d-footer { grid-template-columns: 1fr; }
 }
 @media (max-width: 860px) {
     #ms2-ensayos .ms2-hero { flex-direction: column; padding: 24px 22px; }

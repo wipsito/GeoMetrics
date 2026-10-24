@@ -5932,18 +5932,3 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 800px) {
     .teo-visual-3, .teo-visual-4 { grid-template-columns: repeat(2, 1fr); }
 }
-
-
-/* Gráficas MS2 — fondo alineado a la interfaz */
-.grafica-panel canvas,
-canvas#canvas-corte,
-canvas#canvas-inconf,
-canvas#canvas-consol,
-canvas#canvas-triaxial {
-    background: #0B1220 !important;
-    border-radius: 12px;
-}
-.grafica-panel {
-    background: linear-gradient(160deg, rgba(21, 31, 50, 0.95), rgba(11, 18, 32, 0.98));
-    border: 1px solid #2B3A50;
-}
