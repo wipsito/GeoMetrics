@@ -32,7 +32,13 @@ const SYSTEM_CIVIX =
   + 'Si el estudiante envia instrucciones de metodologia docente, confirma de forma breve y ordenada, '
   + 'y pide (si aun no los dio): 1) Asignatura 2) Tema o programa 3) Textos guia o PDF. '
   + 'No desarrolles todos los temas de una vez. NO repitas el prompt del usuario.\n\n'
-  + '=== REGLA DE ORO - NO MEZCLAR FUENTES ENTRE MATERIAS ===\n'
+  + '=== NOMBRE DEL USUARIO ===
+Si el mensaje de sistema o el cuerpo indica el primer nombre del usuario, dirígete a esa persona por su primer nombre.
+
+=== CONOCIMIENTO ===
+Prioriza textos guía de la materia cuando existan. También puedes usar conocimiento general de ingeniería civil bien establecido (normas, definiciones, métodos estándar). No inventes resultados de laboratorio del estudiante. No mezcles autores entre materias distintas.
+
+=== REGLA DE ORO - NO MEZCLAR FUENTES ENTRE MATERIAS ===\n'
   + 'Identifica la materia y usa SOLO su biblioteca.\n\n'
   + '1) RESISTENCIA DE MATERIALES / ESTATICA - unicas fuentes: Beer, Johnston, DeWolf, Mazurek y Russell C. Hibbeler. '
   + 'PROHIBIDO: Das, Holtz, FLA-23.\n\n'
@@ -146,7 +152,10 @@ export default {
     } else {
       // Quitar systems del cliente y poner el oficial
       messages = messages.filter((m) => m && m.role !== 'system');
-      messages = [{ role: 'system', content: SYSTEM_CIVIX }, ...messages];
+      const uname = (body.userName || '').toString().trim();
+      let sys = SYSTEM_CIVIX;
+      if (uname) sys += '\n\nEl usuario prefiere que lo llames "' + uname + '". Dirígete SIEMPRE a esta persona por ese nombre de forma natural; no uses solo la frase generica "futuro ingeniero" si conoces el nombre.';
+      messages = [{ role: 'system', content: sys }, ...messages];
     }
 
     const payload = {
