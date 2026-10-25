@@ -64,55 +64,18 @@ function aulaUid() {
 }
 
 function aulaSeed() {
-    var DEMO_EMAIL = 'docente.demo@unipamplona.edu.co';
-    var DEMO = {
-        id: 'doc_demo',
-        nombre: 'Laura Patricia Gómez Rincón',
-        nombres: 'Laura Patricia',
-        apellidos: 'Gómez Rincón',
-        email: DEMO_EMAIL,
-        password: 'docente123',
-        rol: 'docente',
-        materia: '',
-        grupo: '',
-        // Solo grupos de demostración (no interfiere con A, B, C reales)
-        materias: [
-            { nombre: 'Mecánica de Suelos I', grupo: 'DEMO' },
-            { nombre: 'Mecánica de Suelos II', grupo: 'DEMO' },
-            { nombre: 'Resistencia de Materiales', grupo: 'DEMO' },
-            { nombre: 'Diseño de Mezclas', grupo: 'DEMO' }
-        ],
-        materia: 'Mecánica de Suelos I',
-        grupo: 'DEMO',
-        foto: ''
-    };
+    // Ya no se crea docente demo. Los docentes reales se autorizan desde el panel admin
+    // y se registran ellos mismos con su correo institucional.
     var users = aulaLoad(AULA_KEYS.users, null);
     if (!users || !Array.isArray(users)) users = [];
-    // Asegurar docente demo de prueba
-    var hasDemo = users.some(function(u) {
-        return u && String(u.email || '').toLowerCase() === DEMO_EMAIL;
+    // Eliminar cualquier resto del docente de prueba en local
+    var DEMO_EMAIL = 'docente.demo@unipamplona.edu.co';
+    var antes = users.length;
+    users = users.filter(function(u) {
+        return !(u && String(u.email || '').toLowerCase() === DEMO_EMAIL);
     });
-    if (!hasDemo) users.push(DEMO);
-    else {
-        users = users.map(function(u) {
-            if (u && String(u.email || '').toLowerCase() === DEMO_EMAIL) {
-                u.nombre = u.nombre || DEMO.nombre;
-                u.nombres = u.nombres || DEMO.nombres;
-                u.apellidos = u.apellidos || DEMO.apellidos;
-                u.password = u.password || DEMO.password;
-                u.rol = 'docente';
-                // Si no tiene materias, asignar solo DEMO
-                if (!u.materias || !u.materias.length) {
-                    u.materias = DEMO.materias;
-                    u.materia = DEMO.materia;
-                    u.grupo = DEMO.grupo;
-                }
-            }
-            return u;
-        });
-    }
-    aulaSave(AULA_KEYS.users, users);
-    // Superadmin por correo (Andrés); la cuenta la crea él al registrarse como estudiante
+    if (users.length !== antes) aulaSave(AULA_KEYS.users, users);
+    // Superadmin por correo (Andrés); la cuenta la crea él al registrarse
     try {
         if (typeof aulaAdminsLoad === 'function' && typeof aulaAdminsSave === 'function') {
             var ads = aulaAdminsLoad();
@@ -325,7 +288,7 @@ function aulaDominio() {
 function aulaDocentesBase() {
     return (typeof AULA_CONFIG !== 'undefined' && AULA_CONFIG.docentes)
         ? AULA_CONFIG.docentes.map(function(e) { return String(e).toLowerCase(); })
-        : ['docente.demo@unipamplona.edu.co'];
+        : [];
 }
 function aulaDocentesExtraLoad() {
     var list = aulaLoad(AULA_KEYS.docentesExtra, []);
@@ -2797,74 +2760,355 @@ function aulaEntregar() {
 }
 
 
+
 function aulaAbrirPerfil() {
     var user = aulaGetSession();
     if (!user) return;
+    var full = null;
+    try {
+        var users = aulaLoad(AULA_KEYS.users, []);
+        full = users.find(function(u) {
+            return u && (u.id === user.id || aulaNormalizarEmail(u.email) === aulaNormalizarEmail(user.email));
+        }) || user;
+    } catch (e) { full = user; }
+
     var modal = document.getElementById('modalPerfil');
     if (!modal) return;
     modal.hidden = false;
     var err = document.getElementById('perfilError');
+    var ok = document.getElementById('perfilOk');
     if (err) err.textContent = '';
+    if (ok) ok.hidden = true;
+
+    // Tabs
+    document.querySelectorAll('.perfil-tab').forEach(function(t) {
+        t.classList.toggle('active', t.getAttribute('data-ptab') === 'identidad');
+    });
+    document.querySelectorAll('.perfil-panel').forEach(function(p) {
+        var on = p.id === 'ptab-identidad';
+        p.hidden = !on;
+        p.classList.toggle('active', on);
+    });
+
     var fileInput = document.getElementById('perfilFotoInput');
     if (fileInput) fileInput.value = '';
     var prev = document.getElementById('perfilFotoPreview');
     var ph = document.getElementById('perfilFotoPlaceholder');
-    if (user.foto && prev) {
-        prev.src = user.foto;
+    if (full.foto && prev) {
+        prev.src = full.foto;
         prev.hidden = false;
         if (ph) ph.hidden = true;
     } else {
-        if (prev) prev.hidden = true;
+        if (prev) { prev.hidden = true; prev.removeAttribute('src'); }
         if (ph) ph.hidden = false;
     }
+
+    var setVal = function(id, v) {
+        var el = document.getElementById(id);
+        if (el) el.value = v == null ? '' : String(v);
+    };
+    setVal('perfilNombre', full.nombre || ((full.nombres || '') + ' ' + (full.apellidos || '')).trim());
+    setVal('perfilPreferido', full.nombrePreferido || (full.nombres || '').split(/\s+/)[0] || '');
+    setVal('perfilEmail', full.email || '');
+    setVal('perfilCodigo', full.codigo || '');
+    setVal('perfilTelefono', full.telefono || '');
+    setVal('perfilSemestre', full.semestre || '');
+    setVal('perfilBio', full.bio || '');
+    setVal('perfilCargo', full.cargo || '');
+    setVal('perfilHorario', full.horarioAtencion || '');
+    setVal('perfilLinkTeams', full.linkTeams || '');
+    setVal('perfilTema', full.tema || 'oscuro');
+    setVal('perfilCivixEstilo', full.civixEstilo || 'didactico');
+    setVal('perfilEstado', full.estado || 'disponible');
+    setVal('perfilPortafolioUrl', full.portafolioUrl || '');
+    setVal('perfilPassActual', '');
+    setVal('perfilPassNueva', '');
+    setVal('perfilPassNueva2', '');
+
+    var chk = function(id, def) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var n = full.notificaciones || {};
+        var p = full.privacidad || {};
+        if (id === 'perfilNotTareas') el.checked = n.tareas !== false;
+        if (id === 'perfilNotChat') el.checked = n.chat !== false;
+        if (id === 'perfilNotNotas') el.checked = n.notas !== false;
+        if (id === 'perfilPrivFoto') el.checked = p.fotoCompaneros !== false;
+        if (id === 'perfilPrivBio') el.checked = p.bioDocente !== false;
+    };
+    chk('perfilNotTareas'); chk('perfilNotChat'); chk('perfilNotNotas');
+    chk('perfilPrivFoto'); chk('perfilPrivBio');
+
+    var isDoc = full.rol === 'docente';
+    var docEx = document.getElementById('perfilDocenteExtra');
+    if (docEx) docEx.hidden = !isDoc;
+    var wrapSem = document.getElementById('wrapSemestre');
+    if (wrapSem) wrapSem.style.display = isDoc ? 'none' : '';
+
+    aulaPerfilRenderAcademico(full);
+    aulaPerfilRenderInsignias(full);
+    aulaPerfilApplyThemePreview(full.tema || 'oscuro');
+}
+
+function aulaPerfilSwitchTab(tabId) {
+    document.querySelectorAll('.perfil-tab').forEach(function(t) {
+        t.classList.toggle('active', t.getAttribute('data-ptab') === tabId);
+    });
+    document.querySelectorAll('.perfil-panel').forEach(function(p) {
+        var on = p.id === 'ptab-' + tabId;
+        p.hidden = !on;
+        p.classList.toggle('active', on);
+    });
+}
+
+function aulaPerfilRenderAcademico(user) {
+    var list = document.getElementById('perfilMateriasList');
+    var docBox = document.getElementById('perfilDocentesAsignados');
+    var prog = document.getElementById('perfilProgreso');
+    var inf = document.getElementById('perfilInformes');
+    var fav = document.getElementById('perfilFavChips');
+    if (!list) return;
+
+    var mats = Array.isArray(user.materias) ? user.materias : [];
+    if (!mats.length && user.materia) {
+        mats = [{ nombre: user.materia, grupo: user.grupo || '' }];
+    }
+    if (!mats.length) {
+        list.innerHTML = '<p class="aula-vacio">Sin materias registradas. Vuelve a registrarte o pide al admin revisar tu cuenta.</p>';
+    } else {
+        list.innerHTML = '<h4 class="perfil-sub">Materias y grupos</h4>' + mats.map(function(m, i) {
+            var nom = typeof m === 'string' ? m : (m.nombre || m.materia || '');
+            var gr = typeof m === 'string' ? (user.grupo || '') : (m.grupo || '');
+            return '<div class="perfil-mat-row" data-i="' + i + '">' +
+                '<strong>' + aulaEsc(nom) + '</strong>' +
+                '<span>Grupo ' + aulaEsc(gr || '—') + '</span></div>';
+        }).join('');
+    }
+
+    if (docBox) {
+        if (user.rol === 'estudiante' && typeof aulaBuscarDocenteMateria === 'function') {
+            var rows = mats.map(function(m) {
+                var nom = typeof m === 'string' ? m : (m.nombre || '');
+                var gr = typeof m === 'string' ? (user.grupo || '') : (m.grupo || '');
+                var d = aulaBuscarDocenteMateria(nom, gr);
+                var dn = d ? (d.nombre || d.email) : 'Sin docente asignado aún';
+                return '<li><strong>' + aulaEsc(nom) + '</strong> · ' + aulaEsc(dn) + '</li>';
+            }).join('');
+            docBox.innerHTML = '<h4 class="perfil-sub">Docentes de tus cursos</h4><ul>' + (rows || '<li>N/A</li>') + '</ul>';
+        } else {
+            docBox.innerHTML = user.rol === 'docente'
+                ? '<p class="login-hint">Como docente dictas las materias que registraste. Los estudiantes de esos grupos te verán en el chat.</p>'
+                : '';
+        }
+    }
+
+    // Progreso orientativo
+    var entregas = 0, tareas = 0, ensayos = 0;
+    try {
+        var allE = aulaLoad(AULA_KEYS.entregas, []);
+        entregas = allE.filter(function(e) {
+            return e && aulaNormalizarEmail(e.email || e.estudianteEmail) === aulaNormalizarEmail(user.email);
+        }).length;
+    } catch (e1) {}
+    try {
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf('geometrics_historial') === 0) {
+                var arr = JSON.parse(localStorage.getItem(k) || '[]');
+                if (Array.isArray(arr)) ensayos += arr.length;
+            }
+        }
+    } catch (e2) {}
+    if (prog) {
+        prog.innerHTML = '<h4 class="perfil-sub">Progreso</h4>' +
+            '<div class="perfil-prog-grid">' +
+            '<div><b>' + entregas + '</b><span>Entregas</span></div>' +
+            '<div><b>' + ensayos + '</b><span>Ensayos guardados</span></div>' +
+            '<div><b>' + mats.length + '</b><span>Materias</span></div>' +
+            '</div>';
+    }
+    if (inf) {
+        inf.innerHTML = '<h4 class="perfil-sub">Informes</h4><p class="login-hint">Los PDF de laboratorio se generan desde cada ensayo (Descargar informe).</p>';
+    }
+
+    var favoritos = Array.isArray(user.favoritos) ? user.favoritos : [];
+    var opts = [
+        'Contenido de humedad', 'Granulometría', 'Límites de Atterberg', 'Corte directo',
+        'Compresión inconfinada', 'Consolidación', 'Triaxial', 'Resistencia — Tracción', 'Civix'
+    ];
+    if (fav) {
+        fav.innerHTML = opts.map(function(o) {
+            var on = favoritos.indexOf(o) >= 0;
+            return '<button type="button" class="perfil-chip' + (on ? ' on' : '') + '" data-fav="' + aulaEsc(o) + '">' + aulaEsc(o) + '</button>';
+        }).join('');
+        fav.onclick = function(ev) {
+            var b = ev.target.closest('[data-fav]');
+            if (!b) return;
+            b.classList.toggle('on');
+        };
+    }
+}
+
+function aulaPerfilRenderInsignias(user) {
+    var box = document.getElementById('perfilInsignias');
+    if (!box) return;
+    var entregas = 0, ensayos = 0;
+    try {
+        var allE = aulaLoad(AULA_KEYS.entregas, []);
+        entregas = allE.filter(function(e) {
+            return e && aulaNormalizarEmail(e.email || e.estudianteEmail) === aulaNormalizarEmail(user.email);
+        }).length;
+    } catch (e) {}
+    try {
+        for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf('geometrics_historial') === 0) {
+                var arr = JSON.parse(localStorage.getItem(k) || '[]');
+                if (Array.isArray(arr)) ensayos += arr.length;
+            }
+        }
+    } catch (e2) {}
+    var badges = [
+        { id: 'foto', ok: !!user.foto, t: 'Perfil con foto', d: 'Subiste tu foto de perfil' },
+        { id: 'bio', ok: !!(user.bio && user.bio.length > 10), t: 'Presentación', d: 'Escribiste una biografía' },
+        { id: 'ensayo1', ok: ensayos >= 1, t: 'Primer ensayo', d: 'Guardaste tu primer ensayo' },
+        { id: 'ensayo10', ok: ensayos >= 10, t: 'Laboratorista', d: '10 o más ensayos guardados' },
+        { id: 'entrega1', ok: entregas >= 1, t: 'Primera entrega', d: 'Enviaste una tarea' },
+        { id: 'entrega5', ok: entregas >= 5, t: 'Constancia', d: '5 entregas realizadas' },
+        { id: 'codigo', ok: !!(user.codigo), t: 'Código registrado', d: 'Código institucional en el perfil' }
+    ];
+    box.innerHTML = badges.map(function(b) {
+        return '<div class="perfil-badge' + (b.ok ? ' earned' : '') + '"><strong>' + b.t + '</strong><span>' + b.d + '</span></div>';
+    }).join('');
+}
+
+function aulaPerfilApplyThemePreview(tema) {
+    try {
+        document.documentElement.setAttribute('data-theme', tema === 'claro' ? 'light' : (tema === 'sistema' ? 'system' : 'dark'));
+        if (tema === 'claro') document.body.classList.add('theme-light');
+        else document.body.classList.remove('theme-light');
+    } catch (e) {}
 }
 
 function aulaGuardarPerfil() {
     var user = aulaGetSession();
     if (!user) return;
     var err = document.getElementById('perfilError');
+    var ok = document.getElementById('perfilOk');
     if (err) err.textContent = '';
-    var fileInput = document.getElementById('perfilFotoInput');
-    if (!fileInput || !fileInput.files || !fileInput.files[0]) {
-        if (err) err.textContent = 'Selecciona una imagen para subir.';
+    if (ok) ok.hidden = true;
+
+    var users = aulaLoad(AULA_KEYS.users, []);
+    var idx = users.findIndex(function(u) {
+        return u && (u.id === user.id || aulaNormalizarEmail(u.email) === aulaNormalizarEmail(user.email));
+    });
+    if (idx < 0) {
+        if (err) err.textContent = 'No se encontró tu usuario.';
         return;
     }
-    var f = fileInput.files[0];
-    if (f.size > 1.5 * 1024 * 1024) {
-        if (err) err.textContent = 'La foto debe pesar menos de 1.5 MB.';
+    var u = users[idx];
+
+    var g = function(id) {
+        var el = document.getElementById(id);
+        return el ? String(el.value || '').trim() : '';
+    };
+
+    var nombre = g('perfilNombre');
+    if (nombre.length < 3) {
+        if (err) err.textContent = 'Escribe tu nombre completo.';
+        aulaPerfilSwitchTab('identidad');
         return;
     }
-    var reader = new FileReader();
-    reader.onload = function() {
-        user.foto = reader.result;
-        var users = aulaLoad(AULA_KEYS.users, []);
-        var idx = users.findIndex(function(u) { return u.id === user.id || u.email === user.email; });
-        if (idx >= 0) {
-            users[idx].foto = user.foto;
-            aulaSave(AULA_KEYS.users, users);
-            user = Object.assign({}, users[idx]);
-            // no exponer password en session de más, pero mantener id
-            delete user.password;
+
+    // Password change optional
+    var pAct = g('perfilPassActual');
+    var pNew = g('perfilPassNueva');
+    var pNew2 = g('perfilPassNueva2');
+    if (pAct || pNew || pNew2) {
+        if (!pAct || u.password !== pAct) {
+            if (err) err.textContent = 'La contraseña actual no es correcta.';
+            aulaPerfilSwitchTab('seguridad');
+            return;
         }
-        // session without password ok
-        var session = aulaGetSession() || {};
-        session.foto = user.foto;
-        session.nombre = user.nombre || session.nombre;
-        session.id = user.id || session.id;
-        session.email = user.email || session.email;
-        session.rol = user.rol || session.rol;
-        session.materias = user.materias || session.materias;
-        session.materia = user.materia || session.materia;
-        session.grupo = user.grupo || session.grupo;
+        if (pNew.length < 6) {
+            if (err) err.textContent = 'La nueva contraseña debe tener al menos 6 caracteres.';
+            aulaPerfilSwitchTab('seguridad');
+            return;
+        }
+        if (pNew !== pNew2) {
+            if (err) err.textContent = 'La confirmación de contraseña no coincide.';
+            aulaPerfilSwitchTab('seguridad');
+            return;
+        }
+        u.password = pNew;
+    }
+
+    u.nombre = nombre;
+    u.nombrePreferido = g('perfilPreferido') || nombre.split(/\s+/)[0];
+    u.codigo = g('perfilCodigo');
+    u.telefono = g('perfilTelefono');
+    u.semestre = g('perfilSemestre');
+    u.bio = g('perfilBio').slice(0, 280);
+    u.cargo = g('perfilCargo');
+    u.horarioAtencion = g('perfilHorario');
+    u.linkTeams = g('perfilLinkTeams');
+    u.tema = g('perfilTema') || 'oscuro';
+    u.civixEstilo = g('perfilCivixEstilo') || 'didactico';
+    u.estado = g('perfilEstado') || 'disponible';
+    u.portafolioUrl = g('perfilPortafolioUrl');
+    u.notificaciones = {
+        tareas: !!(document.getElementById('perfilNotTareas') && document.getElementById('perfilNotTareas').checked),
+        chat: !!(document.getElementById('perfilNotChat') && document.getElementById('perfilNotChat').checked),
+        notas: !!(document.getElementById('perfilNotNotas') && document.getElementById('perfilNotNotas').checked)
+    };
+    u.privacidad = {
+        fotoCompaneros: !!(document.getElementById('perfilPrivFoto') && document.getElementById('perfilPrivFoto').checked),
+        bioDocente: !!(document.getElementById('perfilPrivBio') && document.getElementById('perfilPrivBio').checked)
+    };
+    var favs = [];
+    document.querySelectorAll('#perfilFavChips .perfil-chip.on').forEach(function(b) {
+        favs.push(b.getAttribute('data-fav'));
+    });
+    u.favoritos = favs;
+
+    function persist(fotoData) {
+        if (fotoData) u.foto = fotoData;
+        users[idx] = u;
+        aulaSave(AULA_KEYS.users, users);
+        var session = Object.assign({}, u);
+        delete session.password;
         aulaSetSession(session);
-        aulaUpdateMenuUser(session);
-        var modal = document.getElementById('modalPerfil');
-        if (modal) modal.hidden = true;
-    };
-    reader.onerror = function() {
-        if (err) err.textContent = 'No se pudo leer la imagen.';
-    };
-    reader.readAsDataURL(f);
+        if (typeof aulaUpdateMenuUser === 'function') aulaUpdateMenuUser(session);
+        aulaPerfilApplyThemePreview(u.tema);
+        try {
+            localStorage.setItem('geometrics_theme', u.tema || 'oscuro');
+            localStorage.setItem('geometrics_civix_estilo', u.civixEstilo || 'didactico');
+        } catch (e) {}
+        if (ok) { ok.hidden = false; }
+        if (err) err.textContent = '';
+        setTimeout(function() {
+            var modal = document.getElementById('modalPerfil');
+            if (modal) modal.hidden = true;
+        }, 700);
+    }
+
+    var fileInput = document.getElementById('perfilFotoInput');
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+        var f = fileInput.files[0];
+        if (f.size > 1.5 * 1024 * 1024) {
+            if (err) err.textContent = 'La foto debe pesar menos de 1.5 MB.';
+            aulaPerfilSwitchTab('identidad');
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function() { persist(reader.result); };
+        reader.onerror = function() {
+            if (err) err.textContent = 'No se pudo leer la imagen.';
+        };
+        reader.readAsDataURL(f);
+    } else {
+        persist(null);
+    }
 }
 
 
@@ -3059,6 +3303,29 @@ function aulaInitUI() {
             aulaAbrirPerfil();
         });
     }
+    document.querySelectorAll('.perfil-tab').forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            var id = tab.getAttribute('data-ptab');
+            if (id && typeof aulaPerfilSwitchTab === 'function') aulaPerfilSwitchTab(id);
+        });
+    });
+    var fotoIn = document.getElementById('perfilFotoInput');
+    if (fotoIn && !fotoIn._previewBound) {
+        fotoIn._previewBound = true;
+        fotoIn.addEventListener('change', function() {
+            var f = fotoIn.files && fotoIn.files[0];
+            if (!f) return;
+            var r = new FileReader();
+            r.onload = function() {
+                var prev = document.getElementById('perfilFotoPreview');
+                var ph = document.getElementById('perfilFotoPlaceholder');
+                if (prev) { prev.src = r.result; prev.hidden = false; }
+                if (ph) ph.hidden = true;
+            };
+            r.readAsDataURL(f);
+        });
+    }
+
     var btnCerrarPerfil = document.getElementById('btnCerrarPerfil');
     if (btnCerrarPerfil) btnCerrarPerfil.addEventListener('click', function() {
         document.getElementById('modalPerfil').hidden = true;
@@ -3702,13 +3969,8 @@ function aulaBuscarDocenteMateria(materia, grupo) {
         // preferir docentes reales (con materias)
         return aulaDocenteDicta(u, materia, gWant);
     });
-    // Preferir no-demo si hay varios
-    var real = candidatos.filter(function(u) {
-        return aulaNormalizarEmail(u.email) !== 'docente.demo@unipamplona.edu.co';
-    });
-    if (real.length) return real[0];
     if (candidatos.length) return candidatos[0];
-    // 2) Sin fallback al demo genérico: null → el chat queda sin docente hasta que exista uno
+    // Sin docente para esa materia/grupo
     return null;
 }
 
@@ -3716,7 +3978,7 @@ function aulaChatDocenteEmail() {
     var users = aulaLoad(AULA_KEYS.users, []);
     var d = users.find(function(u) { return u && u.rol === 'docente' && u.email; });
     if (d) return d.email;
-    return 'docente.demo@unipamplona.edu.co';
+    return '';
 }
 function aulaChatDocenteNombre() {
     var users = aulaLoad(AULA_KEYS.users, []);
