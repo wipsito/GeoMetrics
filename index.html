@@ -753,7 +753,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                         <button type="submit" class="btn-login">ENTRAR</button>
                         <button type="button" class="btn-link-recupero" id="btnOlvidoPass">¿Olvidaste tu contraseña?</button>
                         <p class="login-hint">Solo correos <code>@unipamplona.edu.co</code>. El rol se asigna según la cuenta.</p>
-                        <p class="login-hint">Prueba docente: <code>docente.demo@unipamplona.edu.co</code> / <code>docente123</code> (Laura Patricia Gómez Rincón)</p>
                         <p class="login-error" id="loginError"></p>
                     </form>
 
@@ -2068,23 +2067,169 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
 
 </main>
-    <!-- Modal editar perfil (solo foto) -->
+    <!-- Modal editar perfil completo -->
     <div class="modal-perfil" id="modalPerfil" hidden>
-        <div class="modal-perfil-card">
+        <div class="modal-perfil-card modal-perfil-wide">
             <div class="modal-perfil-header">
-                <h3>Foto de perfil</h3>
-                <button type="button" class="btn-cerrar-asistente" id="btnCerrarPerfil">×</button>
+                <h3>Mi perfil</h3>
+                <button type="button" class="btn-cerrar-asistente" id="btnCerrarPerfil" aria-label="Cerrar">×</button>
             </div>
-            <div class="modal-perfil-body">
-                <div class="perfil-foto-wrap">
-                    <img id="perfilFotoPreview" class="perfil-foto-preview" alt="Foto de perfil" hidden>
-                    <div class="perfil-foto-placeholder" id="perfilFotoPlaceholder">📷</div>
+            <div class="modal-perfil-tabs" id="perfilTabs" role="tablist">
+                <button type="button" class="perfil-tab active" data-ptab="identidad">Identidad</button>
+                <button type="button" class="perfil-tab" data-ptab="academico">Académico</button>
+                <button type="button" class="perfil-tab" data-ptab="preferencias">Preferencias</button>
+                <button type="button" class="perfil-tab" data-ptab="seguridad">Seguridad</button>
+                <button type="button" class="perfil-tab" data-ptab="logros">Logros</button>
+            </div>
+            <div class="modal-perfil-body perfil-body-scroll">
+                <!-- IDENTIDAD -->
+                <section class="perfil-panel active" id="ptab-identidad">
+                    <div class="perfil-foto-row">
+                        <div class="perfil-foto-wrap">
+                            <img id="perfilFotoPreview" class="perfil-foto-preview" alt="Foto de perfil" hidden>
+                            <div class="perfil-foto-placeholder" id="perfilFotoPlaceholder">📷</div>
+                        </div>
+                        <div class="perfil-foto-actions">
+                            <label class="btn-secundario perfil-file-label">Cambiar foto
+                                <input type="file" id="perfilFotoInput" accept="image/*" hidden>
+                            </label>
+                            <p class="login-hint">Máx. 1.5 MB · visible en saludo e integrantes</p>
+                        </div>
+                    </div>
+                    <div class="perfil-grid">
+                        <label>Nombre completo
+                            <input type="text" id="perfilNombre" autocomplete="name">
+                        </label>
+                        <label>Nombre preferido (Civix te dirá así)
+                            <input type="text" id="perfilPreferido" placeholder="Ej. Andrés">
+                        </label>
+                        <label>Correo institucional
+                            <input type="email" id="perfilEmail" disabled>
+                        </label>
+                        <label>Código estudiantil / institucional
+                            <input type="text" id="perfilCodigo" placeholder="Ej. 202012345">
+                        </label>
+                        <label>Teléfono (opcional)
+                            <input type="tel" id="perfilTelefono" placeholder="300 123 4567">
+                        </label>
+                        <label id="wrapSemestre">Semestre
+                            <select id="perfilSemestre">
+                                <option value="">—</option>
+                                <option value="1">1.º</option><option value="2">2.º</option>
+                                <option value="3">3.º</option><option value="4">4.º</option>
+                                <option value="5">5.º</option><option value="6">6.º</option>
+                                <option value="7">7.º</option><option value="8">8.º</option>
+                                <option value="9">9.º</option><option value="10">10.º</option>
+                                <option value="egresado">Egresado</option>
+                            </select>
+                        </label>
+                    </div>
+                    <label>Biografía corta
+                        <textarea id="perfilBio" rows="3" maxlength="280" placeholder="Ej. Me interesa geotecnia y estructuras…"></textarea>
+                    </label>
+                    <div id="perfilDocenteExtra" class="perfil-docente-extra" hidden>
+                        <div class="perfil-grid">
+                            <label>Cargo / título
+                                <input type="text" id="perfilCargo" placeholder="Ing. Civil · M.Sc.">
+                            </label>
+                            <label>Horario de atención
+                                <input type="text" id="perfilHorario" placeholder="Lun–Vie 10:00–12:00">
+                            </label>
+                            <label class="perfil-span-2">Link Teams / Meet (opcional)
+                                <input type="url" id="perfilLinkTeams" placeholder="https://…">
+                            </label>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ACADÉMICO -->
+                <section class="perfil-panel" id="ptab-academico" hidden>
+                    <p class="login-hint" id="perfilAcademicoHint">Tus materias y grupos. El progreso se calcula con entregas y ensayos guardados.</p>
+                    <div id="perfilMateriasList" class="perfil-materias-list"></div>
+                    <div id="perfilDocentesAsignados" class="perfil-info-box"></div>
+                    <div id="perfilProgreso" class="perfil-progreso"></div>
+                    <div id="perfilInformes" class="perfil-informes"></div>
+                    <div id="perfilFavoritos" class="perfil-favoritos">
+                        <h4>Favoritos de estudio</h4>
+                        <div class="perfil-chips" id="perfilFavChips"></div>
+                        <p class="login-hint">Marca ensayos o temas que quieras retomar rápido.</p>
+                    </div>
+                </section>
+
+                <!-- PREFERENCIAS -->
+                <section class="perfil-panel" id="ptab-preferencias" hidden>
+                    <div class="perfil-grid">
+                        <label>Tema de la interfaz
+                            <select id="perfilTema">
+                                <option value="oscuro">Oscuro (actual)</option>
+                                <option value="claro">Claro</option>
+                                <option value="sistema">Según el sistema</option>
+                            </select>
+                        </label>
+                        <label>Estilo de Civix
+                            <select id="perfilCivixEstilo">
+                                <option value="didactico">Didáctico y cercano</option>
+                                <option value="formal">Formal académico</option>
+                                <option value="breve">Respuestas breves</option>
+                            </select>
+                        </label>
+                        <label>Estado en el chat
+                            <select id="perfilEstado">
+                                <option value="disponible">Disponible</option>
+                                <option value="en_clase">En clase</option>
+                                <option value="no_molestar">No molestar</option>
+                            </select>
+                        </label>
+                    </div>
+                    <h4 class="perfil-sub">Notificaciones</h4>
+                    <div class="perfil-checks">
+                        <label><input type="checkbox" id="perfilNotTareas" checked> Nuevas tareas y quices</label>
+                        <label><input type="checkbox" id="perfilNotChat" checked> Mensajes del chat del curso</label>
+                        <label><input type="checkbox" id="perfilNotNotas" checked> Calificaciones y retroalimentación</label>
+                    </div>
+                    <h4 class="perfil-sub">Privacidad</h4>
+                    <div class="perfil-checks">
+                        <label><input type="checkbox" id="perfilPrivFoto" checked> Compañeros pueden ver mi foto en integrantes</label>
+                        <label><input type="checkbox" id="perfilPrivBio" checked> Mostrar biografía a docentes del curso</label>
+                    </div>
+                </section>
+
+                <!-- SEGURIDAD -->
+                <section class="perfil-panel" id="ptab-seguridad" hidden>
+                    <h4 class="perfil-sub">Cambiar contraseña</h4>
+                    <div class="perfil-grid">
+                        <label>Contraseña actual
+                            <input type="password" id="perfilPassActual" autocomplete="current-password">
+                        </label>
+                        <label>Nueva contraseña
+                            <input type="password" id="perfilPassNueva" autocomplete="new-password">
+                        </label>
+                        <label class="perfil-span-2">Confirmar nueva contraseña
+                            <input type="password" id="perfilPassNueva2" autocomplete="new-password">
+                        </label>
+                    </div>
+                    <p class="login-hint">Déjalo vacío si no quieres cambiar la contraseña ahora.</p>
+                    <h4 class="perfil-sub">Sesión</h4>
+                    <button type="button" class="btn-secundario" id="btnCerrarOtrasSesiones">Cerrar sesión en este dispositivo al salir</button>
+                    <p class="login-hint">La sesión de GeoMetrics se limpia al cerrar la pestaña. Usa “Cerrar sesión” del menú para salir ya.</p>
+                </section>
+
+                <!-- LOGROS -->
+                <section class="perfil-panel" id="ptab-logros" hidden>
+                    <p class="login-hint">Insignias según tu actividad en GeoMetrics.</p>
+                    <div id="perfilInsignias" class="perfil-insignias"></div>
+                    <div id="perfilPortafolio">
+                        <label>Link de portafolio (Drive, GitHub, etc.)
+                            <input type="url" id="perfilPortafolioUrl" placeholder="https://…">
+                        </label>
+                    </div>
+                </section>
+
+                <div class="perfil-footer-actions">
+                    <button type="button" class="btn-calcular" id="btnGuardarPerfil">GUARDAR PERFIL</button>
+                    <p class="mensaje-error" id="perfilError"></p>
+                    <p class="mensaje-ok" id="perfilOk" hidden>Perfil actualizado</p>
                 </div>
-                <label>Selecciona una imagen</label>
-                <input type="file" id="perfilFotoInput" accept="image/*">
-                <p class="login-hint">Máx. 1.5 MB. Se mostrará en tu saludo y en el listado del docente.</p>
-                <button type="button" class="btn-calcular" id="btnGuardarPerfil">GUARDAR FOTO</button>
-                <p class="mensaje-error" id="perfilError"></p>
             </div>
         </div>
     </div>
