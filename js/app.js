@@ -510,6 +510,21 @@ async function civixMejorarPrompt(textoOriginal) {
 var CIVIX_CHATS_KEY = 'geometrics_civix_conversations';
 var civixChatActualId = null;
 
+
+/** Nombre con el que Civix debe dirigirse al usuario (perfil → nombre preferido) */
+function civixNombrePreferido() {
+    try {
+        var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+        if (!ses) return '';
+        var pref = String(ses.nombrePreferido || '').trim();
+        if (pref) return pref.split(/\s+/)[0];
+        var nom = String(ses.nombre || ses.nombres || '').trim();
+        if (nom) return nom.split(/\s+/)[0];
+        if (ses.email) return String(ses.email).split('@')[0];
+    } catch (e) {}
+    return '';
+}
+
 function civixEmailActual() {
     try {
         if (typeof aulaGetSession === 'function') {
@@ -789,7 +804,21 @@ function civixRenderBienvenida() {
     chatMensajes.innerHTML = '';
     var div = document.createElement('div');
     div.className = 'mensaje mensaje-bot';
-    div.innerHTML = '<p>¡Hola futuro ingeniero! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.</p>';
+    var nom = (typeof civixNombrePreferido === 'function') ? civixNombrePreferido() : '';
+    var rol = '';
+    try {
+        var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+        if (ses && ses.rol === 'docente') rol = 'docente';
+    } catch (e) {}
+    var saludo;
+    if (nom && rol === 'docente') {
+        saludo = '¡Hola, <strong>' + nom + '</strong>! Soy <strong>Civix</strong>. Puedo ayudarte con diseño, correcciones y material de clase.';
+    } else if (nom) {
+        saludo = '¡Hola, <strong>' + nom + '</strong>! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.';
+    } else {
+        saludo = '¡Hola futuro ingeniero! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.';
+    }
+    div.innerHTML = '<p>' + saludo + '</p>';
     chatMensajes.appendChild(div);
 }
 
@@ -1584,19 +1613,24 @@ async function llamarIA(mensaje) {
 
     var response;
     try {
-        var primerNombre = 'estudiante';
+        var primerNombre = (typeof civixNombrePreferido === 'function' && civixNombrePreferido()) || 'estudiante';
         try {
-            var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
-            if (ses && ses.nombre) {
-                primerNombre = String(ses.nombre).trim().split(/\s+/)[0] || 'estudiante';
-            }
-        } catch (eN) {}
+            var sesEstilo = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+            var estilo = (sesEstilo && sesEstilo.civixEstilo) || (localStorage.getItem('geometrics_civix_estilo') || 'didactico');
+        } catch (eEst) { var estilo = 'didactico'; }
         var msgs = chatHistory.slice();
-        // Contexto de nombre al inicio de cada turno (el Worker lo usa para dirigirse al usuario)
+        var estiloTxt = {
+            formal: 'Usa un tono formal y académico.',
+            breve: 'Sé breve y directo, sin relleno.',
+            didactico: 'Usa un tono didáctico, cercano y motivador.'
+        };
+        // Contexto de nombre preferido (perfil del usuario) en cada turno
         msgs = [{
             role: 'system',
-            content: 'El usuario se llama ' + primerNombre + '. Dirígete a él o ella por su primer nombre (' + primerNombre + ') de forma natural. '
-                + 'Puedes usar conocimiento general sólido de ingeniería civil y de la nube/web académica cuando ayude, '
+            content: 'El usuario prefiere que lo llames "' + primerNombre + '". '
+                + 'Dirígete SIEMPRE a esta persona por ese nombre de forma natural (no digas solo "futuro ingeniero" genérico si conoces el nombre). '
+                + (estiloTxt[estilo] || estiloTxt.didactico) + ' '
+                + 'Puedes usar conocimiento general sólido de ingeniería civil cuando ayude, '
                 + 'sin inventar datos numéricos de laboratorio. Si hay textos guía de la materia, priorízalos y cítalos.'
         }].concat(msgs);
 

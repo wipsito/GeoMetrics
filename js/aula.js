@@ -130,13 +130,23 @@ function aulaSetSession(user) {
         var payload = JSON.stringify({
             id: user.id,
             nombre: user.nombre,
+            nombrePreferido: user.nombrePreferido || '',
             email: user.email,
             rol: user.rol,
             codigo: user.codigo || '',
             materia: user.materia || '',
             grupo: user.grupo || '',
             materias: user.materias || [],
-            foto: user.foto || ''
+            foto: user.foto || '',
+            civixEstilo: user.civixEstilo || 'didactico',
+            tema: user.tema || 'oscuro',
+            estado: user.estado || 'disponible',
+            bio: user.bio || '',
+            telefono: user.telefono || '',
+            semestre: user.semestre || '',
+            cargo: user.cargo || '',
+            horarioAtencion: user.horarioAtencion || '',
+            linkTeams: user.linkTeams || ''
         });
         sessionStorage.setItem(AULA_KEYS.session, payload);
         sessionStorage.setItem('geometrics_tab_alive', '1');
