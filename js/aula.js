@@ -1237,6 +1237,12 @@ function aulaUpdateMenuUser(user) {
 }
 
 function aulaLogout() {
+    try {
+        if (typeof civixResetSesion === 'function') civixResetSesion({ skipWelcome: true });
+        if (typeof civixLastEmail !== 'undefined') civixLastEmail = '';
+        var modalCx = document.getElementById('modalAsistente') || document.getElementById('civixModal');
+        if (modalCx) modalCx.classList.remove('active');
+    } catch (eCx) {}
     aulaSetSession(null);
     if (typeof mostrarPantalla === 'function') mostrarPantalla('inicio');
     var formLogin = document.getElementById('formLogin');

@@ -625,61 +625,47 @@ function civixStartRealtime() {
     window.__civixListening = true;
     GeoCloud.listenCivix(function (remote) {
         if (!remote || typeof remote !== 'object') return;
-        var local = civixCargarTodos();
-        var changed = false;
         var my = civixEmailActual();
-        // Aplicar remotos; si un chat ya no está en la nube → borrarlo local
-        Object.keys(remote).forEach(function (email) {
-            email = String(email).trim().toLowerCase();
-            var r = remote[email] || [];
-            if (!Array.isArray(r)) r = [];
-            var remoteMap = {};
-            r.forEach(function (c) {
-                if (c && c.id) remoteMap[String(c.id)] = c;
-            });
-            var l = local[email] || [];
-            if (!Array.isArray(l)) l = [];
-            var map = {};
-            // Base: lo que hay en la nube
-            Object.keys(remoteMap).forEach(function (id) {
-                var remoteChat = remoteMap[id];
-                var localChat = null;
-                for (var i = 0; i < l.length; i++) {
-                    if (l[i] && String(l[i].id) === id) { localChat = l[i]; break; }
-                }
-                if (localChat && (localChat.updatedAt || 0) > (remoteChat.updatedAt || 0)) {
-                    map[id] = localChat;
-                } else {
-                    map[id] = remoteChat;
-                }
-            });
-            // Chats solo locales: mantener solo si son muy recientes (aún subiendo)
-            var now = Date.now();
-            l.forEach(function (c) {
-                if (!c || !c.id) return;
-                var id = String(c.id);
-                if (map[id]) return;
-                if (now - (c.updatedAt || 0) < 8000) {
-                    map[id] = c; // gracia por si el upload no terminó
-                } else {
-                    changed = true; // se elimina (borrado en otro dispositivo)
-                }
-            });
-            var merged = Object.keys(map).map(function (k) { return map[k]; });
-            if (JSON.stringify(merged) !== JSON.stringify(l)) changed = true;
-            local[email] = merged;
+        var myKey = civixClaveUsuario() || my;
+        if (!my || !myKey) return;
+
+        var local = civixCargarTodos();
+        var r = remote[my] || [];
+        if (!Array.isArray(r)) r = [];
+        var remoteMap = {};
+        r.forEach(function (c) {
+            if (c && c.id) remoteMap[String(c.id)] = c;
         });
-        if (changed) {
-            try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(local)); } catch (e) {}
-            try { civixPintarHistorial(); } catch (e2) {}
-            // Si el chat abierto fue borrado en otro dispositivo, volver a bienvenida
-            if (my && civixChatActualId) {
-                var still = (local[my] || []).some(function (c) {
-                    return c && String(c.id) === String(civixChatActualId);
-                });
-                if (!still) {
-                    try { civixNuevaConversacion(); } catch (e3) {}
-                }
+        var l = local[myKey] || local[my] || [];
+        if (!Array.isArray(l)) l = [];
+        var map = {};
+        Object.keys(remoteMap).forEach(function (id) {
+            var remoteChat = remoteMap[id];
+            var localChat = null;
+            for (var i = 0; i < l.length; i++) {
+                if (l[i] && String(l[i].id) === id) { localChat = l[i]; break; }
+            }
+            if (localChat && (localChat.updatedAt || 0) > (remoteChat.updatedAt || 0)) map[id] = localChat;
+            else map[id] = remoteChat;
+        });
+        // chats locales muy recientes aún no en nube
+        var now = Date.now();
+        l.forEach(function (c) {
+            if (!c || !c.id) return;
+            var id = String(c.id);
+            if (map[id]) return;
+            if (now - (c.updatedAt || 0) < 8000) map[id] = c;
+        });
+        local[myKey] = Object.keys(map).map(function (k) { return map[k]; });
+        try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(local)); } catch (e) {}
+
+        try { civixPintarHistorial(); } catch (e2) {}
+        if (my && civixChatActualId) {
+            var still = (local[myKey] || []).some(function (c) {
+                return c && String(c.id) === String(civixChatActualId);
+            });
+            if (!still) {
+                try { civixNuevaConversacion(); } catch (e3) {}
             }
         }
     });
@@ -858,10 +844,12 @@ function civixAbrirConversacion(id) {
 
 function civixEliminarConversacion(id) {
     var email = civixEmailActual();
-    if (!email || !id) return;
+    var key = civixClaveUsuario() || email;
+    if (!email || !key || !id) return;
     var all = civixCargarTodos();
-    var list = (all[email] || []).filter(function(c) { return String(c.id) !== String(id); });
-    all[email] = list;
+    var list = (all[key] || all[email] || []).filter(function(c) { return String(c.id) !== String(id); });
+    all[key] = list;
+    if (all[email] && key !== email) delete all[email];
     try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(all)); } catch (e) {}
     // Borrado definitivo en Firebase (todos los dispositivos)
     if (window.GeoCloud && GeoCloud.isOn()) {
@@ -915,6 +903,10 @@ function abrirCivixModal() {
     if (!modal) return;
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
+    try {
+        if (typeof civixAsegurarUsuarioActual === 'function') civixAsegurarUsuarioActual();
+        if (typeof civixResetSesion === 'function') civixResetSesion({ skipWelcome: false });
+    } catch (e0) {}
     civixSyncFromCloud().then(function () {
         try { civixPintarHistorial(); } catch (e) {}
     });
@@ -938,6 +930,8 @@ function inicializarAsistenteAI() {
             modal.classList.add('active');
             if (input) input.focus();
             try {
+                civixAsegurarUsuarioActual();
+                civixResetSesion({ skipWelcome: false });
                 civixSyncFromCloud().then(function () {
                     try { civixPintarHistorial(); } catch (e) {}
                 });
@@ -953,6 +947,9 @@ function inicializarAsistenteAI() {
                 if (input) input.focus();
             }
             try {
+                civixAsegurarUsuarioActual();
+                if (!civixChatActualId) civixResetSesion({ skipWelcome: false });
+                else if (civixLastEmail && civixLastEmail !== civixClaveUsuario()) civixResetSesion({ skipWelcome: false });
                 civixSyncFromCloud().then(function () {
                     try { civixPintarHistorial(); } catch (e) {}
                 });
