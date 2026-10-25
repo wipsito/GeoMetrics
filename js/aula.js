@@ -64,18 +64,55 @@ function aulaUid() {
 }
 
 function aulaSeed() {
-    // Ya no se crea docente demo. Los docentes reales se autorizan desde el panel admin
-    // y se registran ellos mismos con su correo institucional.
+    var DEMO_EMAIL = 'docente.demo@unipamplona.edu.co';
+    var DEMO = {
+        id: 'doc_demo',
+        nombre: 'Laura Patricia Gómez Rincón',
+        nombres: 'Laura Patricia',
+        apellidos: 'Gómez Rincón',
+        email: DEMO_EMAIL,
+        password: 'docente123',
+        rol: 'docente',
+        materia: '',
+        grupo: '',
+        // Solo grupos de demostración (no interfiere con A, B, C reales)
+        materias: [
+            { nombre: 'Mecánica de Suelos I', grupo: 'DEMO' },
+            { nombre: 'Mecánica de Suelos II', grupo: 'DEMO' },
+            { nombre: 'Resistencia de Materiales', grupo: 'DEMO' },
+            { nombre: 'Diseño de Mezclas', grupo: 'DEMO' }
+        ],
+        materia: 'Mecánica de Suelos I',
+        grupo: 'DEMO',
+        foto: ''
+    };
     var users = aulaLoad(AULA_KEYS.users, null);
     if (!users || !Array.isArray(users)) users = [];
-    // Eliminar cualquier resto del docente de prueba en local
-    var DEMO_EMAIL = 'docente.demo@unipamplona.edu.co';
-    var antes = users.length;
-    users = users.filter(function(u) {
-        return !(u && String(u.email || '').toLowerCase() === DEMO_EMAIL);
+    // Asegurar docente demo de prueba
+    var hasDemo = users.some(function(u) {
+        return u && String(u.email || '').toLowerCase() === DEMO_EMAIL;
     });
-    if (users.length !== antes) aulaSave(AULA_KEYS.users, users);
-    // Superadmin por correo (Andrés); la cuenta la crea él al registrarse
+    if (!hasDemo) users.push(DEMO);
+    else {
+        users = users.map(function(u) {
+            if (u && String(u.email || '').toLowerCase() === DEMO_EMAIL) {
+                u.nombre = u.nombre || DEMO.nombre;
+                u.nombres = u.nombres || DEMO.nombres;
+                u.apellidos = u.apellidos || DEMO.apellidos;
+                u.password = u.password || DEMO.password;
+                u.rol = 'docente';
+                // Si no tiene materias, asignar solo DEMO
+                if (!u.materias || !u.materias.length) {
+                    u.materias = DEMO.materias;
+                    u.materia = DEMO.materia;
+                    u.grupo = DEMO.grupo;
+                }
+            }
+            return u;
+        });
+    }
+    aulaSave(AULA_KEYS.users, users);
+    // Superadmin por correo (Andrés); la cuenta la crea él al registrarse como estudiante
     try {
         if (typeof aulaAdminsLoad === 'function' && typeof aulaAdminsSave === 'function') {
             var ads = aulaAdminsLoad();
@@ -288,7 +325,7 @@ function aulaDominio() {
 function aulaDocentesBase() {
     return (typeof AULA_CONFIG !== 'undefined' && AULA_CONFIG.docentes)
         ? AULA_CONFIG.docentes.map(function(e) { return String(e).toLowerCase(); })
-        : [];
+        : ['docente.demo@unipamplona.edu.co'];
 }
 function aulaDocentesExtraLoad() {
     var list = aulaLoad(AULA_KEYS.docentesExtra, []);
@@ -3665,8 +3702,13 @@ function aulaBuscarDocenteMateria(materia, grupo) {
         // preferir docentes reales (con materias)
         return aulaDocenteDicta(u, materia, gWant);
     });
+    // Preferir no-demo si hay varios
+    var real = candidatos.filter(function(u) {
+        return aulaNormalizarEmail(u.email) !== 'docente.demo@unipamplona.edu.co';
+    });
+    if (real.length) return real[0];
     if (candidatos.length) return candidatos[0];
-    // Sin docente para esa materia/grupo
+    // 2) Sin fallback al demo genérico: null → el chat queda sin docente hasta que exista uno
     return null;
 }
 
@@ -3674,7 +3716,7 @@ function aulaChatDocenteEmail() {
     var users = aulaLoad(AULA_KEYS.users, []);
     var d = users.find(function(u) { return u && u.rol === 'docente' && u.email; });
     if (d) return d.email;
-    return '';
+    return 'docente.demo@unipamplona.edu.co';
 }
 function aulaChatDocenteNombre() {
     var users = aulaLoad(AULA_KEYS.users, []);
