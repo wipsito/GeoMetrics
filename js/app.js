@@ -573,7 +573,7 @@ function civixResetSesion(opts) {
     }
 }
 
-/** Si cambió el usuario logueado, vacía el chat en pantalla */
+/** Si cambió el usuario logueado, vacía el chat en pantalla (sin borrar historial guardado) */
 function civixAsegurarUsuarioActual() {
     var email = civixEmailActual();
     if (!email) {
@@ -582,10 +582,70 @@ function civixAsegurarUsuarioActual() {
         return false;
     }
     if (civixLastEmail && civixLastEmail !== email) {
+        // Solo limpia memoria/UI; los chats en localStorage/Firebase del otro perfil permanecen
         civixResetSesion({ skipWelcome: true });
     }
     civixLastEmail = email;
     return true;
+}
+
+function civixLastChatStorageKey(email) {
+    email = String(email || '').trim().toLowerCase();
+    return email ? ('geometrics_civix_last_' + email) : '';
+}
+
+function civixRecordarChatActual() {
+    try {
+        var email = civixEmailActual();
+        var k = civixLastChatStorageKey(email);
+        if (!k) return;
+        if (civixChatActualId) localStorage.setItem(k, String(civixChatActualId));
+    } catch (e) {}
+}
+
+/**
+ * Abre Civix para el perfil actual:
+ * - sincroniza sus chats
+ * - restaura la última conversación de ESA cuenta
+ * - no mezcla con otra cuenta
+ */
+function civixPrepararUIUsuario() {
+    if (!civixAsegurarUsuarioActual()) {
+        civixResetSesion({ skipWelcome: true });
+        return Promise.resolve();
+    }
+    var email = civixEmailActual();
+    return civixSyncFromCloud().then(function () {
+        try { civixPintarHistorial(); } catch (e) {}
+        var list = civixListaUsuario();
+        var lastId = '';
+        try {
+            lastId = localStorage.getItem(civixLastChatStorageKey(email)) || '';
+        } catch (e2) { lastId = ''; }
+        var found = null;
+        if (lastId) {
+            for (var i = 0; i < list.length; i++) {
+                if (list[i] && String(list[i].id) === String(lastId)) { found = list[i]; break; }
+            }
+        }
+        if (found) {
+            civixAbrirConversacion(found.id);
+        } else if (civixChatActualId) {
+            // mantener chat en memoria si sigue siendo del usuario
+            var ok = list.some(function (c) { return c && String(c.id) === String(civixChatActualId); });
+            if (!ok) {
+                civixChatActualId = null;
+                chatHistory = [];
+                civixRenderBienvenida();
+            }
+        } else {
+            civixRenderBienvenida();
+        }
+        try { civixStartRealtime(); } catch (e3) {}
+    }).catch(function () {
+        try { civixPintarHistorial(); } catch (e4) {}
+        civixRenderBienvenida();
+    });
 }
 
 function civixCargarTodos() {
@@ -800,6 +860,7 @@ function civixGuardarConversacionActual() {
     if (list.length > 40) list = list.slice(0, 40);
     all[email] = list;
     civixGuardarTodos(all);
+    civixRecordarChatActual();
     try {
         if (window.GeoCloud && GeoCloud.isOn() && GeoCloud.setCivixUserChats) {
             GeoCloud.setCivixUserChats(email, list);
@@ -864,6 +925,7 @@ function civixAbrirConversacion(id) {
     }
     var panel = document.getElementById('civixHistorialPanel');
     if (panel) panel.hidden = true;
+    civixRecordarChatActual();
 }
 
 function civixEliminarConversacion(id) {
@@ -951,13 +1013,17 @@ function abrirCivixModal() {
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     try {
-        if (typeof civixAsegurarUsuarioActual === 'function') civixAsegurarUsuarioActual();
-        if (typeof civixResetSesion === 'function') civixResetSesion({ skipWelcome: false });
-    } catch (e0) {}
-    civixSyncFromCloud().then(function () {
-        try { civixPintarHistorial(); } catch (e) {}
-    });
-    civixStartRealtime();
+        if (typeof civixPrepararUIUsuario === 'function') civixPrepararUIUsuario();
+        else {
+            civixAsegurarUsuarioActual();
+            civixSyncFromCloud().then(function () {
+                try { civixPintarHistorial(); } catch (e) {}
+            });
+            civixStartRealtime();
+        }
+    } catch (e0) {
+        console.warn('abrirCivixModal', e0);
+    }
 }
 function inicializarAsistenteAI() {
     var btnAsistente = document.getElementById('btnAsistenteAI');
@@ -977,12 +1043,7 @@ function inicializarAsistenteAI() {
             modal.classList.add('active');
             if (input) input.focus();
             try {
-                civixAsegurarUsuarioActual();
-                civixResetSesion({ skipWelcome: false });
-                civixSyncFromCloud().then(function () {
-                    try { civixPintarHistorial(); } catch (e) {}
-                });
-                civixStartRealtime();
+                if (typeof civixPrepararUIUsuario === 'function') civixPrepararUIUsuario();
             } catch (e) {}
         });
     }
@@ -994,13 +1055,7 @@ function inicializarAsistenteAI() {
                 if (input) input.focus();
             }
             try {
-                civixAsegurarUsuarioActual();
-                if (!civixChatActualId) civixResetSesion({ skipWelcome: false });
-                else if (civixLastEmail && civixLastEmail !== civixClaveUsuario()) civixResetSesion({ skipWelcome: false });
-                civixSyncFromCloud().then(function () {
-                    try { civixPintarHistorial(); } catch (e) {}
-                });
-                civixStartRealtime();
+                if (typeof civixPrepararUIUsuario === 'function') civixPrepararUIUsuario();
             } catch (e) {}
         });
     });
