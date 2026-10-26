@@ -25,7 +25,8 @@ var API_URLS = {
 var AULA_CONFIG = {
     dominio: 'unipamplona.edu.co',
     docentes: [
-        'docente.demo@unipamplona.edu.co'
+        // Agrega aquí los correos docentes autorizados, ej:
+        // 'nombre.apellido@unipamplona.edu.co'
     ],
     pilotoDocenteAbierto: true
 };
