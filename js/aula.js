@@ -5169,21 +5169,75 @@ function aulaRenderQuicesDocente() {
             aulaRenderQuicesDocente();
         });
     });
+    box.querySelectorAll('button[data-cal-ab-e]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var qid = btn.getAttribute('data-cal-ab-q');
+            var eid = btn.getAttribute('data-cal-ab-e');
+            var all = aulaLoadQuizEntregas();
+            var ent = all.find(function (e) { return e.id === eid; });
+            if (!ent) return;
+            var maxAb = ent.notaMaxAbierta != null ? ent.notaMaxAbierta : 0;
+            var actual = ent.notaAbierta != null ? ent.notaAbierta : '';
+            var val = prompt('Calificación para preguntas abiertas (' + maxAb + ' pts):', actual);
+            if (val === null) return;
+            var num = parseFloat(String(val).replace(',', '.'));
+            if (isNaN(num)) return;
+            if (num < 0) num = 0;
+            if (maxAb > 0 && num > maxAb) num = maxAb;
+            all = all.map(function (e) { if (e.id === eid) { e.notaAbierta = num; e.calificadoAbiertasPor = user.nombre; e.calificadoAbiertasEn = new Date().toISOString(); } return e; });
+            aulaSaveQuizEntregas(all);
+            aulaRenderQuicesDocente();
+            try {
+                var errBox = document.getElementById('quizError');
+                if(errBox){ errBox.textContent = 'Calificación de abiertas guardada'; setTimeout(function(){ errBox.textContent=''; }, 1500); }
+            } catch(e){}
+        });
+    });
+    box.querySelectorAll('button[data-cal-fin-e]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var qid = btn.getAttribute('data-cal-fin-q');
+            var eid = btn.getAttribute('data-cal-fin-e');
+            var all = aulaLoadQuizEntregas();
+            var ent = all.find(function (e) { return e.id === eid; });
+            if (!ent) return;
+            var auto = ent.notaAuto != null ? ent.notaAuto : 0;
+            var maxAuto = ent.notaMaxAuto != null ? ent.notaMaxAuto : 0;
+            var ab = ent.notaAbierta != null ? ent.notaAbierta : 0;
+            var maxAb = ent.notaMaxAbierta != null ? ent.notaMaxAbierta : 0;
+            var sugerida = (auto + ab).toFixed(2);
+            var val = prompt('Nota final (sugerida ' + sugerida + ' / ' + (maxAuto + maxAb) + '):', ent.calificacion != null ? ent.calificacion : sugerida);
+            if (val === null) return;
+            var num = parseFloat(String(val).replace(',', '.'));
+            if (isNaN(num)) return;
+            all = all.map(function (e) { if (e.id === eid) { e.calificacion = num; e.calificadoPor = user.nombre; e.calificadoEn = new Date().toISOString(); } return e; });
+            aulaSaveQuizEntregas(all);
+            aulaRenderQuicesDocente();
+            try {
+                var errBox = document.getElementById('quizError');
+                if(errBox){ errBox.textContent = 'Calificación final guardada'; setTimeout(function(){ errBox.textContent=''; }, 1500); }
+            } catch(e){}
+        });
+    });
     box.querySelectorAll('button[data-cal-e]').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var qid = btn.getAttribute('data-cal-q');
             var eid = btn.getAttribute('data-cal-e');
-            var ent = aulaLoadQuizEntregas().find(function (e) { return e.id === eid; });
+            var all = aulaLoadQuizEntregas();
+            var ent = all.find(function (e) { return e.id === eid; });
             if (!ent) return;
-            var qz = aulaLoadQuices().find(function (x) { return x.id === qid; });
-            var val = prompt('Calificación final (' + (ent.notaMax || '') + ' pts):', ent.calificacion != null ? ent.calificacion : (ent.notaAuto != null ? ent.notaAuto : ''));
+            var maxTotal = (ent.notaMaxAuto != null ? ent.notaMaxAuto : (ent.notaMax != null ? ent.notaMax : 0)) + (ent.notaMaxAbierta != null ? ent.notaMaxAbierta : 0);
+            var sugerida = ((ent.notaAuto != null ? ent.notaAuto : 0) + (ent.notaAbierta != null ? ent.notaAbierta : 0)).toFixed(2);
+            var val = prompt('Calificación final (' + maxTotal + ' pts):', ent.calificacion != null ? ent.calificacion : sugerida);
             if (val === null) return;
             var num = parseFloat(String(val).replace(',', '.'));
             if (isNaN(num)) return;
-            var all = aulaLoadQuizEntregas().map(function (e) { if (e.id === eid) { e.calificacion = num; e.calificadoPor = user.nombre; e.calificadoEn = new Date().toISOString(); } return e; });
+            all = all.map(function (e) { if (e.id === eid) { e.calificacion = num; e.calificadoPor = user.nombre; e.calificadoEn = new Date().toISOString(); } return e; });
             aulaSaveQuizEntregas(all);
             aulaRenderQuicesDocente();
-            alert('Calificación guardada');
+            try {
+                var errBox = document.getElementById('quizError');
+                if(errBox){ errBox.textContent = 'Calificación guardada'; setTimeout(function(){ errBox.textContent=''; }, 1500); }
+            } catch(e){}
         });
     });
 }
@@ -5273,13 +5327,15 @@ function aulaRenderQuicesEstudiante() {
             window.__quizTimer = setInterval(upd, 1000);
             var html = '<div class="quiz-form">';
             mostradas.forEach(function (p, idx) {
-                html += '<div class="quiz-preg-block" style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06);"><div><strong>' + (idx+1) + '. ' + (p.texto || '') + '</strong> <span style="opacity:.7">(' + (p.puntaje || 1) + ' pts) · ' + (p.tipo === 'abierta' ? 'Abierta' : 'Selección múltiple') + '</span></div>';
+                html += '<div class="quiz-preg-block" style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08);"><div style="margin-bottom:10px;"><strong>' + (idx+1) + '. ' + (typeof aulaEsc === 'function' ? aulaEsc(p.texto) : String(p.texto||'').replace(/</g,'&lt;')) + '</strong> <span style="opacity:.7">(' + (p.puntaje || 1) + ' pts) · ' + (p.tipo === 'abierta' ? 'Abierta' : 'Selección múltiple') + '</span></div>';
                 if (p.tipo === 'multiple') {
+                    html += '<div class="quiz-opciones-list">';
                     (p.opciones || []).forEach(function (op) {
-                        html += '<label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;"><input type="radio" name="q_' + q.id + '_' + p.uid + '" value="' + op.key + '"> <span><strong>' + op.key + '.</strong> ' + (op.texto || '') + '</span></label>';
+                        html += '<label class="quiz-opcion-item"><input type="radio" name="q_' + q.id + '_' + p.uid + '" value="' + op.key + '"><span class="quiz-opcion-letra">' + op.key + '</span><span class="quiz-opcion-texto">' + (typeof aulaEsc === 'function' ? aulaEsc(op.texto) : String(op.texto||'').replace(/</g,'&lt;')) + '</span></label>';
                     });
+                    html += '</div>';
                 } else {
-                    html += '<textarea data-abierta="' + p.uid + '" rows="4" style="width:100%;margin-top:6px;" placeholder="Escribe tu respuesta aquí..."></textarea>';
+                    html += '<textarea data-abierta="' + p.uid + '" rows="4" style="width:100%;margin-top:6px;border-radius:10px;padding:10px;background:rgba(15,23,42,.6);color:#e5e7eb;border:1px solid rgba(255,255,255,.12);" placeholder="Escribe tu respuesta aquí..."></textarea>';
                 }
                 html += '</div>';
             });
@@ -5336,7 +5392,10 @@ function aulaRenderQuicesEstudiante() {
                 if (formBox) formBox.innerHTML = '<p class="mensaje-ok">Respuestas enviadas.<br>Selección múltiple: <strong>' + acierto + ' / ' + maxAuto + '</strong><br>Preguntas abiertas: <strong>' + maxAb + ' pts</strong> · Pendiente calificación manual.</p>';
                 if (barTime) barTime.textContent = 'Finalizado';
                 try { aulaRenderQuicesEstudiante(); } catch(e){}
-                alert('Quiz enviado. Múltiple: ' + acierto + '/' + maxAuto + '. Abiertas pendientes por calificar.');
+                try {
+                    var errBox = document.getElementById('quizError');
+                    if(errBox){ errBox.textContent = 'Quiz enviado. Múltiple: ' + acierto + '/' + maxAuto + '. Abiertas pendientes por calificar.'; setTimeout(function(){ errBox.textContent=''; }, 2500); }
+                } catch(e){}
             }
         });
     });
