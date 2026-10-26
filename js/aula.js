@@ -1205,7 +1205,7 @@ function aulaUpdateMenuUser(user) {
     if (user) {
         var nombre = (user.nombre || '').trim() || 'Usuario';
         if (user.rol === 'docente') {
-            if (saludo) saludo.textContent = 'Bienvenido Ingeniero ' + nombre;
+            if (saludo) saludo.textContent = 'Bienvenido Ingenier@ ' + nombre;
             if (info) info.textContent = 'Docente · Gestiona tu aula y materiales.';
         } else {
             if (saludo) saludo.textContent = 'Bienvenido futuro Ingeniero ' + nombre;
