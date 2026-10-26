@@ -4888,6 +4888,33 @@ function aulaSaveQuizEntregas(list) {
     try { localStorage.setItem('geometrics_quiz_entregas', JSON.stringify(list || [])); } catch (e) {}
 }
 
+function aulaQuizSeed(str){
+    str = String(str || '');
+    var h = 2166136261 >>> 0;
+    for(var i=0;i<str.length;i++){
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+}
+function aulaQuizRand(seed){
+    var x = seed >>> 0;
+    return function(){
+        x = (x * 1664525 + 1013904223) >>> 0;
+        return x / 4294967296;
+    };
+}
+function aulaQuizShuffle(arr, seed){
+    var a = (arr || []).slice();
+    if(!a.length) return a;
+    var rand = aulaQuizRand(aulaQuizSeed(seed));
+    for(var i=a.length-1;i>0;i--){
+        var j = Math.floor(rand() * (i+1));
+        var tmp = a[i]; a[i]=a[j]; a[j]=tmp;
+    }
+    return a;
+}
+
 function aulaCrearQuiz() {
     var user = aulaRequireSession();
     if (!user || user.rol !== 'docente') return;
@@ -4896,51 +4923,77 @@ function aulaCrearQuiz() {
     var titulo = ((document.getElementById('quizTitulo') || {}).value || '').trim();
     var materia = (document.getElementById('quizMateria') || {}).value || '';
     var grupo = ((document.getElementById('quizGrupo') || {}).value || '').trim();
-    var tiempoMin = parseInt(((document.getElementById('quizTiempo') || {}).value || '30'), 10) || 30;
-    var puntaje = parseFloat(((document.getElementById('quizPuntaje') || {}).value || '1'), 10) || 1;
+    var tiempoMin = parseInt(((document.getElementById('quizTiempo') || {}).value || '15'), 10) || 15;
+    var puntajeMultiple = parseFloat(((document.getElementById('quizPuntajeMultiple') || {}).value || '1'), 10) || 1;
+    var puntajeAbierta = parseFloat(((document.getElementById('quizPuntajeAbierta') || {}).value || '2'), 10) || 2;
+    var cantAbierta = parseInt(((document.getElementById('quizCantAbierta') || {}).value || '1'), 10) || 1;
+    var cantMultiple = parseInt(((document.getElementById('quizCantMultiple') || {}).value || '1'), 10) || 1;
     var preguntasRaw = ((document.getElementById('quizPreguntas') || {}).value || '').trim();
     if (!titulo) { if (err) err.textContent = 'Escribe un título del quiz.'; return; }
-    if (!preguntasRaw) { if (err) err.textContent = 'Agrega al menos una pregunta con opciones A-D y respuesta correcta.'; return; }
-    var preguntas = [];
-    preguntasRaw.split('\n').forEach(function (l, i) {
+    if (!preguntasRaw) { if (err) err.textContent = 'Agrega preguntas en el formato indicado.'; return; }
+    var pool = [];
+    preguntasRaw.split('\n').forEach(function (l, idx) {
         var line = l.trim();
         if (!line) return;
-        // formato: Pregunta|A|B|C|D|Correcta
         var parts = line.split('|').map(function (x) { return (x || '').trim(); });
-        if (parts.length < 6) return; // skip invalid
-        var p = {
-            id: 'p' + (i + 1),
-            texto: parts[0],
-            opciones: [
-                { key: 'A', texto: parts[1] },
-                { key: 'B', texto: parts[2] },
-                { key: 'C', texto: parts[3] },
-                { key: 'D', texto: parts[4] }
-            ],
-            correcta: String(parts[5]).toUpperCase().replace(/[^ABCD]/g, '').slice(0, 1) || 'A',
-            puntaje: puntaje
-        };
-        preguntas.push(p);
+        if (!parts.length) return;
+        var tipo = String(parts[0]).toUpperCase();
+        if (tipo === 'MULTIPLE') {
+            if (parts.length < 7) return;
+            pool.push({
+                uid: 'p_' + Date.now() + '_' + idx,
+                tipo: 'multiple',
+                texto: parts[1],
+                opciones: [
+                    { key: 'A', texto: parts[2] },
+                    { key: 'B', texto: parts[3] },
+                    { key: 'C', texto: parts[4] },
+                    { key: 'D', texto: parts[5] }
+                ],
+                correcta: String(parts[6]).toUpperCase().replace(/[^ABCD]/g, '').slice(0, 1) || 'A',
+                puntaje: puntajeMultiple
+            });
+        } else if (tipo === 'ABIERTA') {
+            if (parts.length < 2) return;
+            pool.push({
+                uid: 'p_' + Date.now() + '_' + idx,
+                tipo: 'abierta',
+                texto: parts[1],
+                puntaje: puntajeAbierta
+            });
+        }
     });
-    if (!preguntas.length) { if (err) err.textContent = 'Formato inválido. Usa: Pregunta|A|B|C|D|A'; return; }
+    var abiertasPool = pool.filter(function(p){ return p.tipo === 'abierta'; });
+    var multiplesPool = pool.filter(function(p){ return p.tipo === 'multiple'; });
+    if ((cantAbierta > 0 && abiertasPool.length < cantAbierta) || (cantMultiple > 0 && multiplesPool.length < cantMultiple)) {
+        if (err) err.textContent = 'No hay suficientes preguntas del tipo solicitado en el banco.';
+        return;
+    }
+    if (cantAbierta === 0 && cantMultiple === 0) {
+        if (err) err.textContent = 'Debes mostrar al menos 1 pregunta.';
+        return;
+    }
     var list = aulaLoadQuices();
     list.push({
         id: typeof aulaUid === 'function' ? aulaUid() : ('q_' + Date.now()),
         titulo: titulo,
         materia: materia,
         grupo: grupo,
-        preguntas: preguntas,
+        preguntasPool: pool,
+        modoAleatorioPorTipo: true,
+        cantidadPorTipo: { abierta: cantAbierta, multiple: cantMultiple },
+        puntajeAbierta: puntajeAbierta,
+        puntajeMultiple: puntajeMultiple,
+        tiempoLimiteMin: tiempoMin,
         docenteId: user.id,
         docenteNombre: user.nombre,
-        tiempoLimiteMin: tiempoMin,
-        puntajePorPregunta: puntaje,
         activa: true,
         creada: new Date().toISOString()
     });
     aulaSaveQuices(list);
     var t = document.getElementById('quizTitulo'); if (t) t.value = '';
     var p = document.getElementById('quizPreguntas'); if (p) p.value = '';
-    if (err) err.textContent = 'Quiz publicado en tiempo real.';
+    if (err) err.textContent = 'Quiz publicado con aleatorización por tipo.';
     aulaRenderQuicesDocente();
 }
 
@@ -5031,10 +5084,14 @@ function aulaRenderQuicesEstudiante() {
         return;
     }
     box.innerHTML = list.slice().reverse().map(function (q) {
+        var pool = q.preguntasPool || q.preguntas || [];
+        var ca = (q.cantidadPorTipo && q.cantidadPorTipo.abierta) != null ? q.cantidadPorTipo.abierta : ((q.preguntasPool) ? 1 : ((q.preguntas||[]).length));
+        var cm = (q.cantidadPorTipo && q.cantidadPorTipo.multiple) != null ? q.cantidadPorTipo.multiple : 0;
+        if (!q.preguntasPool) { cm = (q.preguntas||[]).length; ca = 0; }
         return '<div class="aula-item quiz-card" data-quiz="' + q.id + '">' +
             '<strong>' + (typeof aulaEsc === 'function' ? aulaEsc(q.titulo) : q.titulo) + '</strong>' +
-            '<p>' + (q.materia || '') + ' · ' + (q.docenteNombre || '') + ' · ' + (q.preguntas || []).length + ' pregunta(s) · ' + (q.tiempoLimiteMin || 30) + ' min · ' + (q.puntajePorPregunta || 1) + ' pts/pregunta</p>' +
-            '<button type="button" class="btn-calcular btn-quiz-iniciar" data-id="' + q.id + '">INICIAR QUIZ EN TIEMPO REAL</button></div>';
+            '<p>' + (q.materia || '') + ' · ' + (q.docenteNombre || '') + ' · Aleatorio por tipo: ' + ca + ' abierta(s) + ' + cm + ' múltiple(s) · ' + (q.tiempoLimiteMin || 15) + ' min</p>' +
+            '<button type="button" class="btn-calcular btn-quiz-iniciar" data-id="' + q.id + '">INICIAR QUIZ ALEATORIO</button></div>';
     }).join('');
     box.querySelectorAll('.btn-quiz-iniciar').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -5043,12 +5100,27 @@ function aulaRenderQuicesEstudiante() {
             if (!q) return;
             box.innerHTML = '';
             if (formBox) formBox.style.display = 'block';
+            var seed = (q.id || '') + '|' + (user.email || user.id || '');
+            var pool = q.preguntasPool || [];
+            var abiertasPool = pool.filter(function(p){ return p.tipo === 'abierta'; });
+            var multiplesPool = pool.filter(function(p){ return p.tipo === 'multiple'; });
+            var ca = (q.cantidadPorTipo && q.cantidadPorTipo.abierta) != null ? q.cantidadPorTipo.abierta : 0;
+            var cm = (q.cantidadPorTipo && q.cantidadPorTipo.multiple) != null ? q.cantidadPorTipo.multiple : ((q.preguntas||[]).length);
+            if (!pool.length && q.preguntas && q.preguntas.length) {
+                // legacy
+                multiplesPool = q.preguntas.map(function(p){ return {uid:p.id, tipo:'multiple', texto:p.texto, opciones:p.opciones, correcta:p.correcta, puntaje:p.puntaje || q.puntajePorPregunta || 1}; });
+                ca = 0; cm = multiplesPool.length;
+            }
+            var selAb = aulaQuizShuffle(abiertasPool, seed + '|AB').slice(0, ca);
+            var selMul = aulaQuizShuffle(multiplesPool, seed + '|MU').slice(0, cm);
+            var mostradas = aulaQuizShuffle(selAb.concat(selMul), seed + '|ORD');
+            if (!mostradas.length) { alert('No hay preguntas para mostrar en este quiz.'); try { aulaRenderQuicesEstudiante(); } catch(e){} return; }
             if (bar && barTit && barTime && barProg) {
                 bar.style.display = 'block';
                 barTit.textContent = q.titulo;
-                barProg.textContent = (q.preguntas || []).length + ' preguntas · Puntaje: ' + ((q.preguntas || []).length * (q.puntajePorPregunta || 1)) + ' pts';
+                barProg.textContent = mostradas.length + ' pregunta(s) asignadas aleatoriamente';
             }
-            var end = Date.now() + (q.tiempoLimiteMin || 30) * 60 * 1000;
+            var end = Date.now() + (q.tiempoLimiteMin || 15) * 60 * 1000;
             function upd() {
                 var rem = Math.max(0, Math.floor((end - Date.now()) / 1000));
                 var mm = Math.floor(rem / 60), ss = rem % 60;
@@ -5062,11 +5134,15 @@ function aulaRenderQuicesEstudiante() {
             if (window.__quizTimer) clearInterval(window.__quizTimer);
             window.__quizTimer = setInterval(upd, 1000);
             var html = '<div class="quiz-form">';
-            (q.preguntas || []).forEach(function (p, idx) {
-                html += '<div class="quiz-preg-block" style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06);"><div><strong>' + (idx+1) + '. ' + (p.texto || '') + '</strong> <span style="opacity:.7">(' + (p.puntaje || q.puntajePorPregunta || 1) + ' pts)</span></div>';
-                (p.opciones || []).forEach(function (op) {
-                    html += '<label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;"><input type="radio" name="q_' + q.id + '_' + p.id + '" value="' + op.key + '"> <span><strong>' + op.key + '.</strong> ' + (op.texto || '') + '</span></label>';
-                });
+            mostradas.forEach(function (p, idx) {
+                html += '<div class="quiz-preg-block" style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06);"><div><strong>' + (idx+1) + '. ' + (p.texto || '') + '</strong> <span style="opacity:.7">(' + (p.puntaje || 1) + ' pts) · ' + (p.tipo === 'abierta' ? 'Abierta' : 'Selección múltiple') + '</span></div>';
+                if (p.tipo === 'multiple') {
+                    (p.opciones || []).forEach(function (op) {
+                        html += '<label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;"><input type="radio" name="q_' + q.id + '_' + p.uid + '" value="' + op.key + '"> <span><strong>' + op.key + '.</strong> ' + (op.texto || '') + '</span></label>';
+                    });
+                } else {
+                    html += '<textarea data-abierta="' + p.uid + '" rows="4" style="width:100%;margin-top:6px;" placeholder="Escribe tu respuesta aquí..."></textarea>';
+                }
                 html += '</div>';
             });
             html += '<button type="button" class="btn-calcular" id="btnQuizEnviarEst" style="margin-top:12px;">ENVIAR RESPUESTAS</button></div>';
@@ -5080,14 +5156,23 @@ function aulaRenderQuicesEstudiante() {
                 if (window.__quizTimer) { clearInterval(window.__quizTimer); window.__quizTimer = null; }
                 var resp = [];
                 var acierto = 0;
-                var maxP = 0;
-                (q.preguntas || []).forEach(function (p) {
-                    var sel = document.querySelector('input[name="q_' + q.id + '_' + p.id + '"]:checked');
-                    var val = sel ? sel.value : '';
-                    resp.push({ preguntaId: p.id, seleccionada: val, correcta: p.correcta });
-                    var pt = p.puntaje || q.puntajePorPregunta || 1;
-                    maxP += pt;
-                    if (val && val === p.correcta) acierto += pt;
+                var maxAuto = 0;
+                var maxAb = 0;
+                mostradas.forEach(function (p) {
+                    if (p.tipo === 'multiple') {
+                        var sel = document.querySelector('input[name="q_' + q.id + '_' + p.uid + '"]:checked');
+                        var val = sel ? sel.value : '';
+                        resp.push({ preguntaUid: p.uid, tipo: 'multiple', seleccionada: val, correcta: p.correcta, textoPregunta: p.texto });
+                        var pt = p.puntaje || q.puntajeMultiple || 1;
+                        maxAuto += pt;
+                        if (val && val === p.correcta) acierto += pt;
+                    } else {
+                        var ta = document.querySelector('textarea[data-abierta="' + p.uid + '"]');
+                        var txt = ta ? ta.value : '';
+                        resp.push({ preguntaUid: p.uid, tipo: 'abierta', texto: txt, textoPregunta: p.texto });
+                        var ptab = p.puntaje || q.puntajeAbierta || 2;
+                        maxAb += ptab;
+                    }
                 });
                 var ent = {
                     id: 'qe_' + Date.now(),
@@ -5097,19 +5182,23 @@ function aulaRenderQuicesEstudiante() {
                     estudianteId: user.id,
                     estudianteEmail: user.email,
                     estudianteNombre: user.nombre,
+                    preguntasMostradas: mostradas,
                     respuestas: resp,
                     notaAuto: acierto,
-                    notaMax: maxP,
+                    notaMaxAuto: maxAuto,
+                    notaAbierta: null,
+                    notaMaxAbierta: maxAb,
+                    calificacion: null,
                     fecha: new Date().toISOString(),
                     enviadaEn: new Date().toISOString()
                 };
                 var all = aulaLoadQuizEntregas();
                 all.push(ent);
                 aulaSaveQuizEntregas(all);
-                if (formBox) formBox.innerHTML = '<p class="mensaje-ok">Respuestas enviadas. Calificación automática: <strong>' + acierto + ' / ' + maxP + '</strong></p>';
+                if (formBox) formBox.innerHTML = '<p class="mensaje-ok">Respuestas enviadas.<br>Selección múltiple: <strong>' + acierto + ' / ' + maxAuto + '</strong><br>Preguntas abiertas: <strong>' + maxAb + ' pts</strong> · Pendiente calificación manual.</p>';
                 if (barTime) barTime.textContent = 'Finalizado';
                 try { aulaRenderQuicesEstudiante(); } catch(e){}
-                alert('Quiz enviado. Calificación automática: ' + acierto + ' / ' + maxP);
+                alert('Quiz enviado. Múltiple: ' + acierto + '/' + maxAuto + '. Abiertas pendientes por calificar.');
             }
         });
     });
