@@ -2889,13 +2889,75 @@ function aulaPerfilSetTab(tab) {
     document.querySelectorAll('#perfilTabs .perfil-tab').forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-ptab') === tab);
     });
-    ['datos', 'academico', 'prefs'].forEach(function (t) {
-        var pane = document.getElementById('perfilPane' + (t === 'datos' ? 'Datos' : t === 'academico' ? 'Academico' : 'Prefs'));
+    var map = { datos: 'Datos', academico: 'Academico', aula: 'Aula', prefs: 'Prefs' };
+    Object.keys(map).forEach(function (t) {
+        var pane = document.getElementById('perfilPane' + map[t]);
         if (!pane) return;
         var on = t === tab;
         pane.hidden = !on;
         pane.classList.toggle('active', on);
     });
+}
+
+
+function aulaPerfilRegistrarActividad(user) {
+    if (!user || !user.email) return;
+    try {
+        var key = 'geometrics_racha_' + String(user.email).toLowerCase();
+        var today = new Date().toISOString().slice(0, 10);
+        var data = {};
+        try { data = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { data = {}; }
+        var days = Array.isArray(data.days) ? data.days : [];
+        if (days.indexOf(today) < 0) days.push(today);
+        days = days.sort().slice(-60);
+        var racha = 0;
+        var d = new Date();
+        for (var i = 0; i < 60; i++) {
+            var iso = d.toISOString().slice(0, 10);
+            if (days.indexOf(iso) >= 0) racha++;
+            else if (i > 0) break;
+            d.setDate(d.getDate() - 1);
+        }
+        data.days = days;
+        data.racha = racha;
+        data.ultimoAcceso = new Date().toISOString();
+        localStorage.setItem(key, JSON.stringify(data));
+    } catch (e2) {}
+}
+function aulaPerfilGetRacha(user) {
+    if (!user || !user.email) return { racha: 0, ultimoAcceso: null };
+    try {
+        var key = 'geometrics_racha_' + String(user.email).toLowerCase();
+        var data = JSON.parse(localStorage.getItem(key) || '{}');
+        return { racha: data.racha || 0, ultimoAcceso: data.ultimoAcceso || null };
+    } catch (e) { return { racha: 0, ultimoAcceso: null }; }
+}
+function aulaPerfilNivel(stats) {
+    var total = (stats.tareas || 0) + (stats.quices || 0) + (stats.chats || 0);
+    if (total >= 20) return { id: 'experto', label: 'Nivel Experto', emoji: '🏆' };
+    if (total >= 10) return { id: 'avanzado', label: 'Nivel Avanzado', emoji: '📐' };
+    if (total >= 4) return { id: 'intermedio', label: 'Nivel Intermedio', emoji: '🧱' };
+    return { id: 'novato', label: 'Nivel Novato', emoji: '🚀' };
+}
+function aulaPerfilLogros(user, stats) {
+    if (user && user.rol === 'docente') {
+        return [
+            { id: 'pub_tarea', emoji: '📋', label: 'Primera tarea', ok: (stats.tareas || 0) >= 1 },
+            { id: 'pub_quiz', emoji: '❓', label: 'Primer quiz', ok: (stats.quices || 0) >= 1 },
+            { id: 'civix_doc', emoji: '🤖', label: 'Usa Civix', ok: (stats.chats || 0) >= 1 },
+            { id: 'productivo', emoji: '⚡', label: 'Productivo', ok: ((stats.tareas || 0) + (stats.quices || 0)) >= 5 },
+            { id: 'racha_3', emoji: '🔥', label: 'Racha 3 días', ok: (stats.racha || 0) >= 3 },
+            { id: 'mentor', emoji: '🎓', label: 'Mentor activo', ok: ((stats.tareas || 0) + (stats.quices || 0)) >= 12 }
+        ];
+    }
+    return [
+        { id: 'primera_entrega', emoji: '📝', label: 'Primera entrega', ok: (stats.tareas || 0) >= 1 },
+        { id: 'quiz_hecho', emoji: '✅', label: 'Primer quiz', ok: (stats.quices || 0) >= 1 },
+        { id: 'civix_10', emoji: '🤖', label: '10 chats Civix', ok: (stats.chats || 0) >= 10 },
+        { id: 'quiz_perfecto', emoji: '⭐', label: 'Quiz perfecto', ok: !!stats.quizPerfecto },
+        { id: 'racha_3', emoji: '🔥', label: 'Racha 3 días', ok: (stats.racha || 0) >= 3 },
+        { id: 'activo_15', emoji: '💪', label: 'Muy activo', ok: ((stats.tareas || 0) + (stats.quices || 0) + (stats.chats || 0)) >= 15 }
+    ];
 }
 
 function aulaPerfilBindUI() {
@@ -2967,6 +3029,39 @@ function aulaPerfilBindUI() {
             if (modal) modal.hidden = true;
         });
     }
+
+    var exp = document.getElementById('btnPerfilExportar');
+    if (exp) {
+        exp.addEventListener('click', function () {
+            var user = aulaGetSession();
+            if (!user) return;
+            if (typeof aulaUsuarioCompleto === 'function') user = aulaUsuarioCompleto(user) || user;
+            var full = Object.assign({}, user);
+            delete full.password;
+            var blob = new Blob([JSON.stringify(full, null, 2)], { type: 'application/json' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'geometrics-perfil-' + String(user.email || 'usuario').replace(/[@.]/g, '_') + '.json';
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+        });
+    }
+    document.querySelectorAll('.perfil-atajo').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var tipo = btn.getAttribute('data-atajo');
+            var modal = document.getElementById('modalPerfil');
+            if (modal) modal.hidden = true;
+            try {
+                var tabMap = { tareas: 'doc-tareas', quices: 'doc-quices', pres: 'doc-presentaciones' };
+                var tab = tabMap[tipo];
+                var btnTab = tab ? document.querySelector('.tab-btn[data-tab="' + tab + '"]') : null;
+                var btnAula = document.getElementById('btnAula');
+                if (btnAula) btnAula.click();
+                setTimeout(function () { if (btnTab) btnTab.click(); }, 200);
+            } catch (e) {}
+        });
+    });
+
 }
 
 function aulaPerfilFunMessage(user, stats) {
@@ -2996,19 +3091,58 @@ function aulaPerfilFunMessage(user, stats) {
 }
 
 function aulaPerfilCalcularStats(user) {
-    var stats = { tareas: 0, quices: 0, chats: 0 };
+    var stats = { tareas: 0, quices: 0, chats: 0, promedio: null, quizPerfecto: false, racha: 0, total: 0, pendientes: 0 };
     if (!user) return stats;
+    var r = typeof aulaPerfilGetRacha === 'function' ? aulaPerfilGetRacha(user) : { racha: 0 };
+    stats.racha = r.racha || 0;
     try {
         var entregas = aulaLoad(AULA_KEYS.entregas, []) || [];
-        stats.tareas = entregas.filter(function (e) {
-            return e.estudianteId === user.id || e.estudianteEmail === user.email;
-        }).length;
+        if (user.rol === 'docente') {
+            var tareas = aulaLoad(AULA_KEYS.tareas, []) || [];
+            stats.tareas = tareas.filter(function (t) { return t.docenteId === user.id; }).length;
+            stats.pendientes = entregas.filter(function (e) {
+                var t = tareas.find(function (x) { return x.id === e.tareaId; });
+                return t && t.docenteId === user.id && !e.calificada && e.nota == null;
+            }).length;
+        } else {
+            stats.tareas = entregas.filter(function (e) {
+                return e.estudianteId === user.id || e.estudianteEmail === user.email;
+            }).length;
+        }
     } catch (e1) {}
     try {
         var qe = (typeof aulaQuizLoadEntregas === 'function' ? aulaQuizLoadEntregas() : aulaLoad('geometrics_quiz_entregas', [])) || [];
-        stats.quices = qe.filter(function (e) {
-            return e.estudianteId === user.id || e.estudianteEmail === user.email;
-        }).length;
+        if (user.rol === 'docente') {
+            var quices = (typeof aulaLoadQuices === 'function' ? aulaLoadQuices() : []) || [];
+            stats.quices = quices.filter(function (q) { return q.docenteId === user.id; }).length;
+            var misIds = {};
+            quices.forEach(function (q) { if (q.docenteId === user.id) misIds[q.id] = true; });
+            qe.forEach(function (e) {
+                if (!misIds[e.quizId]) return;
+                (e.respuestas || []).forEach(function (r) {
+                    if (r.tipo === 'abierta' && r.notaAbierta == null && r.correcta == null) stats.pendientes++;
+                });
+            });
+        } else {
+            var mine = qe.filter(function (e) {
+                return e.estudianteId === user.id || e.estudianteEmail === user.email;
+            });
+            stats.quices = mine.length;
+            var scores = [];
+            mine.forEach(function (e) {
+                var auto = e.autoMax > 0 ? (e.autoScore / e.autoMax) : null;
+                var abiertas = (e.respuestas || []).filter(function (r) { return r.tipo === 'abierta' && r.notaAbierta != null; });
+                var sum = 0, n = 0;
+                if (auto != null) { sum += auto; n++; }
+                abiertas.forEach(function (r) { sum += r.notaAbierta; n++; });
+                if (n) {
+                    var p = sum / n;
+                    scores.push(p);
+                    if (p >= 0.99) stats.quizPerfecto = true;
+                }
+            });
+            if (scores.length) stats.promedio = scores.reduce(function (a, b) { return a + b; }, 0) / scores.length;
+        }
     } catch (e2) {}
     try {
         var key = 'civix_chats_' + String(user.email || user.id || '').toLowerCase();
@@ -3018,15 +3152,7 @@ function aulaPerfilCalcularStats(user) {
             stats.chats = Array.isArray(list) ? list.length : 0;
         }
     } catch (e3) {}
-    // Docente: contar tareas publicadas
-    if (user.rol === 'docente') {
-        try {
-            var tareas = aulaLoad(AULA_KEYS.tareas, []) || [];
-            stats.tareas = tareas.filter(function (t) { return t.docenteId === user.id; }).length;
-            var quices = (typeof aulaLoadQuices === 'function' ? aulaLoadQuices() : []) || [];
-            stats.quices = quices.filter(function (q) { return q.docenteId === user.id; }).length;
-        } catch (e4) {}
-    }
+    stats.total = (stats.tareas || 0) + (stats.quices || 0) + (stats.chats || 0);
     return stats;
 }
 
@@ -3038,6 +3164,7 @@ function aulaAbrirPerfil() {
         user = aulaUsuarioCompleto(user) || user;
     }
     aulaPerfilBindUI();
+    if (typeof aulaPerfilRegistrarActividad === 'function') aulaPerfilRegistrarActividad(user);
     window.__perfilFotoPendiente = null;
     window.__perfilQuitarFoto = false;
     window.__perfilColorPendiente = aulaPerfilColorActual(user);
@@ -3054,6 +3181,42 @@ function aulaAbrirPerfil() {
 
     var fileInput = document.getElementById('perfilFotoInput');
     if (fileInput) fileInput.value = '';
+
+    var esDoc = user.rol === 'docente';
+    var ce = document.getElementById('perfilCamposEstudiante');
+    var cd = document.getElementById('perfilCamposDocente');
+    if (ce) ce.hidden = !!esDoc;
+    if (cd) cd.hidden = !esDoc;
+    var be = document.getElementById('perfilBloqueEstudianteAcad');
+    var bd = document.getElementById('perfilBloqueDocenteAcad');
+    if (be) be.hidden = !!esDoc;
+    if (bd) bd.hidden = !esDoc;
+    var ad = document.getElementById('perfilAulaDocente');
+    if (ad) ad.hidden = !esDoc;
+    var codWrap = document.getElementById('perfilCodigoWrap');
+    if (codWrap) codWrap.style.display = esDoc ? 'none' : '';
+
+    var setV = function(id, v) {
+        var el = document.getElementById(id);
+        if (el) el.value = (v == null ? '' : v);
+    };
+    setV('perfilSemestre', user.semestre || '');
+    setV('perfilEstadoMatricula', user.estadoMatricula || 'activo');
+    setV('perfilJornada', user.jornada || '');
+    setV('perfilMateriaFavorita', user.materiaFavorita || '');
+    setV('perfilHorarioEstudio', user.horarioEstudio || '');
+    setV('perfilTitulo', user.titulo || '');
+    setV('perfilDepartamento', user.departamento || 'Ingeniería Civil');
+    setV('perfilHorarioAtencion', user.horarioAtencion || '');
+    setV('perfilOficina', user.oficina || '');
+    setV('perfilEstadoAula', user.estadoAula || 'disponible');
+    setV('perfilFirma', user.firma || '');
+    setV('perfilMsgBienvenida', user.msgBienvenida || '');
+    setV('perfilTema', user.temaPerfil || 'auto');
+    var mb = document.getElementById('perfilMostrarBio');
+    if (mb) mb.checked = user.mostrarBio !== false;
+    var nt = document.getElementById('perfilNotifTareas');
+    if (nt) nt.checked = user.notifTareas !== false;
 
     // Hero
     var saludo = document.getElementById('perfilSaludo');
@@ -3122,24 +3285,120 @@ function aulaAbrirPerfil() {
         }
     }
     var stats = aulaPerfilCalcularStats(user);
+    var nivel = typeof aulaPerfilNivel === 'function' ? aulaPerfilNivel(stats) : { label: 'Nivel Novato', emoji: '🚀' };
+    var bn = document.getElementById('perfilBadgeNivel');
+    if (bn) { bn.textContent = nivel.label; bn.classList.add('perfil-mini-nivel'); }
     var st = document.getElementById('perfilStatTareas');
     var sq = document.getElementById('perfilStatQuices');
     var sc = document.getElementById('perfilStatChats');
     if (st) st.textContent = String(stats.tareas);
     if (sq) sq.textContent = String(stats.quices);
     if (sc) sc.textContent = String(stats.chats);
+    var stl = document.getElementById('perfilStatTareasLabel');
+    var sql = document.getElementById('perfilStatQuicesLabel');
+    if (stl) stl.textContent = esDoc ? 'Tareas publicadas' : 'Entregas';
+    if (sql) sql.textContent = esDoc ? 'Quices publicados' : 'Quices enviados';
+    var sp = document.getElementById('perfilStatPromedio');
+    if (sp) {
+        if (esDoc) sp.textContent = String(stats.pendientes || 0);
+        else sp.textContent = stats.promedio != null ? Math.round(stats.promedio * 100) + '%' : '—';
+        try {
+            var promLabel = sp.parentElement && sp.parentElement.querySelector('span');
+            if (promLabel) promLabel.textContent = esDoc ? 'Por calificar' : 'Promedio quices';
+        } catch (eL) {}
+    }
+    var sr = document.getElementById('perfilStatRacha');
+    if (sr) sr.textContent = String(stats.racha || 0);
     var fun = aulaPerfilFunMessage(user, stats);
     var fe = document.getElementById('perfilFunEmoji');
     var ft = document.getElementById('perfilFunTitle');
     var fx = document.getElementById('perfilFunText');
-    if (fe) fe.textContent = fun.emoji;
-    if (ft) ft.textContent = fun.title;
+    if (fe) fe.textContent = fun.emoji || nivel.emoji;
+    if (ft) ft.textContent = fun.title || nivel.label;
     if (fx) fx.textContent = fun.text;
     var hint = document.getElementById('perfilAcadHint');
     if (hint) {
-        hint.textContent = user.rol === 'docente'
-            ? 'Materias y grupos que dictas. Las estadísticas cuentan lo que has publicado.'
-            : 'Materias y grupos de tu matrícula. Las estadísticas resumen tu actividad.';
+        hint.textContent = esDoc
+            ? 'Materias que dictas, carga publicada y pendientes de revisión.'
+            : 'Tu matrícula, progreso, logros y actividad reciente.';
+    }
+    var logrosEl = document.getElementById('perfilLogros');
+    if (logrosEl && typeof aulaPerfilLogros === 'function') {
+        logrosEl.innerHTML = aulaPerfilLogros(user, stats).map(function (l) {
+            return '<div class="perfil-logro' + (l.ok ? ' unlocked' : '') + '"><span>' + l.emoji + '</span> ' + l.label + '</div>';
+        }).join('');
+    }
+    var rInfo = typeof aulaPerfilGetRacha === 'function' ? aulaPerfilGetRacha(user) : {};
+    var ua = document.getElementById('perfilUltimoAcceso');
+    if (ua) {
+        var ts = rInfo.ultimoAcceso || user.ultimoAcceso;
+        ua.textContent = ts ? ('Último acceso: ' + new Date(ts).toLocaleString('es-CO')) : 'Último acceso: ahora';
+    }
+    // Listas estudiante / docente
+    if (!esDoc) {
+        var ue = document.getElementById('perfilUltimasEntregas');
+        if (ue) {
+            var entregas = (aulaLoad(AULA_KEYS.entregas, []) || []).filter(function (e) {
+                return e.estudianteId === user.id || e.estudianteEmail === user.email;
+            }).sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')); }).slice(0, 3);
+            var tareasAll = aulaLoad(AULA_KEYS.tareas, []) || [];
+            if (!entregas.length) ue.innerHTML = '<p class="login-hint">Aún no hay entregas.</p>';
+            else {
+                ue.innerHTML = entregas.map(function (e) {
+                    var t = tareasAll.find(function (x) { return x.id === e.tareaId; });
+                    var titulo = (t && t.titulo) || 'Entrega';
+                    var est = (e.calificada || e.nota != null) ? '<em class="ok">Calificada</em>' : '<em class="pend">Pendiente</em>';
+                    return '<div class="perfil-lista-item"><span>' + (typeof aulaEsc === 'function' ? aulaEsc(titulo) : titulo) + '</span>' + est + '</div>';
+                }).join('');
+            }
+        }
+        var uq = document.getElementById('perfilQuicesRecientes');
+        if (uq) {
+            var qe = (typeof aulaQuizLoadEntregas === 'function' ? aulaQuizLoadEntregas() : []) || [];
+            var mine = qe.filter(function (e) {
+                return e.estudianteId === user.id || e.estudianteEmail === user.email;
+            }).sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')); }).slice(0, 3);
+            var quicesAll = (typeof aulaLoadQuices === 'function' ? aulaLoadQuices() : []) || [];
+            if (!mine.length) uq.innerHTML = '<p class="login-hint">Aún no has enviado quices.</p>';
+            else {
+                uq.innerHTML = mine.map(function (e) {
+                    var q = quicesAll.find(function (x) { return x.id === e.quizId; });
+                    var titulo = (q && q.titulo) || 'Quiz';
+                    var score = e.autoMax > 0 ? (Math.round((e.autoScore / e.autoMax) * 100) + '% auto') : 'Enviado';
+                    return '<div class="perfil-lista-item"><span>' + (typeof aulaEsc === 'function' ? aulaEsc(titulo) : titulo) + '</span><em class="ok">' + score + '</em></div>';
+                }).join('');
+            }
+        }
+    } else {
+        var ga = document.getElementById('perfilGruposActivos');
+        if (ga) {
+            var matsD = mats || [];
+            var usersAll = aulaLoad(AULA_KEYS.users, []) || [];
+            if (!matsD.length) ga.innerHTML = '<p class="login-hint">No hay grupos registrados.</p>';
+            else {
+                ga.innerHTML = matsD.map(function (m) {
+                    var gWant = String(m.grupo || '').toUpperCase();
+                    var count = usersAll.filter(function (u) {
+                        if (!u || u.rol !== 'estudiante') return false;
+                        var um = (typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(u) : u.materias) || [];
+                        return um.some(function (x) {
+                            return x.nombre === m.nombre && (!gWant || String(x.grupo || '').toUpperCase() === gWant);
+                        });
+                    }).length;
+                    return '<div class="perfil-lista-item"><span>' + (m.nombre || '') + ' · Grupo ' + (m.grupo || '—') + '</span><em class="ok">' + count + ' est.</em></div>';
+                }).join('');
+            }
+        }
+        var pc = document.getElementById('perfilPendientesCalificar');
+        if (pc) {
+            pc.innerHTML = stats.pendientes > 0
+                ? ('<div class="perfil-lista-item"><span>Entregas / abiertas sin nota</span><em class="pend">' + stats.pendientes + '</em></div>')
+                : '<p class="login-hint">No tienes pendientes por calificar 🎉</p>';
+        }
+        var rs = document.getElementById('perfilResumenSemanal');
+        if (rs) {
+            rs.textContent = 'Publicaciones en historial: ' + stats.tareas + ' tarea(s) y ' + stats.quices + ' quiz(zes). Pendientes de revisar: ' + stats.pendientes + '.';
+        }
     }
 
     // Preferencias
@@ -3215,7 +3474,31 @@ function aulaGuardarPerfil() {
     users[idx].avatarColor = color;
     users[idx].mostrarCodigo = mostrarCodigo;
     users[idx].animaciones = animaciones;
+    users[idx].mostrarBio = !!(document.getElementById('perfilMostrarBio') || {}).checked;
+    users[idx].notifTareas = !!(document.getElementById('perfilNotifTareas') || {}).checked;
+    users[idx].estadoAula = ((document.getElementById('perfilEstadoAula') || {}).value || 'disponible');
+    users[idx].temaPerfil = ((document.getElementById('perfilTema') || {}).value || 'auto');
+    users[idx].ultimoAcceso = new Date().toISOString();
+    if (user.rol === 'docente') {
+        users[idx].titulo = ((document.getElementById('perfilTitulo') || {}).value || '').trim();
+        users[idx].departamento = ((document.getElementById('perfilDepartamento') || {}).value || '').trim();
+        users[idx].horarioAtencion = ((document.getElementById('perfilHorarioAtencion') || {}).value || '').trim();
+        users[idx].oficina = ((document.getElementById('perfilOficina') || {}).value || '').trim();
+        users[idx].firma = ((document.getElementById('perfilFirma') || {}).value || '').trim();
+        users[idx].msgBienvenida = ((document.getElementById('perfilMsgBienvenida') || {}).value || '').trim().slice(0, 240);
+    } else {
+        users[idx].semestre = ((document.getElementById('perfilSemestre') || {}).value || '').trim();
+        users[idx].estadoMatricula = ((document.getElementById('perfilEstadoMatricula') || {}).value || 'activo');
+        users[idx].jornada = ((document.getElementById('perfilJornada') || {}).value || '').trim();
+        users[idx].materiaFavorita = ((document.getElementById('perfilMateriaFavorita') || {}).value || '').trim();
+        users[idx].horarioEstudio = ((document.getElementById('perfilHorarioEstudio') || {}).value || '').trim();
+    }
     if (pass1) users[idx].password = pass1;
+    try {
+        var hist = Array.isArray(users[idx].historialPerfil) ? users[idx].historialPerfil : [];
+        hist.push({ fecha: new Date().toISOString(), accion: pass1 ? 'perfil+contraseña' : 'perfil' });
+        users[idx].historialPerfil = hist.slice(-20);
+    } catch (eH) {}
 
     if (window.__perfilQuitarFoto) {
         users[idx].foto = '';
@@ -3244,6 +3527,15 @@ function aulaGuardarPerfil() {
     session.materias = updated.materias || session.materias;
     session.materia = updated.materia || session.materia;
     session.grupo = updated.grupo || session.grupo;
+    session.semestre = updated.semestre;
+    session.titulo = updated.titulo;
+    session.departamento = updated.departamento;
+    session.estadoAula = updated.estadoAula;
+    session.avatarColor = updated.avatarColor;
+    session.bio = updated.bio;
+    session.genero = updated.genero;
+    session.firma = updated.firma;
+    session.msgBienvenida = updated.msgBienvenida;
     aulaSetSession(session);
     aulaUpdateMenuUser(session);
 
