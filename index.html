@@ -1866,7 +1866,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
             <div class="aula-grid">
                 <div class="aula-card">
                     <h3>Publicar quiz (en tiempo real)</h3>
-                    <p class="login-hint">Mezcla aleatoria por tipo. Cada estudiante recibe 1 pregunta abierta + 1 de selección múltiple distintas al resto.</p>
+                    <p class="login-hint">Agrega las preguntas una por una al banco. Cada estudiante recibirá 1 abierta + 1 de selección múltiple elegidas aleatoriamente.</p>
                     <label>Título</label>
                     <input type="text" id="quizTitulo" placeholder="Quiz 1 — Esfuerzos">
                     <div class="filtros-aula" style="flex-wrap:wrap;gap:10px;">
@@ -1901,9 +1901,55 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                             <input type="number" id="quizCantMultiple" min="0" max="10" value="1">
                         </label>
                     </div>
-                    <label>Banco de preguntas (una por línea)</label>
-                    <textarea id="quizPreguntas" rows="9" placeholder="MULTIPLE|¿Cuál es la unidad del esfuerzo en el SI?|N/m² (Pascal)|kg/m³|m/s²|N·m|A&#10;MULTIPLE|¿Qué ensayo determina la humedad óptima de un suelo?|Ensayo Proctor|Ensayo CBR|Ensayo de corte directo|Ensayo edométrico|A&#10;ABIERTA|Explique brevemente la diferencia entre esfuerzo normal y esfuerzo cortante&#10;ABIERTA|¿Qué factores influyen en la compactación de un suelo? Justifique su respuesta"></textarea>
-                    <p class="login-hint">Usa <b>MULTIPLE|Pregunta|A|B|C|D|A</b> o <b>ABIERTA|Pregunta</b>. Sube varias de cada tipo para que el sorteo sea aleatorio entre estudiantes.</p>
+
+                    <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:16px 0;">
+
+                    <h4 style="margin:0 0 8px;">Agregar pregunta al banco</h4>
+                    <label>Tipo de pregunta</label>
+                    <select id="quizTipoPregunta">
+                        <option value="multiple">Selección múltiple (única respuesta)</option>
+                        <option value="abierta">Abierta</option>
+                    </select>
+                    <label>Enunciado de la pregunta</label>
+                    <textarea id="quizEnunciado" rows="3" placeholder="Escribe aquí el enunciado de la pregunta..."></textarea>
+
+                    <div id="quizOpcionesWrap">
+                        <label>Opciones A - D</label>
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <span style="width:22px;opacity:.8;">A)</span>
+                                <input type="text" id="quizOpA" placeholder="Opción A">
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <span style="width:22px;opacity:.8;">B)</span>
+                                <input type="text" id="quizOpB" placeholder="Opción B">
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <span style="width:22px;opacity:.8;">C)</span>
+                                <input type="text" id="quizOpC" placeholder="Opción C">
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <span style="width:22px;opacity:.8;">D)</span>
+                                <input type="text" id="quizOpD" placeholder="Opción D">
+                            </div>
+                        </div>
+                        <label>Respuesta correcta</label>
+                        <select id="quizCorrecta">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>
+                    </div>
+
+                    <button type="button" class="btn-limpiar" id="btnAgregarQuizPregunta" style="margin-top:12px;">+ AGREGAR PREGUNTA AL BANCO</button>
+
+                    <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:16px 0;">
+
+                    <h4 style="margin:0 0 8px;">Banco de preguntas</h4>
+                    <p class="login-hint">Aquí aparecerán todas las preguntas que agregues.</p>
+                    <div id="quizBancoLista" class="aula-lista"></div>
+
                     <p class="mensaje-error" id="quizError"></p>
                     <button type="button" class="btn-calcular" id="btnCrearQuiz" style="margin-top:10px">PUBLICAR QUIZ CON ALEATORIZACIÓN POR TIPO</button>
                 </div>
