@@ -1619,32 +1619,21 @@ function civixNombrePreferido() {
     return 'estudiante';
 }
 
-/** Asegura que la 2ª palabra de la respuesta sea el nombre del usuario */
+/** Si el nombre no aparece en la respuesta, la inicia de forma natural con el nombre */
 function civixForzarNombreEnRespuesta(texto, nombre) {
     nombre = String(nombre || '').trim();
     texto = String(texto || '').trim();
     if (!nombre || !texto || nombre === 'estudiante') return texto;
-    // No tocar bloques de código
     if (texto.indexOf('```') === 0) return texto;
-    var lines = texto.split(/\r?\n/);
-    var first = lines[0].trim();
-    if (!first) return texto;
-    // Quitar markdown de negrita al inicio para analizar palabras
-    var plain = first.replace(/^\*\*/, '').replace(/\*\*$/, '');
-    var words = plain.split(/\s+/).filter(Boolean);
-    if (words.length >= 2 && words[1].replace(/[^\wÁÉÍÓÚáéíóúñÑ]/gi, '').toLowerCase() === nombre.toLowerCase()) {
-        return texto; // ya está
+    // Si ya menciona el nombre en el texto, no forzar nada
+    var reNom = new RegExp(nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    if (reNom.test(texto)) return texto;
+    // Prefijo estético natural
+    var firstChar = texto.charAt(0);
+    if (firstChar === firstChar.toLowerCase() && /[a-záéíóúñ]/i.test(firstChar)) {
+        texto = texto.charAt(0).toUpperCase() + texto.slice(1);
     }
-    // Insertar nombre como segunda palabra
-    if (words.length === 0) {
-        lines[0] = 'Hola ' + nombre + ',';
-    } else if (words.length === 1) {
-        lines[0] = words[0] + ' ' + nombre;
-    } else {
-        words.splice(1, 0, nombre);
-        lines[0] = words.join(' ');
-    }
-    return lines.join('\n');
+    return nombre + ', ' + texto;
 }
 
 function civixAvatarSrc() {
@@ -1684,7 +1673,12 @@ function civixInstruccionModo(modo) {
 function civixBuildContextSystem() {
     var nombre = civixNombrePreferido();
     var partes = [];
-    partes.push('El primer nombre del usuario es "' + nombre + '". REGLA OBLIGATORIA: en CADA respuesta, la segunda palabra debe ser exactamente "' + nombre + '" (ejemplo: "Claro ' + nombre + ', la porosidad..." o "¡Hola ' + nombre + '! ...").');
+    partes.push(
+        'El primer nombre del usuario es "' + nombre + '". ' +
+        'Involúcralo de forma natural y estética en tus respuestas (no de forma forzada ni mecánica). ' +
+        'Puedes empezar frases con el nombre ("' + nombre + ', la porosidad se define…") o usarlo en saludos y cierres ("¡Hola, ' + nombre + '!", "¿Te queda claro, ' + nombre + '?"). ' +
+        'No insertes el nombre en medio de fechas, números ni títulos. Usa el nombre 1 vez al inicio o cuando aporte cercanía; no lo repitas en cada oración.'
+    );
     partes.push(civixInstruccionModo(window.__civixModo));
     try {
         var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
