@@ -984,17 +984,28 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                         </div>
                     </div>
                     <div class="asistente-acciones">
-                        <button type="button" class="btn-civix-historial" id="btnCivixHistorial" title="Mis conversaciones">💬</button>
-                        <button type="button" class="btn-civix-nuevo" id="btnCivixNuevo" title="Nueva conversación">＋</button>
-                        <button class="btn-cerrar-asistente" id="btnCerrarAsistente">×</button>
+                        <button type="button" class="btn-civix-historial" id="btnCivixHistorial" title="Mis conversaciones"><span>💬</span><span class="civix-btn-lbl">Chats</span></button>
+                        <button type="button" class="btn-civix-nuevo" id="btnCivixNuevo" title="Nueva conversación"><span>＋</span><span class="civix-btn-lbl">Nuevo</span></button>
+                        <button class="btn-cerrar-asistente" id="btnCerrarAsistente" title="Cerrar">×</button>
                     </div>
                 </div>
 
-                <div class="civix-modos" id="civixModos" role="tablist" aria-label="Modo de tutoría">
-                    <button type="button" class="civix-modo active" data-modo="explicar" title="Explicación completa">📘 Explicar</button>
-                    <button type="button" class="civix-modo" data-modo="pistas" title="Solo pistas, sin respuesta final">🎯 Solo pistas</button>
-                    <button type="button" class="civix-modo" data-modo="corregir" title="Corregir procedimiento o entrega">🛠️ Corregir</button>
-                    <button type="button" class="civix-modo" data-modo="quiz" title="Preparar evaluación">📝 Preparar quiz</button>
+                <div class="civix-toolbar">
+                    <div class="civix-modos" id="civixModos" role="tablist" aria-label="Modo de tutoría">
+                        <button type="button" class="civix-modo active" data-modo="explicar" title="Explicación completa">
+                            <span class="civix-modo-ico">📘</span><span class="civix-modo-txt">Explicar</span>
+                        </button>
+                        <button type="button" class="civix-modo" data-modo="pistas" title="Solo pistas, sin respuesta final">
+                            <span class="civix-modo-ico">🎯</span><span class="civix-modo-txt">Pistas</span>
+                        </button>
+                        <button type="button" class="civix-modo" data-modo="corregir" title="Corregir procedimiento o entrega">
+                            <span class="civix-modo-ico">🛠️</span><span class="civix-modo-txt">Corregir</span>
+                        </button>
+                        <button type="button" class="civix-modo" data-modo="quiz" title="Preparar evaluación">
+                            <span class="civix-modo-ico">📝</span><span class="civix-modo-txt">Quiz</span>
+                        </button>
+                    </div>
+                    <div class="civix-mode-pill" id="civixModePill">Modo: <strong>Explicar</strong></div>
                 </div>
 
                 <div class="civix-historial-panel" id="civixHistorialPanel" hidden>
@@ -1013,24 +1024,31 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                     </div>
                 </div>
 
-                <div class="civix-chips" id="civixChips" aria-label="Sugerencias">
-                    <button type="button" class="civix-chip" data-q="Explícame los límites de Atterberg con un ejemplo numérico">Límites de Atterberg</button>
-                    <button type="button" class="civix-chip" data-q="Diferencias entre Proctor estándar y modificado">Proctor std vs mod</button>
-                    <button type="button" class="civix-chip" data-q="¿Cómo se interpreta una curva granulométrica?">Granulometría</button>
-                    <button type="button" class="civix-chip" data-q="Guíame paso a paso en un ensayo de corte directo">Corte directo</button>
-                </div>
-
-                <div class="asistente-input-wrap civix-input-wrap">
-                    <div class="asistente-file-chip" id="civixFileChip" hidden style="display:none">
-                        <span class="adjunto-nombre" id="civixFileName"></span>
-                        <button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" title="Quitar archivo">×</button>
+                <div class="civix-footer-zone">
+                    <div class="civix-chips-label">Sugerencias rápidas</div>
+                    <div class="civix-chips" id="civixChips" aria-label="Sugerencias">
+                        <button type="button" class="civix-chip" data-q="Explícame los límites de Atterberg con un ejemplo numérico">Límites de Atterberg</button>
+                        <button type="button" class="civix-chip" data-q="Diferencias entre Proctor estándar y modificado">Proctor std vs mod</button>
+                        <button type="button" class="civix-chip" data-q="¿Cómo se interpreta una curva granulométrica?">Granulometría</button>
+                        <button type="button" class="civix-chip" data-q="Guíame paso a paso en un ensayo de corte directo">Corte directo</button>
+                        <button type="button" class="civix-chip" data-q="Resume este tema en 5 puntos clave para estudiar">Resumen 5 puntos</button>
                     </div>
-                    <div class="asistente-input civix-input-bar">
-                        <textarea id="inputAsistente" rows="2" placeholder="Escribe tu duda… Enter envía · Shift+Enter nueva línea"></textarea>
-                        <label class="btn-adjuntar-icon" for="civixFileInput" title="Adjuntar archivo">📎</label>
-                        <input type="file" id="civixFileInput" hidden
-                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.py,.js,.ts,.txt,.csv,.json,.md,.m,.dxf,.ifc,.xml,.dat,.in,.log,.sql,.html,.css,.ipynb,.geojson,.obj,.rtf,.odt,.ods,.odp,image/*">
-                        <button id="btnEnviarMensaje" type="button" class="civix-send">Enviar</button>
+
+                    <div class="asistente-input-wrap civix-input-wrap">
+                        <div class="asistente-file-chip" id="civixFileChip" hidden style="display:none">
+                            <span class="adjunto-nombre" id="civixFileName"></span>
+                            <button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" title="Quitar archivo">×</button>
+                        </div>
+                        <div class="asistente-input civix-input-bar">
+                            <label class="btn-adjuntar-icon civix-attach" for="civixFileInput" title="Adjuntar archivo">📎</label>
+                            <textarea id="inputAsistente" rows="1" placeholder="Escribe tu duda a Civix…"></textarea>
+                            <input type="file" id="civixFileInput" hidden
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.py,.js,.ts,.txt,.csv,.json,.md,.m,.dxf,.ifc,.xml,.dat,.in,.log,.sql,.html,.css,.ipynb,.geojson,.obj,.rtf,.odt,.ods,.odp,image/*">
+                            <button id="btnEnviarMensaje" type="button" class="civix-send" title="Enviar (Enter)">
+                                <span class="civix-send-ico">↑</span>
+                            </button>
+                        </div>
+                        <p class="civix-input-hint"><kbd>Enter</kbd> enviar · <kbd>Shift</kbd>+<kbd>Enter</kbd> nueva línea · PDF, Word, Excel</p>
                     </div>
                 </div>
             </div>
