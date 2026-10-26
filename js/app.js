@@ -1051,7 +1051,7 @@ function inicializarAsistenteAI() {
 
         limpiarAdjunto();
 
-        var escribiendo = agregarMensaje('<span class="civix-typing"><span></span><span></span><span></span></span> Civix está pensando…', 'bot', true);
+        var escribiendo = agregarMensaje('<span class="civix-thinking"><span class="civix-typing" aria-hidden="true"><span></span><span></span><span></span></span><span class="civix-thinking-text">Pensando…</span></span>', 'bot', true);
 
         llamarIA(payload).then(function(respuesta) {
             escribiendo.remove();
@@ -1364,9 +1364,15 @@ function agregarMensaje(texto, tipo, temporal) {
     div.className = 'mensaje mensaje-' + (tipo === 'usuario' ? 'usuario' : 'bot');
     if (temporal) div.classList.add('mensaje-temporal');
     var p = document.createElement('p');
-    p.style.whiteSpace = 'pre-wrap';
     p.style.wordBreak = 'break-word';
-    p.textContent = texto;
+    // Mensajes temporales (pensando) pueden llevar HTML seguro del indicador
+    if (temporal && String(texto).indexOf('civix-typing') >= 0) {
+        p.style.whiteSpace = 'normal';
+        p.innerHTML = texto;
+    } else {
+        p.style.whiteSpace = 'pre-wrap';
+        p.textContent = texto;
+    }
     div.appendChild(p);
     chatMensajes.appendChild(div);
     chatMensajes.scrollTop = chatMensajes.scrollHeight;
@@ -1656,18 +1662,19 @@ function civixAplicarAvatar() {
 function civixInstruccionModo(modo) {
     modo = modo || window.__civixModo || 'explicar';
     if (modo === 'pistas') {
-        return 'MODO SOLO PISTAS (examen): NO des la respuesta final ni el procedimiento completo. '
-            + 'Ofrece pistas progresivas, preguntas guía y criterios de verificación. Anima a que intente solo.';
+        return 'MODO SOLO PISTAS: no des la respuesta final completa. Da pistas y preguntas guía, con tono natural de tutor.';
     }
     if (modo === 'corregir') {
-        return 'MODO CORREGIR: Revisa el procedimiento o texto del estudiante. Señala aciertos, errores y omisiones. '
-            + 'Propón correcciones concretas y una mini-rúbrica (Bien / Mejorable / Falta).';
+        return 'MODO CORREGIR: revisa el texto o procedimiento del usuario. Comenta aciertos y errores de forma clara y natural, sin plantillas numeradas rígidas.';
     }
     if (modo === 'quiz') {
-        return 'MODO PREPARAR QUIZ: Genera preguntas de práctica (opción múltiple y/o abiertas) sobre el tema. '
-            + 'Incluye la respuesta correcta al final de cada ítem, separada, para autoevaluación.';
+        return 'MODO PREPARAR QUIZ: propone preguntas de práctica. Puedes numerar solo las preguntas. Incluye respuestas al final, aparte.';
     }
-    return 'MODO EXPLICAR: Explica con claridad didáctica. Incluye fundamento, fórmulas (variables), ejemplo y un breve resumen.';
+    return 'MODO EXPLICAR: responde de forma NATURAL y conversacional, como un tutor cercano. '
+        + 'NO uses la plantilla fija "1) Identificación del tema / 2) Fundamento teórico / 3) Fórmulas / 4) Ejemplo / 5) Ejercicio / Resumen / Fuentes" '
+        + 'salvo que el usuario pida explícitamente una clase estructurada o un tema de estudio paso a paso. '
+        + 'Para preguntas cotidianas, cartas, fechas o dudas generales: respuesta directa, clara y amable, en párrafos. '
+        + 'Si hay un ejemplo de documento (carta, informe), preséntalo de forma legible sin envolverlo innecesariamente en bloques de código, salvo que sea código real.';
 }
 
 function civixBuildContextSystem() {
@@ -1705,6 +1712,7 @@ function civixBuildContextSystem() {
         }
     } catch (e) {}
     partes.push('Prioriza textos guía adjuntos. No inventes datos numéricos de laboratorio. Si faltan datos, pídelos.');
+    partes.push('Estilo de respuesta: natural, fluido y humano. Evita esquemas rígidos con Identificación del tema / Fundamento teórico / Fórmulas / Ejemplo práctico / Ejercicio de refuerzo / Fuentes, a menos que el usuario pida una clase formal del tema.');
     partes.push('Responde siempre en español. Cuando uses el documento, cita páginas si aparecen como "--- Página N ---".');
     return partes.join(' ');
 }
@@ -1765,7 +1773,7 @@ function civixRegenerarUltima() {
         var bots = chat.querySelectorAll('.mensaje-bot');
         if (bots.length) bots[bots.length - 1].remove();
     }
-    var escribiendo = agregarMensaje('<span class="civix-typing"><span></span><span></span><span></span></span> Regenerando…', 'bot', true);
+    var escribiendo = agregarMensaje('<span class="civix-thinking"><span class="civix-typing" aria-hidden="true"><span></span><span></span><span></span></span><span class="civix-thinking-text">Regenerando…</span></span>', 'bot', true);
     // No volver a empujar el user message: llamarIA lo hace
     // Ajustar: llamarIA hace push del user; así que quitamos el last user temporalmente
     if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') {
