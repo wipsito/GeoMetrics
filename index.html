@@ -793,13 +793,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                         <label>Apellidos</label>
                         <input type="text" id="regApellidos" placeholder="Ej. Enríquez Valbuena" required>
 
-                        <label>Género</label>
-                        <select id="regGenero" required>
-                            <option value="">Selecciona…</option>
-                            <option value="mujer">Mujer</option>
-                            <option value="hombre">Hombre</option>
-                        </select>
-
                         <label>Código estudiantil</label>
                         <input type="text" id="regCodigo" placeholder="Ej. 1090123456" required autocomplete="off">
 
@@ -841,13 +834,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
                         <label>Apellidos</label>
                         <input type="text" id="docApellidos" placeholder="Apellidos" required>
-
-                        <label>Género</label>
-                        <select id="docGenero" required>
-                            <option value="">Selecciona…</option>
-                            <option value="mujer">Mujer</option>
-                            <option value="hombre">Hombre</option>
-                        </select>
 
                         <label>Crear contraseña</label>
                         <div class="password-wrap"><input type="password" id="docPass" placeholder="Mínimo 6 caracteres" required minlength="6"><button type="button" class="btn-toggle-pass" data-pass-target="docPass" aria-label="Mostrar contraseña" title="Mostrar contraseña">🙈</button></div>
@@ -997,7 +983,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 </div>
                 <div class="asistente-chat" id="chatMensajes">
                     <div class="mensaje mensaje-bot">
-                        <p>¡Hola! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.</p>
+                        <p>¡Hola futuro ingeniero! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.</p>
                     </div>
                 </div>
                 <div class="asistente-input-wrap">
@@ -2159,13 +2145,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 <label>Selecciona una imagen</label>
                 <input type="file" id="perfilFotoInput" accept="image/*">
                 <p class="login-hint">Máx. 1.5 MB. Se mostrará en tu saludo y en el listado del docente.</p>
-                <label>Género</label>
-                <select id="perfilGenero">
-                    <option value="">Selecciona…</option>
-                    <option value="mujer">Mujer</option>
-                    <option value="hombre">Hombre</option>
-                </select>
-                <button type="button" class="btn-calcular" id="btnGuardarPerfil" style="margin-top:12px">GUARDAR PERFIL</button>
+                <button type="button" class="btn-calcular" id="btnGuardarPerfil">GUARDAR FOTO</button>
                 <p class="mensaje-error" id="perfilError"></p>
             </div>
         </div>
@@ -2623,75 +2603,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/teoria-dm.js"></script>
     <script src="js/teoria-normas.js"></script>
     <script src="js/chart-theme.js"></script>
-
-<!-- Modal de confirmación propio (reemplaza window.confirm) -->
-<div id="gmConfirmModal" class="gm-confirm-overlay" hidden>
-  <div class="gm-confirm-box" role="dialog" aria-modal="true" aria-labelledby="gmConfirmTitle">
-    <div class="gm-confirm-icon">⚠</div>
-    <h3 id="gmConfirmTitle">Confirmar acción</h3>
-    <p id="gmConfirmMsg">¿Estás seguro?</p>
-    <div class="gm-confirm-actions">
-      <button type="button" class="gm-confirm-cancel" id="gmConfirmCancel">Cancelar</button>
-      <button type="button" class="gm-confirm-ok" id="gmConfirmOk">Eliminar</button>
-    </div>
-  </div>
-</div>
-<style>
-.gm-confirm-overlay {
-  position: fixed; inset: 0; z-index: 2147483646;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(2, 8, 20, 0.72);
-  backdrop-filter: blur(6px);
-  padding: 20px;
-}
-.gm-confirm-overlay[hidden] { display: none !important; }
-.gm-confirm-box {
-  width: min(420px, 100%);
-  background: linear-gradient(160deg, #151F32, #101a2c);
-  border: 1px solid rgba(248, 113, 113, 0.35);
-  border-radius: 20px;
-  padding: 28px 24px 22px;
-  box-shadow: 0 24px 60px rgba(0,0,0,.55);
-  text-align: center;
-  color: #F1F5F9;
-  animation: gmConfirmIn .18s ease-out;
-}
-@keyframes gmConfirmIn {
-  from { opacity: 0; transform: translateY(10px) scale(.96); }
-  to { opacity: 1; transform: none; }
-}
-.gm-confirm-icon {
-  width: 56px; height: 56px; margin: 0 auto 14px;
-  border-radius: 50%;
-  display: grid; place-items: center;
-  font-size: 26px;
-  background: rgba(248, 113, 113, 0.15);
-  border: 1px solid rgba(248, 113, 113, 0.4);
-}
-.gm-confirm-box h3 {
-  margin: 0 0 8px; font-size: 20px; font-weight: 700;
-}
-.gm-confirm-box p {
-  margin: 0 0 20px; color: #A7B4C8; font-size: 14.5px; line-height: 1.5;
-}
-.gm-confirm-actions {
-  display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
-}
-.gm-confirm-cancel, .gm-confirm-ok {
-  min-width: 120px; padding: 11px 18px; border-radius: 12px;
-  font-weight: 700; font-size: 14px; cursor: pointer; border: none;
-}
-.gm-confirm-cancel {
-  background: transparent; color: #A7B4C8;
-  border: 1px solid #2B3A50;
-}
-.gm-confirm-cancel:hover { border-color: #3a4d6b; color: #F1F5F9; }
-.gm-confirm-ok {
-  background: linear-gradient(135deg, #F87171, #EF4444); color: #fff;
-}
-.gm-confirm-ok:hover { filter: brightness(1.08); }
-</style>
-
 </body>
 
 </html>
