@@ -14,99 +14,6 @@ var AULA_KEYS = {
     quices: 'geometrics_quices'
 };
 
-var __quizBancoDocente = [];
-
-function aulaQuizBancoToggle(){
-    var sel = document.getElementById('quizTipoPregunta');
-    var wrap = document.getElementById('quizOpcionesWrap');
-    if(!sel || !wrap) return;
-    var t = sel.value;
-    if(t === 'abierta'){
-        wrap.style.display = 'none';
-    }else{
-        wrap.style.display = 'block';
-    }
-}
-
-function aulaRenderQuizBanco(){
-    var box = document.getElementById('quizBancoLista');
-    if(!box) return;
-    if(!__quizBancoDocente.length){
-        box.innerHTML = '<p class="aula-vacio">Aún no hay preguntas en el banco.</p>';
-        return;
-    }
-    box.innerHTML = __quizBancoDocente.map(function(p, idx){
-        if(p.tipo === 'abierta'){
-            return '<div class="aula-item"><strong>ABIERTA</strong><p>' + (typeof aulaEsc === 'function' ? aulaEsc(p.texto) : String(p.texto||'').replace(/</g,'&lt;')) + '</p><button type="button" class="btn-limpiar" data-quiz-banco-del="' + idx + '">Eliminar</button></div>';
-        }else{
-            var opts = (p.opciones||[]).map(function(op){ return op.key + ') ' + op.texto; }).join(' · ');
-            return '<div class="aula-item"><strong>MÚLTIPLE · Correcta: ' + p.correcta + '</strong><p>' + (typeof aulaEsc === 'function' ? aulaEsc(p.texto) : String(p.texto||'').replace(/</g,'&lt;')) + '</p><p style="opacity:.8;">' + (typeof aulaEsc === 'function' ? aulaEsc(opts) : String(opts||'').replace(/</g,'&lt;')) + '</p><button type="button" class="btn-limpiar" data-quiz-banco-del="' + idx + '">Eliminar</button></div>';
-        }
-    }).join('');
-    box.querySelectorAll('[data-quiz-banco-del]').forEach(function(btn){
-        btn.addEventListener('click', function(){
-            var i = parseInt(btn.getAttribute('data-quiz-banco-del'), 10);
-            if(isNaN(i)) return;
-            __quizBancoDocente.splice(i, 1);
-            aulaRenderQuizBanco();
-        });
-    });
-}
-
-function aulaAgregarPreguntaAlBanco(){
-    var sel = document.getElementById('quizTipoPregunta');
-    var enun = document.getElementById('quizEnunciado');
-    var err = document.getElementById('quizError');
-    if(err) err.textContent = '';
-    var tipo = sel ? sel.value : 'multiple';
-    var texto = enun ? (enun.value || '').trim() : '';
-    if(!texto){
-        if(err) err.textContent = 'Escribe el enunciado de la pregunta.';
-        return;
-    }
-    if(tipo === 'abierta'){
-        __quizBancoDocente.push({
-            uid: 'qb_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
-            tipo: 'abierta',
-            texto: texto
-        });
-        if(enun) enun.value = '';
-        aulaRenderQuizBanco();
-        if(err) err.textContent = 'Pregunta abierta agregada al banco.';
-        setTimeout(function(){ if(err) err.textContent=''; }, 1200);
-        return;
-    }
-    var a = ((document.getElementById('quizOpA')||{}).value||'').trim();
-    var b = ((document.getElementById('quizOpB')||{}).value||'').trim();
-    var c = ((document.getElementById('quizOpC')||{}).value||'').trim();
-    var d = ((document.getElementById('quizOpD')||{}).value||'').trim();
-    var corr = document.getElementById('quizCorrecta') ? document.getElementById('quizCorrecta').value : 'A';
-    if(!a || !b || !c || !d){
-        if(err) err.textContent = 'Completa las cuatro opciones A, B, C, D.';
-        return;
-    }
-    __quizBancoDocente.push({
-        uid: 'qb_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
-        tipo: 'multiple',
-        texto: texto,
-        opciones: [
-            {key:'A', texto:a},
-            {key:'B', texto:b},
-            {key:'C', texto:c},
-            {key:'D', texto:d}
-        ],
-        correcta: corr
-    });
-    if(enun) enun.value = '';
-    var oa=document.getElementById('quizOpA'); if(oa) oa.value='';
-    var ob=document.getElementById('quizOpB'); if(ob) ob.value='';
-    var oc=document.getElementById('quizOpC'); if(oc) oc.value='';
-    var od=document.getElementById('quizOpD'); if(od) od.value='';
-    aulaRenderQuizBanco();
-    if(err) err.textContent = 'Pregunta de selección múltiple agregada al banco.';
-    setTimeout(function(){ if(err) err.textContent=''; }, 1200);
-}
-
 /** Versión de esquema: al cambiar, limpia usuarios para forzar re-registro con nuevos campos */
 var GEOMETRICS_DB_VERSION = 3;
 (function migrarBaseDatosGeoMetrics() {
@@ -1298,10 +1205,10 @@ function aulaUpdateMenuUser(user) {
     if (user) {
         var nombre = (user.nombre || '').trim() || 'Usuario';
         if (user.rol === 'docente') {
-            if (saludo) saludo.textContent = 'Bienvenido Ingenier@ ' + nombre;
+            if (saludo) saludo.textContent = 'Bienvenido Ingeniero ' + nombre;
             if (info) info.textContent = 'Docente · Gestiona tu aula y materiales.';
         } else {
-            if (saludo) saludo.textContent = 'Bienvenido futur@ Ingenier@ ' + nombre;
+            if (saludo) saludo.textContent = 'Bienvenido futuro Ingeniero ' + nombre;
             if (info) {
                 var mats = aulaNombresMaterias(user);
                 info.textContent = mats.length
@@ -3501,26 +3408,6 @@ function aulaInitUI() {
     if (btnCrearTarea) btnCrearTarea.addEventListener('click', aulaCrearTarea);
     var btnCrearQuiz = document.getElementById('btnCrearQuiz');
     if (btnCrearQuiz) btnCrearQuiz.addEventListener('click', function() { if (typeof aulaCrearQuiz === 'function') aulaCrearQuiz(); });
-    var selQuizTipo = document.getElementById('quizTipoPregunta');
-    if (selQuizTipo) {
-        selQuizTipo.addEventListener('change', aulaQuizBancoToggle);
-    }
-    var btnAddQuiz = document.getElementById('btnAgregarQuizPregunta');
-    if (btnAddQuiz) {
-        btnAddQuiz.addEventListener('click', aulaAgregarPreguntaAlBanco);
-    }
-    try { aulaQuizBancoToggle(); } catch(e){}
-    try { aulaRenderQuizBanco(); } catch(e){}
-    var selQuizTipo = document.getElementById('quizTipoPregunta');
-    if (selQuizTipo) {
-        selQuizTipo.addEventListener('change', aulaQuizBancoToggle);
-    }
-    var btnAddQuiz = document.getElementById('btnAgregarQuizPregunta');
-    if (btnAddQuiz) {
-        btnAddQuiz.addEventListener('click', aulaAgregarPreguntaAlBanco);
-    }
-    try { aulaQuizBancoToggle(); } catch(e){}
-    try { aulaRenderQuizBanco(); } catch(e){}
     var btnSubirPres = document.getElementById('btnSubirPres');
     if (btnSubirPres) btnSubirPres.addEventListener('click', aulaSubirPres);
     var btnFiltrar = document.getElementById('btnFiltrarEst');
@@ -4994,40 +4881,6 @@ function aulaSaveQuices(list) {
     } catch (e) {}
 }
 
-function aulaLoadQuizEntregas() {
-    try { return JSON.parse(localStorage.getItem('geometrics_quiz_entregas') || '[]') || []; } catch (e) { return []; }
-}
-function aulaSaveQuizEntregas(list) {
-    try { localStorage.setItem('geometrics_quiz_entregas', JSON.stringify(list || [])); } catch (e) {}
-}
-
-function aulaQuizSeed(str){
-    str = String(str || '');
-    var h = 2166136261 >>> 0;
-    for(var i=0;i<str.length;i++){
-        h ^= str.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-    }
-    return h >>> 0;
-}
-function aulaQuizRand(seed){
-    var x = seed >>> 0;
-    return function(){
-        x = (x * 1664525 + 1013904223) >>> 0;
-        return x / 4294967296;
-    };
-}
-function aulaQuizShuffle(arr, seed){
-    var a = (arr || []).slice();
-    if(!a.length) return a;
-    var rand = aulaQuizRand(aulaQuizSeed(seed));
-    for(var i=a.length-1;i>0;i--){
-        var j = Math.floor(rand() * (i+1));
-        var tmp = a[i]; a[i]=a[j]; a[j]=tmp;
-    }
-    return a;
-}
-
 function aulaCrearQuiz() {
     var user = aulaRequireSession();
     if (!user || user.rol !== 'docente') return;
@@ -5036,102 +4889,26 @@ function aulaCrearQuiz() {
     var titulo = ((document.getElementById('quizTitulo') || {}).value || '').trim();
     var materia = (document.getElementById('quizMateria') || {}).value || '';
     var grupo = ((document.getElementById('quizGrupo') || {}).value || '').trim();
-    var tiempoMin = parseInt(((document.getElementById('quizTiempo') || {}).value || '15'), 10) || 15;
-    var puntajeMultiple = parseFloat(((document.getElementById('quizPuntajeMultiple') || {}).value || '1'), 10) || 1;
-    var puntajeAbierta = parseFloat(((document.getElementById('quizPuntajeAbierta') || {}).value || '2'), 10) || 2;
-    var cantAbierta = parseInt(((document.getElementById('quizCantAbierta') || {}).value || '1'), 10) || 1;
-    var cantMultiple = parseInt(((document.getElementById('quizCantMultiple') || {}).value || '1'), 10) || 1;
+    var preguntasRaw = ((document.getElementById('quizPreguntas') || {}).value || '').trim();
     if (!titulo) { if (err) err.textContent = 'Escribe un título del quiz.'; return; }
-    var pool = [];
-    if (typeof __quizBancoDocente !== 'undefined' && __quizBancoDocente && __quizBancoDocente.length) {
-        __quizBancoDocente.forEach(function (qb, idx) {
-            if (qb.tipo === 'abierta') {
-                pool.push({
-                    uid: qb.uid || ('qb_' + Date.now() + '_' + idx),
-                    tipo: 'abierta',
-                    texto: qb.texto,
-                    puntaje: puntajeAbierta
-                });
-            } else if (qb.tipo === 'multiple') {
-                pool.push({
-                    uid: qb.uid || ('qb_' + Date.now() + '_' + idx),
-                    tipo: 'multiple',
-                    texto: qb.texto,
-                    opciones: qb.opciones || [],
-                    correcta: qb.correcta || 'A',
-                    puntaje: puntajeMultiple
-                });
-            }
-        });
-    } else {
-        var preguntasRaw = ((document.getElementById('quizPreguntas') || {}).value || '').trim();
-        if (!preguntasRaw) { if (err) err.textContent = 'Agrega preguntas al banco.'; return; }
-        preguntasRaw.split('\n').forEach(function (l, idx) {
-            var line = l.trim();
-            if (!line) return;
-            var parts = line.split('|').map(function (x) { return (x || '').trim(); });
-            if (!parts.length) return;
-            var tipo = String(parts[0]).toUpperCase();
-            if (tipo === 'MULTIPLE') {
-                if (parts.length < 7) return;
-                pool.push({
-                    uid: 'p_' + Date.now() + '_' + idx,
-                    tipo: 'multiple',
-                    texto: parts[1],
-                    opciones: [
-                        { key: 'A', texto: parts[2] },
-                        { key: 'B', texto: parts[3] },
-                        { key: 'C', texto: parts[4] },
-                        { key: 'D', texto: parts[5] }
-                    ],
-                    correcta: String(parts[6]).toUpperCase().replace(/[^ABCD]/g, '').slice(0, 1) || 'A',
-                    puntaje: puntajeMultiple
-                });
-            } else if (tipo === 'ABIERTA') {
-                if (parts.length < 2) return;
-                pool.push({
-                    uid: 'p_' + Date.now() + '_' + idx,
-                    tipo: 'abierta',
-                    texto: parts[1],
-                    puntaje: puntajeAbierta
-                });
-            }
-        });
-    }
-    var abiertasPool = pool.filter(function(p){ return p.tipo === 'abierta'; });
-    var multiplesPool = pool.filter(function(p){ return p.tipo === 'multiple'; });
-    if ((cantAbierta > 0 && abiertasPool.length < cantAbierta) || (cantMultiple > 0 && multiplesPool.length < cantMultiple)) {
-        if (err) err.textContent = 'No hay suficientes preguntas del tipo solicitado en el banco.';
-        return;
-    }
-    if (cantAbierta === 0 && cantMultiple === 0) {
-        if (err) err.textContent = 'Debes mostrar al menos 1 pregunta.';
-        return;
-    }
+    if (!preguntasRaw) { if (err) err.textContent = 'Agrega al menos una pregunta (una por línea).'; return; }
+    var preguntas = preguntasRaw.split('\n').map(function (l) { return l.trim(); }).filter(Boolean).map(function (t, i) {
+        return { id: 'p' + (i + 1), texto: t };
+    });
     var list = aulaLoadQuices();
     list.push({
         id: typeof aulaUid === 'function' ? aulaUid() : ('q_' + Date.now()),
         titulo: titulo,
         materia: materia,
         grupo: grupo,
-        preguntasPool: pool,
-        modoAleatorioPorTipo: true,
-        cantidadPorTipo: { abierta: cantAbierta, multiple: cantMultiple },
-        puntajeAbierta: puntajeAbierta,
-        puntajeMultiple: puntajeMultiple,
-        tiempoLimiteMin: tiempoMin,
+        preguntas: preguntas,
         docenteId: user.id,
         docenteNombre: user.nombre,
-        activa: true,
         creada: new Date().toISOString()
     });
     aulaSaveQuices(list);
     var t = document.getElementById('quizTitulo'); if (t) t.value = '';
     var p = document.getElementById('quizPreguntas'); if (p) p.value = '';
-    var enun = document.getElementById('quizEnunciado'); if (enun) enun.value = '';
-    try { __quizBancoDocente = []; aulaRenderQuizBanco(); } catch(e){}
-    if (err) err.textContent = 'Quiz publicado con aleatorización por tipo.';
-    setTimeout(function(){ if(err) err.textContent=''; }, 2000);
     aulaRenderQuicesDocente();
 }
 
@@ -5141,146 +4918,34 @@ function aulaRenderQuicesDocente() {
     var user = aulaGetSession();
     if (!user) return;
     var list = aulaLoadQuices().filter(function (q) { return q.docenteId === user.id; });
-    var entregas = aulaLoadQuizEntregas();
     if (!list.length) {
         box.innerHTML = '<p class="aula-vacio">Aún no has publicado quices.</p>';
         return;
     }
     box.innerHTML = list.slice().reverse().map(function (q) {
-        var qent = entregas.filter(function (e) { return e.quizId === q.id; });
-        var total = qent.length;
-        var countPool = (q.preguntasPool && q.preguntasPool.length) ? q.preguntasPool.length : ((q.preguntas && q.preguntas.length) ? q.preguntas.length : 0);
         return '<div class="aula-item">' +
             '<strong>' + (typeof aulaEsc === 'function' ? aulaEsc(q.titulo) : q.titulo) + '</strong>' +
-            '<p>' + (q.materia || '') + ' · Grupo ' + (q.grupo || 'Todos') + ' · Banco: ' + countPool + ' pregunta(s) · Muestra: ' + ((q.cantidadPorTipo && q.cantidadPorTipo.abierta)||0) + ' abierta(s) + ' + ((q.cantidadPorTipo && q.cantidadPorTipo.multiple)||0) + ' múltiple(s) · ' + (q.tiempoLimiteMin || 15) + ' min</p>' +
-            '<p>Entregas: ' + total + '</p>' +
-            (total ? '<details style="margin-top:6px;"><summary>Ver entregas y calificar</summary>' +
-                qent.map(function (e) {
-                    var notaAuto = e.notaAuto != null ? e.notaAuto : '-';
-                    var notaMaxAuto = e.notaMaxAuto != null ? e.notaMaxAuto : (e.notaMax != null ? e.notaMax : '-');
-                    var notaAb = e.notaAbierta != null ? e.notaAbierta : 'Pendiente';
-                    var notaMaxAb = e.notaMaxAbierta != null ? e.notaMaxAbierta : 0;
-                    var mostradas = e.preguntasMostradas || [];
-                    var resp = e.respuestas || [];
-                    var htmlResp = '<div style="margin-top:8px;padding:8px;background:rgba(15,23,42,.5);border-radius:10px;">';
-                    mostradas.forEach(function(pm){
-                        var r = resp.find(function(x){ return x.preguntaUid === pm.uid; });
-                        htmlResp += '<div style="padding:6px 0;border-top:1px solid rgba(255,255,255,.06);"><div><strong>' + (pm.tipo==='abierta'?'[ABIERTA]':'[MÚLTIPLE]') + '</strong> ' + (typeof aulaEsc === 'function' ? aulaEsc(pm.texto) : String(pm.texto||'').replace(/</g,'&lt;')) + ' <span style="opacity:.7">(' + (pm.puntaje||1) + ' pts)</span></div>';
-                        if(pm.tipo === 'multiple'){
-                            htmlResp += '<div style="opacity:.9;">Respuesta estudiante: <strong>' + (r && r.seleccionada ? r.seleccionada : '-') + '</strong> · Correcta: <strong>' + (pm.correcta||'-') + '</strong></div>';
-                        }else{
-                            htmlResp += '<div style="margin-top:4px;white-space:pre-wrap;opacity:.95;">Respuesta: ' + (r && r.texto ? String(r.texto).replace(/</g,'&lt;') : '(sin respuesta)') + '</div>';
-                        }
-                        htmlResp += '</div>';
-                    });
-                    htmlResp += '</div>';
-                    return '<div style="padding:8px 0;border-top:1px solid rgba(255,255,255,.08);"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><strong>' + (e.estudianteNombre || e.estudianteEmail || '-') + '</strong><span>Múltiple: ' + notaAuto + '/' + notaMaxAuto + ' · Abierta: ' + notaAb + '/' + notaMaxAb + '</span></div>' + htmlResp + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;"><button type="button" class="btn-limpiar" data-cal-ab-q="' + q.id + '" data-cal-ab-e="' + e.id + '">Calificar abierta(s)</button><button type="button" class="btn-limpiar" data-cal-fin-q="' + q.id + '" data-cal-fin-e="' + e.id + '">Poner nota final</button></div></div>';
-                }).join('') + '</details>' : '') +
-            '<button type="button" class="btn-limpiar btn-quiz-del" data-id="' + q.id + '" style="margin-top:8px;">Eliminar quiz</button></div>';
+            '<p>' + (q.materia || '') + ' · Grupo ' + (q.grupo || 'Todos') + ' · ' + (q.preguntas || []).length + ' pregunta(s)</p>' +
+            '<button type="button" class="btn-limpiar btn-quiz-del" data-id="' + q.id + '">Eliminar</button></div>';
     }).join('');
     box.querySelectorAll('.btn-quiz-del').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var id = btn.getAttribute('data-id');
-            if (!confirm('¿Eliminar este quiz y sus entregas?')) return;
+            if (!confirm('¿Eliminar este quiz?')) return;
             aulaSaveQuices(aulaLoadQuices().filter(function (q) { return q.id !== id; }));
-            aulaSaveQuizEntregas(aulaLoadQuizEntregas().filter(function (e) { return e.quizId !== id; }));
             aulaRenderQuicesDocente();
-        });
-    });
-    box.querySelectorAll('button[data-cal-ab-e]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var qid = btn.getAttribute('data-cal-ab-q');
-            var eid = btn.getAttribute('data-cal-ab-e');
-            var all = aulaLoadQuizEntregas();
-            var ent = all.find(function (e) { return e.id === eid; });
-            if (!ent) return;
-            var maxAb = ent.notaMaxAbierta != null ? ent.notaMaxAbierta : 0;
-            var actual = ent.notaAbierta != null ? ent.notaAbierta : '';
-            var val = prompt('Calificación para preguntas abiertas (' + maxAb + ' pts):', actual);
-            if (val === null) return;
-            var num = parseFloat(String(val).replace(',', '.'));
-            if (isNaN(num)) return;
-            if (num < 0) num = 0;
-            if (maxAb > 0 && num > maxAb) num = maxAb;
-            all = all.map(function (e) { if (e.id === eid) { e.notaAbierta = num; e.calificadoAbiertasPor = user.nombre; e.calificadoAbiertasEn = new Date().toISOString(); } return e; });
-            aulaSaveQuizEntregas(all);
-            aulaRenderQuicesDocente();
-            try {
-                var errBox = document.getElementById('quizError');
-                if(errBox){ errBox.textContent = 'Calificación de abiertas guardada'; setTimeout(function(){ errBox.textContent=''; }, 1500); }
-            } catch(e){}
-        });
-    });
-    box.querySelectorAll('button[data-cal-fin-e]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var qid = btn.getAttribute('data-cal-fin-q');
-            var eid = btn.getAttribute('data-cal-fin-e');
-            var all = aulaLoadQuizEntregas();
-            var ent = all.find(function (e) { return e.id === eid; });
-            if (!ent) return;
-            var auto = ent.notaAuto != null ? ent.notaAuto : 0;
-            var maxAuto = ent.notaMaxAuto != null ? ent.notaMaxAuto : 0;
-            var ab = ent.notaAbierta != null ? ent.notaAbierta : 0;
-            var maxAb = ent.notaMaxAbierta != null ? ent.notaMaxAbierta : 0;
-            var sugerida = (auto + ab).toFixed(2);
-            var val = prompt('Nota final (sugerida ' + sugerida + ' / ' + (maxAuto + maxAb) + '):', ent.calificacion != null ? ent.calificacion : sugerida);
-            if (val === null) return;
-            var num = parseFloat(String(val).replace(',', '.'));
-            if (isNaN(num)) return;
-            all = all.map(function (e) { if (e.id === eid) { e.calificacion = num; e.calificadoPor = user.nombre; e.calificadoEn = new Date().toISOString(); } return e; });
-            aulaSaveQuizEntregas(all);
-            aulaRenderQuicesDocente();
-            try {
-                var errBox = document.getElementById('quizError');
-                if(errBox){ errBox.textContent = 'Calificación final guardada'; setTimeout(function(){ errBox.textContent=''; }, 1500); }
-            } catch(e){}
-        });
-    });
-    box.querySelectorAll('button[data-cal-e]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var qid = btn.getAttribute('data-cal-q');
-            var eid = btn.getAttribute('data-cal-e');
-            var all = aulaLoadQuizEntregas();
-            var ent = all.find(function (e) { return e.id === eid; });
-            if (!ent) return;
-            var maxTotal = (ent.notaMaxAuto != null ? ent.notaMaxAuto : (ent.notaMax != null ? ent.notaMax : 0)) + (ent.notaMaxAbierta != null ? ent.notaMaxAbierta : 0);
-            var sugerida = ((ent.notaAuto != null ? ent.notaAuto : 0) + (ent.notaAbierta != null ? ent.notaAbierta : 0)).toFixed(2);
-            var val = prompt('Calificación final (' + maxTotal + ' pts):', ent.calificacion != null ? ent.calificacion : sugerida);
-            if (val === null) return;
-            var num = parseFloat(String(val).replace(',', '.'));
-            if (isNaN(num)) return;
-            all = all.map(function (e) { if (e.id === eid) { e.calificacion = num; e.calificadoPor = user.nombre; e.calificadoEn = new Date().toISOString(); } return e; });
-            aulaSaveQuizEntregas(all);
-            aulaRenderQuicesDocente();
-            try {
-                var errBox = document.getElementById('quizError');
-                if(errBox){ errBox.textContent = 'Calificación guardada'; setTimeout(function(){ errBox.textContent=''; }, 1500); }
-            } catch(e){}
         });
     });
 }
 
 function aulaRenderQuicesEstudiante() {
     var box = document.getElementById('listaQuicesEstudiante');
-    var formBox = document.getElementById('quizFormEst');
-    var bar = document.getElementById('quizActivoEst');
-    var barTit = document.getElementById('quizActivoTitulo');
-    var barTime = document.getElementById('quizActivoTiempo');
-    var barProg = document.getElementById('quizActivoProgreso');
     if (!box) return;
     var user = aulaGetSession();
     if (!user) return;
-    if (formBox) formBox.innerHTML = '';
-    if (formBox) formBox.style.display = 'none';
-    if (bar) bar.style.display = 'none';
-    if (window.__quizTimer) { clearInterval(window.__quizTimer); window.__quizTimer = null; }
     var full = typeof aulaUsuarioCompleto === 'function' ? (aulaUsuarioCompleto(user) || user) : user;
     var mats = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(full) : [];
-    var entregas = aulaLoadQuizEntregas();
-    var mis = entregas.filter(function (e) { return String(e.estudianteEmail || '').toLowerCase() === String(user.email || '').toLowerCase(); }).map(function (e) { return e.quizId; });
     var list = aulaLoadQuices().filter(function (q) {
-        if (!q.activa) return false;
-        if (mis.indexOf(q.id) >= 0) return false;
         return mats.some(function (m) {
             var okM = !q.materia || q.materia === m.nombre;
             var gQ = String(q.grupo || '').trim().toUpperCase();
@@ -5290,131 +4955,42 @@ function aulaRenderQuicesEstudiante() {
         });
     });
     if (!list.length) {
-        box.innerHTML = '<p class="aula-vacio">No hay quices activos pendientes.</p>';
+        box.innerHTML = '<p class="aula-vacio">No hay quices publicados para tus materias.</p>';
         return;
     }
     box.innerHTML = list.slice().reverse().map(function (q) {
-        var pool = q.preguntasPool || q.preguntas || [];
-        var ca = (q.cantidadPorTipo && q.cantidadPorTipo.abierta) != null ? q.cantidadPorTipo.abierta : ((q.preguntasPool) ? 1 : ((q.preguntas||[]).length));
-        var cm = (q.cantidadPorTipo && q.cantidadPorTipo.multiple) != null ? q.cantidadPorTipo.multiple : 0;
-        if (!q.preguntasPool) { cm = (q.preguntas||[]).length; ca = 0; }
+        var qs = (q.preguntas || []).map(function (p, i) {
+            return '<label class="quiz-preg">'+ (i + 1) + '. ' + (p.texto || '') +
+                '<textarea class="quiz-resp" data-qid="' + q.id + '" data-pid="' + p.id + '" rows="2" placeholder="Tu respuesta"></textarea></label>';
+        }).join('');
         return '<div class="aula-item quiz-card" data-quiz="' + q.id + '">' +
-            '<strong>' + (typeof aulaEsc === 'function' ? aulaEsc(q.titulo) : q.titulo) + '</strong>' +
-            '<p>' + (q.materia || '') + ' · ' + (q.docenteNombre || '') + ' · Aleatorio por tipo: ' + ca + ' abierta(s) + ' + cm + ' múltiple(s) · ' + (q.tiempoLimiteMin || 15) + ' min</p>' +
-            '<button type="button" class="btn-calcular btn-quiz-iniciar" data-id="' + q.id + '">INICIAR QUIZ ALEATORIO</button></div>';
+            '<strong>' + (q.titulo || '') + '</strong>' +
+            '<p>' + (q.materia || '') + ' · ' + (q.docenteNombre || '') + '</p>' + qs +
+            '<button type="button" class="btn-calcular btn-quiz-enviar" data-id="' + q.id + '">Enviar respuestas</button></div>';
     }).join('');
-    box.querySelectorAll('.btn-quiz-iniciar').forEach(function (btn) {
+    box.querySelectorAll('.btn-quiz-enviar').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var id = btn.getAttribute('data-id');
-            var q = aulaLoadQuices().find(function (x) { return x.id === id; });
-            if (!q) return;
-            box.innerHTML = '';
-            if (formBox) formBox.style.display = 'block';
-            var seed = (q.id || '') + '|' + (user.email || user.id || '');
-            var pool = q.preguntasPool || [];
-            var abiertasPool = pool.filter(function(p){ return p.tipo === 'abierta'; });
-            var multiplesPool = pool.filter(function(p){ return p.tipo === 'multiple'; });
-            var ca = (q.cantidadPorTipo && q.cantidadPorTipo.abierta) != null ? q.cantidadPorTipo.abierta : 0;
-            var cm = (q.cantidadPorTipo && q.cantidadPorTipo.multiple) != null ? q.cantidadPorTipo.multiple : ((q.preguntas||[]).length);
-            if (!pool.length && q.preguntas && q.preguntas.length) {
-                // legacy
-                multiplesPool = q.preguntas.map(function(p){ return {uid:p.id, tipo:'multiple', texto:p.texto, opciones:p.opciones, correcta:p.correcta, puntaje:p.puntaje || q.puntajePorPregunta || 1}; });
-                ca = 0; cm = multiplesPool.length;
-            }
-            var selAb = aulaQuizShuffle(abiertasPool, seed + '|AB').slice(0, ca);
-            var selMul = aulaQuizShuffle(multiplesPool, seed + '|MU').slice(0, cm);
-            var mostradas = aulaQuizShuffle(selAb.concat(selMul), seed + '|ORD');
-            if (!mostradas.length) { alert('No hay preguntas para mostrar en este quiz.'); try { aulaRenderQuicesEstudiante(); } catch(e){} return; }
-            if (bar && barTit && barTime && barProg) {
-                bar.style.display = 'block';
-                barTit.textContent = q.titulo;
-                barProg.textContent = mostradas.length + ' pregunta(s) asignadas aleatoriamente';
-            }
-            var end = Date.now() + (q.tiempoLimiteMin || 15) * 60 * 1000;
-            function upd() {
-                var rem = Math.max(0, Math.floor((end - Date.now()) / 1000));
-                var mm = Math.floor(rem / 60), ss = rem % 60;
-                if (barTime) barTime.textContent = 'Tiempo: ' + String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
-                if (rem <= 0) {
-                    if (window.__quizTimer) { clearInterval(window.__quizTimer); window.__quizTimer = null; }
-                    enviar();
-                }
-            }
-            upd();
-            if (window.__quizTimer) clearInterval(window.__quizTimer);
-            window.__quizTimer = setInterval(upd, 1000);
-            var html = '<div class="quiz-form">';
-            mostradas.forEach(function (p, idx) {
-                html += '<div class="quiz-preg-block" style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08);"><div style="margin-bottom:10px;"><strong>' + (idx+1) + '. ' + (typeof aulaEsc === 'function' ? aulaEsc(p.texto) : String(p.texto||'').replace(/</g,'&lt;')) + '</strong> <span style="opacity:.7">(' + (p.puntaje || 1) + ' pts) · ' + (p.tipo === 'abierta' ? 'Abierta' : 'Selección múltiple') + '</span></div>';
-                if (p.tipo === 'multiple') {
-                    html += '<div class="quiz-opciones-list">';
-                    (p.opciones || []).forEach(function (op) {
-                        html += '<label class="quiz-opcion-item"><input type="radio" name="q_' + q.id + '_' + p.uid + '" value="' + op.key + '"><span class="quiz-opcion-letra">' + op.key + '</span><span class="quiz-opcion-texto">' + (typeof aulaEsc === 'function' ? aulaEsc(op.texto) : String(op.texto||'').replace(/</g,'&lt;')) + '</span></label>';
-                    });
-                    html += '</div>';
-                } else {
-                    html += '<textarea data-abierta="' + p.uid + '" rows="4" style="width:100%;margin-top:6px;border-radius:10px;padding:10px;background:rgba(15,23,42,.6);color:#e5e7eb;border:1px solid rgba(255,255,255,.12);" placeholder="Escribe tu respuesta aquí..."></textarea>';
-                }
-                html += '</div>';
+            var card = box.querySelector('[data-quiz="' + id + '"]');
+            if (!card) return;
+            var respuestas = [];
+            card.querySelectorAll('.quiz-resp').forEach(function (ta) {
+                respuestas.push({ preguntaId: ta.getAttribute('data-pid'), texto: ta.value || '' });
             });
-            html += '<button type="button" class="btn-calcular" id="btnQuizEnviarEst" style="margin-top:12px;">ENVIAR RESPUESTAS</button></div>';
-            if (formBox) formBox.innerHTML = html;
-            var btnE = document.getElementById('btnQuizEnviarEst');
-            if (btnE) {
-                btnE.addEventListener('click', function () { enviar(); });
-            }
-            function enviar() {
-                if (btnE) { btnE.disabled = true; btnE.textContent = 'ENVIANDO...'; }
-                if (window.__quizTimer) { clearInterval(window.__quizTimer); window.__quizTimer = null; }
-                var resp = [];
-                var acierto = 0;
-                var maxAuto = 0;
-                var maxAb = 0;
-                mostradas.forEach(function (p) {
-                    if (p.tipo === 'multiple') {
-                        var sel = document.querySelector('input[name="q_' + q.id + '_' + p.uid + '"]:checked');
-                        var val = sel ? sel.value : '';
-                        resp.push({ preguntaUid: p.uid, tipo: 'multiple', seleccionada: val, correcta: p.correcta, textoPregunta: p.texto });
-                        var pt = p.puntaje || q.puntajeMultiple || 1;
-                        maxAuto += pt;
-                        if (val && val === p.correcta) acierto += pt;
-                    } else {
-                        var ta = document.querySelector('textarea[data-abierta="' + p.uid + '"]');
-                        var txt = ta ? ta.value : '';
-                        resp.push({ preguntaUid: p.uid, tipo: 'abierta', texto: txt, textoPregunta: p.texto });
-                        var ptab = p.puntaje || q.puntajeAbierta || 2;
-                        maxAb += ptab;
-                    }
-                });
-                var ent = {
-                    id: 'qe_' + Date.now(),
-                    quizId: q.id,
-                    quizTitulo: q.titulo,
-                    materia: q.materia,
-                    estudianteId: user.id,
-                    estudianteEmail: user.email,
-                    estudianteNombre: user.nombre,
-                    preguntasMostradas: mostradas,
-                    respuestas: resp,
-                    notaAuto: acierto,
-                    notaMaxAuto: maxAuto,
-                    notaAbierta: null,
-                    notaMaxAbierta: maxAb,
-                    calificacion: null,
-                    fecha: new Date().toISOString(),
-                    enviadaEn: new Date().toISOString()
-                };
-                var all = aulaLoadQuizEntregas();
-                all.push(ent);
-                aulaSaveQuizEntregas(all);
-                if (formBox) formBox.innerHTML = '<p class="mensaje-ok">Respuestas enviadas.<br>Selección múltiple: <strong>' + acierto + ' / ' + maxAuto + '</strong><br>Preguntas abiertas: <strong>' + maxAb + ' pts</strong> · Pendiente calificación manual.</p>';
-                if (barTime) barTime.textContent = 'Finalizado';
-                try { aulaRenderQuicesEstudiante(); } catch(e){}
-                try {
-                    var errBox = document.getElementById('quizError');
-                    if(errBox){ errBox.textContent = 'Quiz enviado. Múltiple: ' + acierto + '/' + maxAuto + '. Abiertas pendientes por calificar.'; setTimeout(function(){ errBox.textContent=''; }, 2500); }
-                } catch(e){}
-            }
+            var entregas = aulaLoad('geometrics_quiz_entregas', []) || [];
+            entregas.push({
+                id: 'qe_' + Date.now(),
+                quizId: id,
+                estudianteId: user.id,
+                estudianteEmail: user.email,
+                estudianteNombre: user.nombre,
+                respuestas: respuestas,
+                fecha: new Date().toISOString()
+            });
+            try { localStorage.setItem('geometrics_quiz_entregas', JSON.stringify(entregas)); } catch (e) {}
+            btn.textContent = 'Enviado ✓';
+            btn.disabled = true;
+            alert('Respuestas enviadas.');
         });
     });
 }
