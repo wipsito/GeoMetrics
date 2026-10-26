@@ -116,7 +116,7 @@ function aulaTextoCivixHola(user) {
     var g = aulaGeneroUsuario(user);
     var nombre = '';
     if (user) {
-        nombre = (user.nombreCivix || '').trim() || (user.nombres || user.nombre || '').trim().split(/\s+/)[0] || '';
+        nombre = (user.nombres || user.nombre || '').trim().split(/\s+/)[0] || '';
     }
     var hola = nombre ? ('¡Hola, ' + nombre + '!') : '¡Hola!';
     if (g === 'mujer') {
@@ -3471,7 +3471,6 @@ function aulaGuardarPerfil() {
     if (genero) users[idx].genero = genero;
     if (user.rol !== 'docente') users[idx].codigo = codigo;
     users[idx].bio = bio;
-    users[idx].nombreCivix = ((document.getElementById('perfilNombreCivix') || {}).value || '').trim().slice(0, 40);
     users[idx].avatarColor = color;
     users[idx].mostrarCodigo = mostrarCodigo;
     users[idx].animaciones = animaciones;
@@ -3537,7 +3536,6 @@ function aulaGuardarPerfil() {
     session.genero = updated.genero;
     session.firma = updated.firma;
     session.msgBienvenida = updated.msgBienvenida;
-    session.nombreCivix = updated.nombreCivix;
     aulaSetSession(session);
     aulaUpdateMenuUser(session);
 
@@ -5051,6 +5049,7 @@ function aulaAbrirAdmin() {
     var dd = document.getElementById('menuUserDropdown');
     if (dd) dd.hidden = true;
     aulaRenderAdmin();
+    try { aulaAdminCivixAvatarInit(); } catch (eAv) {}
 }
 
 function aulaRenderAdmin() {
@@ -5267,6 +5266,7 @@ function aulaAdminBind() {
 
 document.addEventListener('DOMContentLoaded', function() {
     try { aulaAdminBind(); } catch (e) {}
+    try { aulaAdminCivixAvatarInit(); } catch (eAv0) {}
     try { if (typeof aulaQuizCivixBind === 'function') aulaQuizCivixBind(); } catch (e2) {}
     try { if (typeof aulaQuizBuilderBind === 'function') aulaQuizBuilderBind(); } catch (e3) {}
     try { if (typeof aulaRenderCorreccionQuices === 'function') aulaRenderCorreccionQuices(); } catch (e4) {}
@@ -6114,3 +6114,69 @@ async function aulaQuizCivixDescargarPDF() {
     }
 }
 
+
+
+/** Avatar global de Civix (admin) */
+function aulaCivixAvatarDefault() { return 'docs/civix-robot.svg'; }
+function aulaCivixAvatarGet() {
+    try {
+        var c = localStorage.getItem('geometrics_civix_avatar');
+        if (c && c.length > 20) return c;
+    } catch (e) {}
+    return aulaCivixAvatarDefault();
+}
+function aulaCivixAvatarSet(dataUrl) {
+    try {
+        if (dataUrl) localStorage.setItem('geometrics_civix_avatar', dataUrl);
+        else localStorage.removeItem('geometrics_civix_avatar');
+    } catch (e) {}
+    try {
+        if (typeof civixAplicarAvatar === 'function') civixAplicarAvatar();
+        else {
+            var img = document.getElementById('civixAvatarImg');
+            if (img) img.src = aulaCivixAvatarGet();
+            var prev = document.getElementById('adminCivixAvatarPreview');
+            if (prev) prev.src = aulaCivixAvatarGet();
+        }
+    } catch (e2) {}
+}
+function aulaAdminCivixAvatarInit() {
+    var prev = document.getElementById('adminCivixAvatarPreview');
+    if (prev) prev.src = aulaCivixAvatarGet();
+    var btn = document.getElementById('btnAdminCivixAvatar');
+    var input = document.getElementById('adminCivixAvatarInput');
+    var reset = document.getElementById('btnAdminCivixAvatarReset');
+    var err = document.getElementById('adminCivixAvatarError');
+    var ok = document.getElementById('adminCivixAvatarOk');
+    if (btn && input && !btn.__bound) {
+        btn.__bound = true;
+        btn.addEventListener('click', function () { input.click(); });
+        input.addEventListener('change', function () {
+            if (err) err.textContent = '';
+            if (ok) ok.hidden = true;
+            if (!input.files || !input.files[0]) return;
+            var f = input.files[0];
+            if (f.size > 1.5 * 1024 * 1024) {
+                if (err) err.textContent = 'La imagen debe pesar menos de 1.5 MB.';
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function () {
+                aulaCivixAvatarSet(reader.result);
+                if (ok) { ok.hidden = false; setTimeout(function () { ok.hidden = true; }, 2500); }
+            };
+            reader.onerror = function () {
+                if (err) err.textContent = 'No se pudo leer la imagen.';
+            };
+            reader.readAsDataURL(f);
+        });
+    }
+    if (reset && !reset.__bound) {
+        reset.__bound = true;
+        reset.addEventListener('click', function () {
+            aulaCivixAvatarSet(null);
+            if (input) input.value = '';
+            if (ok) { ok.hidden = false; ok.textContent = '✓ Avatar restablecido'; setTimeout(function () { ok.hidden = true; ok.textContent = '✓ Avatar actualizado'; }, 2500); }
+        });
+    }
+}

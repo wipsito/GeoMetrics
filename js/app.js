@@ -790,15 +790,19 @@ function civixRenderBienvenida() {
     var div = document.createElement('div');
     div.className = 'mensaje mensaje-bot';
     var user = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+    try {
+        if (user && typeof aulaUsuarioCompleto === 'function') user = aulaUsuarioCompleto(user) || user;
+    } catch (eU) {}
     var nombre = (typeof civixNombrePreferido === 'function') ? civixNombrePreferido() : '';
-    var html = (typeof aulaTextoCivixHola === 'function')
-        ? ('<p>' + aulaTextoCivixHola(user) + '</p>')
-        : ('<p>¡Hola' + (nombre && nombre !== 'estudiante' ? (', ' + nombre) : '') + '! Soy <strong>Civix</strong>. Elige un modo y pregunta sobre suelos o materiales.</p>');
-    if (nombre && nombre !== 'estudiante') {
-        html += '<p style="margin:8px 0 0;opacity:.75;font-size:12px">Te llamaré <strong>' + nombre + '</strong>. Cámbialo en Editar perfil.</p>';
+    var html;
+    if (typeof aulaTextoCivixHola === 'function') {
+        html = '<p>' + aulaTextoCivixHola(user) + '</p>';
+    } else {
+        html = '<p>¡Hola' + (nombre && nombre !== 'estudiante' ? (' ' + nombre) : '') + '! Soy <strong>Civix</strong>. Elige un modo y pregunta sobre suelos o materiales.</p>';
     }
     div.innerHTML = html;
     chatMensajes.appendChild(div);
+    try { civixAplicarAvatar(); } catch (eA) {}
 }
 
 function civixNuevaConversacion() {
@@ -908,6 +912,7 @@ function abrirCivixModal() {
 }
 function inicializarAsistenteAI() {
     try { if (typeof civixInitUIExtras === "function") civixInitUIExtras(); } catch (eX) {}
+    try { civixAplicarAvatar(); } catch (eAv) {}
 
     var btnAsistente = document.getElementById('btnAsistenteAI');
     var modal = document.getElementById('asistenteModal');
@@ -1592,10 +1597,10 @@ function civixExtDesdeLang(lang) {
 window.__civixModo = window.__civixModo || 'explicar';
 
 function civixNombrePreferido() {
+    /* Siempre el primer nombre de registro (nombres o nombre completo) */
     try {
         var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
         var user = ses;
-        // Sincronizar desde base local de usuarios (perfil guardado)
         try {
             if (ses && typeof aulaUsuarioCompleto === 'function') {
                 user = aulaUsuarioCompleto(ses) || ses;
@@ -1608,13 +1613,56 @@ function civixNombrePreferido() {
             }
         } catch (e2) {}
         if (!user) return 'estudiante';
-        var pref = (user.nombreCivix || (ses && ses.nombreCivix) || '').trim();
-        if (pref) return pref;
         if (user.nombres) return String(user.nombres).trim().split(/\s+/)[0] || 'estudiante';
         if (user.nombre) return String(user.nombre).trim().split(/\s+/)[0] || 'estudiante';
     } catch (e) {}
     return 'estudiante';
 }
+
+/** Asegura que la 2ª palabra de la respuesta sea el nombre del usuario */
+function civixForzarNombreEnRespuesta(texto, nombre) {
+    nombre = String(nombre || '').trim();
+    texto = String(texto || '').trim();
+    if (!nombre || !texto || nombre === 'estudiante') return texto;
+    // No tocar bloques de código
+    if (texto.indexOf('```') === 0) return texto;
+    var lines = texto.split(/\r?\n/);
+    var first = lines[0].trim();
+    if (!first) return texto;
+    // Quitar markdown de negrita al inicio para analizar palabras
+    var plain = first.replace(/^\*\*/, '').replace(/\*\*$/, '');
+    var words = plain.split(/\s+/).filter(Boolean);
+    if (words.length >= 2 && words[1].replace(/[^\wÁÉÍÓÚáéíóúñÑ]/gi, '').toLowerCase() === nombre.toLowerCase()) {
+        return texto; // ya está
+    }
+    // Insertar nombre como segunda palabra
+    if (words.length === 0) {
+        lines[0] = 'Hola ' + nombre + ',';
+    } else if (words.length === 1) {
+        lines[0] = words[0] + ' ' + nombre;
+    } else {
+        words.splice(1, 0, nombre);
+        lines[0] = words.join(' ');
+    }
+    return lines.join('\n');
+}
+
+function civixAvatarSrc() {
+    try {
+        var custom = localStorage.getItem('geometrics_civix_avatar');
+        if (custom && custom.length > 20) return custom;
+    } catch (e) {}
+    return 'docs/civix-robot.svg';
+}
+
+function civixAplicarAvatar() {
+    var src = civixAvatarSrc();
+    var img = document.getElementById('civixAvatarImg');
+    if (img) img.src = src;
+    var prev = document.getElementById('adminCivixAvatarPreview');
+    if (prev) prev.src = src;
+}
+
 
 function civixInstruccionModo(modo) {
     modo = modo || window.__civixModo || 'explicar';
@@ -1636,7 +1684,7 @@ function civixInstruccionModo(modo) {
 function civixBuildContextSystem() {
     var nombre = civixNombrePreferido();
     var partes = [];
-    partes.push('El usuario prefiere que lo/la llames: "' + nombre + '". Usa ese nombre de forma natural (no en cada frase).');
+    partes.push('El primer nombre del usuario es "' + nombre + '". REGLA OBLIGATORIA: en CADA respuesta, la segunda palabra debe ser exactamente "' + nombre + '" (ejemplo: "Claro ' + nombre + ', la porosidad..." o "¡Hola ' + nombre + '! ...").');
     partes.push(civixInstruccionModo(window.__civixModo));
     try {
         var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
@@ -1855,6 +1903,9 @@ async function llamarIA(mensaje) {
         chatHistory.pop();
         throw new Error('Civix no devolvió texto. Intenta de nuevo.');
     }
+    try {
+        respuesta = civixForzarNombreEnRespuesta(respuesta, civixNombrePreferido());
+    } catch (eN) {}
     chatHistory.push({ role: 'assistant', content: respuesta });
     return respuesta;
 }
