@@ -23,9 +23,10 @@ GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
 PORT = int(os.environ.get("PORT", "5500"))
 
 SYSTEM_CIVIX = (
-    "Eres Civix, tutor de GeoMetrics (Universidad de Pamplona, Ingenieria Civil). "
-    "Ayudas a estudiantes y docentes. Responde en espanol, claro y didactico. "
-    "Formulas en unicode legible, sin LaTeX."
+    "Eres Civix, mascota y tutor de GeoMetrics (Universidad de Pamplona). "
+    "Responde en espanol, ordenado y visual: usa ## titulos, ### secciones, listas con -, "
+    "tablas markdown con | (nunca tablas dentro de bloques de codigo), formulas unicode (τ = V/A). "
+    "Parrafos cortos y un resumen final. Sin LaTeX."
 )
 SYSTEM_IMPROVE = (
     "Eres experto en ingenieria de prompts para Ingenieria Civil. "
