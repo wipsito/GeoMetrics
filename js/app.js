@@ -893,7 +893,14 @@ function abrirCivixModal() {
     var modal = document.getElementById('asistenteModal');
     if (!modal) return;
     modal.style.display = 'flex';
+    modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
+    // Refrescar saludo con nombre de perfil si el chat está vacío / solo bienvenida
+    try {
+        if (!chatHistory || !chatHistory.length) {
+            civixRenderBienvenida();
+        }
+    } catch (e0) {}
     civixSyncFromCloud().then(function () {
         try { civixPintarHistorial(); } catch (e) {}
     });
@@ -917,6 +924,7 @@ function inicializarAsistenteAI() {
     if (btnAsistente) {
         btnAsistente.addEventListener('click', function() {
             modal.classList.add('active');
+            try { if (!chatHistory || !chatHistory.length) civixRenderBienvenida(); } catch (eW) {}
             if (input) input.focus();
             try {
                 civixSyncFromCloud().then(function () {
@@ -931,6 +939,7 @@ function inicializarAsistenteAI() {
         card.addEventListener('click', function() {
             if (modal) {
                 modal.classList.add('active');
+                try { if (!chatHistory || !chatHistory.length) civixRenderBienvenida(); } catch (eW) {}
                 if (input) input.focus();
             }
             try {
@@ -1585,11 +1594,24 @@ window.__civixModo = window.__civixModo || 'explicar';
 function civixNombrePreferido() {
     try {
         var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
-        if (!ses) return 'estudiante';
-        var pref = (ses.nombreCivix || '').trim();
+        var user = ses;
+        // Sincronizar desde base local de usuarios (perfil guardado)
+        try {
+            if (ses && typeof aulaUsuarioCompleto === 'function') {
+                user = aulaUsuarioCompleto(ses) || ses;
+            } else if (ses && typeof aulaLoad === 'function' && typeof AULA_KEYS !== 'undefined') {
+                var all = aulaLoad(AULA_KEYS.users, []) || [];
+                var found = all.find(function (u) {
+                    return u && (u.id === ses.id || String(u.email || '').toLowerCase() === String(ses.email || '').toLowerCase());
+                });
+                if (found) user = found;
+            }
+        } catch (e2) {}
+        if (!user) return 'estudiante';
+        var pref = (user.nombreCivix || (ses && ses.nombreCivix) || '').trim();
         if (pref) return pref;
-        if (ses.nombres) return String(ses.nombres).trim().split(/\s+/)[0] || 'estudiante';
-        if (ses.nombre) return String(ses.nombre).trim().split(/\s+/)[0] || 'estudiante';
+        if (user.nombres) return String(user.nombres).trim().split(/\s+/)[0] || 'estudiante';
+        if (user.nombre) return String(user.nombre).trim().split(/\s+/)[0] || 'estudiante';
     } catch (e) {}
     return 'estudiante';
 }
