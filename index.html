@@ -2169,12 +2169,18 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
             <div class="perfil-tabs" id="perfilTabs">
                 <button type="button" class="perfil-tab active" data-ptab="datos">👤 Perfil</button>
                 <button type="button" class="perfil-tab" data-ptab="academico">🎓 Académico</button>
+                <button type="button" class="perfil-tab" data-ptab="aula">💬 Aula</button>
                 <button type="button" class="perfil-tab" data-ptab="prefs">✨ Estilo</button>
             </div>
 
             <div class="modal-perfil-body">
                 <!-- Tab: Datos -->
                 <div class="perfil-pane active" id="perfilPaneDatos">
+                    <div class="perfil-badges-row" id="perfilBadgesRow">
+                        <span class="perfil-mini-badge" id="perfilBadgePrograma">Ingeniería Civil</span>
+                        <span class="perfil-mini-badge perfil-mini-ok" id="perfilBadgeVerificado">✓ Institucional</span>
+                        <span class="perfil-mini-badge" id="perfilBadgeNivel">Nivel Novato</span>
+                    </div>
                     <div class="perfil-grid-2">
                         <label>Nombres
                             <input type="text" id="perfilNombres" placeholder="Nombres" autocomplete="given-name">
@@ -2198,9 +2204,71 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                             <input type="text" id="perfilCodigo" placeholder="Código">
                         </label>
                     </div>
+
+                    <!-- Solo estudiante -->
+                    <div id="perfilCamposEstudiante">
+                        <div class="perfil-grid-2">
+                            <label>Semestre / cohorte
+                                <input type="text" id="perfilSemestre" placeholder="Ej. 2024-2">
+                            </label>
+                            <label>Estado de matrícula
+                                <select id="perfilEstadoMatricula">
+                                    <option value="activo">Activo</option>
+                                    <option value="retirado">Retirado</option>
+                                    <option value="egresado">Egresado</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="perfil-grid-2">
+                            <label>Jornada
+                                <select id="perfilJornada">
+                                    <option value="">—</option>
+                                    <option value="diurna">Diurna</option>
+                                    <option value="nocturna">Nocturna</option>
+                                </select>
+                            </label>
+                            <label>Materia favorita
+                                <select id="perfilMateriaFavorita">
+                                    <option value="">—</option>
+                                    <option>Mecánica de Suelos I</option>
+                                    <option>Mecánica de Suelos II</option>
+                                    <option>Resistencia de Materiales</option>
+                                    <option>Diseño de Mezclas</option>
+                                </select>
+                            </label>
+                        </div>
+                        <label>Horario de estudio preferido
+                            <select id="perfilHorarioEstudio">
+                                <option value="">—</option>
+                                <option value="manana">Mañana</option>
+                                <option value="tarde">Tarde</option>
+                                <option value="noche">Noche</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <!-- Solo docente -->
+                    <div id="perfilCamposDocente" hidden>
+                        <div class="perfil-grid-2">
+                            <label>Título / cargo
+                                <input type="text" id="perfilTitulo" placeholder="Ej. Ing., MSc., Docente">
+                            </label>
+                            <label>Departamento
+                                <input type="text" id="perfilDepartamento" placeholder="Ingeniería Civil">
+                            </label>
+                        </div>
+                        <label>Horario de atención
+                            <input type="text" id="perfilHorarioAtencion" placeholder="Ej. Lun–Vie 10:00–12:00">
+                        </label>
+                        <label>Oficina / enlace Meet
+                            <input type="text" id="perfilOficina" placeholder="Oficina 301 o https://meet.google.com/…">
+                        </label>
+                    </div>
+
                     <label>Bio corta <span class="perfil-hint-inline">(máx. 120)</span>
-                        <textarea id="perfilBio" rows="2" maxlength="120" placeholder="Ej: Me apasionan las cimentaciones y el diseño de mezclas…"></textarea>
+                        <textarea id="perfilBio" rows="2" maxlength="120" placeholder="Cuéntanos algo de ti…"></textarea>
                     </label>
+                    <p class="login-hint" id="perfilUltimoAcceso">Último acceso: —</p>
                     <div class="perfil-foto-actions">
                         <button type="button" class="btn-limpiar" id="btnPerfilQuitarFoto">Quitar foto</button>
                         <span class="login-hint" style="margin:0">Máx. 1.5 MB · JPG/PNG</span>
@@ -2211,25 +2279,95 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 <div class="perfil-pane" id="perfilPaneAcademico" hidden>
                     <p class="login-hint" id="perfilAcadHint">Materias vinculadas a tu cuenta.</p>
                     <div class="perfil-chips" id="perfilMateriasChips"></div>
+
                     <div class="perfil-stats" id="perfilStats">
                         <div class="perfil-stat">
                             <strong id="perfilStatTareas">0</strong>
-                            <span>Tareas / entregas</span>
+                            <span id="perfilStatTareasLabel">Tareas</span>
                         </div>
                         <div class="perfil-stat">
                             <strong id="perfilStatQuices">0</strong>
-                            <span>Quices</span>
+                            <span id="perfilStatQuicesLabel">Quices</span>
                         </div>
                         <div class="perfil-stat">
                             <strong id="perfilStatChats">0</strong>
                             <span>Chats Civix</span>
                         </div>
                     </div>
+
+                    <div class="perfil-stats perfil-stats-2">
+                        <div class="perfil-stat">
+                            <strong id="perfilStatPromedio">—</strong>
+                            <span>Promedio quices</span>
+                        </div>
+                        <div class="perfil-stat">
+                            <strong id="perfilStatRacha">0</strong>
+                            <span>Racha (días)</span>
+                        </div>
+                    </div>
+
                     <div class="perfil-fun-card" id="perfilFunCard">
                         <span class="perfil-fun-emoji" id="perfilFunEmoji">🏗️</span>
                         <div>
                             <strong id="perfilFunTitle">Ingeniería en marcha</strong>
                             <p id="perfilFunText">Sigue explorando el laboratorio virtual.</p>
+                        </div>
+                    </div>
+
+                    <h4 class="perfil-section-title">Logros</h4>
+                    <div class="perfil-logros" id="perfilLogros"></div>
+
+                    <div id="perfilBloqueEstudianteAcad">
+                        <h4 class="perfil-section-title">Últimas entregas</h4>
+                        <div class="perfil-lista-mini" id="perfilUltimasEntregas"></div>
+                        <h4 class="perfil-section-title">Quices recientes</h4>
+                        <div class="perfil-lista-mini" id="perfilQuicesRecientes"></div>
+                    </div>
+
+                    <div id="perfilBloqueDocenteAcad" hidden>
+                        <h4 class="perfil-section-title">Grupos activos</h4>
+                        <div class="perfil-lista-mini" id="perfilGruposActivos"></div>
+                        <h4 class="perfil-section-title">Pendientes por calificar</h4>
+                        <div class="perfil-lista-mini" id="perfilPendientesCalificar"></div>
+                        <h4 class="perfil-section-title">Resumen semanal</h4>
+                        <p class="login-hint" id="perfilResumenSemanal">—</p>
+                    </div>
+                </div>
+
+                <!-- Tab: Aula -->
+                <div class="perfil-pane" id="perfilPaneAula" hidden>
+                    <label>Estado en el aula
+                        <select id="perfilEstadoAula">
+                            <option value="disponible">🟢 Disponible</option>
+                            <option value="en_clase">🔵 En clase</option>
+                            <option value="no_molestar">🔴 No molestar</option>
+                        </select>
+                    </label>
+                    <label class="perfil-check">
+                        <input type="checkbox" id="perfilMostrarCodigo" checked>
+                        Mostrar mi código en listas del aula
+                    </label>
+                    <label class="perfil-check">
+                        <input type="checkbox" id="perfilMostrarBio" checked>
+                        Mostrar mi bio a compañeros / estudiantes
+                    </label>
+                    <label class="perfil-check">
+                        <input type="checkbox" id="perfilNotifTareas" checked>
+                        Recordatorios de tareas próximas a vencer
+                    </label>
+
+                    <div id="perfilAulaDocente" hidden>
+                        <label>Firma en retroalimentación
+                            <input type="text" id="perfilFirma" placeholder="Ej. Atte. Ing. Pérez">
+                        </label>
+                        <label>Mensaje de bienvenida al grupo
+                            <textarea id="perfilMsgBienvenida" rows="3" maxlength="240" placeholder="Mensaje que verán tus estudiantes al entrar al aula…"></textarea>
+                        </label>
+                        <div class="perfil-atajos">
+                            <p class="perfil-section-title" style="margin-bottom:8px">Atajos rápidos</p>
+                            <button type="button" class="btn-limpiar perfil-atajo" data-atajo="tareas">＋ Nueva tarea</button>
+                            <button type="button" class="btn-limpiar perfil-atajo" data-atajo="quices">＋ Nuevo quiz</button>
+                            <button type="button" class="btn-limpiar perfil-atajo" data-atajo="pres">＋ Presentación</button>
                         </div>
                     </div>
                 </div>
@@ -2246,12 +2384,16 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                         <button type="button" class="perfil-color" data-color="#34D399" style="--c:#34D399" title="Verde"></button>
                     </div>
                     <label class="perfil-check">
-                        <input type="checkbox" id="perfilMostrarCodigo" checked>
-                        Mostrar mi código en listas del aula
-                    </label>
-                    <label class="perfil-check">
                         <input type="checkbox" id="perfilAnimaciones" checked>
                         Animaciones del perfil
+                    </label>
+                    <label>Tema visual del perfil
+                        <select id="perfilTema">
+                            <option value="auto">Automático (app)</option>
+                            <option value="marino">Azul marino</option>
+                            <option value="teal">Teal académico</option>
+                            <option value="violeta">Violeta</option>
+                        </select>
                     </label>
                     <div class="perfil-pass-box">
                         <h4>Cambiar contraseña</h4>
@@ -2259,6 +2401,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                         <input type="password" id="perfilPassNueva2" placeholder="Confirmar contraseña" minlength="6" autocomplete="new-password">
                         <p class="login-hint">Déjalo vacío si no quieres cambiarla.</p>
                     </div>
+                    <button type="button" class="btn-limpiar" id="btnPerfilExportar" style="margin-top:12px;width:100%">⬇ Exportar mis datos (JSON)</button>
                 </div>
 
                 <p class="mensaje-error" id="perfilError"></p>
