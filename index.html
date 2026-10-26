@@ -1005,7 +1005,24 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                             <span class="civix-modo-ico">📝</span><span class="civix-modo-txt">Quiz</span>
                         </button>
                     </div>
-                    <div class="civix-mode-pill" id="civixModePill">Modo: <strong>Explicar</strong></div>
+                    <div class="civix-toolbar-right">
+                        <label class="civix-model-wrap" title="Modelo de IA">
+                            <span class="civix-model-ico">🧠</span>
+                            <select id="civixModelSelect" class="civix-model-select" aria-label="Modelo de IA">
+                                <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
+                                <option value="openai/gpt-oss-20b">GPT-OSS 20B</option>
+                                <option value="openai/gpt-oss-120b">GPT-OSS 120B</option>
+                                <option value="llama-3.1-8b-instant">Llama 3.1 8B (rápido)</option>
+                                <option value="qwen/qwen3-32b">Qwen3 32B</option>
+                                <option value="gemma2-9b-it">Gemma2 9B</option>
+                            </select>
+                        </label>
+                        <button type="button" class="civix-web-toggle" id="civixWebToggle" aria-pressed="false" title="Incluir búsqueda web">
+                            <span class="civix-web-dot"></span>
+                            <span class="civix-web-lbl">Web</span>
+                        </button>
+                        <div class="civix-mode-pill" id="civixModePill">Modo: <strong>Explicar</strong></div>
+                    </div>
                 </div>
 
                 <div class="civix-historial-panel" id="civixHistorialPanel" hidden>
