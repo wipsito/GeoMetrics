@@ -975,7 +975,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 <div class="asistente-header civix-header">
                     <div class="asistente-info">
                         <div class="civix-avatar-orb" aria-hidden="true">
-                            <img src="docs/civix-robot.svg" alt="" class="civix-avatar-img" width="44" height="44">
+                            <img src="docs/civix-robot.svg" alt="Civix" class="civix-avatar-img" id="civixAvatarImg" width="44" height="44">
                             <span class="civix-orb-ring"></span>
                         </div>
                         <div>
@@ -2305,10 +2305,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                     <label>Bio corta <span class="perfil-hint-inline">(máx. 120)</span>
                         <textarea id="perfilBio" rows="2" maxlength="120" placeholder="Cuéntanos algo de ti…"></textarea>
                     </label>
-                    <label>Cómo debe llamarte Civix
-                        <input type="text" id="perfilNombreCivix" placeholder="Ej. Andy, Ing. Pérez, profe Laura" maxlength="40">
-                    </label>
-                    <p class="login-hint">Si lo dejas vacío, usará tu primer nombre.</p>
                     <p class="login-hint" id="perfilUltimoAcceso">Último acceso: —</p>
                     <div class="perfil-foto-actions">
                         <button type="button" class="btn-limpiar" id="btnPerfilQuitarFoto">Quitar foto</button>
@@ -2470,6 +2466,22 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         </header>
 
         <section class="aula-grid" style="padding:0 20px 40px;">
+            <div class="aula-card">
+                <h3>Avatar de Civix</h3>
+                <p class="login-hint">Imagen visible en el chat de Civix para todos los usuarios. Máx. 1.5 MB (JPG, PNG, WebP o SVG).</p>
+                <div class="admin-civix-avatar-row">
+                    <div class="admin-civix-preview-wrap">
+                        <img id="adminCivixAvatarPreview" class="admin-civix-preview" src="docs/civix-robot.svg" alt="Avatar Civix">
+                    </div>
+                    <div class="admin-civix-avatar-actions">
+                        <input type="file" id="adminCivixAvatarInput" accept="image/*,.svg" hidden>
+                        <button type="button" class="btn-calcular" id="btnAdminCivixAvatar">CAMBIAR IMAGEN</button>
+                        <button type="button" class="btn-limpiar" id="btnAdminCivixAvatarReset">Restablecer por defecto</button>
+                        <p class="mensaje-error" id="adminCivixAvatarError"></p>
+                        <p class="login-hint" id="adminCivixAvatarOk" style="color:#9dffc0;" hidden>✓ Avatar actualizado</p>
+                    </div>
+                </div>
+            </div>
             <div class="aula-card">
                 <h3>Agregar correo de docente</h3>
                 <p class="login-hint">Solo autorizas el correo. Luego el docente se registra en la pestaña «Docente» y crea su propia contraseña.</p>
