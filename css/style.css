@@ -4018,21 +4018,40 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: rgba(0,0,0,0.2);
-    border: 1px solid rgba(30,41,59,0.15);
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(45, 212, 191, 0.18);
     margin-bottom: 8px;
     flex-wrap: wrap;
 }
-.admin-row strong { color: #1E293B; }
-.admin-row span { color: #cbbfa8; font-size: 12px; }
+.admin-row strong {
+    color: #F8FAFC;
+    font-size: 14.5px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+.admin-row span {
+    color: #94A3B8;
+    font-size: 12.5px;
+}
+.admin-row > div > span:first-of-type {
+    color: #7DD3FC;
+}
 .admin-row .admin-badge {
     font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 8px;
-    background: rgba(30,41,59,0.2);
-    color: #1E293B;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: #93C5FD;
+    margin-left: 4px;
+}
+.admin-row .admin-badge:nth-of-type(1) {
+    background: rgba(45, 212, 191, 0.15);
+    border-color: rgba(45, 212, 191, 0.35);
+    color: #5EEAD4;
 }
 .admin-row .btn-admin-del {
     background: transparent;
@@ -6741,3 +6760,9 @@ canvas#canvas-triaxial {
 .admin-civix-avatar-actions {
     display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
 }
+
+.admin-row-name { color: #F8FAFC !important; font-weight: 700 !important; }
+.admin-row-email { color: #7DD3FC !important; font-size: 12.5px !important; }
+#adminListaDocentes .admin-row-name,
+#adminListaAdmins .admin-row-name { color: #F1F5F9 !important; }
+#adminListaAdmins .admin-row-name { color: #FDE68A !important; }
