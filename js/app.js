@@ -204,6 +204,9 @@ function inicializarApp() {
     
     // Inicializar Asistente AI
     inicializarAsistenteAI();
+
+    // Modal de confirmación al borrar conversaciones de Civix
+    try { civixInicializarModalBorradoCivix(); } catch (eCivixModal) { console.warn('civix modal', eCivixModal); }
 }
 
 // =========================================
@@ -997,7 +1000,9 @@ function civixPintarHistorial() {
         delBtn.addEventListener('click', function (e) {
             e.preventDefault();
             e.stopPropagation();
-            if (confirm('¿Eliminar esta conversación de forma permanente?')) {
+            if (typeof civixMostrarConfirmacionBorrado === 'function') {
+                civixMostrarConfirmacionBorrado(c.id);
+            } else if (confirm('¿Eliminar esta conversación de forma permanente?')) {
                 civixEliminarConversacion(c.id);
             }
         });
@@ -1007,9 +1012,68 @@ function civixPintarHistorial() {
     });
 }
 
+/* ── Confirmación propia (modal centrado) para borrar conversaciones de Civix ── */
+var civixChatIdPendienteBorrado = null;
+
+function civixMostrarConfirmacionBorrado(id) {
+    civixChatIdPendienteBorrado = id;
+    var modal = document.getElementById('civixConfirmModal');
+    if (!modal) {
+        if (typeof confirm === 'function' && confirm('¿Eliminar esta conversación de forma permanente?')) {
+            civixEliminarConversacion(id);
+        }
+        return;
+    }
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    var btnOk = document.getElementById('civixConfirmOk');
+    if (btnOk) { try { btnOk.focus(); } catch (e) {} }
+}
+
+function civixCerrarConfirmacionBorrado() {
+    var modal = document.getElementById('civixConfirmModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+    civixChatIdPendienteBorrado = null;
+}
+
+function civixInicializarModalBorradoCivix() {
+    var btnOk = document.getElementById('civixConfirmOk');
+    var btnCancel = document.getElementById('civixConfirmCancel');
+    var backdrop = document.querySelector('#civixConfirmModal .civix-confirm-backdrop');
+
+    if (btnOk && !btnOk.dataset.civixBound) {
+        btnOk.dataset.civixBound = '1';
+        btnOk.addEventListener('click', function () {
+            var id = civixChatIdPendienteBorrado;
+            civixCerrarConfirmacionBorrado();
+            if (id) {
+                try { civixEliminarConversacion(id); } catch (e) { console.warn('civix delete', e); }
+            }
+        });
+    }
+    if (btnCancel && !btnCancel.dataset.civixBound) {
+        btnCancel.dataset.civixBound = '1';
+        btnCancel.addEventListener('click', civixCerrarConfirmacionBorrado);
+    }
+    if (backdrop && !backdrop.dataset.civixBound) {
+        backdrop.dataset.civixBound = '1';
+        backdrop.addEventListener('click', civixCerrarConfirmacionBorrado);
+    }
+    if (!window.__civixEscBound) {
+        window.__civixEscBound = true;
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && civixChatIdPendienteBorrado) civixCerrarConfirmacionBorrado();
+        });
+    }
+}
+
 function abrirCivixModal() {
     var modal = document.getElementById('asistenteModal');
     if (!modal) return;
+    modal.classList.add('active');
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
     try {
@@ -1040,7 +1104,10 @@ function inicializarAsistenteAI() {
 
     if (btnAsistente) {
         btnAsistente.addEventListener('click', function() {
+            if (!modal) return;
             modal.classList.add('active');
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
             if (input) input.focus();
             try {
                 if (typeof civixPrepararUIUsuario === 'function') civixPrepararUIUsuario();
@@ -1052,6 +1119,8 @@ function inicializarAsistenteAI() {
         card.addEventListener('click', function() {
             if (modal) {
                 modal.classList.add('active');
+                modal.style.display = 'flex';
+                modal.setAttribute('aria-hidden', 'false');
                 if (input) input.focus();
             }
             try {
@@ -1061,12 +1130,19 @@ function inicializarAsistenteAI() {
     });
     if (btnCerrar) {
         btnCerrar.addEventListener('click', function() {
+            if (!modal) return;
             modal.classList.remove('active');
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
         });
     }
     if (modal) {
         modal.addEventListener('click', function(e) {
-            if (e.target === modal) modal.classList.remove('active');
+            if (e.target === modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+                modal.setAttribute('aria-hidden', 'true');
+            }
         });
     }
 
