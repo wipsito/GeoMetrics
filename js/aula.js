@@ -5149,14 +5149,32 @@ function aulaRenderQuicesDocente() {
     box.innerHTML = list.slice().reverse().map(function (q) {
         var qent = entregas.filter(function (e) { return e.quizId === q.id; });
         var total = qent.length;
+        var countPool = (q.preguntasPool && q.preguntasPool.length) ? q.preguntasPool.length : ((q.preguntas && q.preguntas.length) ? q.preguntas.length : 0);
         return '<div class="aula-item">' +
             '<strong>' + (typeof aulaEsc === 'function' ? aulaEsc(q.titulo) : q.titulo) + '</strong>' +
-            '<p>' + (q.materia || '') + ' · Grupo ' + (q.grupo || 'Todos') + ' · ' + (q.preguntas || []).length + ' pregunta(s) · ' + (q.tiempoLimiteMin || 30) + ' min · ' + (q.puntajePorPregunta || 1) + ' pts/pregunta</p>' +
+            '<p>' + (q.materia || '') + ' · Grupo ' + (q.grupo || 'Todos') + ' · Banco: ' + countPool + ' pregunta(s) · Muestra: ' + ((q.cantidadPorTipo && q.cantidadPorTipo.abierta)||0) + ' abierta(s) + ' + ((q.cantidadPorTipo && q.cantidadPorTipo.multiple)||0) + ' múltiple(s) · ' + (q.tiempoLimiteMin || 15) + ' min</p>' +
             '<p>Entregas: ' + total + '</p>' +
-            (total ? '<details style="margin-top:6px;"><summary>Ver calificaciones</summary>' +
+            (total ? '<details style="margin-top:6px;"><summary>Ver entregas y calificar</summary>' +
                 qent.map(function (e) {
-                    var nota = e.calificacion != null ? e.calificacion : (e.notaAuto != null ? e.notaAuto : '-');
-                    return '<div style="padding:6px 0;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><span>' + (e.estudianteNombre || e.estudianteEmail || '-') + '</span><span>Nota: ' + nota + ' / ' + e.notaMax + ' <button type="button" class="btn-limpiar" data-cal-q="' + q.id + '" data-cal-e="' + e.id + '">Calificar</button></span></div>';
+                    var notaAuto = e.notaAuto != null ? e.notaAuto : '-';
+                    var notaMaxAuto = e.notaMaxAuto != null ? e.notaMaxAuto : (e.notaMax != null ? e.notaMax : '-');
+                    var notaAb = e.notaAbierta != null ? e.notaAbierta : 'Pendiente';
+                    var notaMaxAb = e.notaMaxAbierta != null ? e.notaMaxAbierta : 0;
+                    var mostradas = e.preguntasMostradas || [];
+                    var resp = e.respuestas || [];
+                    var htmlResp = '<div style="margin-top:8px;padding:8px;background:rgba(15,23,42,.5);border-radius:10px;">';
+                    mostradas.forEach(function(pm){
+                        var r = resp.find(function(x){ return x.preguntaUid === pm.uid; });
+                        htmlResp += '<div style="padding:6px 0;border-top:1px solid rgba(255,255,255,.06);"><div><strong>' + (pm.tipo==='abierta'?'[ABIERTA]':'[MÚLTIPLE]') + '</strong> ' + (typeof aulaEsc === 'function' ? aulaEsc(pm.texto) : String(pm.texto||'').replace(/</g,'&lt;')) + ' <span style="opacity:.7">(' + (pm.puntaje||1) + ' pts)</span></div>';
+                        if(pm.tipo === 'multiple'){
+                            htmlResp += '<div style="opacity:.9;">Respuesta estudiante: <strong>' + (r && r.seleccionada ? r.seleccionada : '-') + '</strong> · Correcta: <strong>' + (pm.correcta||'-') + '</strong></div>';
+                        }else{
+                            htmlResp += '<div style="margin-top:4px;white-space:pre-wrap;opacity:.95;">Respuesta: ' + (r && r.texto ? String(r.texto).replace(/</g,'&lt;') : '(sin respuesta)') + '</div>';
+                        }
+                        htmlResp += '</div>';
+                    });
+                    htmlResp += '</div>';
+                    return '<div style="padding:8px 0;border-top:1px solid rgba(255,255,255,.08);"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><strong>' + (e.estudianteNombre || e.estudianteEmail || '-') + '</strong><span>Múltiple: ' + notaAuto + '/' + notaMaxAuto + ' · Abierta: ' + notaAb + '/' + notaMaxAb + '</span></div>' + htmlResp + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;"><button type="button" class="btn-limpiar" data-cal-ab-q="' + q.id + '" data-cal-ab-e="' + e.id + '">Calificar abierta(s)</button><button type="button" class="btn-limpiar" data-cal-fin-q="' + q.id + '" data-cal-fin-e="' + e.id + '">Poner nota final</button></div></div>';
                 }).join('') + '</details>' : '') +
             '<button type="button" class="btn-limpiar btn-quiz-del" data-id="' + q.id + '" style="margin-top:8px;">Eliminar quiz</button></div>';
     }).join('');
