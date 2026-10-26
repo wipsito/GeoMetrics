@@ -116,7 +116,7 @@ function aulaTextoCivixHola(user) {
     var g = aulaGeneroUsuario(user);
     var nombre = '';
     if (user) {
-        nombre = (user.nombres || user.nombre || '').trim().split(/\s+/)[0] || '';
+        nombre = (user.nombreCivix || '').trim() || (user.nombres || user.nombre || '').trim().split(/\s+/)[0] || '';
     }
     var hola = nombre ? ('¡Hola, ' + nombre + '!') : '¡Hola!';
     if (g === 'mujer') {
@@ -3471,6 +3471,7 @@ function aulaGuardarPerfil() {
     if (genero) users[idx].genero = genero;
     if (user.rol !== 'docente') users[idx].codigo = codigo;
     users[idx].bio = bio;
+    users[idx].nombreCivix = ((document.getElementById('perfilNombreCivix') || {}).value || '').trim().slice(0, 40);
     users[idx].avatarColor = color;
     users[idx].mostrarCodigo = mostrarCodigo;
     users[idx].animaciones = animaciones;
@@ -3536,6 +3537,7 @@ function aulaGuardarPerfil() {
     session.genero = updated.genero;
     session.firma = updated.firma;
     session.msgBienvenida = updated.msgBienvenida;
+    session.nombreCivix = updated.nombreCivix;
     aulaSetSession(session);
     aulaUpdateMenuUser(session);
 

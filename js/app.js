@@ -790,9 +790,13 @@ function civixRenderBienvenida() {
     var div = document.createElement('div');
     div.className = 'mensaje mensaje-bot';
     var user = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+    var nombre = (typeof civixNombrePreferido === 'function') ? civixNombrePreferido() : '';
     var html = (typeof aulaTextoCivixHola === 'function')
         ? ('<p>' + aulaTextoCivixHola(user) + '</p>')
-        : '<p>¡Hola! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo.</p>';
+        : ('<p>¡Hola' + (nombre && nombre !== 'estudiante' ? (', ' + nombre) : '') + '! Soy <strong>Civix</strong>. Elige un modo y pregunta sobre suelos o materiales.</p>');
+    if (nombre && nombre !== 'estudiante') {
+        html += '<p style="margin:8px 0 0;opacity:.75;font-size:12px">Te llamaré <strong>' + nombre + '</strong>. Cámbialo en Editar perfil.</p>';
+    }
     div.innerHTML = html;
     chatMensajes.appendChild(div);
 }
@@ -896,6 +900,8 @@ function abrirCivixModal() {
     civixStartRealtime();
 }
 function inicializarAsistenteAI() {
+    try { if (typeof civixInitUIExtras === "function") civixInitUIExtras(); } catch (eX) {}
+
     var btnAsistente = document.getElementById('btnAsistenteAI');
     var modal = document.getElementById('asistenteModal');
     var btnCerrar = document.getElementById('btnCerrarAsistente');
@@ -1031,7 +1037,7 @@ function inicializarAsistenteAI() {
 
         limpiarAdjunto();
 
-        var escribiendo = agregarMensaje('🤖 Analizando...', 'bot', true);
+        var escribiendo = agregarMensaje('<span class="civix-typing"><span></span><span></span><span></span></span> Civix está pensando…', 'bot', true);
 
         llamarIA(payload).then(function(respuesta) {
             escribiendo.remove();
@@ -1557,6 +1563,7 @@ function agregarMensajeBotConDescargas(texto) {
     });
 
     chatMensajes.appendChild(div);
+    try { if (typeof civixAdjuntarAcciones === 'function') civixAdjuntarAcciones(div, texto); } catch (eAct) {}
     chatMensajes.scrollTop = chatMensajes.scrollHeight;
 }
 
@@ -1569,6 +1576,175 @@ function civixExtDesdeLang(lang) {
         sql: '.sql', yaml: '.yml', yml: '.yml'
     };
     return map[lang] || '.txt';
+}
+
+
+/** Modo activo de tutoría Civix */
+window.__civixModo = window.__civixModo || 'explicar';
+
+function civixNombrePreferido() {
+    try {
+        var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+        if (!ses) return 'estudiante';
+        var pref = (ses.nombreCivix || '').trim();
+        if (pref) return pref;
+        if (ses.nombres) return String(ses.nombres).trim().split(/\s+/)[0] || 'estudiante';
+        if (ses.nombre) return String(ses.nombre).trim().split(/\s+/)[0] || 'estudiante';
+    } catch (e) {}
+    return 'estudiante';
+}
+
+function civixInstruccionModo(modo) {
+    modo = modo || window.__civixModo || 'explicar';
+    if (modo === 'pistas') {
+        return 'MODO SOLO PISTAS (examen): NO des la respuesta final ni el procedimiento completo. '
+            + 'Ofrece pistas progresivas, preguntas guía y criterios de verificación. Anima a que intente solo.';
+    }
+    if (modo === 'corregir') {
+        return 'MODO CORREGIR: Revisa el procedimiento o texto del estudiante. Señala aciertos, errores y omisiones. '
+            + 'Propón correcciones concretas y una mini-rúbrica (Bien / Mejorable / Falta).';
+    }
+    if (modo === 'quiz') {
+        return 'MODO PREPARAR QUIZ: Genera preguntas de práctica (opción múltiple y/o abiertas) sobre el tema. '
+            + 'Incluye la respuesta correcta al final de cada ítem, separada, para autoevaluación.';
+    }
+    return 'MODO EXPLICAR: Explica con claridad didáctica. Incluye fundamento, fórmulas (variables), ejemplo y un breve resumen.';
+}
+
+function civixBuildContextSystem() {
+    var nombre = civixNombrePreferido();
+    var partes = [];
+    partes.push('El usuario prefiere que lo/la llames: "' + nombre + '". Usa ese nombre de forma natural (no en cada frase).');
+    partes.push(civixInstruccionModo(window.__civixModo));
+    try {
+        var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+        if (ses) {
+            if (typeof aulaUsuarioCompleto === 'function') ses = aulaUsuarioCompleto(ses) || ses;
+            var rol = ses.rol === 'docente' ? 'docente' : 'estudiante';
+            partes.push('Rol: ' + rol + '.');
+            var g = (typeof aulaGeneroUsuario === 'function') ? aulaGeneroUsuario(ses) : (ses.genero || '');
+            if (g === 'mujer') partes.push('Género: mujer. Usa formas en femenino (ingeniera) cuando aplique.');
+            else if (g === 'hombre') partes.push('Género: hombre. Usa formas en masculino (ingeniero) cuando aplique.');
+            var mats = [];
+            if (typeof aulaMateriasUsuario === 'function') mats = aulaMateriasUsuario(ses) || [];
+            else if (ses.materias) mats = ses.materias;
+            if (mats && mats.length) {
+                var list = mats.map(function (m) {
+                    return (m.nombre || m) + (m.grupo ? (' (grupo ' + m.grupo + ')') : '');
+                }).join('; ');
+                partes.push('Materias/grupos: ' + list + '.');
+            }
+            if (ses.materiaFavorita) partes.push('Materia de interés prioritario: ' + ses.materiaFavorita + '.');
+            if (ses.semestre) partes.push('Semestre/cohorte: ' + ses.semestre + '.');
+            if (ses.titulo && rol === 'docente') partes.push('Título del docente: ' + ses.titulo + '.');
+            if (ses.bio) partes.push('Bio del usuario: ' + String(ses.bio).slice(0, 120));
+        }
+    } catch (e) {}
+    partes.push('Prioriza textos guía adjuntos. No inventes datos numéricos de laboratorio. Si faltan datos, pídelos.');
+    partes.push('Responde siempre en español. Cuando uses el documento, cita páginas si aparecen como "--- Página N ---".');
+    return partes.join(' ');
+}
+
+function civixAdjuntarAcciones(msgEl, textoRespuesta) {
+    if (!msgEl || msgEl.querySelector('.civix-msg-actions')) return;
+    var bar = document.createElement('div');
+    bar.className = 'civix-msg-actions';
+    bar.innerHTML = ''
+        + '<button type="button" class="civix-act" data-act="copy">Copiar</button>'
+        + '<button type="button" class="civix-act" data-act="regen">Regenerar</button>'
+        + '<button type="button" class="civix-act" data-act="up">👍 Útil</button>'
+        + '<button type="button" class="civix-act" data-act="down">👎</button>';
+    bar.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        var act = btn.getAttribute('data-act');
+        if (act === 'copy') {
+            var t = textoRespuesta || msgEl.innerText || '';
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(t).then(function () {
+                    btn.textContent = '✓ Copiado';
+                    setTimeout(function () { btn.textContent = 'Copiar'; }, 1500);
+                }).catch(function () {});
+            }
+        } else if (act === 'regen') {
+            civixRegenerarUltima();
+        } else if (act === 'up' || act === 'down') {
+            bar.querySelectorAll('[data-act="up"],[data-act="down"]').forEach(function (b) {
+                b.classList.remove('active-up', 'active-down');
+            });
+            btn.classList.add(act === 'up' ? 'active-up' : 'active-down');
+            try {
+                var key = 'civix_feedback';
+                var list = JSON.parse(localStorage.getItem(key) || '[]');
+                list.push({ v: act, t: Date.now(), modo: window.__civixModo || 'explicar' });
+                localStorage.setItem(key, JSON.stringify(list.slice(-200)));
+            } catch (e2) {}
+        }
+    });
+    msgEl.appendChild(bar);
+}
+
+function civixRegenerarUltima() {
+    if (!chatHistory.length) return;
+    // Quitar última respuesta del asistente
+    if (chatHistory[chatHistory.length - 1].role === 'assistant') {
+        chatHistory.pop();
+    }
+    var lastUser = null;
+    for (var i = chatHistory.length - 1; i >= 0; i--) {
+        if (chatHistory[i].role === 'user') { lastUser = chatHistory[i].content; break; }
+    }
+    if (!lastUser) return;
+    // Quitar último mensaje bot del DOM
+    var chat = document.getElementById('chatMensajes');
+    if (chat) {
+        var bots = chat.querySelectorAll('.mensaje-bot');
+        if (bots.length) bots[bots.length - 1].remove();
+    }
+    var escribiendo = agregarMensaje('<span class="civix-typing"><span></span><span></span><span></span></span> Regenerando…', 'bot', true);
+    // No volver a empujar el user message: llamarIA lo hace
+    // Ajustar: llamarIA hace push del user; así que quitamos el last user temporalmente
+    if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') {
+        chatHistory.pop();
+    }
+    llamarIA(lastUser).then(function (respuesta) {
+        if (escribiendo && escribiendo.remove) escribiendo.remove();
+        agregarMensajeBotConDescargas(respuesta);
+        try { civixGuardarConversacionActual(); } catch (e) {}
+    }).catch(function (err) {
+        if (escribiendo && escribiendo.remove) escribiendo.remove();
+        agregarMensaje('Error: ' + (err.message || err), 'bot');
+    });
+}
+
+function civixInitUIExtras() {
+    if (window.__civixUIExtras) return;
+    window.__civixUIExtras = true;
+    var modos = document.getElementById('civixModos');
+    if (modos) {
+        modos.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-modo]');
+            if (!btn) return;
+            modos.querySelectorAll('.civix-modo').forEach(function (b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            window.__civixModo = btn.getAttribute('data-modo') || 'explicar';
+        });
+    }
+    var chips = document.getElementById('civixChips');
+    if (chips) {
+        chips.addEventListener('click', function (e) {
+            var chip = e.target.closest('.civix-chip');
+            if (!chip) return;
+            var q = chip.getAttribute('data-q') || chip.textContent;
+            var input = document.getElementById('inputAsistente');
+            if (input) {
+                input.value = q;
+                input.focus();
+            }
+            var btnSend = document.getElementById('btnEnviarMensaje');
+            if (btnSend) btnSend.click();
+        });
+    }
 }
 
 async function llamarIA(mensaje) {
@@ -1588,21 +1764,18 @@ async function llamarIA(mensaje) {
 
     var response;
     try {
-        var primerNombre = 'estudiante';
-        try {
-            var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
-            if (ses && ses.nombre) {
-                primerNombre = String(ses.nombre).trim().split(/\s+/)[0] || 'estudiante';
-            }
-        } catch (eN) {}
+        var primerNombre = (typeof civixNombrePreferido === 'function') ? civixNombrePreferido() : 'estudiante';
         var msgs = chatHistory.slice();
-        // Contexto de nombre al inicio de cada turno (el Worker lo usa para dirigirse al usuario)
-        msgs = [{
-            role: 'system',
-            content: 'El usuario se llama ' + primerNombre + '. Dirígete a él o ella por su primer nombre (' + primerNombre + ') de forma natural. '
-                + 'Puedes usar conocimiento general sólido de ingeniería civil y de la nube/web académica cuando ayude, '
-                + 'sin inventar datos numéricos de laboratorio. Si hay textos guía de la materia, priorízalos y cítalos.'
-        }].concat(msgs);
+        // Contexto académico + modo de tutoría
+        var sysCtx = (typeof civixBuildContextSystem === 'function')
+            ? civixBuildContextSystem()
+            : ('El usuario se llama ' + primerNombre + '. Responde en español.');
+        msgs = [{ role: 'system', content: sysCtx }].concat(msgs);
+
+        var temp = 0.4;
+        if (window.__civixModo === 'pistas') temp = 0.35;
+        if (window.__civixModo === 'quiz') temp = 0.5;
+        if (window.__civixModo === 'corregir') temp = 0.3;
 
         response = await fetch(backend, {
             method: 'POST',
@@ -1612,7 +1785,7 @@ async function llamarIA(mensaje) {
                 model: AI_CONFIG.model,
                 messages: msgs,
                 userName: primerNombre,
-                temperature: 0.4,
+                temperature: temp,
                 max_tokens: 4096
             })
         });
