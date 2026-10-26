@@ -1208,7 +1208,7 @@ function aulaUpdateMenuUser(user) {
             if (saludo) saludo.textContent = 'Bienvenido Ingenier@ ' + nombre;
             if (info) info.textContent = 'Docente · Gestiona tu aula y materiales.';
         } else {
-            if (saludo) saludo.textContent = 'Bienvenido futuro Ingeniero ' + nombre;
+            if (saludo) saludo.textContent = 'Bienvenido futur@ Ingenier@ ' + nombre;
             if (info) {
                 var mats = aulaNombresMaterias(user);
                 info.textContent = mats.length
@@ -4881,6 +4881,13 @@ function aulaSaveQuices(list) {
     } catch (e) {}
 }
 
+function aulaLoadQuizEntregas() {
+    try { return JSON.parse(localStorage.getItem('geometrics_quiz_entregas') || '[]') || []; } catch (e) { return []; }
+}
+function aulaSaveQuizEntregas(list) {
+    try { localStorage.setItem('geometrics_quiz_entregas', JSON.stringify(list || [])); } catch (e) {}
+}
+
 function aulaCrearQuiz() {
     var user = aulaRequireSession();
     if (!user || user.rol !== 'docente') return;
@@ -4889,12 +4896,33 @@ function aulaCrearQuiz() {
     var titulo = ((document.getElementById('quizTitulo') || {}).value || '').trim();
     var materia = (document.getElementById('quizMateria') || {}).value || '';
     var grupo = ((document.getElementById('quizGrupo') || {}).value || '').trim();
+    var tiempoMin = parseInt(((document.getElementById('quizTiempo') || {}).value || '30'), 10) || 30;
+    var puntaje = parseFloat(((document.getElementById('quizPuntaje') || {}).value || '1'), 10) || 1;
     var preguntasRaw = ((document.getElementById('quizPreguntas') || {}).value || '').trim();
     if (!titulo) { if (err) err.textContent = 'Escribe un título del quiz.'; return; }
-    if (!preguntasRaw) { if (err) err.textContent = 'Agrega al menos una pregunta (una por línea).'; return; }
-    var preguntas = preguntasRaw.split('\n').map(function (l) { return l.trim(); }).filter(Boolean).map(function (t, i) {
-        return { id: 'p' + (i + 1), texto: t };
+    if (!preguntasRaw) { if (err) err.textContent = 'Agrega al menos una pregunta con opciones A-D y respuesta correcta.'; return; }
+    var preguntas = [];
+    preguntasRaw.split('\n').forEach(function (l, i) {
+        var line = l.trim();
+        if (!line) return;
+        // formato: Pregunta|A|B|C|D|Correcta
+        var parts = line.split('|').map(function (x) { return (x || '').trim(); });
+        if (parts.length < 6) return; // skip invalid
+        var p = {
+            id: 'p' + (i + 1),
+            texto: parts[0],
+            opciones: [
+                { key: 'A', texto: parts[1] },
+                { key: 'B', texto: parts[2] },
+                { key: 'C', texto: parts[3] },
+                { key: 'D', texto: parts[4] }
+            ],
+            correcta: String(parts[5]).toUpperCase().replace(/[^ABCD]/g, '').slice(0, 1) || 'A',
+            puntaje: puntaje
+        };
+        preguntas.push(p);
     });
+    if (!preguntas.length) { if (err) err.textContent = 'Formato inválido. Usa: Pregunta|A|B|C|D|A'; return; }
     var list = aulaLoadQuices();
     list.push({
         id: typeof aulaUid === 'function' ? aulaUid() : ('q_' + Date.now()),
@@ -4904,11 +4932,15 @@ function aulaCrearQuiz() {
         preguntas: preguntas,
         docenteId: user.id,
         docenteNombre: user.nombre,
+        tiempoLimiteMin: tiempoMin,
+        puntajePorPregunta: puntaje,
+        activa: true,
         creada: new Date().toISOString()
     });
     aulaSaveQuices(list);
     var t = document.getElementById('quizTitulo'); if (t) t.value = '';
     var p = document.getElementById('quizPreguntas'); if (p) p.value = '';
+    if (err) err.textContent = 'Quiz publicado en tiempo real.';
     aulaRenderQuicesDocente();
 }
 
@@ -4918,34 +4950,74 @@ function aulaRenderQuicesDocente() {
     var user = aulaGetSession();
     if (!user) return;
     var list = aulaLoadQuices().filter(function (q) { return q.docenteId === user.id; });
+    var entregas = aulaLoadQuizEntregas();
     if (!list.length) {
         box.innerHTML = '<p class="aula-vacio">Aún no has publicado quices.</p>';
         return;
     }
     box.innerHTML = list.slice().reverse().map(function (q) {
+        var qent = entregas.filter(function (e) { return e.quizId === q.id; });
+        var total = qent.length;
         return '<div class="aula-item">' +
             '<strong>' + (typeof aulaEsc === 'function' ? aulaEsc(q.titulo) : q.titulo) + '</strong>' +
-            '<p>' + (q.materia || '') + ' · Grupo ' + (q.grupo || 'Todos') + ' · ' + (q.preguntas || []).length + ' pregunta(s)</p>' +
-            '<button type="button" class="btn-limpiar btn-quiz-del" data-id="' + q.id + '">Eliminar</button></div>';
+            '<p>' + (q.materia || '') + ' · Grupo ' + (q.grupo || 'Todos') + ' · ' + (q.preguntas || []).length + ' pregunta(s) · ' + (q.tiempoLimiteMin || 30) + ' min · ' + (q.puntajePorPregunta || 1) + ' pts/pregunta</p>' +
+            '<p>Entregas: ' + total + '</p>' +
+            (total ? '<details style="margin-top:6px;"><summary>Ver calificaciones</summary>' +
+                qent.map(function (e) {
+                    var nota = e.calificacion != null ? e.calificacion : (e.notaAuto != null ? e.notaAuto : '-');
+                    return '<div style="padding:6px 0;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;"><span>' + (e.estudianteNombre || e.estudianteEmail || '-') + '</span><span>Nota: ' + nota + ' / ' + e.notaMax + ' <button type="button" class="btn-limpiar" data-cal-q="' + q.id + '" data-cal-e="' + e.id + '">Calificar</button></span></div>';
+                }).join('') + '</details>' : '') +
+            '<button type="button" class="btn-limpiar btn-quiz-del" data-id="' + q.id + '" style="margin-top:8px;">Eliminar quiz</button></div>';
     }).join('');
     box.querySelectorAll('.btn-quiz-del').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var id = btn.getAttribute('data-id');
-            if (!confirm('¿Eliminar este quiz?')) return;
+            if (!confirm('¿Eliminar este quiz y sus entregas?')) return;
             aulaSaveQuices(aulaLoadQuices().filter(function (q) { return q.id !== id; }));
+            aulaSaveQuizEntregas(aulaLoadQuizEntregas().filter(function (e) { return e.quizId !== id; }));
             aulaRenderQuicesDocente();
+        });
+    });
+    box.querySelectorAll('button[data-cal-e]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var qid = btn.getAttribute('data-cal-q');
+            var eid = btn.getAttribute('data-cal-e');
+            var ent = aulaLoadQuizEntregas().find(function (e) { return e.id === eid; });
+            if (!ent) return;
+            var qz = aulaLoadQuices().find(function (x) { return x.id === qid; });
+            var val = prompt('Calificación final (' + (ent.notaMax || '') + ' pts):', ent.calificacion != null ? ent.calificacion : (ent.notaAuto != null ? ent.notaAuto : ''));
+            if (val === null) return;
+            var num = parseFloat(String(val).replace(',', '.'));
+            if (isNaN(num)) return;
+            var all = aulaLoadQuizEntregas().map(function (e) { if (e.id === eid) { e.calificacion = num; e.calificadoPor = user.nombre; e.calificadoEn = new Date().toISOString(); } return e; });
+            aulaSaveQuizEntregas(all);
+            aulaRenderQuicesDocente();
+            alert('Calificación guardada');
         });
     });
 }
 
 function aulaRenderQuicesEstudiante() {
     var box = document.getElementById('listaQuicesEstudiante');
+    var formBox = document.getElementById('quizFormEst');
+    var bar = document.getElementById('quizActivoEst');
+    var barTit = document.getElementById('quizActivoTitulo');
+    var barTime = document.getElementById('quizActivoTiempo');
+    var barProg = document.getElementById('quizActivoProgreso');
     if (!box) return;
     var user = aulaGetSession();
     if (!user) return;
+    if (formBox) formBox.innerHTML = '';
+    if (formBox) formBox.style.display = 'none';
+    if (bar) bar.style.display = 'none';
+    if (window.__quizTimer) { clearInterval(window.__quizTimer); window.__quizTimer = null; }
     var full = typeof aulaUsuarioCompleto === 'function' ? (aulaUsuarioCompleto(user) || user) : user;
     var mats = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(full) : [];
+    var entregas = aulaLoadQuizEntregas();
+    var mis = entregas.filter(function (e) { return String(e.estudianteEmail || '').toLowerCase() === String(user.email || '').toLowerCase(); }).map(function (e) { return e.quizId; });
     var list = aulaLoadQuices().filter(function (q) {
+        if (!q.activa) return false;
+        if (mis.indexOf(q.id) >= 0) return false;
         return mats.some(function (m) {
             var okM = !q.materia || q.materia === m.nombre;
             var gQ = String(q.grupo || '').trim().toUpperCase();
@@ -4955,42 +5027,90 @@ function aulaRenderQuicesEstudiante() {
         });
     });
     if (!list.length) {
-        box.innerHTML = '<p class="aula-vacio">No hay quices publicados para tus materias.</p>';
+        box.innerHTML = '<p class="aula-vacio">No hay quices activos pendientes.</p>';
         return;
     }
     box.innerHTML = list.slice().reverse().map(function (q) {
-        var qs = (q.preguntas || []).map(function (p, i) {
-            return '<label class="quiz-preg">'+ (i + 1) + '. ' + (p.texto || '') +
-                '<textarea class="quiz-resp" data-qid="' + q.id + '" data-pid="' + p.id + '" rows="2" placeholder="Tu respuesta"></textarea></label>';
-        }).join('');
         return '<div class="aula-item quiz-card" data-quiz="' + q.id + '">' +
-            '<strong>' + (q.titulo || '') + '</strong>' +
-            '<p>' + (q.materia || '') + ' · ' + (q.docenteNombre || '') + '</p>' + qs +
-            '<button type="button" class="btn-calcular btn-quiz-enviar" data-id="' + q.id + '">Enviar respuestas</button></div>';
+            '<strong>' + (typeof aulaEsc === 'function' ? aulaEsc(q.titulo) : q.titulo) + '</strong>' +
+            '<p>' + (q.materia || '') + ' · ' + (q.docenteNombre || '') + ' · ' + (q.preguntas || []).length + ' pregunta(s) · ' + (q.tiempoLimiteMin || 30) + ' min · ' + (q.puntajePorPregunta || 1) + ' pts/pregunta</p>' +
+            '<button type="button" class="btn-calcular btn-quiz-iniciar" data-id="' + q.id + '">INICIAR QUIZ EN TIEMPO REAL</button></div>';
     }).join('');
-    box.querySelectorAll('.btn-quiz-enviar').forEach(function (btn) {
+    box.querySelectorAll('.btn-quiz-iniciar').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var id = btn.getAttribute('data-id');
-            var card = box.querySelector('[data-quiz="' + id + '"]');
-            if (!card) return;
-            var respuestas = [];
-            card.querySelectorAll('.quiz-resp').forEach(function (ta) {
-                respuestas.push({ preguntaId: ta.getAttribute('data-pid'), texto: ta.value || '' });
+            var q = aulaLoadQuices().find(function (x) { return x.id === id; });
+            if (!q) return;
+            box.innerHTML = '';
+            if (formBox) formBox.style.display = 'block';
+            if (bar && barTit && barTime && barProg) {
+                bar.style.display = 'block';
+                barTit.textContent = q.titulo;
+                barProg.textContent = (q.preguntas || []).length + ' preguntas · Puntaje: ' + ((q.preguntas || []).length * (q.puntajePorPregunta || 1)) + ' pts';
+            }
+            var end = Date.now() + (q.tiempoLimiteMin || 30) * 60 * 1000;
+            function upd() {
+                var rem = Math.max(0, Math.floor((end - Date.now()) / 1000));
+                var mm = Math.floor(rem / 60), ss = rem % 60;
+                if (barTime) barTime.textContent = 'Tiempo: ' + String(mm).padStart(2,'0') + ':' + String(ss).padStart(2,'0');
+                if (rem <= 0) {
+                    if (window.__quizTimer) { clearInterval(window.__quizTimer); window.__quizTimer = null; }
+                    enviar();
+                }
+            }
+            upd();
+            if (window.__quizTimer) clearInterval(window.__quizTimer);
+            window.__quizTimer = setInterval(upd, 1000);
+            var html = '<div class="quiz-form">';
+            (q.preguntas || []).forEach(function (p, idx) {
+                html += '<div class="quiz-preg-block" style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06);"><div><strong>' + (idx+1) + '. ' + (p.texto || '') + '</strong> <span style="opacity:.7">(' + (p.puntaje || q.puntajePorPregunta || 1) + ' pts)</span></div>';
+                (p.opciones || []).forEach(function (op) {
+                    html += '<label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;"><input type="radio" name="q_' + q.id + '_' + p.id + '" value="' + op.key + '"> <span><strong>' + op.key + '.</strong> ' + (op.texto || '') + '</span></label>';
+                });
+                html += '</div>';
             });
-            var entregas = aulaLoad('geometrics_quiz_entregas', []) || [];
-            entregas.push({
-                id: 'qe_' + Date.now(),
-                quizId: id,
-                estudianteId: user.id,
-                estudianteEmail: user.email,
-                estudianteNombre: user.nombre,
-                respuestas: respuestas,
-                fecha: new Date().toISOString()
-            });
-            try { localStorage.setItem('geometrics_quiz_entregas', JSON.stringify(entregas)); } catch (e) {}
-            btn.textContent = 'Enviado ✓';
-            btn.disabled = true;
-            alert('Respuestas enviadas.');
+            html += '<button type="button" class="btn-calcular" id="btnQuizEnviarEst" style="margin-top:12px;">ENVIAR RESPUESTAS</button></div>';
+            if (formBox) formBox.innerHTML = html;
+            var btnE = document.getElementById('btnQuizEnviarEst');
+            if (btnE) {
+                btnE.addEventListener('click', function () { enviar(); });
+            }
+            function enviar() {
+                if (btnE) { btnE.disabled = true; btnE.textContent = 'ENVIANDO...'; }
+                if (window.__quizTimer) { clearInterval(window.__quizTimer); window.__quizTimer = null; }
+                var resp = [];
+                var acierto = 0;
+                var maxP = 0;
+                (q.preguntas || []).forEach(function (p) {
+                    var sel = document.querySelector('input[name="q_' + q.id + '_' + p.id + '"]:checked');
+                    var val = sel ? sel.value : '';
+                    resp.push({ preguntaId: p.id, seleccionada: val, correcta: p.correcta });
+                    var pt = p.puntaje || q.puntajePorPregunta || 1;
+                    maxP += pt;
+                    if (val && val === p.correcta) acierto += pt;
+                });
+                var ent = {
+                    id: 'qe_' + Date.now(),
+                    quizId: q.id,
+                    quizTitulo: q.titulo,
+                    materia: q.materia,
+                    estudianteId: user.id,
+                    estudianteEmail: user.email,
+                    estudianteNombre: user.nombre,
+                    respuestas: resp,
+                    notaAuto: acierto,
+                    notaMax: maxP,
+                    fecha: new Date().toISOString(),
+                    enviadaEn: new Date().toISOString()
+                };
+                var all = aulaLoadQuizEntregas();
+                all.push(ent);
+                aulaSaveQuizEntregas(all);
+                if (formBox) formBox.innerHTML = '<p class="mensaje-ok">Respuestas enviadas. Calificación automática: <strong>' + acierto + ' / ' + maxP + '</strong></p>';
+                if (barTime) barTime.textContent = 'Finalizado';
+                try { aulaRenderQuicesEstudiante(); } catch(e){}
+                alert('Quiz enviado. Calificación automática: ' + acierto + ' / ' + maxP);
+            }
         });
     });
 }
