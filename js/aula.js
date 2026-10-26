@@ -37,7 +37,97 @@ var GEOMETRICS_DB_VERSION = 4;
 
 
 /** Superadministrador fijo de la aplicación */
+
 var AULA_SUPER_ADMIN = 'andres.enriquezval@unipamplona.edu.co';
+
+/** Confirmación con modal propio (sustituye window.confirm) */
+function gmConfirm(mensaje, opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+        var modal = document.getElementById('gmConfirmModal');
+        var msg = document.getElementById('gmConfirmMsg');
+        var title = document.getElementById('gmConfirmTitle');
+        var btnOk = document.getElementById('gmConfirmOk');
+        var btnCancel = document.getElementById('gmConfirmCancel');
+        if (!modal || !msg || !btnOk || !btnCancel) {
+            resolve(window.confirm(mensaje));
+            return;
+        }
+        if (title) title.textContent = opts.titulo || 'Confirmar acción';
+        msg.textContent = mensaje || '¿Estás seguro?';
+        btnOk.textContent = opts.okTexto || 'Eliminar';
+        btnCancel.textContent = opts.cancelTexto || 'Cancelar';
+        modal.hidden = false;
+        function close(val) {
+            modal.hidden = true;
+            btnOk.onclick = null;
+            btnCancel.onclick = null;
+            modal.onclick = null;
+            document.removeEventListener('keydown', onKey);
+            resolve(!!val);
+        }
+        function onKey(e) {
+            if (e.key === 'Escape') close(false);
+            if (e.key === 'Enter') close(true);
+        }
+        btnOk.onclick = function () { close(true); };
+        btnCancel.onclick = function () { close(false); };
+        modal.onclick = function (e) { if (e.target === modal) close(false); };
+        document.addEventListener('keydown', onKey);
+        setTimeout(function () { try { btnCancel.focus(); } catch (e) {} }, 30);
+    });
+}
+
+/** Género del usuario: 'mujer' | 'hombre' | '' */
+function aulaGeneroUsuario(user) {
+    if (!user) return '';
+    var g = String(user.genero || user.sexo || '').toLowerCase().trim();
+    if (g === 'mujer' || g === 'femenino' || g === 'f' || g === 'female') return 'mujer';
+    if (g === 'hombre' || g === 'masculino' || g === 'm' || g === 'male') return 'hombre';
+    return '';
+}
+
+/** Saludo del menú según rol y género */
+function aulaTextoSaludo(user) {
+    if (!user) return 'Bienvenido';
+    var nombre = (user.nombre || user.nombres || '').trim();
+    // Solo primer nombre compuesto razonable
+    var corto = nombre.split(/\s+/).slice(0, 2).join(' ');
+    var g = aulaGeneroUsuario(user);
+    var esDoc = user.rol === 'docente';
+    if (g === 'mujer') {
+        return esDoc
+            ? ('Bienvenida Ingeniera ' + corto)
+            : ('Bienvenida futura Ingeniera ' + corto);
+    }
+    if (g === 'hombre') {
+        return esDoc
+            ? ('Bienvenido Ingeniero ' + corto)
+            : ('Bienvenido futuro Ingeniero ' + corto);
+    }
+    // Sin género definido
+    return esDoc
+        ? ('Bienvenido/a ' + corto)
+        : ('Bienvenido/a ' + corto);
+}
+
+/** Texto de bienvenida de Civix según género */
+function aulaTextoCivixHola(user) {
+    var g = aulaGeneroUsuario(user);
+    var nombre = '';
+    if (user) {
+        nombre = (user.nombres || user.nombre || '').trim().split(/\s+/)[0] || '';
+    }
+    var hola = nombre ? ('¡Hola, ' + nombre + '!') : '¡Hola!';
+    if (g === 'mujer') {
+        return hola + ' Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo. Estoy aquí para acompañarte, futura ingeniera.';
+    }
+    if (g === 'hombre') {
+        return hola + ' Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo. Estoy aquí para acompañarte, futuro ingeniero.';
+    }
+    return hola + ' Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.';
+}
+
 
 function aulaLoad(key, fallback) {
     try {
@@ -969,12 +1059,18 @@ function aulaInitLogin() {
                 err.textContent = 'Ingresa tu código estudiantil (mínimo 4 caracteres).';
                 return;
             }
+            var genero = ((document.getElementById('regGenero') || {}).value || '').trim();
+            if (genero !== 'mujer' && genero !== 'hombre') {
+                err.textContent = 'Selecciona tu género.';
+                return;
+            }
             var user = {
                 id: aulaUid(),
                 nombre: nombres + ' ' + apellidos,
                 nombres: nombres,
                 apellidos: apellidos,
                 codigo: codigo,
+                genero: genero,
                 email: email,
                 password: pass,
                 rol: 'estudiante',
@@ -1047,6 +1143,11 @@ function aulaInitLogin() {
                 }
             }
 
+            var generoDoc = ((document.getElementById('docGenero') || {}).value || '').trim();
+            if (generoDoc !== 'mujer' && generoDoc !== 'hombre') {
+                err.textContent = 'Selecciona tu género.';
+                return;
+            }
             var users = aulaLoad(AULA_KEYS.users, []);
             var idx = users.findIndex(function(u) { return aulaNormalizarEmail(u.email) === email; });
             var user;
@@ -1060,6 +1161,7 @@ function aulaInitLogin() {
                 user.nombre = nombres + ' ' + apellidos;
                 user.nombres = nombres;
                 user.apellidos = apellidos;
+                user.genero = generoDoc;
                 user.password = pass;
                 user.rol = 'docente';
                 user.materias = materiasDoc;
@@ -1073,6 +1175,7 @@ function aulaInitLogin() {
                     nombre: nombres + ' ' + apellidos,
                     nombres: nombres,
                     apellidos: apellidos,
+                    genero: generoDoc,
                     email: email,
                     password: pass,
                     rol: 'docente',
@@ -1201,11 +1304,10 @@ function aulaUpdateMenuUser(user) {
     var avatar = document.getElementById('menuUserAvatar');
     if (user) {
         var nombre = (user.nombre || '').trim() || 'Usuario';
+        if (saludo) saludo.textContent = aulaTextoSaludo(user);
         if (user.rol === 'docente') {
-            if (saludo) saludo.textContent = 'Bienvenido Ingeniero ' + nombre;
             if (info) info.textContent = 'Docente · Gestiona tu aula y materiales.';
         } else {
-            if (saludo) saludo.textContent = 'Bienvenido futuro Ingeniero ' + nombre;
             if (info) {
                 var mats = aulaNombresMaterias(user);
                 info.textContent = mats.length
@@ -1216,7 +1318,7 @@ function aulaUpdateMenuUser(user) {
         aulaSetAvatarEl(avatar, user, aulaIniciales(nombre));
         aulaActualizarMenuMaterias(user);
     } else if (saludo) {
-        saludo.textContent = 'Bienvenido';
+        saludo.textContent = 'Bienvenido/a';
         aulaSetAvatarEl(avatar, null, '?');
     }
 
@@ -1393,11 +1495,13 @@ function aulaRenderTareasDocente() {
 
     box.querySelectorAll('[data-del-tarea]').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            if (!confirm('¿Eliminar esta tarea? También se ocultará para los estudiantes.')) return;
             var id = btn.getAttribute('data-del-tarea');
-            var list = aulaLoad(AULA_KEYS.tareas, []).filter(function(t) { return t.id !== id; });
-            aulaSave(AULA_KEYS.tareas, list);
-            aulaRenderDocente();
+            gmConfirm('¿Eliminar esta tarea? También se ocultará para los estudiantes.', { titulo: 'Eliminar tarea' }).then(function(ok) {
+                if (!ok) return;
+                var list = aulaLoad(AULA_KEYS.tareas, []).filter(function(t) { return t.id !== id; });
+                aulaSave(AULA_KEYS.tareas, list);
+                aulaRenderDocente();
+            });
         });
     });
     box.querySelectorAll('[data-edit-tarea]').forEach(function(btn) {
@@ -1508,12 +1612,14 @@ function aulaRenderPresDocente() {
     }).join('');
     box.querySelectorAll('[data-del-pres]').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            if (!confirm('¿Eliminar esta presentación?')) return;
             var id = btn.getAttribute('data-del-pres');
-            var list2 = aulaLoad(AULA_KEYS.presentaciones, []).filter(function(p) { return p.id !== id; });
-            aulaSave(AULA_KEYS.presentaciones, list2);
-            aulaRenderPresDocente();
-            aulaActualizarResumenDocente();
+            gmConfirm('¿Eliminar esta presentación?', { titulo: 'Eliminar presentación' }).then(function(ok) {
+                if (!ok) return;
+                var list2 = aulaLoad(AULA_KEYS.presentaciones, []).filter(function(p) { return p.id !== id; });
+                aulaSave(AULA_KEYS.presentaciones, list2);
+                aulaRenderPresDocente();
+                aulaActualizarResumenDocente();
+            });
         });
     });
 }
@@ -2779,6 +2885,8 @@ function aulaAbrirPerfil() {
     if (err) err.textContent = '';
     var fileInput = document.getElementById('perfilFotoInput');
     if (fileInput) fileInput.value = '';
+    var gen = document.getElementById('perfilGenero');
+    if (gen) gen.value = aulaGeneroUsuario(user) || '';
     var prev = document.getElementById('perfilFotoPreview');
     var ph = document.getElementById('perfilFotoPlaceholder');
     if (user.foto && prev) {
@@ -2796,31 +2904,22 @@ function aulaGuardarPerfil() {
     if (!user) return;
     var err = document.getElementById('perfilError');
     if (err) err.textContent = '';
-    var fileInput = document.getElementById('perfilFotoInput');
-    if (!fileInput || !fileInput.files || !fileInput.files[0]) {
-        if (err) err.textContent = 'Selecciona una imagen para subir.';
-        return;
-    }
-    var f = fileInput.files[0];
-    if (f.size > 1.5 * 1024 * 1024) {
-        if (err) err.textContent = 'La foto debe pesar menos de 1.5 MB.';
-        return;
-    }
-    var reader = new FileReader();
-    reader.onload = function() {
-        user.foto = reader.result;
+    var genero = ((document.getElementById('perfilGenero') || {}).value || '').trim();
+    if (genero && genero !== 'mujer' && genero !== 'hombre') genero = '';
+
+    function aplicarYCerrar(fotoData) {
         var users = aulaLoad(AULA_KEYS.users, []);
         var idx = users.findIndex(function(u) { return u.id === user.id || u.email === user.email; });
         if (idx >= 0) {
-            users[idx].foto = user.foto;
+            if (fotoData) users[idx].foto = fotoData;
+            if (genero) users[idx].genero = genero;
             aulaSave(AULA_KEYS.users, users);
             user = Object.assign({}, users[idx]);
-            // no exponer password en session de más, pero mantener id
             delete user.password;
         }
-        // session without password ok
         var session = aulaGetSession() || {};
-        session.foto = user.foto;
+        if (fotoData) session.foto = fotoData;
+        if (genero) session.genero = genero;
         session.nombre = user.nombre || session.nombre;
         session.id = user.id || session.id;
         session.email = user.email || session.email;
@@ -2832,11 +2931,29 @@ function aulaGuardarPerfil() {
         aulaUpdateMenuUser(session);
         var modal = document.getElementById('modalPerfil');
         if (modal) modal.hidden = true;
-    };
-    reader.onerror = function() {
-        if (err) err.textContent = 'No se pudo leer la imagen.';
-    };
-    reader.readAsDataURL(f);
+    }
+
+    var fileInput = document.getElementById('perfilFotoInput');
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+        var f = fileInput.files[0];
+        if (f.size > 1.5 * 1024 * 1024) {
+            if (err) err.textContent = 'La foto debe pesar menos de 1.5 MB.';
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function() { aplicarYCerrar(reader.result); };
+        reader.onerror = function() {
+            if (err) err.textContent = 'No se pudo leer la imagen.';
+        };
+        reader.readAsDataURL(f);
+        return;
+    }
+    // Solo género (sin foto nueva)
+    if (!genero) {
+        if (err) err.textContent = 'Selecciona género o una imagen para guardar.';
+        return;
+    }
+    aplicarYCerrar(null);
 }
 
 
@@ -4059,9 +4176,11 @@ function aulaChatRenderListaEstudiante() {
             ev.stopPropagation();
             var id = btn.getAttribute('data-del-chat');
             if (!id) return;
-            if (!confirm('¿Eliminar esta conversación? No se podrá recuperar.')) return;
-            aulaChatEliminar(id);
-            aulaChatRenderListaEstudiante();
+            gmConfirm('¿Eliminar esta conversación de forma permanente?', { titulo: 'Eliminar conversación' }).then(function(ok) {
+                if (!ok) return;
+                aulaChatEliminar(id);
+                aulaChatRenderListaEstudiante();
+            });
         });
     });
     aulaChatUpdateBadges();
@@ -4206,9 +4325,11 @@ function aulaChatBind() {
         btnEstDel.addEventListener('click', function() {
             var id = btnEstDel.dataset.chatId || window.__chatActivoId;
             if (!id) return;
-            if (!confirm('¿Eliminar esta conversación? No se podrá recuperar.')) return;
-            aulaChatEliminar(id);
-            if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+            gmConfirm('¿Eliminar esta conversación de forma permanente?', { titulo: 'Eliminar conversación' }).then(function(ok) {
+                if (!ok) return;
+                aulaChatEliminar(id);
+                if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+            });
         });
     }
     var btnEst = document.getElementById('btnEstChatEnviar');
@@ -4407,9 +4528,10 @@ function aulaRenderAdmin() {
             }).join('');
             lista.querySelectorAll('[data-del-doc]').forEach(function(btn) {
                 btn.addEventListener('click', function() {
-                    if (confirm('¿Quitar el rol de docente a ' + btn.getAttribute('data-del-doc') + '?')) {
-                        aulaAdminQuitarDocente(btn.getAttribute('data-del-doc'));
-                    }
+                    var em = btn.getAttribute('data-del-doc');
+                    gmConfirm('¿Quitar el rol de docente a ' + em + '?', { titulo: 'Quitar docente', okTexto: 'Quitar' }).then(function(ok) {
+                        if (ok) aulaAdminQuitarDocente(em);
+                    });
                 });
             });
         }
@@ -4811,11 +4933,13 @@ function aulaRenderQuicesDocente() {
     box.querySelectorAll('.btn-quiz-del').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var id = btn.getAttribute('data-id');
-            if (!confirm('¿Eliminar este quiz y sus entregas asociadas?')) return;
-            aulaSaveQuices(aulaLoadQuices().filter(function (q) { return q.id !== id; }));
-            aulaQuizSaveEntregas(aulaQuizLoadEntregas().filter(function (e) { return e.quizId !== id; }));
-            aulaRenderQuicesDocente();
-            if (typeof aulaRenderCorreccionQuices === 'function') aulaRenderCorreccionQuices();
+            gmConfirm('¿Eliminar este quiz y sus entregas asociadas?', { titulo: 'Eliminar quiz' }).then(function(ok) {
+                if (!ok) return;
+                aulaSaveQuices(aulaLoadQuices().filter(function (q) { return q.id !== id; }));
+                aulaQuizSaveEntregas(aulaQuizLoadEntregas().filter(function (e) { return e.quizId !== id; }));
+                aulaRenderQuicesDocente();
+                if (typeof aulaRenderCorreccionQuices === 'function') aulaRenderCorreccionQuices();
+            });
         });
     });
 }
