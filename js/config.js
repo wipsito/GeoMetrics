@@ -11,8 +11,17 @@ var AI_CONFIG = {
     provider: 'backend',
     // ← Cambia esto por la URL de tu Worker después de wrangler deploy
     backendUrl: 'https://geometrics-civix.ae860616.workers.dev/api/chat',
-    model: 'openai/gpt-oss-20b',
-    // systemPrompt queda en el servidor (no se expone ni se puede alterar desde el cliente)
+    model: 'llama-3.3-70b-versatile',
+    // Modelos disponibles en el Worker (Groq)
+    models: [
+        { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
+        { id: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
+        { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+        { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (rápido)' },
+        { id: 'qwen/qwen3-32b', label: 'Qwen3 32B' },
+        { id: 'gemma2-9b-it', label: 'Gemma2 9B' }
+    ],
+    // systemPrompt queda en el servidor
     systemPrompt: ''
 };
 var API_URLS = {

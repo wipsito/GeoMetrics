@@ -1051,7 +1051,8 @@ function inicializarAsistenteAI() {
 
         limpiarAdjunto();
 
-        var escribiendo = agregarMensaje('<span class="civix-thinking"><span class="civix-typing" aria-hidden="true"><span></span><span></span><span></span></span><span class="civix-thinking-text">Pensando…</span></span>', 'bot', true);
+        var _thinkTxt = window.__civixWebSearch ? 'Buscando en la web…' : 'Pensando…';
+        var escribiendo = agregarMensaje('<span class="civix-thinking"><span class="civix-typing" aria-hidden="true"><span></span><span></span><span></span></span><span class="civix-thinking-text">' + _thinkTxt + '</span></span>', 'bot', true);
 
         llamarIA(payload).then(function(respuesta) {
             escribiendo.remove();
@@ -1601,6 +1602,18 @@ function civixExtDesdeLang(lang) {
 
 /** Modo activo de tutoría Civix */
 window.__civixModo = window.__civixModo || 'explicar';
+window.__civixWebSearch = false;
+
+function civixGetSelectedModel() {
+    try {
+        var sel = document.getElementById('civixModelSelect');
+        if (sel && sel.value) return sel.value;
+        var saved = localStorage.getItem('civix_model');
+        if (saved) return saved;
+    } catch (e) {}
+    return (typeof AI_CONFIG !== 'undefined' && AI_CONFIG.model) ? AI_CONFIG.model : 'llama-3.3-70b-versatile';
+}
+
 
 function civixNombrePreferido() {
     /* Siempre el primer nombre de registro (nombres o nombre completo) */
@@ -1838,6 +1851,41 @@ function civixInitUIExtras() {
             if (btnSend) btnSend.click();
         });
     }
+
+    // Modelo preferido
+    var sel = document.getElementById('civixModelSelect');
+    if (sel) {
+        try {
+            var saved = localStorage.getItem('civix_model');
+            if (saved) {
+                for (var i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === saved) { sel.value = saved; break; }
+                }
+            }
+        } catch (eM) {}
+        sel.addEventListener('change', function () {
+            try { localStorage.setItem('civix_model', sel.value); } catch (eS) {}
+        });
+    }
+
+    // Toggle búsqueda web
+    var webBtn = document.getElementById('civixWebToggle');
+    if (webBtn && !webBtn.__bound) {
+        webBtn.__bound = true;
+        try {
+            window.__civixWebSearch = localStorage.getItem('civix_web') === '1';
+        } catch (eW) { window.__civixWebSearch = false; }
+        if (window.__civixWebSearch) {
+            webBtn.classList.add('active');
+            webBtn.setAttribute('aria-pressed', 'true');
+        }
+        webBtn.addEventListener('click', function () {
+            window.__civixWebSearch = !window.__civixWebSearch;
+            webBtn.classList.toggle('active', window.__civixWebSearch);
+            webBtn.setAttribute('aria-pressed', window.__civixWebSearch ? 'true' : 'false');
+            try { localStorage.setItem('civix_web', window.__civixWebSearch ? '1' : '0'); } catch (e2) {}
+        });
+    }
 }
 
 async function llamarIA(mensaje) {
@@ -1870,16 +1918,19 @@ async function llamarIA(mensaje) {
         if (window.__civixModo === 'quiz') temp = 0.5;
         if (window.__civixModo === 'corregir') temp = 0.3;
 
+        var modelId = (typeof civixGetSelectedModel === 'function') ? civixGetSelectedModel() : (AI_CONFIG.model || '');
+        var useWeb = !!window.__civixWebSearch;
         response = await fetch(backend, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 mode: 'chat',
-                model: AI_CONFIG.model,
+                model: modelId,
                 messages: msgs,
                 userName: primerNombre,
                 temperature: temp,
-                max_tokens: 4096
+                max_tokens: 4096,
+                webSearch: useWeb
             })
         });
     } catch (networkErr) {
