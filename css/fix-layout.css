@@ -1,0 +1,61 @@
+
+/* GeoMetrics: reparación específica del logotipo que se está ampliando */
+html, body { max-width:100%; overflow-x:hidden; }
+img { max-width:100%; }
+.inicio-topbar, .topbar-left, .topbar-right { min-width:0; }
+.inicio-topbar { display:flex; justify-content:space-between; align-items:center; gap:24px; }
+.topbar-left, .topbar-right { display:flex; align-items:center; gap:12px; }
+img.logo-top {
+  display:block !important;
+  width:auto !important;
+  height:auto !important;
+  max-width:clamp(100px, 18vw, 220px) !important;
+  max-height:82px !important;
+  object-fit:contain !important;
+  flex:0 1 auto !important;
+}
+.inicio-hero { min-width:0; }
+.hero-logo {
+  min-width:0 !important;
+  width:100% !important;
+  max-width:520px !important;
+  display:flex !important;
+  justify-content:center !important;
+  align-items:center !important;
+  overflow:hidden !important;
+}
+img.logo-geometrics-grande {
+  display:block !important;
+  width:min(100%, 340px) !important;
+  height:auto !important;
+  max-width:340px !important;
+  max-height:260px !important;
+  object-fit:contain !important;
+}
+#pantallaMenu .menu-encabezado img.logo-menu {
+  display:block !important;
+  width:clamp(58px, 8vw, 100px) !important;
+  height:68px !important;
+  max-width:100px !important;
+  max-height:68px !important;
+  object-fit:contain !important;
+  flex:0 0 auto !important;
+}
+#pantallaMenu .menu-encabezado img.logo-menu-civil {
+  width:clamp(52px, 7vw, 82px) !important;
+  max-width:82px !important;
+}
+.menu-principal, #pantallaMenu, .menu-grid { min-width:0; max-width:100%; }
+.menu-grid { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:16px !important; }
+.menu-card { min-width:0 !important; width:100% !important; }
+@media(max-width:900px) {
+ .menu-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+ .inicio-topbar { flex-wrap:wrap; }
+}
+@media(max-width:600px) {
+ .menu-grid { grid-template-columns:minmax(0,1fr) !important; }
+ .topbar-left, .topbar-right { flex:1 1 100%; }
+ img.logo-top { max-width:140px !important; max-height:58px !important; }
+ .hero-logo { max-width:100% !important; }
+ img.logo-geometrics-grande { max-width:240px !important; max-height:180px !important; }
+}
