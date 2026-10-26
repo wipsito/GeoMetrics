@@ -5116,8 +5116,8 @@ function aulaRenderAdmin() {
                 if (aulaEsAdminEmail(r.email)) badges += ' <span class="admin-badge">admin</span>';
                 var canRemove = !r.fijo && r.email !== aulaNormalizarEmail(typeof AULA_SUPER_ADMIN !== 'undefined' ? AULA_SUPER_ADMIN : '');
                 return '<div class="admin-row" data-email="' + escHtml(r.email) + '">' +
-                    '<div><strong>' + escHtml(r.nombre || r.email.split('@')[0]) + '</strong>' +
-                    '<br><span>' + escHtml(r.email) + '</span>' + badges + '</div>' +
+                    '<div><strong class="admin-row-name">' + escHtml(r.nombre || r.email.split('@')[0]) + '</strong>' +
+                    '<br><span class="admin-row-email">' + escHtml(r.email) + '</span>' + badges + '</div>' +
                     (canRemove
                         ? '<button type="button" class="btn-admin-del" data-del-doc="' + escHtml(r.email) + '">Quitar docente</button>'
                         : '<span class="login-hint">Protegido</span>') +
@@ -5139,7 +5139,7 @@ function aulaRenderAdmin() {
         adminsEl.innerHTML = '<h4 style="margin:0 0 8px;color:#c4b5a0;">Administradores actuales</h4>' +
             ads.map(function(e) {
                 var fijo = e === aulaNormalizarEmail(AULA_SUPER_ADMIN);
-                return '<div class="admin-row"><div><strong>' + escHtml(e) + '</strong>' +
+                return '<div class="admin-row"><div><strong class="admin-row-name">' + escHtml(e) + '</strong>' +
                     (fijo ? ' <span class="admin-badge">superadmin</span>' : '') + '</div>' +
                     (fijo ? '' : '<button type="button" class="btn-admin-del" data-del-adm="' + escHtml(e) + '">Quitar admin</button>') +
                     '</div>';
@@ -6156,8 +6156,8 @@ function aulaAdminCivixAvatarInit() {
             if (ok) ok.hidden = true;
             if (!input.files || !input.files[0]) return;
             var f = input.files[0];
-            if (f.size > 1.5 * 1024 * 1024) {
-                if (err) err.textContent = 'La imagen debe pesar menos de 1.5 MB.';
+            if (f.size > 10 * 1024 * 1024) {
+                if (err) err.textContent = 'La imagen debe pesar menos de 10 MB.';
                 return;
             }
             var reader = new FileReader();
