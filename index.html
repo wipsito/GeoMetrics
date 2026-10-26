@@ -793,6 +793,13 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                         <label>Apellidos</label>
                         <input type="text" id="regApellidos" placeholder="Ej. Enríquez Valbuena" required>
 
+                        <label>Género</label>
+                        <select id="regGenero" required>
+                            <option value="">Selecciona…</option>
+                            <option value="mujer">Mujer</option>
+                            <option value="hombre">Hombre</option>
+                        </select>
+
                         <label>Código estudiantil</label>
                         <input type="text" id="regCodigo" placeholder="Ej. 1090123456" required autocomplete="off">
 
@@ -834,6 +841,13 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
                         <label>Apellidos</label>
                         <input type="text" id="docApellidos" placeholder="Apellidos" required>
+
+                        <label>Género</label>
+                        <select id="docGenero" required>
+                            <option value="">Selecciona…</option>
+                            <option value="mujer">Mujer</option>
+                            <option value="hombre">Hombre</option>
+                        </select>
 
                         <label>Crear contraseña</label>
                         <div class="password-wrap"><input type="password" id="docPass" placeholder="Mínimo 6 caracteres" required minlength="6"><button type="button" class="btn-toggle-pass" data-pass-target="docPass" aria-label="Mostrar contraseña" title="Mostrar contraseña">🙈</button></div>
@@ -983,7 +997,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 </div>
                 <div class="asistente-chat" id="chatMensajes">
                     <div class="mensaje mensaje-bot">
-                        <p>¡Hola futuro ingeniero! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.</p>
+                        <p>¡Hola! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.</p>
                     </div>
                 </div>
                 <div class="asistente-input-wrap">
@@ -2130,23 +2144,129 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
 
 </main>
-    <!-- Modal editar perfil (solo foto) -->
+    <!-- Modal perfil profesional -->
     <div class="modal-perfil" id="modalPerfil" hidden>
-        <div class="modal-perfil-card">
-            <div class="modal-perfil-header">
-                <h3>Foto de perfil</h3>
-                <button type="button" class="btn-cerrar-asistente" id="btnCerrarPerfil">×</button>
-            </div>
-            <div class="modal-perfil-body">
-                <div class="perfil-foto-wrap">
-                    <img id="perfilFotoPreview" class="perfil-foto-preview" alt="Foto de perfil" hidden>
-                    <div class="perfil-foto-placeholder" id="perfilFotoPlaceholder">📷</div>
+        <div class="modal-perfil-card modal-perfil-pro">
+            <button type="button" class="perfil-close" id="btnCerrarPerfil" aria-label="Cerrar">×</button>
+
+            <!-- Cabecera viva -->
+            <div class="perfil-hero" id="perfilHero">
+                <div class="perfil-hero-bg"></div>
+                <div class="perfil-avatar-wrap" id="perfilAvatarClick" title="Cambiar foto">
+                    <img id="perfilFotoPreview" class="perfil-foto-preview" alt="Foto" hidden>
+                    <div class="perfil-foto-placeholder" id="perfilFotoPlaceholder">?</div>
+                    <span class="perfil-avatar-cam">📷</span>
+                    <input type="file" id="perfilFotoInput" accept="image/*" hidden>
                 </div>
-                <label>Selecciona una imagen</label>
-                <input type="file" id="perfilFotoInput" accept="image/*">
-                <p class="login-hint">Máx. 1.5 MB. Se mostrará en tu saludo y en el listado del docente.</p>
-                <button type="button" class="btn-calcular" id="btnGuardarPerfil">GUARDAR FOTO</button>
+                <div class="perfil-hero-text">
+                    <p class="perfil-saludo" id="perfilSaludo">Tu perfil</p>
+                    <h3 id="perfilNombreTitulo">—</h3>
+                    <span class="perfil-rol-badge" id="perfilRolBadge">Estudiante</span>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="perfil-tabs" id="perfilTabs">
+                <button type="button" class="perfil-tab active" data-ptab="datos">👤 Perfil</button>
+                <button type="button" class="perfil-tab" data-ptab="academico">🎓 Académico</button>
+                <button type="button" class="perfil-tab" data-ptab="prefs">✨ Estilo</button>
+            </div>
+
+            <div class="modal-perfil-body">
+                <!-- Tab: Datos -->
+                <div class="perfil-pane active" id="perfilPaneDatos">
+                    <div class="perfil-grid-2">
+                        <label>Nombres
+                            <input type="text" id="perfilNombres" placeholder="Nombres" autocomplete="given-name">
+                        </label>
+                        <label>Apellidos
+                            <input type="text" id="perfilApellidos" placeholder="Apellidos" autocomplete="family-name">
+                        </label>
+                    </div>
+                    <label>Correo institucional
+                        <input type="email" id="perfilEmail" readonly>
+                    </label>
+                    <div class="perfil-grid-2">
+                        <label>Género
+                            <select id="perfilGenero">
+                                <option value="">Selecciona…</option>
+                                <option value="mujer">Mujer</option>
+                                <option value="hombre">Hombre</option>
+                            </select>
+                        </label>
+                        <label id="perfilCodigoWrap">Código estudiantil
+                            <input type="text" id="perfilCodigo" placeholder="Código">
+                        </label>
+                    </div>
+                    <label>Bio corta <span class="perfil-hint-inline">(máx. 120)</span>
+                        <textarea id="perfilBio" rows="2" maxlength="120" placeholder="Ej: Me apasionan las cimentaciones y el diseño de mezclas…"></textarea>
+                    </label>
+                    <div class="perfil-foto-actions">
+                        <button type="button" class="btn-limpiar" id="btnPerfilQuitarFoto">Quitar foto</button>
+                        <span class="login-hint" style="margin:0">Máx. 1.5 MB · JPG/PNG</span>
+                    </div>
+                </div>
+
+                <!-- Tab: Académico -->
+                <div class="perfil-pane" id="perfilPaneAcademico" hidden>
+                    <p class="login-hint" id="perfilAcadHint">Materias vinculadas a tu cuenta.</p>
+                    <div class="perfil-chips" id="perfilMateriasChips"></div>
+                    <div class="perfil-stats" id="perfilStats">
+                        <div class="perfil-stat">
+                            <strong id="perfilStatTareas">0</strong>
+                            <span>Tareas / entregas</span>
+                        </div>
+                        <div class="perfil-stat">
+                            <strong id="perfilStatQuices">0</strong>
+                            <span>Quices</span>
+                        </div>
+                        <div class="perfil-stat">
+                            <strong id="perfilStatChats">0</strong>
+                            <span>Chats Civix</span>
+                        </div>
+                    </div>
+                    <div class="perfil-fun-card" id="perfilFunCard">
+                        <span class="perfil-fun-emoji" id="perfilFunEmoji">🏗️</span>
+                        <div>
+                            <strong id="perfilFunTitle">Ingeniería en marcha</strong>
+                            <p id="perfilFunText">Sigue explorando el laboratorio virtual.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Estilo -->
+                <div class="perfil-pane" id="perfilPanePrefs" hidden>
+                    <label>Color del avatar</label>
+                    <div class="perfil-colors" id="perfilColores">
+                        <button type="button" class="perfil-color active" data-color="#3B82F6" style="--c:#3B82F6" title="Azul"></button>
+                        <button type="button" class="perfil-color" data-color="#2DD4BF" style="--c:#2DD4BF" title="Teal"></button>
+                        <button type="button" class="perfil-color" data-color="#A78BFA" style="--c:#A78BFA" title="Violeta"></button>
+                        <button type="button" class="perfil-color" data-color="#F472B6" style="--c:#F472B6" title="Rosa"></button>
+                        <button type="button" class="perfil-color" data-color="#FBBF24" style="--c:#FBBF24" title="Ámbar"></button>
+                        <button type="button" class="perfil-color" data-color="#34D399" style="--c:#34D399" title="Verde"></button>
+                    </div>
+                    <label class="perfil-check">
+                        <input type="checkbox" id="perfilMostrarCodigo" checked>
+                        Mostrar mi código en listas del aula
+                    </label>
+                    <label class="perfil-check">
+                        <input type="checkbox" id="perfilAnimaciones" checked>
+                        Animaciones del perfil
+                    </label>
+                    <div class="perfil-pass-box">
+                        <h4>Cambiar contraseña</h4>
+                        <input type="password" id="perfilPassNueva" placeholder="Nueva contraseña (mín. 6)" minlength="6" autocomplete="new-password">
+                        <input type="password" id="perfilPassNueva2" placeholder="Confirmar contraseña" minlength="6" autocomplete="new-password">
+                        <p class="login-hint">Déjalo vacío si no quieres cambiarla.</p>
+                    </div>
+                </div>
+
                 <p class="mensaje-error" id="perfilError"></p>
+                <p class="perfil-ok" id="perfilOk" hidden>✓ Perfil actualizado</p>
+                <div class="perfil-footer-actions">
+                    <button type="button" class="btn-limpiar" id="btnPerfilCancelar">Cancelar</button>
+                    <button type="button" class="btn-calcular" id="btnGuardarPerfil">GUARDAR CAMBIOS</button>
+                </div>
             </div>
         </div>
     </div>
@@ -2603,6 +2723,75 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/teoria-dm.js"></script>
     <script src="js/teoria-normas.js"></script>
     <script src="js/chart-theme.js"></script>
+
+<!-- Modal de confirmación propio (reemplaza window.confirm) -->
+<div id="gmConfirmModal" class="gm-confirm-overlay" hidden>
+  <div class="gm-confirm-box" role="dialog" aria-modal="true" aria-labelledby="gmConfirmTitle">
+    <div class="gm-confirm-icon">⚠</div>
+    <h3 id="gmConfirmTitle">Confirmar acción</h3>
+    <p id="gmConfirmMsg">¿Estás seguro?</p>
+    <div class="gm-confirm-actions">
+      <button type="button" class="gm-confirm-cancel" id="gmConfirmCancel">Cancelar</button>
+      <button type="button" class="gm-confirm-ok" id="gmConfirmOk">Eliminar</button>
+    </div>
+  </div>
+</div>
+<style>
+.gm-confirm-overlay {
+  position: fixed; inset: 0; z-index: 2147483646;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(2, 8, 20, 0.72);
+  backdrop-filter: blur(6px);
+  padding: 20px;
+}
+.gm-confirm-overlay[hidden] { display: none !important; }
+.gm-confirm-box {
+  width: min(420px, 100%);
+  background: linear-gradient(160deg, #151F32, #101a2c);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 20px;
+  padding: 28px 24px 22px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.55);
+  text-align: center;
+  color: #F1F5F9;
+  animation: gmConfirmIn .18s ease-out;
+}
+@keyframes gmConfirmIn {
+  from { opacity: 0; transform: translateY(10px) scale(.96); }
+  to { opacity: 1; transform: none; }
+}
+.gm-confirm-icon {
+  width: 56px; height: 56px; margin: 0 auto 14px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 26px;
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+.gm-confirm-box h3 {
+  margin: 0 0 8px; font-size: 20px; font-weight: 700;
+}
+.gm-confirm-box p {
+  margin: 0 0 20px; color: #A7B4C8; font-size: 14.5px; line-height: 1.5;
+}
+.gm-confirm-actions {
+  display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+}
+.gm-confirm-cancel, .gm-confirm-ok {
+  min-width: 120px; padding: 11px 18px; border-radius: 12px;
+  font-weight: 700; font-size: 14px; cursor: pointer; border: none;
+}
+.gm-confirm-cancel {
+  background: transparent; color: #A7B4C8;
+  border: 1px solid #2B3A50;
+}
+.gm-confirm-cancel:hover { border-color: #3a4d6b; color: #F1F5F9; }
+.gm-confirm-ok {
+  background: linear-gradient(135deg, #F87171, #EF4444); color: #fff;
+}
+.gm-confirm-ok:hover { filter: brightness(1.08); }
+</style>
+
 </body>
 
 </html>
