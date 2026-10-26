@@ -2686,6 +2686,24 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/teoria-dm.js"></script>
     <script src="js/teoria-normas.js"></script>
     <script src="js/chart-theme.js"></script>
+
+    <!-- Modal de confirmación para borrar conversación Civix -->
+    <div id="civixConfirmModal" class="civix-confirm-modal" aria-hidden="true">
+        <div class="civix-confirm-backdrop"></div>
+        <div class="civix-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="civixConfirmTitle">
+            <div class="civix-confirm-header">
+                <h3 id="civixConfirmTitle">¿Borrar conversación?</h3>
+            </div>
+            <div class="civix-confirm-body">
+                <p>¿Estás seguro de borrar la conversación? Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="civix-confirm-footer">
+                <button type="button" id="civixConfirmCancel" class="btn-civix-cancel">Cancelar</button>
+                <button type="button" id="civixConfirmOk" class="btn-civix-ok">Borrar</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>
