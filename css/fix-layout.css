@@ -1,61 +1,239 @@
+/* =========================================================
+   GeoMetrics · fix-layout.css
+   Corrige logos demasiado grandes y restaura el layout
+   de las cabeceras (inicio + menú) que se perdió en el rediseño.
+   ========================================================= */
 
-/* GeoMetrics: reparación específica del logotipo que se está ampliando */
-html, body { max-width:100%; overflow-x:hidden; }
-img { max-width:100%; }
-.inicio-topbar, .topbar-left, .topbar-right { min-width:0; }
-.inicio-topbar { display:flex; justify-content:space-between; align-items:center; gap:24px; }
-.topbar-left, .topbar-right { display:flex; align-items:center; gap:12px; }
+html, body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Evita que cualquier img se desborde */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ---------- 1. PANTALLA DE INICIO · TOPBAR ---------- */
+.inicio-topbar {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  gap: 16px !important;
+  padding: 14px 28px !important;
+  min-height: 72px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.topbar-left,
+.topbar-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-width: 0 !important;
+  flex: 0 1 auto !important;
+}
+
+/* Logos de la franja superior (Uni + Civil) */
 img.logo-top {
-  display:block !important;
-  width:auto !important;
-  height:auto !important;
-  max-width:clamp(100px, 18vw, 220px) !important;
-  max-height:82px !important;
-  object-fit:contain !important;
-  flex:0 1 auto !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 110px !important;   /* más pequeño y controlado */
+  max-height: 56px !important;
+  object-fit: contain !important;
+  flex: 0 0 auto !important;
 }
-.inicio-hero { min-width:0; }
+
+.logo-label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--texto-suave, #A7B4C8) !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* ---------- 2. HERO DE INICIO (texto + logo grande) ---------- */
+.inicio-hero {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 40px !important;
+  padding: 20px 28px 40px !important;
+  min-width: 0 !important;
+  flex-wrap: wrap !important;
+}
+
+.hero-text {
+  flex: 1 1 340px !important;
+  min-width: 0 !important;
+}
+
 .hero-logo {
-  min-width:0 !important;
-  width:100% !important;
-  max-width:520px !important;
-  display:flex !important;
-  justify-content:center !important;
-  align-items:center !important;
-  overflow:hidden !important;
+  flex: 0 1 280px !important;
+  min-width: 0 !important;
+  max-width: 300px !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  overflow: hidden !important;
 }
+
+/* Logo principal GeoMetrics (el grande del centro) */
 img.logo-geometrics-grande {
-  display:block !important;
-  width:min(100%, 340px) !important;
-  height:auto !important;
-  max-width:340px !important;
-  max-height:260px !important;
-  object-fit:contain !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: 260px !important;   /* reducido de 340px */
+  height: auto !important;
+  max-height: 200px !important;
+  object-fit: contain !important;
 }
+
+/* ---------- 3. MENÚ PRINCIPAL · ENCABEZADO ---------- */
+.menu-encabezado {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 20px !important;
+  padding: 16px 24px !important;
+  min-height: 84px !important;
+  flex-wrap: wrap !important;
+  box-sizing: border-box !important;
+}
+
+.menu-header-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+/* Logos del menú (más compactos) */
 #pantallaMenu .menu-encabezado img.logo-menu {
-  display:block !important;
-  width:clamp(58px, 8vw, 100px) !important;
-  height:68px !important;
-  max-width:100px !important;
-  max-height:68px !important;
-  object-fit:contain !important;
-  flex:0 0 auto !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 64px !important;
+  max-height: 52px !important;
+  object-fit: contain !important;
+  flex: 0 0 auto !important;
 }
+
 #pantallaMenu .menu-encabezado img.logo-menu-civil {
-  width:clamp(52px, 7vw, 82px) !important;
-  max-width:82px !important;
+  max-width: 52px !important;
+  max-height: 48px !important;
 }
-.menu-principal, #pantallaMenu, .menu-grid { min-width:0; max-width:100%; }
-.menu-grid { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:16px !important; }
-.menu-card { min-width:0 !important; width:100% !important; }
-@media(max-width:900px) {
- .menu-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
- .inicio-topbar { flex-wrap:wrap; }
+
+.menu-header-left > div {
+  min-width: 0 !important;
 }
-@media(max-width:600px) {
- .menu-grid { grid-template-columns:minmax(0,1fr) !important; }
- .topbar-left, .topbar-right { flex:1 1 100%; }
- img.logo-top { max-width:140px !important; max-height:58px !important; }
- .hero-logo { max-width:100% !important; }
- img.logo-geometrics-grande { max-width:240px !important; max-height:180px !important; }
+
+.menu-header-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex: 0 0 auto !important;
+}
+
+/* ---------- 4. GRID DEL MENÚ ---------- */
+.menu-principal,
+#pantallaMenu,
+.menu-grid {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.menu-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  padding: 8px 24px 32px !important;
+}
+
+.menu-card {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+/* ---------- 5. LOGIN: solo mostrar el formulario activo ---------- */
+.login-form {
+  display: none !important;
+}
+
+.login-form.active {
+  display: block !important;
+}
+
+/* ---------- 6. RESPONSIVE ---------- */
+@media (max-width: 900px) {
+  .menu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .inicio-topbar {
+    flex-wrap: wrap !important;
+    padding: 12px 16px !important;
+  }
+
+  .inicio-hero {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 24px !important;
+  }
+
+  .hero-logo {
+    max-width: 220px !important;
+  }
+
+  img.logo-geometrics-grande {
+    max-width: 220px !important;
+    max-height: 170px !important;
+  }
+
+  .menu-encabezado {
+    padding: 12px 16px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .menu-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .topbar-left,
+  .topbar-right {
+    flex: 1 1 100% !important;
+    justify-content: center !important;
+  }
+
+  img.logo-top {
+    max-width: 90px !important;
+    max-height: 44px !important;
+  }
+
+  .logo-label {
+    font-size: 12px !important;
+  }
+
+  img.logo-geometrics-grande {
+    max-width: 180px !important;
+    max-height: 140px !important;
+  }
+
+  #pantallaMenu .menu-encabezado img.logo-menu {
+    max-width: 48px !important;
+    max-height: 40px !important;
+  }
+
+  #pantallaMenu .menu-encabezado img.logo-menu-civil {
+    max-width: 42px !important;
+    max-height: 38px !important;
+  }
+
+  .menu-header-left {
+    gap: 10px !important;
+  }
 }
