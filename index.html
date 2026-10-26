@@ -969,23 +969,34 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         </section>
 
         <!-- Ventana del Asistente AI -->
-        <div class="asistente-modal" id="asistenteModal">
-            <div class="asistente-contenido">
-                <div class="asistente-header">
+        <div class="asistente-modal civix-fx" id="asistenteModal">
+            <div class="asistente-contenido civix-shell">
+                <div class="civix-glow" aria-hidden="true"></div>
+                <div class="asistente-header civix-header">
                     <div class="asistente-info">
-                        <span class="asistente-icono">🤖</span>
+                        <div class="civix-avatar-orb" aria-hidden="true">
+                            <span class="civix-orb-core">C</span>
+                            <span class="civix-orb-ring"></span>
+                        </div>
                         <div>
-                            <h3>Civix</h3>
-                            <p>Tutor de diseño · Suelos · Materiales · Corrección de errores</p>
+                            <h3>Civix <span class="civix-online">● en línea</span></h3>
+                            <p>Tutor IA · Ingeniería Civil · UniPamplona</p>
                         </div>
                     </div>
                     <div class="asistente-acciones">
-                        <button type="button" class="btn-civix-historial" id="btnCivixHistorial" title="Mis conversaciones">💬 Chats</button>
-                        <button type="button" class="btn-civix-nuevo" id="btnCivixNuevo" title="Nueva conversación">＋ Nuevo</button>
+                        <button type="button" class="btn-civix-historial" id="btnCivixHistorial" title="Mis conversaciones">💬</button>
+                        <button type="button" class="btn-civix-nuevo" id="btnCivixNuevo" title="Nueva conversación">＋</button>
                         <button class="btn-cerrar-asistente" id="btnCerrarAsistente">×</button>
                     </div>
                 </div>
-                
+
+                <div class="civix-modos" id="civixModos" role="tablist" aria-label="Modo de tutoría">
+                    <button type="button" class="civix-modo active" data-modo="explicar" title="Explicación completa">📘 Explicar</button>
+                    <button type="button" class="civix-modo" data-modo="pistas" title="Solo pistas, sin respuesta final">🎯 Solo pistas</button>
+                    <button type="button" class="civix-modo" data-modo="corregir" title="Corregir procedimiento o entrega">🛠️ Corregir</button>
+                    <button type="button" class="civix-modo" data-modo="quiz" title="Preparar evaluación">📝 Preparar quiz</button>
+                </div>
+
                 <div class="civix-historial-panel" id="civixHistorialPanel" hidden>
                     <div class="civix-historial-head">
                         <strong>Mis conversaciones</strong>
@@ -995,23 +1006,31 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                         <p class="login-hint">Aún no hay chats guardados.</p>
                     </div>
                 </div>
-                <div class="asistente-chat" id="chatMensajes">
+
+                <div class="asistente-chat civix-chat" id="chatMensajes">
                     <div class="mensaje mensaje-bot">
-                        <p>¡Hola! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.</p>
+                        <p>¡Hola! Soy <strong>Civix</strong>. Elige un modo arriba y pregúntame sobre suelos, materiales o diseño. También puedes adjuntar un archivo.</p>
                     </div>
                 </div>
-                <div class="asistente-input-wrap">
+
+                <div class="civix-chips" id="civixChips" aria-label="Sugerencias">
+                    <button type="button" class="civix-chip" data-q="Explícame los límites de Atterberg con un ejemplo numérico">Límites de Atterberg</button>
+                    <button type="button" class="civix-chip" data-q="Diferencias entre Proctor estándar y modificado">Proctor std vs mod</button>
+                    <button type="button" class="civix-chip" data-q="¿Cómo se interpreta una curva granulométrica?">Granulometría</button>
+                    <button type="button" class="civix-chip" data-q="Guíame paso a paso en un ensayo de corte directo">Corte directo</button>
+                </div>
+
+                <div class="asistente-input-wrap civix-input-wrap">
                     <div class="asistente-file-chip" id="civixFileChip" hidden style="display:none">
                         <span class="adjunto-nombre" id="civixFileName"></span>
                         <button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" title="Quitar archivo">×</button>
                     </div>
-                    <div class="asistente-input">
-                        <textarea id="inputAsistente" rows="2" placeholder="Describe el problema o el error… (Enter = enviar, Shift+Enter = salto de línea)"></textarea>
-                        <button type="button" id="btnMejorarPrompt" class="btn-mejorar-prompt" title="Mejorar prompt (estilo Promptly)">✨</button>
+                    <div class="asistente-input civix-input-bar">
+                        <textarea id="inputAsistente" rows="2" placeholder="Escribe tu duda… Enter envía · Shift+Enter nueva línea"></textarea>
                         <label class="btn-adjuntar-icon" for="civixFileInput" title="Adjuntar archivo">📎</label>
                         <input type="file" id="civixFileInput" hidden
                             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.py,.js,.ts,.txt,.csv,.json,.md,.m,.dxf,.ifc,.xml,.dat,.in,.log,.sql,.html,.css,.ipynb,.geojson,.obj,.rtf,.odt,.ods,.odp,image/*">
-                        <button id="btnEnviarMensaje" type="button">Enviar</button>
+                        <button id="btnEnviarMensaje" type="button" class="civix-send">Enviar</button>
                     </div>
                 </div>
             </div>
@@ -2268,6 +2287,10 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                     <label>Bio corta <span class="perfil-hint-inline">(máx. 120)</span>
                         <textarea id="perfilBio" rows="2" maxlength="120" placeholder="Cuéntanos algo de ti…"></textarea>
                     </label>
+                    <label>Cómo debe llamarte Civix
+                        <input type="text" id="perfilNombreCivix" placeholder="Ej. Andy, Ing. Pérez, profe Laura" maxlength="40">
+                    </label>
+                    <p class="login-hint">Si lo dejas vacío, usará tu primer nombre.</p>
                     <p class="login-hint" id="perfilUltimoAcceso">Último acceso: —</p>
                     <div class="perfil-foto-actions">
                         <button type="button" class="btn-limpiar" id="btnPerfilQuitarFoto">Quitar foto</button>
