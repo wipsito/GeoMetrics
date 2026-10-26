@@ -14,6 +14,99 @@ var AULA_KEYS = {
     quices: 'geometrics_quices'
 };
 
+var __quizBancoDocente = [];
+
+function aulaQuizBancoToggle(){
+    var sel = document.getElementById('quizTipoPregunta');
+    var wrap = document.getElementById('quizOpcionesWrap');
+    if(!sel || !wrap) return;
+    var t = sel.value;
+    if(t === 'abierta'){
+        wrap.style.display = 'none';
+    }else{
+        wrap.style.display = 'block';
+    }
+}
+
+function aulaRenderQuizBanco(){
+    var box = document.getElementById('quizBancoLista');
+    if(!box) return;
+    if(!__quizBancoDocente.length){
+        box.innerHTML = '<p class="aula-vacio">Aún no hay preguntas en el banco.</p>';
+        return;
+    }
+    box.innerHTML = __quizBancoDocente.map(function(p, idx){
+        if(p.tipo === 'abierta'){
+            return '<div class="aula-item"><strong>ABIERTA</strong><p>' + (typeof aulaEsc === 'function' ? aulaEsc(p.texto) : String(p.texto||'').replace(/</g,'&lt;')) + '</p><button type="button" class="btn-limpiar" data-quiz-banco-del="' + idx + '">Eliminar</button></div>';
+        }else{
+            var opts = (p.opciones||[]).map(function(op){ return op.key + ') ' + op.texto; }).join(' · ');
+            return '<div class="aula-item"><strong>MÚLTIPLE · Correcta: ' + p.correcta + '</strong><p>' + (typeof aulaEsc === 'function' ? aulaEsc(p.texto) : String(p.texto||'').replace(/</g,'&lt;')) + '</p><p style="opacity:.8;">' + (typeof aulaEsc === 'function' ? aulaEsc(opts) : String(opts||'').replace(/</g,'&lt;')) + '</p><button type="button" class="btn-limpiar" data-quiz-banco-del="' + idx + '">Eliminar</button></div>';
+        }
+    }).join('');
+    box.querySelectorAll('[data-quiz-banco-del]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            var i = parseInt(btn.getAttribute('data-quiz-banco-del'), 10);
+            if(isNaN(i)) return;
+            __quizBancoDocente.splice(i, 1);
+            aulaRenderQuizBanco();
+        });
+    });
+}
+
+function aulaAgregarPreguntaAlBanco(){
+    var sel = document.getElementById('quizTipoPregunta');
+    var enun = document.getElementById('quizEnunciado');
+    var err = document.getElementById('quizError');
+    if(err) err.textContent = '';
+    var tipo = sel ? sel.value : 'multiple';
+    var texto = enun ? (enun.value || '').trim() : '';
+    if(!texto){
+        if(err) err.textContent = 'Escribe el enunciado de la pregunta.';
+        return;
+    }
+    if(tipo === 'abierta'){
+        __quizBancoDocente.push({
+            uid: 'qb_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
+            tipo: 'abierta',
+            texto: texto
+        });
+        if(enun) enun.value = '';
+        aulaRenderQuizBanco();
+        if(err) err.textContent = 'Pregunta abierta agregada al banco.';
+        setTimeout(function(){ if(err) err.textContent=''; }, 1200);
+        return;
+    }
+    var a = ((document.getElementById('quizOpA')||{}).value||'').trim();
+    var b = ((document.getElementById('quizOpB')||{}).value||'').trim();
+    var c = ((document.getElementById('quizOpC')||{}).value||'').trim();
+    var d = ((document.getElementById('quizOpD')||{}).value||'').trim();
+    var corr = document.getElementById('quizCorrecta') ? document.getElementById('quizCorrecta').value : 'A';
+    if(!a || !b || !c || !d){
+        if(err) err.textContent = 'Completa las cuatro opciones A, B, C, D.';
+        return;
+    }
+    __quizBancoDocente.push({
+        uid: 'qb_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
+        tipo: 'multiple',
+        texto: texto,
+        opciones: [
+            {key:'A', texto:a},
+            {key:'B', texto:b},
+            {key:'C', texto:c},
+            {key:'D', texto:d}
+        ],
+        correcta: corr
+    });
+    if(enun) enun.value = '';
+    var oa=document.getElementById('quizOpA'); if(oa) oa.value='';
+    var ob=document.getElementById('quizOpB'); if(ob) ob.value='';
+    var oc=document.getElementById('quizOpC'); if(oc) oc.value='';
+    var od=document.getElementById('quizOpD'); if(od) od.value='';
+    aulaRenderQuizBanco();
+    if(err) err.textContent = 'Pregunta de selección múltiple agregada al banco.';
+    setTimeout(function(){ if(err) err.textContent=''; }, 1200);
+}
+
 /** Versión de esquema: al cambiar, limpia usuarios para forzar re-registro con nuevos campos */
 var GEOMETRICS_DB_VERSION = 3;
 (function migrarBaseDatosGeoMetrics() {
@@ -3408,6 +3501,26 @@ function aulaInitUI() {
     if (btnCrearTarea) btnCrearTarea.addEventListener('click', aulaCrearTarea);
     var btnCrearQuiz = document.getElementById('btnCrearQuiz');
     if (btnCrearQuiz) btnCrearQuiz.addEventListener('click', function() { if (typeof aulaCrearQuiz === 'function') aulaCrearQuiz(); });
+    var selQuizTipo = document.getElementById('quizTipoPregunta');
+    if (selQuizTipo) {
+        selQuizTipo.addEventListener('change', aulaQuizBancoToggle);
+    }
+    var btnAddQuiz = document.getElementById('btnAgregarQuizPregunta');
+    if (btnAddQuiz) {
+        btnAddQuiz.addEventListener('click', aulaAgregarPreguntaAlBanco);
+    }
+    try { aulaQuizBancoToggle(); } catch(e){}
+    try { aulaRenderQuizBanco(); } catch(e){}
+    var selQuizTipo = document.getElementById('quizTipoPregunta');
+    if (selQuizTipo) {
+        selQuizTipo.addEventListener('change', aulaQuizBancoToggle);
+    }
+    var btnAddQuiz = document.getElementById('btnAgregarQuizPregunta');
+    if (btnAddQuiz) {
+        btnAddQuiz.addEventListener('click', aulaAgregarPreguntaAlBanco);
+    }
+    try { aulaQuizBancoToggle(); } catch(e){}
+    try { aulaRenderQuizBanco(); } catch(e){}
     var btnSubirPres = document.getElementById('btnSubirPres');
     if (btnSubirPres) btnSubirPres.addEventListener('click', aulaSubirPres);
     var btnFiltrar = document.getElementById('btnFiltrarEst');
@@ -4928,41 +5041,63 @@ function aulaCrearQuiz() {
     var puntajeAbierta = parseFloat(((document.getElementById('quizPuntajeAbierta') || {}).value || '2'), 10) || 2;
     var cantAbierta = parseInt(((document.getElementById('quizCantAbierta') || {}).value || '1'), 10) || 1;
     var cantMultiple = parseInt(((document.getElementById('quizCantMultiple') || {}).value || '1'), 10) || 1;
-    var preguntasRaw = ((document.getElementById('quizPreguntas') || {}).value || '').trim();
     if (!titulo) { if (err) err.textContent = 'Escribe un título del quiz.'; return; }
-    if (!preguntasRaw) { if (err) err.textContent = 'Agrega preguntas en el formato indicado.'; return; }
     var pool = [];
-    preguntasRaw.split('\n').forEach(function (l, idx) {
-        var line = l.trim();
-        if (!line) return;
-        var parts = line.split('|').map(function (x) { return (x || '').trim(); });
-        if (!parts.length) return;
-        var tipo = String(parts[0]).toUpperCase();
-        if (tipo === 'MULTIPLE') {
-            if (parts.length < 7) return;
-            pool.push({
-                uid: 'p_' + Date.now() + '_' + idx,
-                tipo: 'multiple',
-                texto: parts[1],
-                opciones: [
-                    { key: 'A', texto: parts[2] },
-                    { key: 'B', texto: parts[3] },
-                    { key: 'C', texto: parts[4] },
-                    { key: 'D', texto: parts[5] }
-                ],
-                correcta: String(parts[6]).toUpperCase().replace(/[^ABCD]/g, '').slice(0, 1) || 'A',
-                puntaje: puntajeMultiple
-            });
-        } else if (tipo === 'ABIERTA') {
-            if (parts.length < 2) return;
-            pool.push({
-                uid: 'p_' + Date.now() + '_' + idx,
-                tipo: 'abierta',
-                texto: parts[1],
-                puntaje: puntajeAbierta
-            });
-        }
-    });
+    if (typeof __quizBancoDocente !== 'undefined' && __quizBancoDocente && __quizBancoDocente.length) {
+        __quizBancoDocente.forEach(function (qb, idx) {
+            if (qb.tipo === 'abierta') {
+                pool.push({
+                    uid: qb.uid || ('qb_' + Date.now() + '_' + idx),
+                    tipo: 'abierta',
+                    texto: qb.texto,
+                    puntaje: puntajeAbierta
+                });
+            } else if (qb.tipo === 'multiple') {
+                pool.push({
+                    uid: qb.uid || ('qb_' + Date.now() + '_' + idx),
+                    tipo: 'multiple',
+                    texto: qb.texto,
+                    opciones: qb.opciones || [],
+                    correcta: qb.correcta || 'A',
+                    puntaje: puntajeMultiple
+                });
+            }
+        });
+    } else {
+        var preguntasRaw = ((document.getElementById('quizPreguntas') || {}).value || '').trim();
+        if (!preguntasRaw) { if (err) err.textContent = 'Agrega preguntas al banco.'; return; }
+        preguntasRaw.split('\n').forEach(function (l, idx) {
+            var line = l.trim();
+            if (!line) return;
+            var parts = line.split('|').map(function (x) { return (x || '').trim(); });
+            if (!parts.length) return;
+            var tipo = String(parts[0]).toUpperCase();
+            if (tipo === 'MULTIPLE') {
+                if (parts.length < 7) return;
+                pool.push({
+                    uid: 'p_' + Date.now() + '_' + idx,
+                    tipo: 'multiple',
+                    texto: parts[1],
+                    opciones: [
+                        { key: 'A', texto: parts[2] },
+                        { key: 'B', texto: parts[3] },
+                        { key: 'C', texto: parts[4] },
+                        { key: 'D', texto: parts[5] }
+                    ],
+                    correcta: String(parts[6]).toUpperCase().replace(/[^ABCD]/g, '').slice(0, 1) || 'A',
+                    puntaje: puntajeMultiple
+                });
+            } else if (tipo === 'ABIERTA') {
+                if (parts.length < 2) return;
+                pool.push({
+                    uid: 'p_' + Date.now() + '_' + idx,
+                    tipo: 'abierta',
+                    texto: parts[1],
+                    puntaje: puntajeAbierta
+                });
+            }
+        });
+    }
     var abiertasPool = pool.filter(function(p){ return p.tipo === 'abierta'; });
     var multiplesPool = pool.filter(function(p){ return p.tipo === 'multiple'; });
     if ((cantAbierta > 0 && abiertasPool.length < cantAbierta) || (cantMultiple > 0 && multiplesPool.length < cantMultiple)) {
@@ -4993,7 +5128,10 @@ function aulaCrearQuiz() {
     aulaSaveQuices(list);
     var t = document.getElementById('quizTitulo'); if (t) t.value = '';
     var p = document.getElementById('quizPreguntas'); if (p) p.value = '';
+    var enun = document.getElementById('quizEnunciado'); if (enun) enun.value = '';
+    try { __quizBancoDocente = []; aulaRenderQuizBanco(); } catch(e){}
     if (err) err.textContent = 'Quiz publicado con aleatorización por tipo.';
+    setTimeout(function(){ if(err) err.textContent=''; }, 2000);
     aulaRenderQuicesDocente();
 }
 
