@@ -16,7 +16,6 @@
     <link rel="stylesheet" href="css/sim-ms2.css">
     <link rel="stylesheet" href="css/rediseno.css">
     <link rel="stylesheet" href="css/suelos1.css">
-    <link rel="stylesheet" href="css/fix-layout.css">
 
 <!-- ═══════════════ GeoMetrics · Pantalla de carga (retroexcavadora) ═══════════════
      Va ANTES de los scripts que bloquean la carga (EmailJS, Firebase, SheetJS, Plotly) para que se pinte al instante.
@@ -1866,93 +1865,23 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         <section class="tab-content" id="doc-quices">
             <div class="aula-grid">
                 <div class="aula-card">
-                    <h3>Publicar quiz (en tiempo real)</h3>
-                    <p class="login-hint">Agrega las preguntas una por una al banco. Cada estudiante recibirá 1 abierta + 1 de selección múltiple elegidas aleatoriamente.</p>
+                    <h3>Publicar quiz</h3>
+                    <p class="login-hint">Una pregunta por línea. Los estudiantes de la materia/grupo lo verán en Mi aula.</p>
                     <label>Título</label>
                     <input type="text" id="quizTitulo" placeholder="Quiz 1 — Esfuerzos">
-                    <div class="filtros-aula" style="flex-wrap:wrap;gap:10px;">
-                        <label style="flex:1;min-width:140px;">Materia
-                            <select id="quizMateria">
-                                <option>Mecánica de Suelos I</option>
-                                <option>Mecánica de Suelos II</option>
-                                <option>Resistencia de Materiales</option>
-                                <option>Diseño de Mezclas</option>
-                            </select>
-                        </label>
-                        <label style="flex:1;min-width:140px;">Grupo (vacío = todos)
-                            <input type="text" id="quizGrupo" placeholder="A">
-                        </label>
-                    </div>
-                    <div class="filtros-aula" style="flex-wrap:wrap;gap:10px;">
-                        <label style="flex:1;min-width:120px;">Tiempo límite (minutos)
-                            <input type="number" id="quizTiempo" min="1" max="180" value="15">
-                        </label>
-                        <label style="flex:1;min-width:120px;">Puntaje múltiple
-                            <input type="number" id="quizPuntajeMultiple" min="0.5" max="10" step="0.5" value="1">
-                        </label>
-                        <label style="flex:1;min-width:120px;">Puntaje pregunta abierta
-                            <input type="number" id="quizPuntajeAbierta" min="0.5" max="10" step="0.5" value="2">
-                        </label>
-                    </div>
-                    <div class="filtros-aula" style="flex-wrap:wrap;gap:10px;">
-                        <label style="flex:1;min-width:120px;"># Abiertas a mostrar
-                            <input type="number" id="quizCantAbierta" min="0" max="5" value="1">
-                        </label>
-                        <label style="flex:1;min-width:120px;"># Múltiple a mostrar
-                            <input type="number" id="quizCantMultiple" min="0" max="10" value="1">
-                        </label>
-                    </div>
-
-                    <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:16px 0;">
-
-                    <h4 style="margin:0 0 8px;">Agregar pregunta al banco</h4>
-                    <label>Tipo de pregunta</label>
-                    <select id="quizTipoPregunta">
-                        <option value="multiple">Selección múltiple (única respuesta)</option>
-                        <option value="abierta">Abierta</option>
+                    <label>Materia</label>
+                    <select id="quizMateria">
+                        <option>Mecánica de Suelos I</option>
+                        <option>Mecánica de Suelos II</option>
+                        <option>Resistencia de Materiales</option>
+                        <option>Diseño de Mezclas</option>
                     </select>
-                    <label>Enunciado de la pregunta</label>
-                    <textarea id="quizEnunciado" rows="3" placeholder="Escribe aquí el enunciado de la pregunta..."></textarea>
-
-                    <div id="quizOpcionesWrap">
-                        <label>Opciones A - D</label>
-                        <div style="display:flex;flex-direction:column;gap:8px;">
-                            <div style="display:flex;gap:8px;align-items:center;">
-                                <span style="width:22px;opacity:.8;">A)</span>
-                                <input type="text" id="quizOpA" placeholder="Opción A">
-                            </div>
-                            <div style="display:flex;gap:8px;align-items:center;">
-                                <span style="width:22px;opacity:.8;">B)</span>
-                                <input type="text" id="quizOpB" placeholder="Opción B">
-                            </div>
-                            <div style="display:flex;gap:8px;align-items:center;">
-                                <span style="width:22px;opacity:.8;">C)</span>
-                                <input type="text" id="quizOpC" placeholder="Opción C">
-                            </div>
-                            <div style="display:flex;gap:8px;align-items:center;">
-                                <span style="width:22px;opacity:.8;">D)</span>
-                                <input type="text" id="quizOpD" placeholder="Opción D">
-                            </div>
-                        </div>
-                        <label>Respuesta correcta</label>
-                        <select id="quizCorrecta">
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                            <option value="D">D</option>
-                        </select>
-                    </div>
-
-                    <button type="button" class="btn-limpiar" id="btnAgregarQuizPregunta" style="margin-top:12px;">+ AGREGAR PREGUNTA AL BANCO</button>
-
-                    <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:16px 0;">
-
-                    <h4 style="margin:0 0 8px;">Banco de preguntas</h4>
-                    <p class="login-hint">Aquí aparecerán todas las preguntas que agregues.</p>
-                    <div id="quizBancoLista" class="aula-lista"></div>
-
+                    <label>Grupo (vacío = todos)</label>
+                    <input type="text" id="quizGrupo" placeholder="A">
+                    <label>Preguntas (una por línea)</label>
+                    <textarea id="quizPreguntas" rows="6" placeholder="¿Qué es el esfuerzo normal?&#10;Calcule τ si V=10 kN y A=0.02 m²"></textarea>
                     <p class="mensaje-error" id="quizError"></p>
-                    <button type="button" class="btn-calcular" id="btnCrearQuiz" style="margin-top:10px">PUBLICAR QUIZ CON ALEATORIZACIÓN POR TIPO</button>
+                    <button type="button" class="btn-calcular" id="btnCrearQuiz" style="margin-top:10px">PUBLICAR QUIZ</button>
                 </div>
 
                 <div class="aula-card aula-card-wide" id="cardQuizCivix">
@@ -2003,7 +1932,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
                 <div class="aula-card aula-card-wide">
                     <h3>Quices publicados</h3>
-                    <p class="login-hint">Aquí puedes ver las respuestas de cada estudiante, calificar preguntas abiertas y poner la nota final.</p>
                     <div id="listaQuicesDocente" class="aula-lista"></div>
                 </div>
             </div>
@@ -2130,19 +2058,9 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
         <section class="tab-content" id="est-quices">
             <div class="aula-card aula-card-wide">
-                <h3>Quices en tiempo real</h3>
-                <p class="login-hint">Con tiempo límite, opciones A-D y calificación automática.</p>
-                <div id="quizActivoEst" style="display:none;margin-bottom:12px;padding:10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);border-radius:10px;">
-                    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
-                        <div>
-                            <strong id="quizActivoTitulo"></strong>
-                            <div id="quizActivoProgreso" style="opacity:.8;font-size:13px;"></div>
-                        </div>
-                        <div id="quizActivoTiempo" style="color:#f59e0b;font-weight:800;font-size:18px;"></div>
-                    </div>
-                </div>
+                <h3>Quices de tus materias</h3>
+                <p class="login-hint">Responde y envía. El docente verá tus entregas en próximas versiones.</p>
                 <div id="listaQuicesEstudiante" class="aula-lista"></div>
-                <div id="quizFormEst" style="display:none;"></div>
             </div>
         </section>
 
@@ -2768,24 +2686,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/teoria-dm.js"></script>
     <script src="js/teoria-normas.js"></script>
     <script src="js/chart-theme.js"></script>
-
-    <!-- Modal de confirmación para borrar conversación Civix -->
-    <div id="civixConfirmModal" class="civix-confirm-modal" aria-hidden="true">
-        <div class="civix-confirm-backdrop"></div>
-        <div class="civix-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="civixConfirmTitle">
-            <div class="civix-confirm-header">
-                <h3 id="civixConfirmTitle">¿Borrar conversación?</h3>
-            </div>
-            <div class="civix-confirm-body">
-                <p>¿Estás seguro de borrar la conversación? Esta acción no se puede deshacer.</p>
-            </div>
-            <div class="civix-confirm-footer">
-                <button type="button" id="civixConfirmCancel" class="btn-civix-cancel">Cancelar</button>
-                <button type="button" id="civixConfirmOk" class="btn-civix-ok">Borrar</button>
-            </div>
-        </div>
-    </div>
-
 </body>
 
 </html>
