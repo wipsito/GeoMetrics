@@ -24,9 +24,10 @@ var API_URLS = {
 // Dominio institucional y docentes autorizados
 var AULA_CONFIG = {
     dominio: 'unipamplona.edu.co',
-    // Lista vacía: los docentes se autorizan desde el panel de administrador
-    docentes: [],
-    pilotoDocenteAbierto: false
+    docentes: [
+        'docente.demo@unipamplona.edu.co'
+    ],
+    pilotoDocenteAbierto: true
 };
 
 /**
