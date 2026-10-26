@@ -1866,7 +1866,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
             <div class="aula-grid">
                 <div class="aula-card">
                     <h3>Publicar quiz (en tiempo real)</h3>
-                    <p class="login-hint">Preguntas con opciones A, B, C, D y respuesta correcta. Puedes asignar tiempo y puntaje por pregunta.</p>
+                    <p class="login-hint">Mezcla aleatoria por tipo. Cada estudiante recibe 1 pregunta abierta + 1 de selección múltiple distintas al resto.</p>
                     <label>Título</label>
                     <input type="text" id="quizTitulo" placeholder="Quiz 1 — Esfuerzos">
                     <div class="filtros-aula" style="flex-wrap:wrap;gap:10px;">
@@ -1884,16 +1884,28 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                     </div>
                     <div class="filtros-aula" style="flex-wrap:wrap;gap:10px;">
                         <label style="flex:1;min-width:120px;">Tiempo límite (minutos)
-                            <input type="number" id="quizTiempo" min="1" max="180" value="30">
+                            <input type="number" id="quizTiempo" min="1" max="180" value="15">
                         </label>
-                        <label style="flex:1;min-width:120px;">Puntaje por pregunta
-                            <input type="number" id="quizPuntaje" min="0.5" max="10" step="0.5" value="1">
+                        <label style="flex:1;min-width:120px;">Puntaje múltiple
+                            <input type="number" id="quizPuntajeMultiple" min="0.5" max="10" step="0.5" value="1">
+                        </label>
+                        <label style="flex:1;min-width:120px;">Puntaje pregunta abierta
+                            <input type="number" id="quizPuntajeAbierta" min="0.5" max="10" step="0.5" value="2">
                         </label>
                     </div>
-                    <label>Preguntas (formato: Pregunta|A|B|C|D|Correcta A-D)</label>
-                    <textarea id="quizPreguntas" rows="8" placeholder="¿Qué es el esfuerzo normal?|Tensión perpendicular|Tensión tangencial|Compresión|Flexión|A&#10;Un suelo bien graduado tiene:|Pocos tamaños|Amplio rango de tamaños|Un solo tamaño|Ninguno|B"></textarea>
+                    <div class="filtros-aula" style="flex-wrap:wrap;gap:10px;">
+                        <label style="flex:1;min-width:120px;"># Abiertas a mostrar
+                            <input type="number" id="quizCantAbierta" min="0" max="5" value="1">
+                        </label>
+                        <label style="flex:1;min-width:120px;"># Múltiple a mostrar
+                            <input type="number" id="quizCantMultiple" min="0" max="10" value="1">
+                        </label>
+                    </div>
+                    <label>Banco de preguntas (una por línea)</label>
+                    <textarea id="quizPreguntas" rows="9" placeholder="MULTIPLE|¿Cuál es la unidad del esfuerzo en el SI?|N/m² (Pascal)|kg/m³|m/s²|N·m|A&#10;MULTIPLE|¿Qué ensayo determina la humedad óptima de un suelo?|Ensayo Proctor|Ensayo CBR|Ensayo de corte directo|Ensayo edométrico|A&#10;ABIERTA|Explique brevemente la diferencia entre esfuerzo normal y esfuerzo cortante&#10;ABIERTA|¿Qué factores influyen en la compactación de un suelo? Justifique su respuesta"></textarea>
+                    <p class="login-hint">Usa <b>MULTIPLE|Pregunta|A|B|C|D|A</b> o <b>ABIERTA|Pregunta</b>. Sube varias de cada tipo para que el sorteo sea aleatorio entre estudiantes.</p>
                     <p class="mensaje-error" id="quizError"></p>
-                    <button type="button" class="btn-calcular" id="btnCrearQuiz" style="margin-top:10px">PUBLICAR QUIZ EN TIEMPO REAL</button>
+                    <button type="button" class="btn-calcular" id="btnCrearQuiz" style="margin-top:10px">PUBLICAR QUIZ CON ALEATORIZACIÓN POR TIPO</button>
                 </div>
 
                 <div class="aula-card aula-card-wide" id="cardQuizCivix">
