@@ -6086,3 +6086,16 @@ body.theme-light {
 @media (max-width: 640px) {
     .perfil-grid, .perfil-insignias, .perfil-prog-grid { grid-template-columns: 1fr; }
 }
+
+/* Modal de confirmación Civix */
+.civix-confirm-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 2147483647; }
+.civix-confirm-modal.active { display: flex; }
+.civix-confirm-backdrop { position: absolute; inset: 0; background: rgba(2,6,23,0.72); backdrop-filter: blur(4px); }
+.civix-confirm-dialog { position: relative; width: min(420px, 92vw); background: linear-gradient(180deg, rgba(15,23,42,0.98), rgba(15,23,42,0.96)); border: 1px solid rgba(148,163,184,0.25); border-radius: 14px; box-shadow: 0 40px 90px rgba(2,6,23,0.8); overflow: hidden; }
+.civix-confirm-header { padding: 16px 18px 8px; }
+.civix-confirm-header h3 { margin: 0; font-size: 18px; color: #F8FAFC; }
+.civix-confirm-body { padding: 0 18px 16px; color: #CBD5E1; font-size: 14px; }
+.civix-confirm-footer { display: flex; gap: 10px; justify-content: flex-end; padding: 12px 18px 16px; background: rgba(15,23,42,0.6); }
+.civix-confirm-footer button { border-radius: 10px; border: 1px solid rgba(148,163,184,0.25); padding: 8px 14px; font-weight: 600; cursor: pointer; }
+.btn-civix-cancel { background: transparent; color: #E2E8F0; }
+.btn-civix-ok { background: linear-gradient(90deg, #F59E0B, #FBBF24); color: #0F172A; border: none; }
