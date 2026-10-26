@@ -1865,23 +1865,35 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         <section class="tab-content" id="doc-quices">
             <div class="aula-grid">
                 <div class="aula-card">
-                    <h3>Publicar quiz</h3>
-                    <p class="login-hint">Una pregunta por línea. Los estudiantes de la materia/grupo lo verán en Mi aula.</p>
+                    <h3>Publicar quiz (en tiempo real)</h3>
+                    <p class="login-hint">Preguntas con opciones A, B, C, D y respuesta correcta. Puedes asignar tiempo y puntaje por pregunta.</p>
                     <label>Título</label>
                     <input type="text" id="quizTitulo" placeholder="Quiz 1 — Esfuerzos">
-                    <label>Materia</label>
-                    <select id="quizMateria">
-                        <option>Mecánica de Suelos I</option>
-                        <option>Mecánica de Suelos II</option>
-                        <option>Resistencia de Materiales</option>
-                        <option>Diseño de Mezclas</option>
-                    </select>
-                    <label>Grupo (vacío = todos)</label>
-                    <input type="text" id="quizGrupo" placeholder="A">
-                    <label>Preguntas (una por línea)</label>
-                    <textarea id="quizPreguntas" rows="6" placeholder="¿Qué es el esfuerzo normal?&#10;Calcule τ si V=10 kN y A=0.02 m²"></textarea>
+                    <div class="filtros-aula" style="flex-wrap:wrap;gap:10px;">
+                        <label style="flex:1;min-width:140px;">Materia
+                            <select id="quizMateria">
+                                <option>Mecánica de Suelos I</option>
+                                <option>Mecánica de Suelos II</option>
+                                <option>Resistencia de Materiales</option>
+                                <option>Diseño de Mezclas</option>
+                            </select>
+                        </label>
+                        <label style="flex:1;min-width:140px;">Grupo (vacío = todos)
+                            <input type="text" id="quizGrupo" placeholder="A">
+                        </label>
+                    </div>
+                    <div class="filtros-aula" style="flex-wrap:wrap;gap:10px;">
+                        <label style="flex:1;min-width:120px;">Tiempo límite (minutos)
+                            <input type="number" id="quizTiempo" min="1" max="180" value="30">
+                        </label>
+                        <label style="flex:1;min-width:120px;">Puntaje por pregunta
+                            <input type="number" id="quizPuntaje" min="0.5" max="10" step="0.5" value="1">
+                        </label>
+                    </div>
+                    <label>Preguntas (formato: Pregunta|A|B|C|D|Correcta A-D)</label>
+                    <textarea id="quizPreguntas" rows="8" placeholder="¿Qué es el esfuerzo normal?|Tensión perpendicular|Tensión tangencial|Compresión|Flexión|A&#10;Un suelo bien graduado tiene:|Pocos tamaños|Amplio rango de tamaños|Un solo tamaño|Ninguno|B"></textarea>
                     <p class="mensaje-error" id="quizError"></p>
-                    <button type="button" class="btn-calcular" id="btnCrearQuiz" style="margin-top:10px">PUBLICAR QUIZ</button>
+                    <button type="button" class="btn-calcular" id="btnCrearQuiz" style="margin-top:10px">PUBLICAR QUIZ EN TIEMPO REAL</button>
                 </div>
 
                 <div class="aula-card aula-card-wide" id="cardQuizCivix">
@@ -2058,9 +2070,19 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
         <section class="tab-content" id="est-quices">
             <div class="aula-card aula-card-wide">
-                <h3>Quices de tus materias</h3>
-                <p class="login-hint">Responde y envía. El docente verá tus entregas en próximas versiones.</p>
+                <h3>Quices en tiempo real</h3>
+                <p class="login-hint">Con tiempo límite, opciones A-D y calificación automática.</p>
+                <div id="quizActivoEst" style="display:none;margin-bottom:12px;padding:10px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);border-radius:10px;">
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+                        <div>
+                            <strong id="quizActivoTitulo"></strong>
+                            <div id="quizActivoProgreso" style="opacity:.8;font-size:13px;"></div>
+                        </div>
+                        <div id="quizActivoTiempo" style="color:#f59e0b;font-weight:800;font-size:18px;"></div>
+                    </div>
+                </div>
                 <div id="listaQuicesEstudiante" class="aula-lista"></div>
+                <div id="quizFormEst" style="display:none;"></div>
             </div>
         </section>
 
