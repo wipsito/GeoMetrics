@@ -6766,3 +6766,17 @@ canvas#canvas-triaxial {
 #adminListaDocentes .admin-row-name,
 #adminListaAdmins .admin-row-name { color: #F1F5F9 !important; }
 #adminListaAdmins .admin-row-name { color: #FDE68A !important; }
+
+.civix-thinking {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #94A3B8;
+    font-size: 13.5px;
+    font-weight: 600;
+}
+.civix-thinking-text { letter-spacing: 0.02em; }
+.mensaje-temporal {
+    opacity: 0.95;
+    border-style: dashed !important;
+}
