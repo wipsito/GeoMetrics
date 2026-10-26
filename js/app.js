@@ -1720,6 +1720,14 @@ function civixRegenerarUltima() {
 function civixInitUIExtras() {
     if (window.__civixUIExtras) return;
     window.__civixUIExtras = true;
+    var ta = document.getElementById('inputAsistente');
+    if (ta && !ta.__civixResize) {
+        ta.__civixResize = true;
+        ta.addEventListener('input', function () {
+            ta.style.height = 'auto';
+            ta.style.height = Math.min(120, Math.max(40, ta.scrollHeight)) + 'px';
+        });
+    }
     var modos = document.getElementById('civixModos');
     if (modos) {
         modos.addEventListener('click', function (e) {
@@ -1728,6 +1736,19 @@ function civixInitUIExtras() {
             modos.querySelectorAll('.civix-modo').forEach(function (b) { b.classList.remove('active'); });
             btn.classList.add('active');
             window.__civixModo = btn.getAttribute('data-modo') || 'explicar';
+            var labels = { explicar: 'Explicar', pistas: 'Solo pistas', corregir: 'Corregir', quiz: 'Preparar quiz' };
+            var pill = document.getElementById('civixModePill');
+            if (pill) pill.innerHTML = 'Modo: <strong>' + (labels[window.__civixModo] || 'Explicar') + '</strong>';
+            var input = document.getElementById('inputAsistente');
+            if (input) {
+                var ph = {
+                    explicar: '¿Qué tema quieres que te explique?',
+                    pistas: 'Describe el problema (solo te daré pistas)…',
+                    corregir: 'Pega tu procedimiento o adjunta el archivo a corregir…',
+                    quiz: 'Tema para generar preguntas de práctica…'
+                };
+                input.placeholder = ph[window.__civixModo] || 'Escribe tu duda a Civix…';
+            }
         });
     }
     var chips = document.getElementById('civixChips');
