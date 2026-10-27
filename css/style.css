@@ -6885,3 +6885,19 @@ canvas#canvas-triaxial {
         max-width: 100% !important;
     }
 }
+
+/* Fotos en integrantes / tablas */
+img.tabla-foto {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  display: inline-block !important;
+  vertical-align: middle;
+  border: 2px solid rgba(45, 212, 191, 0.35);
+  flex-shrink: 0;
+}
+.integrante-item img.tabla-foto {
+  width: 44px !important;
+  height: 44px !important;
+}
