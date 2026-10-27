@@ -962,3 +962,20 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+/* visibility fix — evita que el aula quede oculta por herencia del menú */
+#pantallaEstudiante[style*="block"],
+#pantallaDocente[style*="block"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  position: relative !important;
+  z-index: 5 !important;
+  min-height: 100vh;
+}
+#pantallaEstudiante .tab-content.active,
+#pantallaDocente .tab-content.active {
+  display: block !important;
+}
