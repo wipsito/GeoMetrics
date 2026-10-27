@@ -8,18 +8,19 @@
  * 3) Ejemplo: https://geometrics-civix.TU_USUARIO.workers.dev/api/chat
  */
 var AI_CONFIG = {
-    provider: 'groq', // groq | openai | anthropic | gemini | deepseek | xai
+    provider: 'groq',
+    // ← Cambia esto por la URL de tu Worker después de wrangler deploy
     backendUrl: 'https://geometrics-civix.ae860616.workers.dev/api/chat',
     model: 'openai/gpt-oss-120b',
+    // Modelos disponibles en el Worker (Groq)
+    models: [
+        { id: 'openai/gpt-oss-120b', label: 'Groq · GPT-OSS 120B', provider: 'groq' }
+    ],
+    // systemPrompt queda en el servidor
     systemPrompt: ''
 };
-
-/** Catálogo de modelos Civix (las keys viven solo en el Worker) */
-var CIVIX_MODELS = [
-    { provider: 'groq', id: 'openai/gpt-oss-120b', label: 'Groq · GPT-OSS 120B' }
-];
-
 var API_URLS = {
+    // Solo se usan si backendUrl está vacío (no recomendado)
     groq: 'https://api.groq.com/openai/v1/chat/completions',
     openai: 'https://api.openai.com/v1/chat/completions'
 };
@@ -27,9 +28,11 @@ var API_URLS = {
 // Dominio institucional y docentes autorizados
 var AULA_CONFIG = {
     dominio: 'unipamplona.edu.co',
-    // Lista vacía: los docentes se autorizan desde el panel de administrador
-    docentes: [],
-    pilotoDocenteAbierto: false
+    docentes: [
+        // Agrega aquí los correos docentes autorizados, ej:
+        // 'nombre.apellido@unipamplona.edu.co'
+    ],
+    pilotoDocenteAbierto: true
 };
 
 /**
