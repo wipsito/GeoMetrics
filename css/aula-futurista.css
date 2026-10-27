@@ -1,0 +1,732 @@
+/* =========================================================
+   GeoMetrics — Mi Aula / Panel docente · estilo futurista
+   ========================================================= */
+#pantallaDocente,
+#pantallaEstudiante {
+  --aula-bg: #070d18;
+  --aula-panel: linear-gradient(165deg, rgba(24, 36, 58, 0.95) 0%, rgba(12, 18, 32, 0.98) 100%);
+  --aula-borde: rgba(96, 165, 250, 0.28);
+  --aula-borde-suave: rgba(43, 58, 80, 0.85);
+  --aula-acento: #60A5FA;
+  --aula-cyan: #2DD4BF;
+  --aula-dorado: #FFCC00;
+  --aula-texto: #F1F5F9;
+  --aula-muted: #94A3B8;
+  position: relative;
+  min-height: 100vh;
+  padding: 0 0 48px;
+  background:
+    radial-gradient(1000px 520px at 8% -8%, rgba(59, 130, 246, 0.16), transparent 55%),
+    radial-gradient(800px 480px at 100% 0%, rgba(45, 212, 191, 0.1), transparent 50%),
+    radial-gradient(600px 400px at 50% 100%, rgba(0, 88, 38, 0.12), transparent 45%),
+    var(--aula-bg) !important;
+  color: var(--aula-texto);
+  overflow-x: hidden;
+}
+
+#pantallaDocente::before,
+#pantallaEstudiante::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(96, 165, 250, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(96, 165, 250, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  mask-image: linear-gradient(180deg, rgba(0,0,0,0.55), transparent 75%);
+  z-index: 0;
+}
+
+#pantallaDocente > *,
+#pantallaEstudiante > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- Header ---------- */
+#pantallaDocente .seccion-encabezado,
+#pantallaEstudiante .seccion-encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 clamp(12px, 3vw, 28px);
+  padding: 22px 24px !important;
+  border-radius: 20px !important;
+  border: 1px solid var(--aula-borde) !important;
+  background: var(--aula-panel) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 20px 50px rgba(0, 0, 0, 0.35),
+    0 0 40px rgba(59, 130, 246, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+#pantallaDocente .seccion-encabezado-doc,
+#pantallaEstudiante .seccion-encabezado-doc {
+  margin-top: 18px;
+}
+
+#pantallaDocente .seccion-icono,
+#pantallaEstudiante .seccion-icono {
+  width: 56px !important;
+  height: 56px !important;
+  border-radius: 16px !important;
+  display: grid !important;
+  place-items: center !important;
+  font-size: 28px !important;
+  background: radial-gradient(circle at 30% 25%, rgba(96, 165, 250, 0.45), rgba(15, 23, 42, 0.9)) !important;
+  border: 1px solid rgba(96, 165, 250, 0.45) !important;
+  box-shadow: 0 0 24px rgba(59, 130, 246, 0.35);
+  overflow: hidden;
+}
+
+#pantallaDocente .seccion-icono.con-foto,
+#pantallaEstudiante .seccion-icono.con-foto {
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+#pantallaDocente .seccion-titulo h2,
+#pantallaEstudiante .seccion-titulo h2 {
+  margin: 0 !important;
+  font-size: 1.45rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em;
+  background: linear-gradient(90deg, #F8FAFC, #93C5FD 55%, #2DD4BF);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+#pantallaDocente .seccion-titulo p,
+#pantallaEstudiante .seccion-titulo p,
+#pantallaDocente #docenteSubtitulo,
+#pantallaEstudiante #estudianteSubtitulo {
+  margin: 4px 0 0 !important;
+  color: var(--aula-muted) !important;
+  font-size: 13.5px !important;
+}
+
+#pantallaDocente .btn-volver,
+#pantallaEstudiante .btn-volver {
+  border-radius: 12px !important;
+  border: 1px solid rgba(96, 165, 250, 0.35) !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  color: #E2E8F0 !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em;
+  padding: 10px 16px !important;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s, color 0.2s;
+}
+
+#pantallaDocente .btn-volver:hover,
+#pantallaEstudiante .btn-volver:hover {
+  border-color: #FFCC00 !important;
+  color: #FFCC00 !important;
+  box-shadow: 0 0 20px rgba(255, 204, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+/* ---------- KPIs docente ---------- */
+#pantallaDocente .doc-resumen {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px clamp(12px, 3vw, 28px) 8px !important;
+  padding: 0 !important;
+}
+
+#pantallaDocente .doc-kpi {
+  position: relative;
+  overflow: hidden;
+  padding: 16px 18px !important;
+  border-radius: 16px !important;
+  border: 1px solid var(--aula-borde-suave) !important;
+  background: linear-gradient(160deg, rgba(22, 32, 52, 0.95), rgba(10, 16, 28, 0.98)) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+}
+
+#pantallaDocente .doc-kpi::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--aula-acento), var(--aula-cyan));
+  border-radius: 3px 0 0 3px;
+}
+
+#pantallaDocente .doc-kpi-num {
+  display: block;
+  font-size: 1.75rem !important;
+  font-weight: 800 !important;
+  color: #F8FAFC !important;
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 20px rgba(96, 165, 250, 0.35);
+}
+
+#pantallaDocente .doc-kpi-label {
+  color: var(--aula-muted) !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+#pantallaDocente .doc-kpi-alerta {
+  border-color: rgba(248, 113, 113, 0.35) !important;
+}
+#pantallaDocente .doc-kpi-alerta::before {
+  background: linear-gradient(180deg, #F87171, #FBBF24);
+}
+#pantallaDocente .doc-kpi-alerta .doc-kpi-num {
+  color: #FCA5A5 !important;
+  text-shadow: 0 0 18px rgba(248, 113, 113, 0.35);
+}
+
+/* ---------- Tabs ---------- */
+#pantallaDocente .aula-tabs,
+#pantallaEstudiante .aula-tabs,
+#pantallaDocente .submenu-tabs,
+#pantallaEstudiante .submenu-tabs {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px !important;
+  margin: 16px clamp(12px, 3vw, 28px) 12px !important;
+  padding: 10px !important;
+  border-radius: 16px !important;
+  border: 1px solid var(--aula-borde-suave) !important;
+  background: rgba(8, 14, 26, 0.65) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+#pantallaDocente .tab-btn,
+#pantallaEstudiante .tab-btn {
+  border-radius: 12px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--aula-muted) !important;
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  padding: 10px 16px !important;
+  letter-spacing: 0.03em;
+  box-shadow: none !important;
+}
+
+#pantallaDocente .tab-btn:hover,
+#pantallaEstudiante .tab-btn:hover {
+  color: #E2E8F0 !important;
+  background: rgba(59, 130, 246, 0.12) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+#pantallaDocente .tab-btn.active,
+#pantallaEstudiante .tab-btn.active {
+  color: #06101f !important;
+  background: linear-gradient(135deg, #7DD3FC, #3B82F6) !important;
+  border-color: rgba(125, 211, 252, 0.85) !important;
+  box-shadow: 0 8px 22px rgba(59, 130, 246, 0.4) !important;
+}
+
+#pantallaDocente .tab-btn.active::after,
+#pantallaEstudiante .tab-btn.active::after {
+  display: none !important;
+}
+
+#pantallaDocente .tab-badge,
+#pantallaEstudiante .tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #F87171;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(248, 113, 113, 0.45);
+}
+
+#pantallaDocente .tab-btn.active .tab-badge,
+#pantallaEstudiante .tab-btn.active .tab-badge {
+  background: #0f172a;
+  color: #7DD3FC;
+  box-shadow: none;
+}
+
+/* ---------- Contenido / tarjetas ---------- */
+#pantallaDocente .tab-content,
+#pantallaEstudiante .tab-content {
+  margin: 0 clamp(12px, 3vw, 28px);
+  padding-bottom: 8px;
+}
+
+#pantallaDocente .aula-grid,
+#pantallaEstudiante .aula-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+#pantallaDocente .aula-card,
+#pantallaEstudiante .aula-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px !important;
+  border: 1px solid var(--aula-borde-suave) !important;
+  background: var(--aula-panel) !important;
+  padding: 18px 18px 16px !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+#pantallaDocente .aula-card::before,
+#pantallaEstudiante .aula-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--aula-acento), var(--aula-cyan), transparent 70%);
+  opacity: 0.9;
+}
+
+#pantallaDocente .aula-card-wide,
+#pantallaEstudiante .aula-card-wide {
+  grid-column: 1 / -1;
+}
+
+#pantallaDocente .aula-card h3,
+#pantallaEstudiante .aula-card h3 {
+  margin: 0 0 14px !important;
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  color: #E0F2FE !important;
+  letter-spacing: 0.02em;
+}
+
+#pantallaDocente .aula-card label,
+#pantallaEstudiante .aula-card label {
+  display: block;
+  margin: 10px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--aula-muted) !important;
+}
+
+#pantallaDocente .aula-card input,
+#pantallaDocente .aula-card select,
+#pantallaDocente .aula-card textarea,
+#pantallaEstudiante .aula-card input,
+#pantallaEstudiante .aula-card select,
+#pantallaEstudiante .aula-card textarea,
+#pantallaDocente .filtros-aula input,
+#pantallaDocente .filtros-aula select,
+#pantallaEstudiante .filtros-aula input,
+#pantallaEstudiante .filtros-aula select {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 12px !important;
+  border: 1px solid rgba(43, 58, 80, 0.95) !important;
+  background: rgba(8, 14, 26, 0.85) !important;
+  color: #F1F5F9 !important;
+  padding: 11px 12px !important;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#pantallaDocente .aula-card input:focus,
+#pantallaDocente .aula-card select:focus,
+#pantallaDocente .aula-card textarea:focus,
+#pantallaEstudiante .aula-card input:focus,
+#pantallaEstudiante .aula-card select:focus,
+#pantallaEstudiante .aula-card textarea:focus {
+  border-color: rgba(96, 165, 250, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+#pantallaDocente .aula-card button,
+#pantallaEstudiante .aula-card button,
+#pantallaDocente .filtros-aula button,
+#pantallaEstudiante .filtros-aula button {
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em;
+  transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s;
+}
+
+#pantallaDocente .aula-card button:hover,
+#pantallaEstudiante .aula-card button:hover {
+  transform: translateY(-1px);
+}
+
+/* Botones primarios del aula */
+#pantallaDocente .btn-primario,
+#pantallaEstudiante .btn-primario,
+#pantallaDocente button[id*="Publicar"],
+#pantallaDocente button[id*="Guardar"],
+#pantallaEstudiante button[id*="Entregar"],
+#pantallaDocente #btnPublicarTarea,
+#pantallaDocente #btnPublicarPres,
+#pantallaEstudiante #btnEstAplicarFiltro,
+#pantallaDocente #btnDocChatFiltro {
+  background: linear-gradient(135deg, #2563EB, #0EA5E9) !important;
+  border: 1px solid rgba(125, 211, 252, 0.45) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.35);
+}
+
+#pantallaDocente .btn-secundario,
+#pantallaEstudiante .btn-secundario,
+#pantallaDocente .btn-limpiar,
+#pantallaEstudiante .btn-limpiar {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid rgba(96, 165, 250, 0.3) !important;
+  color: #E2E8F0 !important;
+}
+
+/* ---------- Listas / items ---------- */
+#pantallaDocente .aula-lista,
+#pantallaEstudiante .aula-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: min(560px, 60vh);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+#pantallaDocente .aula-lista::-webkit-scrollbar,
+#pantallaEstudiante .aula-lista::-webkit-scrollbar {
+  width: 6px;
+}
+#pantallaDocente .aula-lista::-webkit-scrollbar-thumb,
+#pantallaEstudiante .aula-lista::-webkit-scrollbar-thumb {
+  background: rgba(96, 165, 250, 0.35);
+  border-radius: 6px;
+}
+
+#pantallaDocente .aula-item,
+#pantallaEstudiante .aula-item {
+  border-radius: 14px !important;
+  border: 1px solid rgba(43, 58, 80, 0.9) !important;
+  background: linear-gradient(145deg, rgba(20, 30, 48, 0.95), rgba(12, 18, 30, 0.98)) !important;
+  padding: 14px 16px !important;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+
+#pantallaDocente .aula-item:hover,
+#pantallaEstudiante .aula-item:hover {
+  border-color: rgba(96, 165, 250, 0.45) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(96, 165, 250, 0.12);
+  transform: translateY(-1px);
+}
+
+#pantallaDocente .aula-item strong,
+#pantallaEstudiante .aula-item strong {
+  color: #F8FAFC !important;
+  font-size: 15px;
+}
+
+#pantallaDocente .aula-item p,
+#pantallaEstudiante .aula-item p {
+  color: var(--aula-muted) !important;
+  margin: 6px 0 !important;
+  font-size: 13.5px !important;
+}
+
+#pantallaDocente .aula-item small,
+#pantallaEstudiante .aula-item small {
+  color: #64748B !important;
+  font-size: 12px !important;
+}
+
+#pantallaDocente .aula-vacio,
+#pantallaEstudiante .aula-vacio,
+#pantallaDocente .login-hint,
+#pantallaEstudiante .login-hint {
+  color: var(--aula-muted) !important;
+  text-align: center;
+  padding: 28px 12px;
+  border: 1px dashed rgba(43, 58, 80, 0.9);
+  border-radius: 14px;
+  background: rgba(8, 14, 26, 0.4);
+}
+
+/* ---------- Tablas ---------- */
+#pantallaDocente .aula-tabla,
+#pantallaEstudiante .aula-tabla {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid var(--aula-borde-suave);
+}
+
+#pantallaDocente .aula-tabla th,
+#pantallaEstudiante .aula-tabla th {
+  background: rgba(15, 23, 42, 0.95) !important;
+  color: #7DD3FC !important;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 14px !important;
+  border-bottom: 1px solid rgba(43, 58, 80, 0.95);
+}
+
+#pantallaDocente .aula-tabla td,
+#pantallaEstudiante .aula-tabla td {
+  padding: 12px 14px !important;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.85);
+  color: #E2E8F0 !important;
+  background: rgba(10, 16, 28, 0.55);
+  vertical-align: middle;
+}
+
+#pantallaDocente .aula-tabla tr:hover td,
+#pantallaEstudiante .aula-tabla tr:hover td {
+  background: rgba(30, 58, 95, 0.35);
+}
+
+/* ---------- Chat aula ---------- */
+#pantallaDocente .chat-aula-wrap,
+#pantallaEstudiante .chat-aula-wrap {
+  padding: 0 !important;
+}
+
+#pantallaDocente .chat-aula-layout,
+#pantallaEstudiante .chat-aula-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) 1fr;
+  min-height: 420px;
+  gap: 0;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+#pantallaDocente .chat-aula-lista,
+#pantallaEstudiante .chat-aula-lista {
+  border-right: 1px solid var(--aula-borde-suave);
+  background: rgba(8, 14, 26, 0.75);
+  max-height: 520px;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+#pantallaDocente .chat-aula-item,
+#pantallaEstudiante .chat-aula-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border-radius: 12px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #E2E8F0 !important;
+  padding: 12px !important;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+#pantallaDocente .chat-aula-item strong,
+#pantallaEstudiante .chat-aula-item strong {
+  color: #F8FAFC !important;
+  font-size: 13.5px !important;
+}
+
+#pantallaDocente .chat-aula-item span,
+#pantallaEstudiante .chat-aula-item span {
+  color: var(--aula-muted) !important;
+}
+
+#pantallaDocente .chat-aula-item .chat-preview,
+#pantallaEstudiante .chat-aula-item .chat-preview {
+  color: #64748B !important;
+}
+
+#pantallaDocente .chat-aula-item:hover,
+#pantallaEstudiante .chat-aula-item:hover {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+#pantallaDocente .chat-aula-item.active,
+#pantallaEstudiante .chat-aula-item.active {
+  background: rgba(59, 130, 246, 0.18) !important;
+  border-color: rgba(96, 165, 250, 0.45) !important;
+  box-shadow: inset 3px 0 0 #3B82F6;
+}
+
+#pantallaDocente .chat-aula-panel,
+#pantallaEstudiante .chat-aula-panel {
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 16, 28, 0.6);
+  min-height: 420px;
+}
+
+#pantallaDocente .chat-aula-header,
+#pantallaEstudiante .chat-aula-header {
+  padding: 14px 16px !important;
+  border-bottom: 1px solid var(--aula-borde-suave);
+  color: #E0F2FE !important;
+  font-weight: 700;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+#pantallaDocente .chat-aula-mensajes,
+#pantallaEstudiante .chat-aula-mensajes {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px !important;
+  background:
+    radial-gradient(600px 300px at 100% 0%, rgba(59, 130, 246, 0.06), transparent 50%),
+    transparent;
+}
+
+#pantallaDocente .chat-aula-input-row,
+#pantallaEstudiante .chat-aula-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px !important;
+  border-top: 1px solid var(--aula-borde-suave);
+  background: rgba(8, 14, 26, 0.85);
+}
+
+#pantallaDocente .chat-aula-input-row input,
+#pantallaEstudiante .chat-aula-input-row input {
+  flex: 1;
+  border-radius: 12px !important;
+  border: 1px solid rgba(43, 58, 80, 0.95) !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  color: #F1F5F9 !important;
+  padding: 11px 12px !important;
+}
+
+#pantallaDocente .chat-unread,
+#pantallaEstudiante .chat-unread {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(248, 113, 113, 0.2);
+  color: #FCA5A5;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+/* ---------- Integrantes ---------- */
+#pantallaDocente .integrantes-lista,
+#pantallaEstudiante .integrantes-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#pantallaDocente .integrante-item,
+#pantallaEstudiante .integrante-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(43, 58, 80, 0.9);
+  background: linear-gradient(145deg, rgba(20, 30, 48, 0.95), rgba(12, 18, 30, 0.98));
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#pantallaDocente .integrante-item:hover,
+#pantallaEstudiante .integrante-item:hover {
+  border-color: rgba(45, 212, 191, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+#pantallaDocente .integrante-info strong,
+#pantallaEstudiante .integrante-info strong {
+  color: #F8FAFC;
+  display: block;
+  font-size: 14px;
+}
+
+#pantallaDocente .integrante-rol,
+#pantallaEstudiante .integrante-rol {
+  color: var(--aula-cyan);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* ---------- Filtros ---------- */
+#pantallaDocente .filtros-aula,
+#pantallaEstudiante .filtros-aula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(43, 58, 80, 0.85);
+  background: rgba(8, 14, 26, 0.5);
+}
+
+#pantallaDocente .filtros-aula label,
+#pantallaEstudiante .filtros-aula label {
+  margin: 0 0 4px !important;
+}
+
+#pantallaDocente .filtros-aula > *,
+#pantallaEstudiante .filtros-aula > * {
+  flex: 1 1 140px;
+}
+
+#pantallaDocente .filtros-aula button,
+#pantallaEstudiante .filtros-aula button {
+  flex: 0 0 auto;
+  padding: 11px 16px !important;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  #pantallaDocente .doc-resumen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #pantallaDocente .aula-grid,
+  #pantallaEstudiante .aula-grid {
+    grid-template-columns: 1fr;
+  }
+  #pantallaDocente .chat-aula-layout,
+  #pantallaEstudiante .chat-aula-layout {
+    grid-template-columns: 1fr;
+  }
+  #pantallaDocente .chat-aula-lista,
+  #pantallaEstudiante .chat-aula-lista {
+    max-height: 180px;
+    border-right: none;
+    border-bottom: 1px solid var(--aula-borde-suave);
+  }
+}
+
+@media (max-width: 560px) {
+  #pantallaDocente .doc-resumen {
+    grid-template-columns: 1fr 1fr;
+  }
+  #pantallaDocente .seccion-titulo h2,
+  #pantallaEstudiante .seccion-titulo h2 {
+    font-size: 1.2rem !important;
+  }
+}
