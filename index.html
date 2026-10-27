@@ -793,13 +793,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                         <label>Apellidos</label>
                         <input type="text" id="regApellidos" placeholder="Ej. Enríquez Valbuena" required>
 
-                        <label>Género</label>
-                        <select id="regGenero" required>
-                            <option value="">Selecciona…</option>
-                            <option value="mujer">Mujer</option>
-                            <option value="hombre">Hombre</option>
-                        </select>
-
                         <label>Código estudiantil</label>
                         <input type="text" id="regCodigo" placeholder="Ej. 1090123456" required autocomplete="off">
 
@@ -841,13 +834,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
                         <label>Apellidos</label>
                         <input type="text" id="docApellidos" placeholder="Apellidos" required>
-
-                        <label>Género</label>
-                        <select id="docGenero" required>
-                            <option value="">Selecciona…</option>
-                            <option value="mujer">Mujer</option>
-                            <option value="hombre">Hombre</option>
-                        </select>
 
                         <label>Crear contraseña</label>
                         <div class="password-wrap"><input type="password" id="docPass" placeholder="Mínimo 6 caracteres" required minlength="6"><button type="button" class="btn-toggle-pass" data-pass-target="docPass" aria-label="Mostrar contraseña" title="Mostrar contraseña">🙈</button></div>
@@ -969,62 +955,26 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         </section>
 
         <!-- Ventana del Asistente AI -->
-        <div class="asistente-modal civix-fx" id="asistenteModal">
-            <div class="asistente-contenido civix-shell">
-                <div class="civix-glow" aria-hidden="true"></div>
-                <div class="asistente-header civix-header">
+        <div class="asistente-modal" id="asistenteModal">
+            <div class="asistente-contenido">
+                <div class="asistente-header">
                     <div class="asistente-info">
-                        <div class="civix-avatar-orb" aria-hidden="true">
-                            <img src="docs/civix-robot.svg" alt="Civix" class="civix-avatar-img" id="civixAvatarImg" width="44" height="44">
-                            <span class="civix-orb-ring"></span>
-                        </div>
+                        <span class="asistente-icono">🤖</span>
                         <div>
-                            <h3>Civix <span class="civix-online">● en línea</span></h3>
-                            <p>Tutor IA · Ingeniería Civil · UniPamplona</p>
+                            <h3>Civix</h3>
+                            <p>Tutor de diseño · Suelos · Materiales · Corrección de errores</p>
                         </div>
                     </div>
                     <div class="asistente-acciones">
-                        <button type="button" class="btn-civix-historial" id="btnCivixHistorial" title="Mis conversaciones"><span>💬</span><span class="civix-btn-lbl">Chats</span></button>
-                        <button type="button" class="btn-civix-nuevo" id="btnCivixNuevo" title="Nueva conversación"><span>＋</span><span class="civix-btn-lbl">Nuevo</span></button>
-                        <button class="btn-cerrar-asistente" id="btnCerrarAsistente" title="Cerrar">×</button>
-                    </div>
-                </div>
-
-                <div class="civix-toolbar">
-                    <div class="civix-modos" id="civixModos" role="tablist" aria-label="Modo de tutoría">
-                        <button type="button" class="civix-modo active" data-modo="explicar" title="Explicación completa">
-                            <span class="civix-modo-ico">📘</span><span class="civix-modo-txt">Explicar</span>
-                        </button>
-                        <button type="button" class="civix-modo" data-modo="pistas" title="Solo pistas, sin respuesta final">
-                            <span class="civix-modo-ico">🎯</span><span class="civix-modo-txt">Pistas</span>
-                        </button>
-                        <button type="button" class="civix-modo" data-modo="corregir" title="Corregir procedimiento o entrega">
-                            <span class="civix-modo-ico">🛠️</span><span class="civix-modo-txt">Corregir</span>
-                        </button>
-                        <button type="button" class="civix-modo" data-modo="quiz" title="Preparar evaluación">
-                            <span class="civix-modo-ico">📝</span><span class="civix-modo-txt">Quiz</span>
-                        </button>
-                    </div>
-                    <div class="civix-toolbar-right">
-                        <label class="civix-model-wrap" title="Modelo de IA">
-                            <span class="civix-model-ico">🧠</span>
-                            <select id="civixModelSelect" class="civix-model-select" aria-label="Modelo de IA">
-                                <option value="llama-3.3-70b-versatile">Llama 3.3 70B</option>
-                                <option value="openai/gpt-oss-20b">GPT-OSS 20B</option>
-                                <option value="openai/gpt-oss-120b">GPT-OSS 120B</option>
-                                <option value="llama-3.1-8b-instant">Llama 3.1 8B (rápido)</option>
-                                <option value="qwen/qwen3-32b">Qwen3 32B</option>
-                                <option value="gemma2-9b-it">Gemma2 9B</option>
-                            </select>
+                        <label class="civix-model-label" title="Modelo de IA">
+                            <select id="civixModelSelect" class="civix-model-select" aria-label="Modelo de Civix"></select>
                         </label>
-                        <button type="button" class="civix-web-toggle" id="civixWebToggle" aria-pressed="false" title="Incluir búsqueda web">
-                            <span class="civix-web-dot"></span>
-                            <span class="civix-web-lbl">Web</span>
-                        </button>
-                        <div class="civix-mode-pill" id="civixModePill">Modo: <strong>Explicar</strong></div>
+                        <button type="button" class="btn-civix-historial" id="btnCivixHistorial" title="Mis conversaciones">💬 Chats</button>
+                        <button type="button" class="btn-civix-nuevo" id="btnCivixNuevo" title="Nueva conversación">＋ Nuevo</button>
+                        <button class="btn-cerrar-asistente" id="btnCerrarAsistente">×</button>
                     </div>
                 </div>
-
+                
                 <div class="civix-historial-panel" id="civixHistorialPanel" hidden>
                     <div class="civix-historial-head">
                         <strong>Mis conversaciones</strong>
@@ -1034,38 +984,23 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                         <p class="login-hint">Aún no hay chats guardados.</p>
                     </div>
                 </div>
-
-                <div class="asistente-chat civix-chat" id="chatMensajes">
+                <div class="asistente-chat" id="chatMensajes">
                     <div class="mensaje mensaje-bot">
-                        <p>¡Hola! Soy <strong>Civix</strong>. Elige un modo arriba y pregúntame sobre suelos, materiales o diseño. También puedes adjuntar un archivo.</p>
+                        <p>¡Hola futuro ingeniero! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.</p>
                     </div>
                 </div>
-
-                <div class="civix-footer-zone">
-                    <div class="civix-chips-label">Sugerencias rápidas</div>
-                    <div class="civix-chips" id="civixChips" aria-label="Sugerencias">
-                        <button type="button" class="civix-chip" data-q="Explícame los límites de Atterberg con un ejemplo numérico">Límites de Atterberg</button>
-                        <button type="button" class="civix-chip" data-q="Diferencias entre Proctor estándar y modificado">Proctor std vs mod</button>
-                        <button type="button" class="civix-chip" data-q="¿Cómo se interpreta una curva granulométrica?">Granulometría</button>
-                        <button type="button" class="civix-chip" data-q="Guíame paso a paso en un ensayo de corte directo">Corte directo</button>
-                        <button type="button" class="civix-chip" data-q="Resume este tema en 5 puntos clave para estudiar">Resumen 5 puntos</button>
+                <div class="asistente-input-wrap">
+                    <div class="asistente-file-chip" id="civixFileChip" hidden style="display:none">
+                        <span class="adjunto-nombre" id="civixFileName"></span>
+                        <button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" title="Quitar archivo">×</button>
                     </div>
-
-                    <div class="asistente-input-wrap civix-input-wrap">
-                        <div class="asistente-file-chip" id="civixFileChip" hidden style="display:none">
-                            <span class="adjunto-nombre" id="civixFileName"></span>
-                            <button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" title="Quitar archivo">×</button>
-                        </div>
-                        <div class="asistente-input civix-input-bar">
-                            <label class="btn-adjuntar-icon civix-attach" for="civixFileInput" title="Adjuntar archivo">📎</label>
-                            <textarea id="inputAsistente" rows="1" placeholder="Escribe tu duda a Civix…"></textarea>
-                            <input type="file" id="civixFileInput" hidden
-                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.py,.js,.ts,.txt,.csv,.json,.md,.m,.dxf,.ifc,.xml,.dat,.in,.log,.sql,.html,.css,.ipynb,.geojson,.obj,.rtf,.odt,.ods,.odp,image/*">
-                            <button id="btnEnviarMensaje" type="button" class="civix-send" title="Enviar (Enter)">
-                                <span class="civix-send-ico">↑</span>
-                            </button>
-                        </div>
-                        <p class="civix-input-hint"><kbd>Enter</kbd> enviar · <kbd>Shift</kbd>+<kbd>Enter</kbd> nueva línea · PDF, Word, Excel</p>
+                    <div class="asistente-input">
+                        <textarea id="inputAsistente" rows="2" placeholder="Describe el problema o el error… (Enter = enviar, Shift+Enter = salto de línea)"></textarea>
+                        <button type="button" id="btnMejorarPrompt" class="btn-mejorar-prompt" title="Mejorar prompt (estilo Promptly)">✨</button>
+                        <label class="btn-adjuntar-icon" for="civixFileInput" title="Adjuntar archivo">📎</label>
+                        <input type="file" id="civixFileInput" hidden
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.py,.js,.ts,.txt,.csv,.json,.md,.m,.dxf,.ifc,.xml,.dat,.in,.log,.sql,.html,.css,.ipynb,.geojson,.obj,.rtf,.odt,.ods,.odp,image/*">
+                        <button id="btnEnviarMensaje" type="button">Enviar</button>
                     </div>
                 </div>
             </div>
@@ -1932,79 +1867,22 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
         <section class="tab-content" id="doc-quices">
             <div class="aula-grid">
-                <div class="aula-card aula-card-wide">
+                <div class="aula-card">
                     <h3>Publicar quiz</h3>
-                    <p class="login-hint">Crea preguntas de opción múltiple, verdadero/falso o abiertas. Cada estudiante recibirá un subconjunto aleatorio (la mitad por tipo) con temporizador.</p>
-                    <div class="filtros-aula" style="flex-wrap:wrap;gap:12px;">
-                        <label>Título
-                            <input type="text" id="quizTitulo" placeholder="Quiz 1 — Esfuerzos">
-                        </label>
-                        <label>Materia
-                            <select id="quizMateria">
-                                <option>Mecánica de Suelos I</option>
-                                <option>Mecánica de Suelos II</option>
-                                <option>Resistencia de Materiales</option>
-                                <option>Diseño de Mezclas</option>
-                            </select>
-                        </label>
-                        <label>Grupo (vacío = todos)
-                            <input type="text" id="quizGrupo" placeholder="A">
-                        </label>
-                        <label>Tiempo (minutos)
-                            <input type="number" id="quizTiempoMin" min="1" max="180" value="15" style="width:90px">
-                        </label>
-                    </div>
-
-                    <div id="quizBuilder" style="margin-top:16px;border:1px solid var(--borde,#2B3A50);border-radius:14px;padding:14px;">
-                        <h4 style="margin:0 0 10px;">Nueva pregunta</h4>
-                        <label>Tipo de pregunta</label>
-                        <div class="login-tabs" id="quizTipoTabs" style="margin-bottom:12px;">
-                            <button type="button" class="login-tab active" data-qtipo="multiple">Opción múltiple</button>
-                            <button type="button" class="login-tab" data-qtipo="vf">Verdadero / Falso</button>
-                            <button type="button" class="login-tab" data-qtipo="abierta">Abierta</button>
-                        </div>
-                        <input type="hidden" id="quizTipoActual" value="multiple">
-
-                        <label>Enunciado</label>
-                        <textarea id="quizEnunciado" rows="2" placeholder="Escribe la pregunta…"></textarea>
-
-                        <div id="quizPanelMultiple">
-                            <label>Opción A</label>
-                            <input type="text" id="quizOptA" placeholder="Opción A">
-                            <label>Opción B</label>
-                            <input type="text" id="quizOptB" placeholder="Opción B">
-                            <label>Opción C</label>
-                            <input type="text" id="quizOptC" placeholder="Opción C">
-                            <label>Respuesta correcta</label>
-                            <select id="quizCorrectaMultiple">
-                                <option value="A">A</option>
-                                <option value="B">B</option>
-                                <option value="C">C</option>
-                            </select>
-                        </div>
-
-                        <div id="quizPanelVF" hidden>
-                            <label>Respuesta correcta</label>
-                            <select id="quizCorrectaVF">
-                                <option value="V">Verdadero</option>
-                                <option value="F">Falso</option>
-                            </select>
-                        </div>
-
-                        <div id="quizPanelAbierta" hidden>
-                            <p class="login-hint">El estudiante escribirá su respuesta. Tú la calificarás después.</p>
-                            <label>Guía de respuesta (opcional, solo visible para ti)</label>
-                            <textarea id="quizGuiaAbierta" rows="2" placeholder="Puntos clave que debe mencionar…"></textarea>
-                        </div>
-
-                        <button type="button" class="btn-limpiar" id="btnQuizAgregarPregunta" style="margin-top:12px">＋ AGREGAR PREGUNTA</button>
-                    </div>
-
-                    <div style="margin-top:14px;">
-                        <h4 style="margin:0 0 8px;">Preguntas del quiz <span id="quizContadorPreg" class="login-hint">(0)</span></h4>
-                        <div id="quizListaPreguntas" class="aula-lista"></div>
-                    </div>
-
+                    <p class="login-hint">Una pregunta por línea. Los estudiantes de la materia/grupo lo verán en Mi aula.</p>
+                    <label>Título</label>
+                    <input type="text" id="quizTitulo" placeholder="Quiz 1 — Esfuerzos">
+                    <label>Materia</label>
+                    <select id="quizMateria">
+                        <option>Mecánica de Suelos I</option>
+                        <option>Mecánica de Suelos II</option>
+                        <option>Resistencia de Materiales</option>
+                        <option>Diseño de Mezclas</option>
+                    </select>
+                    <label>Grupo (vacío = todos)</label>
+                    <input type="text" id="quizGrupo" placeholder="A">
+                    <label>Preguntas (una por línea)</label>
+                    <textarea id="quizPreguntas" rows="6" placeholder="¿Qué es el esfuerzo normal?&#10;Calcule τ si V=10 kN y A=0.02 m²"></textarea>
                     <p class="mensaje-error" id="quizError"></p>
                     <button type="button" class="btn-calcular" id="btnCrearQuiz" style="margin-top:10px">PUBLICAR QUIZ</button>
                 </div>
@@ -2058,12 +1936,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 <div class="aula-card aula-card-wide">
                     <h3>Quices publicados</h3>
                     <div id="listaQuicesDocente" class="aula-lista"></div>
-                </div>
-
-                <div class="aula-card aula-card-wide">
-                    <h3>Corregir respuestas abiertas</h3>
-                    <p class="login-hint">Revisa las entregas de tus estudiantes. Las de opción múltiple y V/F se califican solas; las abiertas las calificas tú.</p>
-                    <div id="listaCorreccionQuices" class="aula-lista"></div>
                 </div>
             </div>
         </section>
@@ -2190,7 +2062,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         <section class="tab-content" id="est-quices">
             <div class="aula-card aula-card-wide">
                 <h3>Quices de tus materias</h3>
-                <p class="login-hint">Cada quiz tiene temporizador. Las preguntas son aleatorias (mitad de cada tipo). Al enviar no podrás modificarlas.</p>
+                <p class="login-hint">Responde y envía. El docente verá tus entregas en próximas versiones.</p>
                 <div id="listaQuicesEstudiante" class="aula-lista"></div>
             </div>
         </section>
@@ -2198,271 +2070,168 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
 
 </main>
-    <!-- Modal perfil profesional -->
+    <!-- Modal editar perfil completo -->
     <div class="modal-perfil" id="modalPerfil" hidden>
-        <div class="modal-perfil-card modal-perfil-pro">
-            <button type="button" class="perfil-close" id="btnCerrarPerfil" aria-label="Cerrar">×</button>
-
-            <!-- Cabecera viva -->
-            <div class="perfil-hero" id="perfilHero">
-                <div class="perfil-hero-bg"></div>
-                <div class="perfil-avatar-wrap" id="perfilAvatarClick" title="Cambiar foto">
-                    <img id="perfilFotoPreview" class="perfil-foto-preview" alt="Foto" hidden>
-                    <div class="perfil-foto-placeholder" id="perfilFotoPlaceholder">?</div>
-                    <span class="perfil-avatar-cam">📷</span>
-                    <input type="file" id="perfilFotoInput" accept="image/*" hidden>
-                </div>
-                <div class="perfil-hero-text">
-                    <p class="perfil-saludo" id="perfilSaludo">Tu perfil</p>
-                    <h3 id="perfilNombreTitulo">—</h3>
-                    <span class="perfil-rol-badge" id="perfilRolBadge">Estudiante</span>
-                </div>
+        <div class="modal-perfil-card modal-perfil-wide">
+            <div class="modal-perfil-header">
+                <h3>Mi perfil</h3>
+                <button type="button" class="btn-cerrar-asistente" id="btnCerrarPerfil" aria-label="Cerrar">×</button>
             </div>
-
-            <!-- Tabs -->
-            <div class="perfil-tabs" id="perfilTabs">
-                <button type="button" class="perfil-tab active" data-ptab="datos">👤 Perfil</button>
-                <button type="button" class="perfil-tab" data-ptab="academico">🎓 Académico</button>
-                <button type="button" class="perfil-tab" data-ptab="aula">💬 Aula</button>
-                <button type="button" class="perfil-tab" data-ptab="prefs">✨ Estilo</button>
+            <div class="modal-perfil-tabs" id="perfilTabs" role="tablist">
+                <button type="button" class="perfil-tab active" data-ptab="identidad">Identidad</button>
+                <button type="button" class="perfil-tab" data-ptab="academico">Académico</button>
+                <button type="button" class="perfil-tab" data-ptab="preferencias">Preferencias</button>
+                <button type="button" class="perfil-tab" data-ptab="seguridad">Seguridad</button>
+                <button type="button" class="perfil-tab" data-ptab="logros">Logros</button>
             </div>
-
-            <div class="modal-perfil-body">
-                <!-- Tab: Datos -->
-                <div class="perfil-pane active" id="perfilPaneDatos">
-                    <div class="perfil-badges-row" id="perfilBadgesRow">
-                        <span class="perfil-mini-badge" id="perfilBadgePrograma">Ingeniería Civil</span>
-                        <span class="perfil-mini-badge perfil-mini-ok" id="perfilBadgeVerificado">✓ Institucional</span>
-                        <span class="perfil-mini-badge" id="perfilBadgeNivel">Nivel Novato</span>
-                    </div>
-                    <div class="perfil-grid-2">
-                        <label>Nombres
-                            <input type="text" id="perfilNombres" placeholder="Nombres" autocomplete="given-name">
-                        </label>
-                        <label>Apellidos
-                            <input type="text" id="perfilApellidos" placeholder="Apellidos" autocomplete="family-name">
-                        </label>
-                    </div>
-                    <label>Correo institucional
-                        <input type="email" id="perfilEmail" readonly>
-                    </label>
-                    <div class="perfil-grid-2">
-                        <label>Género
-                            <select id="perfilGenero">
-                                <option value="">Selecciona…</option>
-                                <option value="mujer">Mujer</option>
-                                <option value="hombre">Hombre</option>
-                            </select>
-                        </label>
-                        <label id="perfilCodigoWrap">Código estudiantil
-                            <input type="text" id="perfilCodigo" placeholder="Código">
-                        </label>
-                    </div>
-
-                    <!-- Solo estudiante -->
-                    <div id="perfilCamposEstudiante">
-                        <div class="perfil-grid-2">
-                            <label>Semestre / cohorte
-                                <input type="text" id="perfilSemestre" placeholder="Ej. 2024-2">
-                            </label>
-                            <label>Estado de matrícula
-                                <select id="perfilEstadoMatricula">
-                                    <option value="activo">Activo</option>
-                                    <option value="retirado">Retirado</option>
-                                    <option value="egresado">Egresado</option>
-                                </select>
-                            </label>
+            <div class="modal-perfil-body perfil-body-scroll">
+                <!-- IDENTIDAD -->
+                <section class="perfil-panel active" id="ptab-identidad">
+                    <div class="perfil-foto-row">
+                        <div class="perfil-foto-wrap">
+                            <img id="perfilFotoPreview" class="perfil-foto-preview" alt="Foto de perfil" hidden>
+                            <div class="perfil-foto-placeholder" id="perfilFotoPlaceholder">📷</div>
                         </div>
-                        <div class="perfil-grid-2">
-                            <label>Jornada
-                                <select id="perfilJornada">
-                                    <option value="">—</option>
-                                    <option value="diurna">Diurna</option>
-                                    <option value="nocturna">Nocturna</option>
-                                </select>
+                        <div class="perfil-foto-actions">
+                            <label class="btn-secundario perfil-file-label">Cambiar foto
+                                <input type="file" id="perfilFotoInput" accept="image/*" hidden>
                             </label>
-                            <label>Materia favorita
-                                <select id="perfilMateriaFavorita">
-                                    <option value="">—</option>
-                                    <option>Mecánica de Suelos I</option>
-                                    <option>Mecánica de Suelos II</option>
-                                    <option>Resistencia de Materiales</option>
-                                    <option>Diseño de Mezclas</option>
-                                </select>
-                            </label>
+                            <p class="login-hint">Máx. 1.5 MB · visible en saludo e integrantes</p>
                         </div>
-                        <label>Horario de estudio preferido
-                            <select id="perfilHorarioEstudio">
+                    </div>
+                    <div class="perfil-grid">
+                        <label>Nombre completo
+                            <input type="text" id="perfilNombre" autocomplete="name">
+                        </label>
+                        <label>Nombre preferido (Civix te dirá así)
+                            <input type="text" id="perfilPreferido" placeholder="Ej. Andrés">
+                        </label>
+                        <label>Correo institucional
+                            <input type="email" id="perfilEmail" disabled>
+                        </label>
+                        <label>Código estudiantil / institucional
+                            <input type="text" id="perfilCodigo" placeholder="Ej. 202012345">
+                        </label>
+                        <label>Teléfono (opcional)
+                            <input type="tel" id="perfilTelefono" placeholder="300 123 4567">
+                        </label>
+                        <label id="wrapSemestre">Semestre
+                            <select id="perfilSemestre">
                                 <option value="">—</option>
-                                <option value="manana">Mañana</option>
-                                <option value="tarde">Tarde</option>
-                                <option value="noche">Noche</option>
+                                <option value="1">1.º</option><option value="2">2.º</option>
+                                <option value="3">3.º</option><option value="4">4.º</option>
+                                <option value="5">5.º</option><option value="6">6.º</option>
+                                <option value="7">7.º</option><option value="8">8.º</option>
+                                <option value="9">9.º</option><option value="10">10.º</option>
+                                <option value="egresado">Egresado</option>
                             </select>
                         </label>
                     </div>
-
-                    <!-- Solo docente -->
-                    <div id="perfilCamposDocente" hidden>
-                        <div class="perfil-grid-2">
-                            <label>Título / cargo
-                                <input type="text" id="perfilTitulo" placeholder="Ej. Ing., MSc., Docente">
+                    <label>Biografía corta
+                        <textarea id="perfilBio" rows="3" maxlength="280" placeholder="Ej. Me interesa geotecnia y estructuras…"></textarea>
+                    </label>
+                    <div id="perfilDocenteExtra" class="perfil-docente-extra" hidden>
+                        <div class="perfil-grid">
+                            <label>Cargo / título
+                                <input type="text" id="perfilCargo" placeholder="Ing. Civil · M.Sc.">
                             </label>
-                            <label>Departamento
-                                <input type="text" id="perfilDepartamento" placeholder="Ingeniería Civil">
+                            <label>Horario de atención
+                                <input type="text" id="perfilHorario" placeholder="Lun–Vie 10:00–12:00">
+                            </label>
+                            <label class="perfil-span-2">Link Teams / Meet (opcional)
+                                <input type="url" id="perfilLinkTeams" placeholder="https://…">
                             </label>
                         </div>
-                        <label>Horario de atención
-                            <input type="text" id="perfilHorarioAtencion" placeholder="Ej. Lun–Vie 10:00–12:00">
+                    </div>
+                </section>
+
+                <!-- ACADÉMICO -->
+                <section class="perfil-panel" id="ptab-academico" hidden>
+                    <p class="login-hint" id="perfilAcademicoHint">Tus materias y grupos. El progreso se calcula con entregas y ensayos guardados.</p>
+                    <div id="perfilMateriasList" class="perfil-materias-list"></div>
+                    <div id="perfilDocentesAsignados" class="perfil-info-box"></div>
+                    <div id="perfilProgreso" class="perfil-progreso"></div>
+                    <div id="perfilInformes" class="perfil-informes"></div>
+                    <div id="perfilFavoritos" class="perfil-favoritos">
+                        <h4>Favoritos de estudio</h4>
+                        <div class="perfil-chips" id="perfilFavChips"></div>
+                        <p class="login-hint">Marca ensayos o temas que quieras retomar rápido.</p>
+                    </div>
+                </section>
+
+                <!-- PREFERENCIAS -->
+                <section class="perfil-panel" id="ptab-preferencias" hidden>
+                    <div class="perfil-grid">
+                        <label>Tema de la interfaz
+                            <select id="perfilTema">
+                                <option value="oscuro">Oscuro (actual)</option>
+                                <option value="claro">Claro</option>
+                                <option value="sistema">Según el sistema</option>
+                            </select>
                         </label>
-                        <label>Oficina / enlace Meet
-                            <input type="text" id="perfilOficina" placeholder="Oficina 301 o https://meet.google.com/…">
+                        <label>Estilo de Civix
+                            <select id="perfilCivixEstilo">
+                                <option value="didactico">Didáctico y cercano</option>
+                                <option value="formal">Formal académico</option>
+                                <option value="breve">Respuestas breves</option>
+                            </select>
+                        </label>
+                        <label>Estado en el chat
+                            <select id="perfilEstado">
+                                <option value="disponible">Disponible</option>
+                                <option value="en_clase">En clase</option>
+                                <option value="no_molestar">No molestar</option>
+                            </select>
                         </label>
                     </div>
-
-                    <label>Bio corta <span class="perfil-hint-inline">(máx. 120)</span>
-                        <textarea id="perfilBio" rows="2" maxlength="120" placeholder="Cuéntanos algo de ti…"></textarea>
-                    </label>
-                    <p class="login-hint" id="perfilUltimoAcceso">Último acceso: —</p>
-                    <div class="perfil-foto-actions">
-                        <button type="button" class="btn-limpiar" id="btnPerfilQuitarFoto">Quitar foto</button>
-                        <span class="login-hint" style="margin:0">Máx. 1.5 MB · JPG/PNG</span>
+                    <h4 class="perfil-sub">Notificaciones</h4>
+                    <div class="perfil-checks">
+                        <label><input type="checkbox" id="perfilNotTareas" checked> Nuevas tareas y quices</label>
+                        <label><input type="checkbox" id="perfilNotChat" checked> Mensajes del chat del curso</label>
+                        <label><input type="checkbox" id="perfilNotNotas" checked> Calificaciones y retroalimentación</label>
                     </div>
-                </div>
-
-                <!-- Tab: Académico -->
-                <div class="perfil-pane" id="perfilPaneAcademico" hidden>
-                    <p class="login-hint" id="perfilAcadHint">Materias vinculadas a tu cuenta.</p>
-                    <div class="perfil-chips" id="perfilMateriasChips"></div>
-
-                    <div class="perfil-stats" id="perfilStats">
-                        <div class="perfil-stat">
-                            <strong id="perfilStatTareas">0</strong>
-                            <span id="perfilStatTareasLabel">Tareas</span>
-                        </div>
-                        <div class="perfil-stat">
-                            <strong id="perfilStatQuices">0</strong>
-                            <span id="perfilStatQuicesLabel">Quices</span>
-                        </div>
-                        <div class="perfil-stat">
-                            <strong id="perfilStatChats">0</strong>
-                            <span>Chats Civix</span>
-                        </div>
+                    <h4 class="perfil-sub">Privacidad</h4>
+                    <div class="perfil-checks">
+                        <label><input type="checkbox" id="perfilPrivFoto" checked> Compañeros pueden ver mi foto en integrantes</label>
+                        <label><input type="checkbox" id="perfilPrivBio" checked> Mostrar biografía a docentes del curso</label>
                     </div>
+                </section>
 
-                    <div class="perfil-stats perfil-stats-2">
-                        <div class="perfil-stat">
-                            <strong id="perfilStatPromedio">—</strong>
-                            <span>Promedio quices</span>
-                        </div>
-                        <div class="perfil-stat">
-                            <strong id="perfilStatRacha">0</strong>
-                            <span>Racha (días)</span>
-                        </div>
-                    </div>
-
-                    <div class="perfil-fun-card" id="perfilFunCard">
-                        <span class="perfil-fun-emoji" id="perfilFunEmoji">🏗️</span>
-                        <div>
-                            <strong id="perfilFunTitle">Ingeniería en marcha</strong>
-                            <p id="perfilFunText">Sigue explorando el laboratorio virtual.</p>
-                        </div>
-                    </div>
-
-                    <h4 class="perfil-section-title">Logros</h4>
-                    <div class="perfil-logros" id="perfilLogros"></div>
-
-                    <div id="perfilBloqueEstudianteAcad">
-                        <h4 class="perfil-section-title">Últimas entregas</h4>
-                        <div class="perfil-lista-mini" id="perfilUltimasEntregas"></div>
-                        <h4 class="perfil-section-title">Quices recientes</h4>
-                        <div class="perfil-lista-mini" id="perfilQuicesRecientes"></div>
-                    </div>
-
-                    <div id="perfilBloqueDocenteAcad" hidden>
-                        <h4 class="perfil-section-title">Grupos activos</h4>
-                        <div class="perfil-lista-mini" id="perfilGruposActivos"></div>
-                        <h4 class="perfil-section-title">Pendientes por calificar</h4>
-                        <div class="perfil-lista-mini" id="perfilPendientesCalificar"></div>
-                        <h4 class="perfil-section-title">Resumen semanal</h4>
-                        <p class="login-hint" id="perfilResumenSemanal">—</p>
-                    </div>
-                </div>
-
-                <!-- Tab: Aula -->
-                <div class="perfil-pane" id="perfilPaneAula" hidden>
-                    <label>Estado en el aula
-                        <select id="perfilEstadoAula">
-                            <option value="disponible">🟢 Disponible</option>
-                            <option value="en_clase">🔵 En clase</option>
-                            <option value="no_molestar">🔴 No molestar</option>
-                        </select>
-                    </label>
-                    <label class="perfil-check">
-                        <input type="checkbox" id="perfilMostrarCodigo" checked>
-                        Mostrar mi código en listas del aula
-                    </label>
-                    <label class="perfil-check">
-                        <input type="checkbox" id="perfilMostrarBio" checked>
-                        Mostrar mi bio a compañeros / estudiantes
-                    </label>
-                    <label class="perfil-check">
-                        <input type="checkbox" id="perfilNotifTareas" checked>
-                        Recordatorios de tareas próximas a vencer
-                    </label>
-
-                    <div id="perfilAulaDocente" hidden>
-                        <label>Firma en retroalimentación
-                            <input type="text" id="perfilFirma" placeholder="Ej. Atte. Ing. Pérez">
+                <!-- SEGURIDAD -->
+                <section class="perfil-panel" id="ptab-seguridad" hidden>
+                    <h4 class="perfil-sub">Cambiar contraseña</h4>
+                    <div class="perfil-grid">
+                        <label>Contraseña actual
+                            <input type="password" id="perfilPassActual" autocomplete="current-password">
                         </label>
-                        <label>Mensaje de bienvenida al grupo
-                            <textarea id="perfilMsgBienvenida" rows="3" maxlength="240" placeholder="Mensaje que verán tus estudiantes al entrar al aula…"></textarea>
+                        <label>Nueva contraseña
+                            <input type="password" id="perfilPassNueva" autocomplete="new-password">
                         </label>
-                        <div class="perfil-atajos">
-                            <p class="perfil-section-title" style="margin-bottom:8px">Atajos rápidos</p>
-                            <button type="button" class="btn-limpiar perfil-atajo" data-atajo="tareas">＋ Nueva tarea</button>
-                            <button type="button" class="btn-limpiar perfil-atajo" data-atajo="quices">＋ Nuevo quiz</button>
-                            <button type="button" class="btn-limpiar perfil-atajo" data-atajo="pres">＋ Presentación</button>
-                        </div>
+                        <label class="perfil-span-2">Confirmar nueva contraseña
+                            <input type="password" id="perfilPassNueva2" autocomplete="new-password">
+                        </label>
                     </div>
-                </div>
+                    <p class="login-hint">Déjalo vacío si no quieres cambiar la contraseña ahora.</p>
+                    <h4 class="perfil-sub">Sesión</h4>
+                    <button type="button" class="btn-secundario" id="btnCerrarOtrasSesiones">Cerrar sesión en este dispositivo al salir</button>
+                    <p class="login-hint">La sesión de GeoMetrics se limpia al cerrar la pestaña. Usa “Cerrar sesión” del menú para salir ya.</p>
+                </section>
 
-                <!-- Tab: Estilo -->
-                <div class="perfil-pane" id="perfilPanePrefs" hidden>
-                    <label>Color del avatar</label>
-                    <div class="perfil-colors" id="perfilColores">
-                        <button type="button" class="perfil-color active" data-color="#3B82F6" style="--c:#3B82F6" title="Azul"></button>
-                        <button type="button" class="perfil-color" data-color="#2DD4BF" style="--c:#2DD4BF" title="Teal"></button>
-                        <button type="button" class="perfil-color" data-color="#A78BFA" style="--c:#A78BFA" title="Violeta"></button>
-                        <button type="button" class="perfil-color" data-color="#F472B6" style="--c:#F472B6" title="Rosa"></button>
-                        <button type="button" class="perfil-color" data-color="#FBBF24" style="--c:#FBBF24" title="Ámbar"></button>
-                        <button type="button" class="perfil-color" data-color="#34D399" style="--c:#34D399" title="Verde"></button>
+                <!-- LOGROS -->
+                <section class="perfil-panel" id="ptab-logros" hidden>
+                    <p class="login-hint">Insignias según tu actividad en GeoMetrics.</p>
+                    <div id="perfilInsignias" class="perfil-insignias"></div>
+                    <div id="perfilPortafolio">
+                        <label>Link de portafolio (Drive, GitHub, etc.)
+                            <input type="url" id="perfilPortafolioUrl" placeholder="https://…">
+                        </label>
                     </div>
-                    <label class="perfil-check">
-                        <input type="checkbox" id="perfilAnimaciones" checked>
-                        Animaciones del perfil
-                    </label>
-                    <label>Tema visual del perfil
-                        <select id="perfilTema">
-                            <option value="auto">Automático (app)</option>
-                            <option value="marino">Azul marino</option>
-                            <option value="teal">Teal académico</option>
-                            <option value="violeta">Violeta</option>
-                        </select>
-                    </label>
-                    <div class="perfil-pass-box">
-                        <h4>Cambiar contraseña</h4>
-                        <input type="password" id="perfilPassNueva" placeholder="Nueva contraseña (mín. 6)" minlength="6" autocomplete="new-password">
-                        <input type="password" id="perfilPassNueva2" placeholder="Confirmar contraseña" minlength="6" autocomplete="new-password">
-                        <p class="login-hint">Déjalo vacío si no quieres cambiarla.</p>
-                    </div>
-                    <button type="button" class="btn-limpiar" id="btnPerfilExportar" style="margin-top:12px;width:100%">⬇ Exportar mis datos (JSON)</button>
-                </div>
+                </section>
 
-                <p class="mensaje-error" id="perfilError"></p>
-                <p class="perfil-ok" id="perfilOk" hidden>✓ Perfil actualizado</p>
                 <div class="perfil-footer-actions">
-                    <button type="button" class="btn-limpiar" id="btnPerfilCancelar">Cancelar</button>
-                    <button type="button" class="btn-calcular" id="btnGuardarPerfil">GUARDAR CAMBIOS</button>
+                    <button type="button" class="btn-calcular" id="btnGuardarPerfil">GUARDAR PERFIL</button>
+                    <p class="mensaje-error" id="perfilError"></p>
+                    <p class="mensaje-ok" id="perfilOk" hidden>Perfil actualizado</p>
                 </div>
             </div>
         </div>
@@ -2483,22 +2252,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         </header>
 
         <section class="aula-grid" style="padding:0 20px 40px;">
-            <div class="aula-card">
-                <h3>Avatar de Civix</h3>
-                <p class="login-hint">Imagen visible en el chat de Civix para todos los usuarios. Máx. 10 MB (JPG, PNG, WebP o SVG).</p>
-                <div class="admin-civix-avatar-row">
-                    <div class="admin-civix-preview-wrap">
-                        <img id="adminCivixAvatarPreview" class="admin-civix-preview" src="docs/civix-robot.svg" alt="Avatar Civix">
-                    </div>
-                    <div class="admin-civix-avatar-actions">
-                        <input type="file" id="adminCivixAvatarInput" accept="image/*,.svg" hidden>
-                        <button type="button" class="btn-calcular" id="btnAdminCivixAvatar">CAMBIAR IMAGEN</button>
-                        <button type="button" class="btn-limpiar" id="btnAdminCivixAvatarReset">Restablecer por defecto</button>
-                        <p class="mensaje-error" id="adminCivixAvatarError"></p>
-                        <p class="login-hint" id="adminCivixAvatarOk" style="color:#9dffc0;" hidden>✓ Avatar actualizado</p>
-                    </div>
-                </div>
-            </div>
             <div class="aula-card">
                 <h3>Agregar correo de docente</h3>
                 <p class="login-hint">Solo autorizas el correo. Luego el docente se registra en la pestaña «Docente» y crea su propia contraseña.</p>
@@ -2936,75 +2689,6 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/teoria-dm.js"></script>
     <script src="js/teoria-normas.js"></script>
     <script src="js/chart-theme.js"></script>
-
-<!-- Modal de confirmación propio (reemplaza window.confirm) -->
-<div id="gmConfirmModal" class="gm-confirm-overlay" hidden>
-  <div class="gm-confirm-box" role="dialog" aria-modal="true" aria-labelledby="gmConfirmTitle">
-    <div class="gm-confirm-icon">⚠</div>
-    <h3 id="gmConfirmTitle">Confirmar acción</h3>
-    <p id="gmConfirmMsg">¿Estás seguro?</p>
-    <div class="gm-confirm-actions">
-      <button type="button" class="gm-confirm-cancel" id="gmConfirmCancel">Cancelar</button>
-      <button type="button" class="gm-confirm-ok" id="gmConfirmOk">Eliminar</button>
-    </div>
-  </div>
-</div>
-<style>
-.gm-confirm-overlay {
-  position: fixed; inset: 0; z-index: 2147483646;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(2, 8, 20, 0.72);
-  backdrop-filter: blur(6px);
-  padding: 20px;
-}
-.gm-confirm-overlay[hidden] { display: none !important; }
-.gm-confirm-box {
-  width: min(420px, 100%);
-  background: linear-gradient(160deg, #151F32, #101a2c);
-  border: 1px solid rgba(248, 113, 113, 0.35);
-  border-radius: 20px;
-  padding: 28px 24px 22px;
-  box-shadow: 0 24px 60px rgba(0,0,0,.55);
-  text-align: center;
-  color: #F1F5F9;
-  animation: gmConfirmIn .18s ease-out;
-}
-@keyframes gmConfirmIn {
-  from { opacity: 0; transform: translateY(10px) scale(.96); }
-  to { opacity: 1; transform: none; }
-}
-.gm-confirm-icon {
-  width: 56px; height: 56px; margin: 0 auto 14px;
-  border-radius: 50%;
-  display: grid; place-items: center;
-  font-size: 26px;
-  background: rgba(248, 113, 113, 0.15);
-  border: 1px solid rgba(248, 113, 113, 0.4);
-}
-.gm-confirm-box h3 {
-  margin: 0 0 8px; font-size: 20px; font-weight: 700;
-}
-.gm-confirm-box p {
-  margin: 0 0 20px; color: #A7B4C8; font-size: 14.5px; line-height: 1.5;
-}
-.gm-confirm-actions {
-  display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
-}
-.gm-confirm-cancel, .gm-confirm-ok {
-  min-width: 120px; padding: 11px 18px; border-radius: 12px;
-  font-weight: 700; font-size: 14px; cursor: pointer; border: none;
-}
-.gm-confirm-cancel {
-  background: transparent; color: #A7B4C8;
-  border: 1px solid #2B3A50;
-}
-.gm-confirm-cancel:hover { border-color: #3a4d6b; color: #F1F5F9; }
-.gm-confirm-ok {
-  background: linear-gradient(135deg, #F87171, #EF4444); color: #fff;
-}
-.gm-confirm-ok:hover { filter: brightness(1.08); }
-</style>
-
 </body>
 
 </html>
