@@ -1735,16 +1735,19 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <!-- ============================================
          PANTALLA AULA DOCENTE
     ============================================= -->
-        <main class="pantalla-curso" id="pantallaDocente" class="pantalla-curso aula-fx">
-        <header class="seccion-encabezado seccion-encabezado-doc">
+        <main class="pantalla-curso aula-fx" id="pantallaDocente">
+        <header class="seccion-encabezado seccion-encabezado-doc aula-hero">
             <div class="seccion-titulo">
                 <div class="seccion-icono" id="docIconoAula">👩‍🏫</div>
                 <div>
+                    <p class="aula-kicker">GeoMetrics · Gestión académica</p>
                     <h2>Panel del profesor</h2>
                     <p id="docenteSubtitulo">Gestiona tareas, presentaciones y estudiantes.</p>
                 </div>
             </div>
-            <button class="btn-volver" id="btnVolverDocente">← VOLVER AL MENÚ</button>
+            <div class="aula-hero-actions">
+                <button class="btn-volver" id="btnVolverDocente">← Menú</button>
+            </div>
         </header>
 
         <section class="doc-resumen" id="docResumen">
@@ -1754,14 +1757,14 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
             <div class="doc-kpi doc-kpi-alerta"><span class="doc-kpi-num" id="kpiPendientes">0</span><span class="doc-kpi-label">Sin calificar</span></div>
         </section>
 
-        <section class="submenu-tabs aula-tabs">
-            <button class="tab-btn active" data-tab="doc-tareas">Tareas</button>
-            <button class="tab-btn" data-tab="doc-presentaciones">Presentaciones</button>
-            <button class="tab-btn" data-tab="doc-estudiantes">Estudiantes</button>
-            <button class="tab-btn" data-tab="doc-entregas">Entregas <span class="tab-badge" id="badgeEntregas" hidden>0</span></button>
-            <button class="tab-btn" data-tab="doc-chat">Chat <span class="tab-badge" id="badgeChatDoc" hidden>0</span></button>
-            <button class="tab-btn" data-tab="doc-integrantes">Integrantes del curso</button>
-            <button class="tab-btn" data-tab="doc-quices">Quices</button>
+        <section class="submenu-tabs aula-tabs aula-tabs-icons">
+            <button class="tab-btn active" data-tab="doc-tareas"><span class="tab-ico">📋</span><span class="tab-txt">Tareas</span></button>
+            <button class="tab-btn" data-tab="doc-presentaciones"><span class="tab-ico">📑</span><span class="tab-txt">Presentaciones</span></button>
+            <button class="tab-btn" data-tab="doc-estudiantes"><span class="tab-ico">🎓</span><span class="tab-txt">Estudiantes</span></button>
+            <button class="tab-btn" data-tab="doc-entregas"><span class="tab-ico">📥</span><span class="tab-txt">Entregas</span> <span class="tab-badge" id="badgeEntregas" hidden>0</span></button>
+            <button class="tab-btn" data-tab="doc-chat"><span class="tab-ico">💬</span><span class="tab-txt">Chat</span> <span class="tab-badge" id="badgeChatDoc" hidden>0</span></button>
+            <button class="tab-btn" data-tab="doc-integrantes"><span class="tab-ico">👥</span><span class="tab-txt">Integrantes</span></button>
+            <button class="tab-btn" data-tab="doc-quices"><span class="tab-ico">📝</span><span class="tab-txt">Quices</span></button>
         </section>
 
         <section class="tab-content active" id="doc-tareas">
@@ -2072,25 +2075,35 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
         
 
-    <main class="pantalla-curso" id="pantallaEstudiante" class="pantalla-curso aula-fx">
-        <header class="seccion-encabezado seccion-encabezado-doc">
+    <main class="pantalla-curso aula-fx" id="pantallaEstudiante">
+        <header class="seccion-encabezado seccion-encabezado-doc aula-hero">
             <div class="seccion-titulo">
                 <div class="seccion-icono" id="estIconoAula">🎓</div>
                 <div>
+                    <p class="aula-kicker">GeoMetrics · Espacio académico</p>
                     <h2>Mi aula</h2>
                     <p id="estudianteSubtitulo">Consulta tareas, entregas y material del curso.</p>
                 </div>
             </div>
-            <button class="btn-volver" id="btnVolverEstudiante">← VOLVER AL MENÚ</button>
+            <div class="aula-hero-actions">
+                <button class="btn-volver" id="btnVolverEstudiante">← Menú</button>
+            </div>
         </header>
 
-        <section class="submenu-tabs aula-tabs">
-            <button class="tab-btn active" data-tab="est-tareas">Mis tareas</button>
-            <button class="tab-btn" data-tab="est-material">Presentaciones</button>
-            <button class="tab-btn" data-tab="est-entregas">Mis entregas</button>
-            <button class="tab-btn" data-tab="est-chat">Chat <span class="tab-badge" id="badgeChatEst" hidden>0</span></button>
-            <button class="tab-btn" data-tab="est-integrantes">Integrantes del curso</button>
-            <button class="tab-btn" data-tab="est-quices">Quices</button>
+        <section class="doc-resumen est-resumen" id="estResumen" aria-label="Resumen del aula">
+            <div class="doc-kpi"><span class="doc-kpi-num" id="kpiEstTareas">0</span><span class="doc-kpi-label">Tareas</span></div>
+            <div class="doc-kpi"><span class="doc-kpi-num" id="kpiEstPendientes">0</span><span class="doc-kpi-label">Pendientes</span></div>
+            <div class="doc-kpi"><span class="doc-kpi-num" id="kpiEstEntregadas">0</span><span class="doc-kpi-label">Entregadas</span></div>
+            <div class="doc-kpi doc-kpi-alerta"><span class="doc-kpi-num" id="kpiEstVencidas">0</span><span class="doc-kpi-label">Vencidas</span></div>
+        </section>
+
+        <section class="submenu-tabs aula-tabs aula-tabs-icons">
+            <button class="tab-btn active" data-tab="est-tareas"><span class="tab-ico">📋</span><span class="tab-txt">Mis tareas</span></button>
+            <button class="tab-btn" data-tab="est-material"><span class="tab-ico">📑</span><span class="tab-txt">Presentaciones</span></button>
+            <button class="tab-btn" data-tab="est-entregas"><span class="tab-ico">📤</span><span class="tab-txt">Mis entregas</span></button>
+            <button class="tab-btn" data-tab="est-chat"><span class="tab-ico">💬</span><span class="tab-txt">Chat</span> <span class="tab-badge" id="badgeChatEst" hidden>0</span></button>
+            <button class="tab-btn" data-tab="est-integrantes"><span class="tab-ico">👥</span><span class="tab-txt">Integrantes</span></button>
+            <button class="tab-btn" data-tab="est-quices"><span class="tab-ico">📝</span><span class="tab-txt">Quices</span></button>
         </section>
 
         <section class="tab-content active" id="est-tareas">
