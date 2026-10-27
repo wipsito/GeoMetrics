@@ -730,3 +730,235 @@
     font-size: 1.2rem !important;
   }
 }
+
+/* ========== Rediseño v2 — hero, KPIs estudiante, badges, empty ========== */
+#pantallaDocente .aula-hero,
+#pantallaEstudiante .aula-hero {
+  margin-top: 18px !important;
+}
+
+.aula-kicker {
+  margin: 0 0 2px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: #2DD4BF !important;
+}
+
+.aula-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#pantallaEstudiante .est-resumen {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px clamp(12px, 3vw, 28px) 8px !important;
+}
+
+#pantallaEstudiante .est-resumen .doc-kpi {
+  position: relative;
+  overflow: hidden;
+  padding: 16px 18px !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(43, 58, 80, 0.85) !important;
+  background: linear-gradient(160deg, rgba(22, 32, 52, 0.95), rgba(10, 16, 28, 0.98)) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+}
+
+#pantallaEstudiante .est-resumen .doc-kpi::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #60A5FA, #2DD4BF);
+  border-radius: 3px 0 0 3px;
+}
+
+#pantallaEstudiante .est-resumen .doc-kpi-num {
+  display: block;
+  font-size: 1.75rem !important;
+  font-weight: 800 !important;
+  color: #F8FAFC !important;
+}
+
+#pantallaEstudiante .est-resumen .doc-kpi-label {
+  color: #94A3B8 !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+#pantallaEstudiante .est-resumen .doc-kpi-alerta::before {
+  background: linear-gradient(180deg, #F87171, #FBBF24);
+}
+#pantallaEstudiante .est-resumen .doc-kpi-alerta .doc-kpi-num {
+  color: #FCA5A5 !important;
+}
+
+/* Tabs con iconos */
+#pantallaDocente .aula-tabs-icons .tab-btn,
+#pantallaEstudiante .aula-tabs-icons .tab-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+#pantallaDocente .aula-tabs-icons .tab-ico,
+#pantallaEstudiante .aula-tabs-icons .tab-ico {
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.95;
+}
+
+/* Badges de estado */
+#pantallaDocente .badge-ok,
+#pantallaEstudiante .badge-ok,
+.badge-ok {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  background: rgba(16, 185, 129, 0.18);
+  color: #6EE7B7;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+#pantallaDocente .badge-pend,
+#pantallaEstudiante .badge-pend,
+.badge-pend {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(251, 191, 36, 0.15);
+  color: #FCD34D;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+#pantallaDocente .badge-late,
+#pantallaEstudiante .badge-late,
+.badge-late {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: rgba(248, 113, 113, 0.15);
+  color: #FCA5A5;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.aula-item-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.aula-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #94A3B8;
+}
+
+.aula-item-meta span {
+  position: relative;
+}
+.aula-item-meta span:not(:last-child)::after {
+  content: "·";
+  position: absolute;
+  right: -10px;
+  color: #475569;
+}
+
+.plazo-info {
+  margin: 10px 0 0 !important;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12.5px !important;
+  font-weight: 600;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(43, 58, 80, 0.9);
+  color: #CBD5E1 !important;
+}
+
+.plazo-info.plazo-ok,
+.plazo-info.a-tiempo {
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #6EE7B7 !important;
+}
+
+.plazo-info.plazo-urgente,
+.plazo-info.urgente {
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #FCD34D !important;
+}
+
+.plazo-info.plazo-vencido,
+.plazo-info.vencido,
+.plazo-info.vencida {
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #FCA5A5 !important;
+}
+
+.aula-empty-state {
+  text-align: center;
+  padding: 36px 16px;
+  border-radius: 16px;
+  border: 1px dashed rgba(59, 130, 246, 0.35);
+  background: rgba(8, 14, 26, 0.45);
+}
+
+.aula-empty-ico {
+  font-size: 2.2rem;
+  margin-bottom: 8px;
+  filter: grayscale(0.2);
+}
+
+.aula-empty-state .aula-vacio {
+  border: none !important;
+  background: transparent !important;
+  padding: 8px !important;
+}
+
+/* Búsqueda visual en filtros */
+#pantallaDocente .filtros-aula,
+#pantallaEstudiante .filtros-aula {
+  align-items: flex-end;
+}
+
+@media (max-width: 900px) {
+  #pantallaEstudiante .est-resumen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #pantallaDocente .aula-tabs-icons .tab-txt,
+  #pantallaEstudiante .aula-tabs-icons .tab-txt {
+    display: none;
+  }
+  #pantallaDocente .aula-tabs-icons .tab-btn,
+  #pantallaEstudiante .aula-tabs-icons .tab-btn {
+    padding: 10px 12px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  #pantallaEstudiante .est-resumen {
+    grid-template-columns: 1fr 1fr;
+  }
+}
