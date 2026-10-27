@@ -194,7 +194,16 @@
                             if (u && u.email) byE[String(u.email).toLowerCase()] = u;
                         });
                         users.forEach(function (u) {
-                            if (u && u.email) byE[String(u.email).toLowerCase()] = u;
+                            if (!u || !u.email) return;
+                            var k = String(u.email).toLowerCase();
+                            var prev = byE[k];
+                            if (!prev) { byE[k] = u; return; }
+                            // Fusionar: conservar foto si uno la tiene
+                            var merged = Object.assign({}, prev, u);
+                            if (!merged.foto && prev.foto) merged.foto = prev.foto;
+                            if (!merged.foto && u.foto) merged.foto = u.foto;
+                            if (!merged.photo && prev.photo) merged.photo = prev.photo;
+                            byE[k] = merged;
                         });
                         localStorage.setItem('geometrics_users', JSON.stringify(Object.keys(byE).map(function (k) { return byE[k]; })));
                     }
@@ -304,7 +313,14 @@ function syncUpUsers() {
                 if (u && u.email) byE[String(u.email).toLowerCase()] = u;
             });
             users.forEach(function (u) {
-                if (u && u.email) byE[String(u.email).toLowerCase()] = u;
+                if (!u || !u.email) return;
+                var k = String(u.email).toLowerCase();
+                var prev = byE[k];
+                if (!prev) { byE[k] = u; return; }
+                var m = Object.assign({}, prev, u);
+                if (!m.foto && prev.foto) m.foto = prev.foto;
+                if (!m.foto && u.foto) m.foto = u.foto;
+                byE[k] = m;
             });
             var merged = Object.keys(byE).map(function (k) { return byE[k]; });
             localStorage.setItem('geometrics_users', JSON.stringify(merged));

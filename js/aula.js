@@ -1735,8 +1735,8 @@ function aulaRenderEstudiantes() {
                 matStr = mats.map(function(m) { return m.nombre; }).join(', ') || (s.materia || '—');
                 grpStr = mats.map(function(m) { return (m.grupo || '—'); }).join(', ') || (s.grupo || '—');
             }
-            var foto = s.foto
-                ? '<img class="tabla-foto" src="' + s.foto + '" alt="">'
+            var foto = (s.foto || s.photo)
+                ? '<img class="tabla-foto" src="' + String(s.foto || s.photo).replace(/"/g, '&quot;') + '" alt="">'
                 : '<span class="tabla-foto tabla-foto-ini">' + aulaEsc(aulaIniciales(s.nombre)) + '</span>';
             return '<tr><td>' + foto + '</td><td>' + aulaEsc(s.nombre) + '</td><td>' + aulaEsc(s.email) + '</td><td>' +
                 aulaEsc(matStr) + '</td><td>' + aulaEsc(grpStr) + '</td></tr>';
@@ -2984,7 +2984,13 @@ function aulaPerfilBindUI() {
             }
             var reader = new FileReader();
             reader.onload = function () {
-                window.__perfilFotoPendiente = reader.result;
+                aulaComprimirFotoPerfil(reader.result, function (comp) {
+                    window.__perfilFotoPendiente = comp;
+                    try {
+                        var prevF = document.getElementById('perfilFotoPreview');
+                        if (prevF) prevF.src = comp;
+                    } catch (eP) {}
+                });
                 var prev = document.getElementById('perfilFotoPreview');
                 var ph = document.getElementById('perfilFotoPlaceholder');
                 if (prev) { prev.src = reader.result; prev.hidden = false; }
@@ -3891,6 +3897,13 @@ function aulaIntegrantesDe(materia, grupo) {
     var users = [];
     try { users = aulaLoad(AULA_KEYS.users, []) || []; } catch (e) { users = []; }
     if (!Array.isArray(users)) users = [];
+    // Normalizar foto desde posibles campos legacy
+    users = users.map(function(u) {
+        if (!u) return u;
+        if (!u.foto && u.photo) u.foto = u.photo;
+        if (!u.foto && u.avatarUrl) u.foto = u.avatarUrl;
+        return u;
+    });
     var mat = String(materia || '').trim();
     var grp = String(grupo || '').trim();
 
@@ -3995,8 +4008,10 @@ function aulaRenderIntegrantesDocente() {
         box.innerHTML = '<ul class="integrantes-lista">' + lista.map(function(u) {
             var rol = u.rol === 'docente' ? 'docente' : 'estudiante';
             var isMe = aulaNormalizarEmail(u.email) === me;
-            var foto = u.foto
-                ? '<img class="tabla-foto" src="' + u.foto + '" alt="">'
+            var fotoSrc = u.foto || u.photo || '';
+            if (!fotoSrc) { try { var _all = aulaLoad(AULA_KEYS.users, []) || []; var _fu = _all.find(function(x){ return x && aulaNormalizarEmail(x.email)===aulaNormalizarEmail(u.email); }); if (_fu) fotoSrc = _fu.foto || _fu.photo || ''; } catch(_e){} }
+            var foto = fotoSrc
+                ? '<img class="tabla-foto" src="' + String(fotoSrc).replace(/"/g, '&quot;') + '" alt="">'
                 : '<span class="tabla-foto tabla-foto-ini">' + escHtml(aulaIniciales(u.nombre)) + '</span>';
             var btn = '';
             if (!isMe && rol === 'estudiante') {
@@ -4111,8 +4126,10 @@ function aulaRenderIntegrantes(forceRefill) {
         box.innerHTML = '<ul class="integrantes-lista">' + lista.map(function(u) {
             var rol = u.rol === 'docente' ? 'docente' : 'estudiante';
             var isMe = aulaNormalizarEmail(u.email) === me;
-            var foto = u.foto
-                ? '<img class="tabla-foto" src="' + u.foto + '" alt="">'
+            var fotoSrc = u.foto || u.photo || '';
+            if (!fotoSrc) { try { var _all = aulaLoad(AULA_KEYS.users, []) || []; var _fu = _all.find(function(x){ return x && aulaNormalizarEmail(x.email)===aulaNormalizarEmail(u.email); }); if (_fu) fotoSrc = _fu.foto || _fu.photo || ''; } catch(_e){} }
+            var foto = fotoSrc
+                ? '<img class="tabla-foto" src="' + String(fotoSrc).replace(/"/g, '&quot;') + '" alt="">'
                 : '<span class="tabla-foto tabla-foto-ini">' +
                     (typeof aulaIniciales === 'function' ? aulaIniciales(u.nombre) : '?') + '</span>';
             var btn = '';
@@ -4208,12 +4225,10 @@ function aulaChatAbrirCompanero(peerEmail, materia, grupo) {
     var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
     if (!user || !peerEmail) return;
 
-    // 1) Mostrar panel estudiante
     document.querySelectorAll('main').forEach(function(m) { m.style.display = 'none'; });
     var pe = document.getElementById('pantallaEstudiante');
     if (pe) pe.style.display = 'block';
 
-    // 2) Activar pestaña Chat de forma síncrona (sin depender solo de .click)
     var root = document.getElementById('pantallaEstudiante');
     if (root) {
         root.querySelectorAll('.tab-btn').forEach(function(t) {
@@ -4224,16 +4239,39 @@ function aulaChatAbrirCompanero(peerEmail, materia, grupo) {
         });
     }
 
-    // 3) Crear/abrir conversación peer
     var full = typeof aulaUsuarioCompleto === 'function' ? (aulaUsuarioCompleto(user) || user) : user;
-    var c = aulaChatFindOrCreatePeer(full.email, peerEmail, materia, grupo || '');
+    var users = [];
+    try { users = aulaLoad(AULA_KEYS.users, []) || []; } catch (eU) { users = []; }
+    var peerUser = users.find(function(u) {
+        return u && aulaNormalizarEmail(u.email) === aulaNormalizarEmail(peerEmail);
+    });
+    var peerEsDocente = peerUser && peerUser.rol === 'docente';
+
+    var c;
+    // Si el destino es DOCENTE → chat oficial estudiante-docente (aparece en panel docente)
+    if (peerEsDocente && typeof aulaChatFindOrCreate === 'function') {
+        c = aulaChatFindOrCreate(full.email, materia, grupo || '');
+        c.teacherEmail = aulaNormalizarEmail(peerEmail);
+        c.teacherName = (peerUser && peerUser.nombre) || peerEmail;
+        c.studentName = full.nombre || full.email;
+        c.type = 'curso';
+        if (!c.members) c.members = [aulaNormalizarEmail(full.email), aulaNormalizarEmail(peerEmail)];
+    } else {
+        c = aulaChatFindOrCreatePeer(full.email, peerEmail, materia, grupo || '');
+    }
     window.__chatActivoId = c.id;
     aulaChatMarkRead(c.id, full.email);
+    aulaChatSaveOne(c);
 
     var hdr = document.getElementById('estChatHeader');
     if (hdr) {
-        hdr.textContent = (c.peerName || peerEmail) + ' · compañero · ' + (materia || '') +
-            (c.grupo ? ' · Grupo ' + c.grupo : '');
+        if (peerEsDocente) {
+            hdr.textContent = (c.teacherName || peerEmail) + ' · docente · ' + (materia || '') +
+                (c.grupo ? ' · Grupo ' + c.grupo : '');
+        } else {
+            hdr.textContent = (c.peerName || peerEmail) + ' · compañero · ' + (materia || '') +
+                (c.grupo ? ' · Grupo ' + c.grupo : '');
+        }
     }
     var inp = document.getElementById('estChatInput');
     var btn = document.getElementById('btnEstChatEnviar');
@@ -4242,11 +4280,10 @@ function aulaChatAbrirCompanero(peerEmail, materia, grupo) {
     var delBtn = document.getElementById('btnEstChatEliminar');
     if (delBtn) { delBtn.hidden = false; delBtn.dataset.chatId = c.id; }
 
-    // 4) Garantizar subida a la nube y pintar
-    aulaChatSaveOne(c);
     c = aulaChatLoad().find(function(x) { return x.id === c.id; }) || c;
     aulaChatRenderMsgs('estChatMsgs', c, full.email);
     if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+    if (typeof aulaChatUpdateBadges === 'function') aulaChatUpdateBadges();
 
     window.scrollTo(0, 0);
 }
@@ -4567,12 +4604,17 @@ function aulaChatRenderListaDocente() {
     var myEmail = aulaNormalizarEmail(user.email);
     var list = aulaChatLoad().filter(function(c) {
         if (!c || typeof c !== 'object' || !c.id) return false;
-        if (c.type === 'peer') return false; // chats entre estudiantes no van al docente
         if (mat && c.materia !== mat) return false;
         if (grp && String(c.grupo || '').trim().toUpperCase() !== grp.toUpperCase()) return false;
-        // Chats dirigidos a este docente
+        // Peer solo si el docente participa (mensaje directo al docente)
+        if (c.type === 'peer') {
+            var mem = c.members || [];
+            var soy = mem.some(function(m) { return aulaNormalizarEmail(m) === myEmail; }) ||
+                aulaNormalizarEmail(c.peerEmail) === myEmail ||
+                aulaNormalizarEmail(c.teacherEmail) === myEmail;
+            return soy;
+        }
         if (c.teacherEmail && aulaNormalizarEmail(c.teacherEmail) === myEmail) return true;
-        // Solo si dicta esa materia y grupo
         if (typeof aulaDocenteDicta === 'function' && aulaDocenteDicta(user, c.materia, c.grupo)) {
             if (!c.teacherEmail || aulaNormalizarEmail(c.teacherEmail) !== myEmail) {
                 c.teacherEmail = myEmail;
@@ -4846,8 +4888,58 @@ function aulaChatUpdateBadges() {
     }
 }
 
+
+function aulaChatStartCloudListen() {
+    if (window.__chatCloudListening) return;
+    if (!(window.GeoCloud && GeoCloud.isOn() && typeof GeoCloud.listenChats === 'function')) {
+        setTimeout(function () {
+            if (!window.__chatCloudListening) aulaChatStartCloudListen();
+        }, 2500);
+        return;
+    }
+    window.__chatCloudListening = true;
+    GeoCloud.listenChats(function (arr) {
+        try {
+            if (!Array.isArray(arr)) return;
+            var local = [];
+            try { local = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]') || []; } catch (e) { local = []; }
+            var byId = {};
+            (local || []).forEach(function (c) { if (c && c.id) byId[c.id] = c; });
+            (arr || []).forEach(function (c) {
+                if (!c || !c.id) return;
+                var prev = byId[c.id];
+                // Gana el que tenga más mensajes o updatedAt mayor
+                if (!prev) byId[c.id] = c;
+                else {
+                    var nR = (c.messages && c.messages.length) || 0;
+                    var nL = (prev.messages && prev.messages.length) || 0;
+                    if ((c.updatedAt || 0) >= (prev.updatedAt || 0) || nR >= nL) byId[c.id] = c;
+                }
+            });
+            var merged = Object.keys(byId).map(function (k) { return byId[k]; });
+            localStorage.setItem(CHAT_KEY, JSON.stringify(merged));
+            // Refrescar UI si hay chat abierto
+            var me = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+            if (me && window.__chatActivoId) {
+                var active = merged.find(function (x) { return x.id === window.__chatActivoId; });
+                if (active) {
+                    if (me.rol === 'docente') {
+                        if (typeof aulaChatRenderMsgs === 'function') aulaChatRenderMsgs('docChatMsgs', active, me.email);
+                        if (typeof aulaChatRenderListaDocente === 'function') aulaChatRenderListaDocente();
+                    } else {
+                        if (typeof aulaChatRenderMsgs === 'function') aulaChatRenderMsgs('estChatMsgs', active, me.email);
+                        if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+                    }
+                }
+            }
+            if (typeof aulaChatUpdateBadges === 'function') aulaChatUpdateBadges();
+        } catch (eL) { console.warn('chat cloud listen', eL); }
+    });
+}
+
 function aulaChatBind() {
     try {
+        aulaChatStartCloudListen();
         if (window.GeoCloud && GeoCloud.isOn() && !window.__chatCloudListening) {
             window.__chatCloudListening = true;
             GeoCloud.listenChats(function (list) {
@@ -6115,6 +6207,33 @@ async function aulaQuizCivixDescargarPDF() {
 }
 
 
+
+
+/** Comprime foto de perfil para Firebase (max 320px JPEG) */
+function aulaComprimirFotoPerfil(dataUrl, cb) {
+    try {
+        if (!dataUrl || String(dataUrl).indexOf('data:image') !== 0) { cb(dataUrl); return; }
+        var img = new Image();
+        img.onload = function () {
+            try {
+                var max = 320;
+                var w = img.width, h = img.height;
+                if (w > max || h > max) {
+                    var r = Math.min(max / w, max / h);
+                    w = Math.round(w * r); h = Math.round(h * r);
+                }
+                var c = document.createElement('canvas');
+                c.width = w; c.height = h;
+                c.getContext('2d').drawImage(img, 0, 0, w, h);
+                var out = c.toDataURL('image/jpeg', 0.8);
+                if (out.length > 500000) out = c.toDataURL('image/jpeg', 0.6);
+                cb(out);
+            } catch (e) { cb(dataUrl); }
+        };
+        img.onerror = function () { cb(dataUrl); };
+        img.src = dataUrl;
+    } catch (e2) { cb(dataUrl); }
+}
 
 /** Avatar global de Civix (admin) — sincronizado en Firebase entre dispositivos */
 var __civixAvatarCloudBound = false;
