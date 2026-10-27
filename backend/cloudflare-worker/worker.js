@@ -1,124 +1,74 @@
 /**
- * GeoMetrics / Civix — Cloudflare Worker (multi-proveedor)
+ * GeoMetrics / Civix — Cloudflare Worker (multi-proveedor + búsqueda web)
  *
- * Secretos (wrangler secret put NOMBRE):
- *   GROQ_API_KEY       → Groq (gsk_...)
- *   OPENAI_API_KEY     → OpenAI (sk-...)
- *   ANTHROPIC_API_KEY  → Claude
- *   GEMINI_API_KEY     → Google Gemini
- *   DEEPSEEK_API_KEY   → DeepSeek
- *   XAI_API_KEY        → xAI Grok
+ * Secrets (wrangler secret put NOMBRE):
+ *   GROQ_API_KEY       — Groq (obligatorio si usas modelos Groq)
+ *   OPENAI_API_KEY     — OpenAI
+ *   ANTHROPIC_API_KEY  — Claude
+ *   GEMINI_API_KEY     — Google Gemini
+ *   DEEPSEEK_API_KEY   — DeepSeek
+ *   XAI_API_KEY        — xAI Grok
+ *   BRAVE_API_KEY      — búsqueda web (opcional)
  *
- * Despliegue:
- *   wrangler secret put GROQ_API_KEY
- *   wrangler secret put OPENAI_API_KEY   (opcional)
- *   ...
- *   wrangler deploy
+ * Despliegue: wrangler deploy
  */
 
-const SYSTEM_CIVIX =
-  'Eres Civix, mascota y docente-tutor de GeoMetrics (Universidad de Pamplona, Ingenieria Civil). '
-  + 'Tono cercano, motivador y profesional. Trata al usuario como futuro ingeniero. Responde SIEMPRE en espanol.\n\n'
-  + '=== MODO DOCENTE GRADUAL (por defecto en temas de estudio) ===\n'
-  + 'Actua como docente universitario de la asignatura que el estudiante este cursando. '
-  + 'Guia el refuerzo de conocimientos de forma gradual, TEMA POR TEMA, solo cuando el estudiante lo solicite explicitamente. '
-  + 'NUNCA entregues todos los temas del contenido programatico en un solo mensaje. Espera la solicitud de cada tema.\n\n'
-  + 'Cuando el estudiante pida un tema concreto, estructura la respuesta ASI (en este orden):\n'
-  + '1) **Identificacion del tema**: nombre del tema y su ubicacion en la unidad/modulo si se conoce.\n'
-  + '2) **Fundamento teorico**: conceptos esenciales, concisos y completos, SOLO con fuentes autorizadas de ESA materia.\n'
-  + '3) **Formulas**: expresiones relevantes y significado de cada variable. Solo unicode legible.\n'
-  + '4) **Ejemplo practico resuelto**: paso a paso, justificando cada etapa.\n'
-  + '5) **Ejercicio de refuerzo (opcional)**: un ejercicio para practicar; indica que daras retroalimentacion cuando envie su solucion.\n'
-  + 'Cierra con **Resumen** (3-5 puntos) y **Fuentes** (solo las de esa materia).\n\n'
-  + 'Si el estudiante envia instrucciones de metodologia docente, confirma de forma breve y ordenada, '
-  + 'y pide (si aun no los dio): 1) Asignatura 2) Tema o programa 3) Textos guia o PDF. '
-  + 'No desarrolles todos los temas de una vez. NO repitas el prompt del usuario.\n\n'
-  + '=== NOMBRE DEL USUARIO ===\n'
-  + 'Si el mensaje de sistema o el cuerpo indica el primer nombre del usuario, dirigete a esa persona por su primer nombre.\n\n'
-  + '=== CONOCIMIENTO ===\n'
-  + 'Prioriza textos guia de la materia cuando existan. Tambien puedes usar conocimiento general de ingenieria civil '
-  + 'bien establecido (normas, definiciones, metodos estandar). No inventes datos de laboratorio del estudiante. '
-  + 'No mezcles autores entre materias distintas.\n\n'
-  + '=== REGLA DE ORO - NO MEZCLAR FUENTES ENTRE MATERIAS ===\n'
-  + 'Identifica la materia y usa SOLO su biblioteca.\n\n'
-  + '1) RESISTENCIA DE MATERIALES / ESTATICA - unicas fuentes: Beer, Johnston, DeWolf, Mazurek y Russell C. Hibbeler. '
-  + 'PROHIBIDO: Das, Holtz, FLA-23.\n\n'
-  + '2) MECANICA DE SUELOS (teoria) - fuentes: Das / Das y Sobhan; apoyo Holtz. '
-  + 'NSR-10 Titulo H solo si preguntan norma colombiana. PROHIBIDO: Beer, Hibbeler.\n\n'
-  + '3) LABORATORIO DE SUELOS - prioridad Guias FLA-23 Universidad de Pamplona '
-  + '(Corte directo, Compresion inconfinada, Consolidacion). '
-  + 'Cita: Fuente Guia FLA-23 - [ensayo], Universidad de Pamplona. No inventes paginas. '
-  + 'Das solo apoyo teorico breve. PROHIBIDO: Beer, Hibbeler.\n\n'
-  + '4) DOCUMENTO ADJUNTO: si sube PDF, esa es la fuente prioritaria de ESA consulta; cita archivo y Pagina N si aparece.\n\n'
-  + '=== ESCRITURA DE FORMULAS (OBLIGATORIO) ===\n'
-  + 'PROHIBIDO: LaTeX y comandos con barra (frac, mathbf, int, sigma, sin), simbolos de dolar para math, HTML sub/sup.\n'
-  + 'OBLIGATORIO: texto plano legible. Ejemplos CORRECTOS:\n'
-  + '  M = r x F\n'
-  + '  M = r * F * sin(theta)\n'
-  + '  sigma = M * c / I\n'
-  + '  I = (b * h^3) / 12\n'
-  + '  M_max = P * L / 4\n'
-  + '  d^2 v / dx^2 = M(x) / (E * I)\n'
-  + 'Ejemplos INCORRECTOS (nunca uses): mathbfM, frac..., M max con barra, intA y2 dA.\n'
-  + 'En ejemplos numericos usa unidades claras: 10 kN, 4 m, 10000 N*m, 0.0054 m^4, 555 MPa.\n'
-  + 'Numera secciones 1) 2) 3) 4) 5) sin reiniciar la numeracion dentro del mismo tema.\n\n'
-  + 'FORMATO: ## titulo, ### secciones, listas con -, tablas markdown con | (nunca dentro de bloques de codigo), parrafos cortos. '
-  + 'Si hay codigo o archivo con error: identifica, explica, corrige en bloque de codigo y resume cambios.';
+const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
 
-const SYSTEM_IMPROVE =
-  'Eres un experto en ingenieria de prompts para estudiantes de Ingenieria Civil. ' +
-  'Tu unica tarea es REESCRIBIR el mensaje del usuario como un prompt mejorado, claro y especifico, ' +
-  'listo para enviarlo a un tutor de IA (Civix). ' +
-  'Reglas: 1) Responde SOLO con el prompt mejorado, sin comillas ni explicaciones. ' +
-  '2) Conserva la intencion original. 3) Anade contexto de ingenieria civil si falta. ' +
-  '4) Escribe en espanol. 5) Se conciso pero completo.';
+/** id → { label, provider, tier } */
+const ALLOWED_MODELS = {
+  // Groq
+  'llama-3.3-70b-versatile': { label: 'Llama 3.3 70B', provider: 'groq', tier: 'potente' },
+  'llama-3.1-8b-instant': { label: 'Llama 3.1 8B', provider: 'groq', tier: 'rapido' },
+  'openai/gpt-oss-20b': { label: 'GPT-OSS 20B', provider: 'groq', tier: 'equilibrado' },
+  'openai/gpt-oss-120b': { label: 'GPT-OSS 120B', provider: 'groq', tier: 'maximo' },
+  'qwen/qwen3-32b': { label: 'Qwen3 32B', provider: 'groq', tier: 'potente' },
+  'qwen/qwen3.8-27b': { label: 'Qwen 3.8 27B', provider: 'groq', tier: 'potente' },
+  'gemma2-9b-it': { label: 'Gemma2 9B', provider: 'groq', tier: 'rapido' },
+  'moonshotai/kimi-k2-instruct': { label: 'Kimi K2', provider: 'groq', tier: 'potente' },
+  // OpenAI
+  'gpt-4o-mini': { label: 'GPT-4o mini', provider: 'openai', tier: 'equilibrado' },
+  'gpt-4o': { label: 'GPT-4o', provider: 'openai', tier: 'potente' },
+  'gpt-4.1-mini': { label: 'GPT-4.1 mini', provider: 'openai', tier: 'equilibrado' },
+  // Claude
+  'claude-sonnet-4-5': { label: 'Claude Sonnet 4.5', provider: 'anthropic', tier: 'potente' },
+  'claude-haiku-4-5-20251001': { label: 'Claude Haiku 4.5', provider: 'anthropic', tier: 'rapido' },
+  // Gemini
+  'gemini-2.0-flash': { label: 'Gemini 2.0 Flash', provider: 'gemini', tier: 'rapido' },
+  'gemini-2.5-flash': { label: 'Gemini 2.5 Flash', provider: 'gemini', tier: 'equilibrado' },
+  // DeepSeek
+  'deepseek-chat': { label: 'DeepSeek Chat', provider: 'deepseek', tier: 'equilibrado' },
+  'deepseek-reasoner': { label: 'DeepSeek Reasoner', provider: 'deepseek', tier: 'potente' },
+  // xAI
+  'grok-2-latest': { label: 'Grok 2', provider: 'xai', tier: 'potente' },
+};
 
-
-// Orígenes permitidos (GitHub Pages + local)
-const ALLOWED_ORIGINS = [
-  'https://wipsito.github.io',
-  'http://127.0.0.1:5500',
-  'http://localhost:5500',
-  'http://127.0.0.1:5501',
-  'http://localhost:5501',
-];
-
-function corsHeaders(origin) {
-  const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allow,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Max-Age': '86400',
-  };
+function pickModel(requested, env) {
+  const def = env.GROQ_MODEL || DEFAULT_MODEL;
+  const id = String(requested || '').trim() || def;
+  if (ALLOWED_MODELS[id]) return id;
+  // si no está en lista, aún se permite si viene provider explícito (flexibilidad)
+  if (requested) return String(requested).trim();
+  return ALLOWED_MODELS[def] ? def : DEFAULT_MODEL;
 }
 
-function json(status, obj, origin) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      ...corsHeaders(origin || ''),
-    },
-  });
-}
-
-/** Inferir proveedor por body.provider o por el id del modelo */
-function resolveProvider(body) {
+function resolveProvider(body, modelId) {
   const p = String(body.provider || '').toLowerCase().trim();
   if (p && p !== 'auto' && p !== 'backend') return p;
-  const m = String(body.model || '').toLowerCase();
-  if (m.startsWith('gpt-') || m.startsWith('o1') || m.startsWith('o3') || m.includes('chatgpt')) return 'openai';
+  if (ALLOWED_MODELS[modelId] && ALLOWED_MODELS[modelId].provider) {
+    return ALLOWED_MODELS[modelId].provider;
+  }
+  const m = String(modelId || '').toLowerCase();
+  if (m.startsWith('gpt-4') || m.startsWith('gpt-3') || m.startsWith('o1') || m.startsWith('o3')) return 'openai';
   if (m.startsWith('claude')) return 'anthropic';
   if (m.startsWith('gemini')) return 'gemini';
   if (m.startsWith('deepseek')) return 'deepseek';
   if (m.startsWith('grok')) return 'xai';
-  if (m.includes('llama') || m.includes('gpt-oss') || m.includes('qwen') || m.includes('mixtral') || m.includes('gemma')) return 'groq';
   return 'groq';
 }
 
 function openaiStyleMessages(messages) {
-  return messages.map((msg) => ({
+  return (messages || []).map((msg) => ({
     role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
     content: String(msg.content || ''),
   }));
@@ -150,10 +100,9 @@ async function callOpenAICompatible(url, apiKey, model, messages, temperature, m
 }
 
 async function callAnthropic(apiKey, model, messages, temperature, maxTokens) {
-  // Claude: system aparte; roles user/assistant
   let system = '';
   const msgs = [];
-  for (const m of messages) {
+  for (const m of messages || []) {
     if (m.role === 'system') system += (system ? '\n\n' : '') + String(m.content || '');
     else msgs.push({
       role: m.role === 'assistant' ? 'assistant' : 'user',
@@ -187,10 +136,9 @@ async function callAnthropic(apiKey, model, messages, temperature, maxTokens) {
 
 async function callGemini(apiKey, model, messages, temperature, maxTokens) {
   const modelId = model || 'gemini-2.0-flash';
-  // Convertir a contents de Gemini
   let system = '';
   const contents = [];
-  for (const m of messages) {
+  for (const m of messages || []) {
     if (m.role === 'system') {
       system += (system ? '\n\n' : '') + String(m.content || '');
       continue;
@@ -204,14 +152,9 @@ async function callGemini(apiKey, model, messages, temperature, maxTokens) {
     + encodeURIComponent(modelId) + ':generateContent?key=' + encodeURIComponent(apiKey);
   const body = {
     contents,
-    generationConfig: {
-      temperature,
-      maxOutputTokens: maxTokens || 4096,
-    },
+    generationConfig: { temperature, maxOutputTokens: maxTokens || 4096 },
   };
-  if (system) {
-    body.systemInstruction = { parts: [{ text: system }] };
-  }
+  if (system) body.systemInstruction = { parts: [{ text: system }] };
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -224,65 +167,200 @@ async function callGemini(apiKey, model, messages, temperature, maxTokens) {
   }
   const cand = data.candidates && data.candidates[0];
   const parts = cand && cand.content && cand.content.parts ? cand.content.parts : [];
-  const text = parts.map((p) => p.text || '').join('');
-  return { ok: true, content: text };
+  return { ok: true, content: parts.map((p) => p.text || '').join('') };
 }
 
 async function dispatchLLM(env, provider, model, messages, temperature, maxTokens) {
-  const p = provider;
-  if (p === 'openai') {
+  if (provider === 'openai') {
     if (!env.OPENAI_API_KEY) return { ok: false, status: 500, error: 'OPENAI_API_KEY no configurada en el Worker' };
-    return callOpenAICompatible(
-      'https://api.openai.com/v1/chat/completions',
-      env.OPENAI_API_KEY,
-      model || 'gpt-4o-mini',
-      messages,
-      temperature,
-      maxTokens
-    );
+    return callOpenAICompatible('https://api.openai.com/v1/chat/completions', env.OPENAI_API_KEY, model || 'gpt-4o-mini', messages, temperature, maxTokens);
   }
-  if (p === 'anthropic' || p === 'claude') {
+  if (provider === 'anthropic' || provider === 'claude') {
     if (!env.ANTHROPIC_API_KEY) return { ok: false, status: 500, error: 'ANTHROPIC_API_KEY no configurada en el Worker' };
     return callAnthropic(env.ANTHROPIC_API_KEY, model || 'claude-sonnet-4-5', messages, temperature, maxTokens);
   }
-  if (p === 'gemini' || p === 'google') {
+  if (provider === 'gemini' || provider === 'google') {
     const key = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
     if (!key) return { ok: false, status: 500, error: 'GEMINI_API_KEY no configurada en el Worker' };
     return callGemini(key, model || 'gemini-2.0-flash', messages, temperature, maxTokens);
   }
-  if (p === 'deepseek') {
+  if (provider === 'deepseek') {
     if (!env.DEEPSEEK_API_KEY) return { ok: false, status: 500, error: 'DEEPSEEK_API_KEY no configurada en el Worker' };
-    return callOpenAICompatible(
-      'https://api.deepseek.com/chat/completions',
-      env.DEEPSEEK_API_KEY,
-      model || 'deepseek-chat',
-      messages,
-      temperature,
-      maxTokens
-    );
+    return callOpenAICompatible('https://api.deepseek.com/chat/completions', env.DEEPSEEK_API_KEY, model || 'deepseek-chat', messages, temperature, maxTokens);
   }
-  if (p === 'xai' || p === 'grok') {
+  if (provider === 'xai' || provider === 'grok') {
     if (!env.XAI_API_KEY) return { ok: false, status: 500, error: 'XAI_API_KEY no configurada en el Worker' };
-    return callOpenAICompatible(
-      'https://api.x.ai/v1/chat/completions',
-      env.XAI_API_KEY,
-      model || 'grok-2-latest',
-      messages,
-      temperature,
-      maxTokens
-    );
+    return callOpenAICompatible('https://api.x.ai/v1/chat/completions', env.XAI_API_KEY, model || 'grok-2-latest', messages, temperature, maxTokens);
   }
-  // groq (default)
   if (!env.GROQ_API_KEY) return { ok: false, status: 500, error: 'GROQ_API_KEY no configurada en el Worker' };
   return callOpenAICompatible(
     'https://api.groq.com/openai/v1/chat/completions',
     env.GROQ_API_KEY,
-    model || env.GROQ_MODEL || 'openai/gpt-oss-20b',
+    model || env.GROQ_MODEL || DEFAULT_MODEL,
     messages,
     temperature,
     maxTokens
   );
 }
+
+const SYSTEM_CIVIX =
+  'Eres Civix, mascota y docente-tutor de GeoMetrics (Universidad de Pamplona, Ingenieria Civil). '
+  + 'Tono cercano, motivador y profesional. Trata al usuario como futuro ingeniero. Responde SIEMPRE en espanol.\n\n'
+  + '=== ESTILO DE RESPUESTA (PRIORITARIO) ===\n'
+  + 'Responde de forma NATURAL, cercana y conversacional, como un tutor humano. '
+  + 'Para preguntas cotidianas, cartas, fechas, permisos o dudas generales: ve al grano en parrafos claros. '
+  + 'PROHIBIDO por defecto usar la plantilla: Identificacion del tema / Fundamento teorico / Formulas / Ejemplo practico / Ejercicio de refuerzo / Resumen / Fuentes. '
+  + 'Esa plantilla SOLO si el usuario pide explicitamente una clase, un tema de estudio paso a paso o refuerzo formal de la asignatura.\n\n'
+  + 'Si pide un tema formal de la materia, organiza con titulos cortos y ejemplos utiles, sin secciones vacias '
+  + '(nunca escribas "Formulas: No aplica"). No entregues todo el programa de la materia de una vez. '
+  + 'NO repitas el prompt del usuario.\n\n'
+  + '=== NOMBRE DEL USUARIO ===\n'
+  + 'Si el mensaje de sistema o el cuerpo indica el primer nombre del usuario, dirigete a esa persona por su primer nombre de forma natural.\n\n'
+  + '=== CONOCIMIENTO ===\n'
+  + 'Prioriza textos guia de la materia y documentos adjuntos cuando existan. '
+  + 'Tambien usa conocimiento general solido (ingenieria civil, normas, cultura general, redaccion). '
+  + 'Si recibes resultados de BUSQUEDA WEB, usalos y menciona la fuente de forma breve. '
+  + 'No inventes resultados de laboratorio del estudiante. No mezcles autores entre materias distintas.\n\n'
+  + '=== REGLA DE ORO - NO MEZCLAR FUENTES ENTRE MATERIAS ===\n'
+  + 'Identifica la materia y usa SOLO su biblioteca cuando hable de textos guia.\n\n'
+  + '1) RESISTENCIA DE MATERIALES / ESTATICA - Beer, Johnston, DeWolf, Mazurek, Hibbeler. PROHIBIDO: Das, Holtz, FLA-23.\n'
+  + '2) MECANICA DE SUELOS (teoria) - Das / Das y Sobhan; apoyo Holtz. NSR-10 Titulo H si preguntan norma colombiana.\n'
+  + '3) LABORATORIO DE SUELOS - Guias FLA-23 Universidad de Pamplona. Das solo apoyo teorico breve.\n'
+  + '4) DOCUMENTO ADJUNTO: prioridad de ESA consulta; cita archivo y Pagina N si aparece.\n\n'
+  + '=== FORMULAS ===\n'
+  + 'Usa texto plano legible (ej. sigma = M * c / I). Evita LaTeX con barra invertida.\n'
+  + 'Solo numera cuando aporte claridad. No fuerces plantillas 1)-5) en respuestas naturales.\n'
+  + 'FORMATO: titulos cortos si ayudan, listas con -, tablas markdown, parrafos cortos.';
+
+const SYSTEM_IMPROVE =
+  'Eres un experto en ingenieria de prompts para estudiantes de Ingenieria Civil. '
+  + 'Tu unica tarea es REESCRIBIR el mensaje del usuario como un prompt mejorado, claro y especifico. '
+  + 'Reglas: 1) Responde SOLO con el prompt mejorado, sin comillas ni explicaciones. '
+  + '2) Conserva la intencion original. 3) Anade contexto de ingenieria civil si falta. '
+  + '4) Escribe en espanol. 5) Se conciso pero completo.';
+
+
+const ALLOWED_ORIGINS = [
+  'https://wipsito.github.io',
+  'http://127.0.0.1:5500',
+  'http://localhost:5500',
+  'http://127.0.0.1:5501',
+  'http://localhost:5501',
+];
+
+function corsHeaders(origin) {
+  const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allow,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '86400',
+  };
+}
+
+function json(status, data, origin) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...corsHeaders(origin) },
+  });
+}
+
+
+async function webSearch(query, env) {
+  const q = String(query || '').trim().slice(0, 200);
+  if (!q) return { ok: false, results: [], note: 'Consulta vacía' };
+
+  // 1) Brave Search API (recomendado)
+  if (env.BRAVE_API_KEY) {
+    try {
+      const url = 'https://api.search.brave.com/res/v1/web/search?q='
+        + encodeURIComponent(q) + '&count=5';
+      const res = await fetch(url, {
+        headers: {
+          'Accept': 'application/json',
+          'X-Subscription-Token': env.BRAVE_API_KEY,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const items = (data.web && data.web.results) || [];
+        const results = items.slice(0, 5).map((r) => ({
+          title: r.title || '',
+          url: r.url || '',
+          snippet: r.description || '',
+        }));
+        return { ok: true, provider: 'brave', results };
+      }
+    } catch (e) { /* fallback */ }
+  }
+
+  // 2) DuckDuckGo Instant Answer (gratis, sin key; limitado)
+  try {
+    const url = 'https://api.duckduckgo.com/?q=' + encodeURIComponent(q)
+      + '&format=json&no_redirect=1&no_html=1&skip_disambig=1';
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if (res.ok) {
+      const data = await res.json();
+      const results = [];
+      if (data.AbstractText) {
+        results.push({
+          title: data.Heading || 'Resumen',
+          url: data.AbstractURL || '',
+          snippet: data.AbstractText,
+        });
+      }
+      const related = Array.isArray(data.RelatedTopics) ? data.RelatedTopics : [];
+      related.slice(0, 4).forEach((t) => {
+        if (t.Text) {
+          results.push({
+            title: (t.Text || '').slice(0, 80),
+            url: t.FirstURL || '',
+            snippet: t.Text || '',
+          });
+        } else if (t.Topics && t.Topics[0]) {
+          const x = t.Topics[0];
+          results.push({
+            title: (x.Text || '').slice(0, 80),
+            url: x.FirstURL || '',
+            snippet: x.Text || '',
+          });
+        }
+      });
+      if (results.length) return { ok: true, provider: 'duckduckgo', results };
+    }
+  } catch (e2) { /* ignore */ }
+
+  return {
+    ok: false,
+    results: [],
+    note: 'No hubo resultados web. Responde con conocimiento general y dilo con claridad.',
+  };
+}
+
+function formatSearchBlock(search) {
+  if (!search || !search.results || !search.results.length) {
+    return search && search.note
+      ? ('\n\n[BUSQUEDA WEB]\n' + search.note)
+      : '';
+  }
+  const lines = search.results.map((r, i) =>
+    (i + 1) + '. ' + (r.title || 'Fuente') + '\n   '
+    + (r.snippet || '') + (r.url ? ('\n   URL: ' + r.url) : '')
+  );
+  return '\n\n[BUSQUEDA WEB — ' + (search.provider || 'web') + ']\n'
+    + 'Usa estos hallazgos si aportan. Cita fuentes de forma breve.\n'
+    + lines.join('\n');
+}
+
+function lastUserText(messages) {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i] && messages[i].role === 'user') {
+      return String(messages[i].content || '').slice(0, 500);
+    }
+  }
+  return '';
+}
+
 
 export default {
   async fetch(request, env) {
@@ -293,39 +371,10 @@ export default {
     }
 
     const url = new URL(request.url);
+
     if (request.method === 'GET' && (url.pathname === '/api/models' || url.pathname === '/models')) {
-      // Catálogo público (sin keys) para el selector del front
-      return json(200, {
-        providers: [
-          { id: 'groq', label: 'Groq', models: [
-            { id: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B (rápido)' },
-            { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
-            { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
-            { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant' },
-            { id: 'qwen/qwen3.8-27b', label: 'Qwen 3.8 27B' },
-          ]},
-          { id: 'openai', label: 'OpenAI', models: [
-            { id: 'gpt-4o-mini', label: 'GPT-4o mini' },
-            { id: 'gpt-4o', label: 'GPT-4o' },
-            { id: 'gpt-4.1-mini', label: 'GPT-4.1 mini' },
-          ]},
-          { id: 'anthropic', label: 'Claude', models: [
-            { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
-            { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
-          ]},
-          { id: 'gemini', label: 'Gemini', models: [
-            { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-            { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-          ]},
-          { id: 'deepseek', label: 'DeepSeek', models: [
-            { id: 'deepseek-chat', label: 'DeepSeek Chat' },
-            { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner' },
-          ]},
-          { id: 'xai', label: 'Grok (xAI)', models: [
-            { id: 'grok-2-latest', label: 'Grok 2' },
-          ]},
-        ],
-      }, origin);
+      const list = Object.keys(ALLOWED_MODELS).map((id) => ({ id, ...ALLOWED_MODELS[id] }));
+      return json(200, { models: list, default: pickModel(null, env) }, origin);
     }
 
     if (request.method !== 'POST' || (url.pathname !== '/api/chat' && url.pathname !== '/')) {
@@ -362,53 +411,56 @@ export default {
         { role: 'user', content: 'Mejora este prompt:\n\n' + userText },
       ];
     } else {
-      messages = messages.filter((m) => m && m.role !== 'system');
+      // conservar systems del cliente (contexto) + system oficial Civix
+      const clientSystems = messages.filter((m) => m && m.role === 'system');
+      const rest = messages.filter((m) => m && m.role !== 'system');
       const uname = (body.userName || '').toString().trim();
       let sys = SYSTEM_CIVIX;
       if (uname) {
-        sys += '\n\nEl usuario prefiere que lo llames "' + uname + '". Dirígete SIEMPRE a esta persona por ese nombre de forma natural; no uses solo la frase generica "futuro ingeniero" si conoces el nombre.';
+        sys += '\n\nEl usuario prefiere que lo llames "' + uname + '". Dirigete a esa persona por su nombre de forma natural.';
       }
-      messages = [{ role: 'system', content: sys }, ...messages];
+      // Búsqueda web opcional
+      if (body.webSearch) {
+        try {
+          const q = lastUserText(rest);
+          if (q && typeof webSearch === 'function') {
+            const search = await webSearch(q, env);
+            const block = formatSearchBlock(search);
+            if (block) sys += block;
+          }
+        } catch (eW) { /* ignore */ }
+      }
+      messages = [{ role: 'system', content: sys }, ...clientSystems, ...rest];
     }
 
-    const provider = resolveProvider(body);
-    const model = (body.model || '').toString().trim()
-      || (provider === 'openai' ? 'gpt-4o-mini'
-        : provider === 'anthropic' ? 'claude-sonnet-4-5'
-        : provider === 'gemini' ? 'gemini-2.0-flash'
-        : provider === 'deepseek' ? 'deepseek-chat'
-        : provider === 'xai' ? 'grok-2-latest'
-        : (env.GROQ_MODEL || 'openai/gpt-oss-20b'));
-
+    const modelId = pickModel(body.model, env);
+    const provider = resolveProvider(body, modelId);
     const temperature = mode === 'improve' ? 0.35 : (typeof body.temperature === 'number' ? body.temperature : 0.4);
     const maxTokens = mode === 'improve' ? 800 : (body.max_tokens || 4096);
 
     let result;
     try {
-      result = await dispatchLLM(env, provider, model, messages, temperature, maxTokens);
+      result = await dispatchLLM(env, provider, modelId, messages, temperature, maxTokens);
     } catch (e) {
-      return json(502, { error: 'No se pudo contactar al proveedor (' + provider + '): ' + (e.message || e) }, origin);
+      return json(502, { error: 'No se pudo contactar al proveedor (' + provider + '): ' + (e && e.message ? e.message : e) }, origin);
     }
 
     if (!result.ok) {
-      return json(result.status || 502, { error: result.error || 'Error del proveedor', provider, model }, origin);
+      return json(result.status || 502, { error: result.error || 'Error del proveedor', provider, model: modelId }, origin);
     }
 
     let content = String(result.content || '');
     if (!content.trim()) {
-      return json(502, { error: 'Civix no devolvio texto', provider, model }, origin);
+      return json(502, { error: 'Civix no devolvio texto', provider, model: modelId }, origin);
     }
 
     if (mode === 'improve') {
       content = content.trim();
-      if (
-        (content.startsWith('"') && content.endsWith('"')) ||
-        (content.startsWith('«') && content.endsWith('»'))
-      ) {
+      if ((content.startsWith('"') && content.endsWith('"')) || (content.startsWith('«') && content.endsWith('»'))) {
         content = content.slice(1, -1).trim();
       }
     }
 
-    return json(200, { content, provider, model }, origin);
+    return json(200, { content, provider, model: modelId }, origin);
   },
 };
