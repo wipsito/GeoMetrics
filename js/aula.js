@@ -1366,25 +1366,71 @@ function aulaOpenPanel() {
         localStorage.setItem('geometrics_last_pantalla', user.rol === 'docente' ? 'docente' : 'estudiante');
         sessionStorage.setItem('geometrics_last_pantalla', user.rol === 'docente' ? 'docente' : 'estudiante');
     } catch (e) {}
+    function _showMain(id) {
+        document.querySelectorAll('main').forEach(function(m) {
+            try {
+                m.style.display = 'none';
+                m.setAttribute('hidden', '');
+            } catch (e0) {}
+        });
+        var el = document.getElementById(id);
+        if (!el) {
+            console.error('[GeoMetrics] No se encontró #' + id);
+            return null;
+        }
+        el.removeAttribute('hidden');
+        el.style.display = 'block';
+        el.style.visibility = 'visible';
+        el.style.opacity = '1';
+        el.style.pointerEvents = 'auto';
+        el.style.zIndex = '5';
+        return el;
+    }
+    function _activateAulaTab(rootId, preferredTab) {
+        var root = document.getElementById(rootId);
+        if (!root) return;
+        try {
+            if (typeof activarTabsSeccion === 'function') activarTabsSeccion(rootId);
+        } catch (e1) {}
+        var btn = preferredTab ? root.querySelector('.tab-btn[data-tab="' + preferredTab + '"]') : null;
+        if (!btn) btn = root.querySelector('.submenu-tabs .tab-btn, .aula-tabs .tab-btn');
+        if (btn) {
+            try { btn.click(); } catch (e2) {}
+            // fallback manual if click handler missing
+            var tabId = btn.getAttribute('data-tab');
+            root.querySelectorAll('.tab-btn').forEach(function(t) { t.classList.remove('active'); });
+            btn.classList.add('active');
+            root.querySelectorAll('.tab-content').forEach(function(c) {
+                c.classList.remove('active');
+                c.style.display = 'none';
+                c.setAttribute('hidden', '');
+            });
+            var panel = tabId ? document.getElementById(tabId) : null;
+            if (panel) {
+                panel.classList.add('active');
+                panel.style.display = 'block';
+                panel.removeAttribute('hidden');
+            }
+        }
+    }
     if (user.rol === 'docente') {
         if (typeof mostrarPantalla === 'function') {
             try { mostrarPantalla('docente'); } catch (e) {}
         }
-        document.querySelectorAll('main').forEach(function(m) { m.style.display = 'none'; });
-        var el = document.getElementById('pantallaDocente');
-        if (el) el.style.display = 'block';
+        _showMain('pantallaDocente');
         var sub = document.getElementById('docenteSubtitulo');
         if (sub) sub.textContent = 'Hola, ' + user.nombre + '. Publica tareas y revisa entregas.';
         aulaSetAvatarEl(document.getElementById('docIconoAula'), user, '👩‍🏫');
-        if (typeof activarTabsSeccion === 'function') activarTabsSeccion('pantallaDocente');
-        aulaRenderDocente();
+        _activateAulaTab('pantallaDocente', 'doc-tareas');
+        try { aulaRenderDocente(); } catch (eR) { console.error('aulaRenderDocente', eR); }
     } else {
-        document.querySelectorAll('main').forEach(function(m) { m.style.display = 'none'; });
-        var el2 = document.getElementById('pantallaEstudiante');
-        if (el2) el2.style.display = 'block';
+        if (typeof mostrarPantalla === 'function') {
+            try { mostrarPantalla('estudiante'); } catch (e) {}
+        }
+        _showMain('pantallaEstudiante');
         var sub2 = document.getElementById('estudianteSubtitulo');
         if (sub2) {
-            var mats = aulaNombresMaterias(user);
+            var mats = typeof aulaNombresMaterias === 'function' ? aulaNombresMaterias(user) : [];
             sub2.textContent = user.nombre + (mats.length ? (' · ' + mats.join(', ')) : '');
         }
         aulaSetAvatarEl(document.getElementById('estIconoAula'), user, '🎓');
@@ -1393,8 +1439,8 @@ function aulaOpenPanel() {
         var fg = document.getElementById('estFiltroGrupo');
         if (fm) delete fm.dataset.iniciado;
         if (fg) delete fg.dataset.iniciado;
-        if (typeof activarTabsSeccion === 'function') activarTabsSeccion('pantallaEstudiante');
-        function _renderEst() { try { aulaRenderEstudiante(); } catch (eR) {} }
+        _activateAulaTab('pantallaEstudiante', 'est-tareas');
+        function _renderEst() { try { aulaRenderEstudiante(); } catch (eR) { console.error('aulaRenderEstudiante', eR); } }
         if (window.GeoCloud && GeoCloud.isOn() && GeoCloud.syncDown) {
             GeoCloud.syncDown().then(_renderEst).catch(_renderEst);
         } else {
