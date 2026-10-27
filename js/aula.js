@@ -14,25 +14,120 @@ var AULA_KEYS = {
     quices: 'geometrics_quices'
 };
 
-/** Versión de esquema: al cambiar, limpia usuarios para forzar re-registro con nuevos campos */
-var GEOMETRICS_DB_VERSION = 3;
+/** Versión de esquema: al cambiar, limpia datos no oficiales y fuerza re-registro */
+var GEOMETRICS_DB_VERSION = 4;
 (function migrarBaseDatosGeoMetrics() {
     try {
         var v = parseInt(localStorage.getItem('geometrics_db_version') || '0', 10);
         if (v < GEOMETRICS_DB_VERSION) {
-            // Reiniciar usuarios y sesión (nuevos campos: codigo, etc.)
-            localStorage.removeItem('geometrics_users');
-            localStorage.removeItem('geometrics_session');
-            localStorage.removeItem('geometrics_perfiles');
+            // Limpieza completa de datos locales (usuarios, sesión, quices, entregas, chats…)
+            var keys = [];
+            for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                if (k && (k.indexOf('geometrics_') === 0 || k.indexOf('aula_') === 0 || k.indexOf('gm_') === 0)) {
+                    keys.push(k);
+                }
+            }
+            keys.forEach(function (k) { localStorage.removeItem(k); });
             localStorage.setItem('geometrics_db_version', String(GEOMETRICS_DB_VERSION));
-            console.info('[GeoMetrics] Base de usuarios reiniciada (v' + GEOMETRICS_DB_VERSION + ').');
+            console.info('[GeoMetrics] Base de datos reiniciada (v' + GEOMETRICS_DB_VERSION + '). Solo correos oficiales @unipamplona.edu.co.');
         }
     } catch (e) {}
 })();
 
 
 /** Superadministrador fijo de la aplicación */
+
 var AULA_SUPER_ADMIN = 'andres.enriquezval@unipamplona.edu.co';
+
+/** Confirmación con modal propio (sustituye window.confirm) */
+function gmConfirm(mensaje, opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+        var modal = document.getElementById('gmConfirmModal');
+        var msg = document.getElementById('gmConfirmMsg');
+        var title = document.getElementById('gmConfirmTitle');
+        var btnOk = document.getElementById('gmConfirmOk');
+        var btnCancel = document.getElementById('gmConfirmCancel');
+        if (!modal || !msg || !btnOk || !btnCancel) {
+            resolve(window.confirm(mensaje));
+            return;
+        }
+        if (title) title.textContent = opts.titulo || 'Confirmar acción';
+        msg.textContent = mensaje || '¿Estás seguro?';
+        btnOk.textContent = opts.okTexto || 'Eliminar';
+        btnCancel.textContent = opts.cancelTexto || 'Cancelar';
+        modal.hidden = false;
+        function close(val) {
+            modal.hidden = true;
+            btnOk.onclick = null;
+            btnCancel.onclick = null;
+            modal.onclick = null;
+            document.removeEventListener('keydown', onKey);
+            resolve(!!val);
+        }
+        function onKey(e) {
+            if (e.key === 'Escape') close(false);
+            if (e.key === 'Enter') close(true);
+        }
+        btnOk.onclick = function () { close(true); };
+        btnCancel.onclick = function () { close(false); };
+        modal.onclick = function (e) { if (e.target === modal) close(false); };
+        document.addEventListener('keydown', onKey);
+        setTimeout(function () { try { btnCancel.focus(); } catch (e) {} }, 30);
+    });
+}
+
+/** Género del usuario: 'mujer' | 'hombre' | '' */
+function aulaGeneroUsuario(user) {
+    if (!user) return '';
+    var g = String(user.genero || user.sexo || '').toLowerCase().trim();
+    if (g === 'mujer' || g === 'femenino' || g === 'f' || g === 'female') return 'mujer';
+    if (g === 'hombre' || g === 'masculino' || g === 'm' || g === 'male') return 'hombre';
+    return '';
+}
+
+/** Saludo del menú según rol y género */
+function aulaTextoSaludo(user) {
+    if (!user) return 'Bienvenido';
+    var nombre = (user.nombre || user.nombres || '').trim();
+    // Solo primer nombre compuesto razonable
+    var corto = nombre.split(/\s+/).slice(0, 2).join(' ');
+    var g = aulaGeneroUsuario(user);
+    var esDoc = user.rol === 'docente';
+    if (g === 'mujer') {
+        return esDoc
+            ? ('Bienvenida Ingeniera ' + corto)
+            : ('Bienvenida futura Ingeniera ' + corto);
+    }
+    if (g === 'hombre') {
+        return esDoc
+            ? ('Bienvenido Ingeniero ' + corto)
+            : ('Bienvenido futuro Ingeniero ' + corto);
+    }
+    // Sin género definido
+    return esDoc
+        ? ('Bienvenido/a ' + corto)
+        : ('Bienvenido/a ' + corto);
+}
+
+/** Texto de bienvenida de Civix según género */
+function aulaTextoCivixHola(user) {
+    var g = aulaGeneroUsuario(user);
+    var nombre = '';
+    if (user) {
+        nombre = (user.nombres || user.nombre || '').trim().split(/\s+/)[0] || '';
+    }
+    var hola = nombre ? ('¡Hola, ' + nombre + '!') : '¡Hola!';
+    if (g === 'mujer') {
+        return hola + ' Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo. Estoy aquí para acompañarte, futura ingeniera.';
+    }
+    if (g === 'hombre') {
+        return hola + ' Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo. Estoy aquí para acompañarte, futuro ingeniero.';
+    }
+    return hola + ' Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.';
+}
+
 
 function aulaLoad(key, fallback) {
     try {
@@ -64,18 +159,20 @@ function aulaUid() {
 }
 
 function aulaSeed() {
-    // Ya no se crea docente demo. Los docentes reales se autorizan desde el panel admin
-    // y se registran ellos mismos con su correo institucional.
     var users = aulaLoad(AULA_KEYS.users, null);
     if (!users || !Array.isArray(users)) users = [];
-    // Eliminar cualquier resto del docente de prueba en local
-    var DEMO_EMAIL = 'docente.demo@unipamplona.edu.co';
-    var antes = users.length;
-    users = users.filter(function(u) {
-        return !(u && String(u.email || '').toLowerCase() === DEMO_EMAIL);
+    // Solo correos oficiales @unipamplona.edu.co; eliminar perfiles demo
+    var dom = (typeof aulaDominio === 'function' ? aulaDominio() : 'unipamplona.edu.co').toLowerCase();
+    users = users.filter(function (u) {
+        var em = String((u && u.email) || '').toLowerCase();
+        if (!em.endsWith('@' + dom)) return false;
+        // Sin cuentas demo
+        if (em.indexOf('demo') >= 0 || em.indexOf('test') >= 0) return false;
+        if (u && (u.id === 'doc_demo' || u.grupo === 'DEMO')) return false;
+        return true;
     });
-    if (users.length !== antes) aulaSave(AULA_KEYS.users, users);
-    // Superadmin por correo (Andrés); la cuenta la crea él al registrarse
+    aulaSave(AULA_KEYS.users, users);
+    // Superadmin por correo (Andrés); la cuenta la crea él al registrarse como estudiante
     try {
         if (typeof aulaAdminsLoad === 'function' && typeof aulaAdminsSave === 'function') {
             var ads = aulaAdminsLoad();
@@ -130,23 +227,13 @@ function aulaSetSession(user) {
         var payload = JSON.stringify({
             id: user.id,
             nombre: user.nombre,
-            nombrePreferido: user.nombrePreferido || '',
             email: user.email,
             rol: user.rol,
             codigo: user.codigo || '',
             materia: user.materia || '',
             grupo: user.grupo || '',
             materias: user.materias || [],
-            foto: user.foto || '',
-            civixEstilo: user.civixEstilo || 'didactico',
-            tema: user.tema || 'oscuro',
-            estado: user.estado || 'disponible',
-            bio: user.bio || '',
-            telefono: user.telefono || '',
-            semestre: user.semestre || '',
-            cargo: user.cargo || '',
-            horarioAtencion: user.horarioAtencion || '',
-            linkTeams: user.linkTeams || ''
+            foto: user.foto || ''
         });
         sessionStorage.setItem(AULA_KEYS.session, payload);
         sessionStorage.setItem('geometrics_tab_alive', '1');
@@ -465,6 +552,11 @@ function aulaUsuarioCoincideMateriaGrupo(user, materia, grupo) {
 
 function aulaSetAvatarEl(el, user, fallbackText) {
     if (!el) return;
+    var color = (user && user.avatarColor) || '#3B82F6';
+    try {
+        el.style.boxShadow = '0 0 0 2px ' + color;
+        el.style.borderColor = color;
+    } catch (e) {}
     if (user && user.foto) {
         el.classList.add('con-foto');
         el.style.backgroundImage = 'url(' + user.foto + ')';
@@ -472,6 +564,7 @@ function aulaSetAvatarEl(el, user, fallbackText) {
     } else {
         el.classList.remove('con-foto');
         el.style.backgroundImage = '';
+        el.style.backgroundColor = color;
         el.textContent = fallbackText || (user ? aulaIniciales(user.nombre) : '?');
     }
 }
@@ -972,12 +1065,18 @@ function aulaInitLogin() {
                 err.textContent = 'Ingresa tu código estudiantil (mínimo 4 caracteres).';
                 return;
             }
+            var genero = ((document.getElementById('regGenero') || {}).value || '').trim();
+            if (genero !== 'mujer' && genero !== 'hombre') {
+                err.textContent = 'Selecciona tu género.';
+                return;
+            }
             var user = {
                 id: aulaUid(),
                 nombre: nombres + ' ' + apellidos,
                 nombres: nombres,
                 apellidos: apellidos,
                 codigo: codigo,
+                genero: genero,
                 email: email,
                 password: pass,
                 rol: 'estudiante',
@@ -1050,6 +1149,11 @@ function aulaInitLogin() {
                 }
             }
 
+            var generoDoc = ((document.getElementById('docGenero') || {}).value || '').trim();
+            if (generoDoc !== 'mujer' && generoDoc !== 'hombre') {
+                err.textContent = 'Selecciona tu género.';
+                return;
+            }
             var users = aulaLoad(AULA_KEYS.users, []);
             var idx = users.findIndex(function(u) { return aulaNormalizarEmail(u.email) === email; });
             var user;
@@ -1063,6 +1167,7 @@ function aulaInitLogin() {
                 user.nombre = nombres + ' ' + apellidos;
                 user.nombres = nombres;
                 user.apellidos = apellidos;
+                user.genero = generoDoc;
                 user.password = pass;
                 user.rol = 'docente';
                 user.materias = materiasDoc;
@@ -1076,6 +1181,7 @@ function aulaInitLogin() {
                     nombre: nombres + ' ' + apellidos,
                     nombres: nombres,
                     apellidos: apellidos,
+                    genero: generoDoc,
                     email: email,
                     password: pass,
                     rol: 'docente',
@@ -1204,11 +1310,10 @@ function aulaUpdateMenuUser(user) {
     var avatar = document.getElementById('menuUserAvatar');
     if (user) {
         var nombre = (user.nombre || '').trim() || 'Usuario';
+        if (saludo) saludo.textContent = aulaTextoSaludo(user);
         if (user.rol === 'docente') {
-            if (saludo) saludo.textContent = 'Bienvenido Ingeniero ' + nombre;
             if (info) info.textContent = 'Docente · Gestiona tu aula y materiales.';
         } else {
-            if (saludo) saludo.textContent = 'Bienvenido futuro Ingeniero ' + nombre;
             if (info) {
                 var mats = aulaNombresMaterias(user);
                 info.textContent = mats.length
@@ -1219,7 +1324,7 @@ function aulaUpdateMenuUser(user) {
         aulaSetAvatarEl(avatar, user, aulaIniciales(nombre));
         aulaActualizarMenuMaterias(user);
     } else if (saludo) {
-        saludo.textContent = 'Bienvenido';
+        saludo.textContent = 'Bienvenido/a';
         aulaSetAvatarEl(avatar, null, '?');
     }
 
@@ -1237,12 +1342,6 @@ function aulaUpdateMenuUser(user) {
 }
 
 function aulaLogout() {
-    try {
-        if (typeof civixResetSesion === 'function') civixResetSesion({ skipWelcome: true });
-        if (typeof civixLastEmail !== 'undefined') civixLastEmail = '';
-        var modalCx = document.getElementById('modalAsistente') || document.getElementById('civixModal');
-        if (modalCx) modalCx.classList.remove('active');
-    } catch (eCx) {}
     aulaSetSession(null);
     if (typeof mostrarPantalla === 'function') mostrarPantalla('inicio');
     var formLogin = document.getElementById('formLogin');
@@ -1342,6 +1441,8 @@ function aulaRenderDocente() {
     try { if (typeof aulaRenderIntegrantesDocente === 'function') aulaRenderIntegrantesDocente(); } catch (e) {}
     try { if (typeof aulaRenderQuicesDocente === 'function') aulaRenderQuicesDocente(); } catch (eQ) {}
     try { if (typeof aulaQuizCivixBind === 'function') aulaQuizCivixBind(); } catch (eQC) {}
+    try { if (typeof aulaQuizBuilderBind === 'function') aulaQuizBuilderBind(); } catch (eQB) {}
+    try { if (typeof aulaRenderCorreccionQuices === 'function') aulaRenderCorreccionQuices(); } catch (eQR) {}
 }
 
 function aulaActualizarResumenDocente() {
@@ -1400,11 +1501,13 @@ function aulaRenderTareasDocente() {
 
     box.querySelectorAll('[data-del-tarea]').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            if (!confirm('¿Eliminar esta tarea? También se ocultará para los estudiantes.')) return;
             var id = btn.getAttribute('data-del-tarea');
-            var list = aulaLoad(AULA_KEYS.tareas, []).filter(function(t) { return t.id !== id; });
-            aulaSave(AULA_KEYS.tareas, list);
-            aulaRenderDocente();
+            gmConfirm('¿Eliminar esta tarea? También se ocultará para los estudiantes.', { titulo: 'Eliminar tarea' }).then(function(ok) {
+                if (!ok) return;
+                var list = aulaLoad(AULA_KEYS.tareas, []).filter(function(t) { return t.id !== id; });
+                aulaSave(AULA_KEYS.tareas, list);
+                aulaRenderDocente();
+            });
         });
     });
     box.querySelectorAll('[data-edit-tarea]').forEach(function(btn) {
@@ -1515,12 +1618,14 @@ function aulaRenderPresDocente() {
     }).join('');
     box.querySelectorAll('[data-del-pres]').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            if (!confirm('¿Eliminar esta presentación?')) return;
             var id = btn.getAttribute('data-del-pres');
-            var list2 = aulaLoad(AULA_KEYS.presentaciones, []).filter(function(p) { return p.id !== id; });
-            aulaSave(AULA_KEYS.presentaciones, list2);
-            aulaRenderPresDocente();
-            aulaActualizarResumenDocente();
+            gmConfirm('¿Eliminar esta presentación?', { titulo: 'Eliminar presentación' }).then(function(ok) {
+                if (!ok) return;
+                var list2 = aulaLoad(AULA_KEYS.presentaciones, []).filter(function(p) { return p.id !== id; });
+                aulaSave(AULA_KEYS.presentaciones, list2);
+                aulaRenderPresDocente();
+                aulaActualizarResumenDocente();
+            });
         });
     });
 }
@@ -2776,357 +2881,677 @@ function aulaEntregar() {
 }
 
 
+function aulaPerfilColorActual(user) {
+    return (user && user.avatarColor) || '#3B82F6';
+}
+
+function aulaPerfilSetTab(tab) {
+    document.querySelectorAll('#perfilTabs .perfil-tab').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-ptab') === tab);
+    });
+    var map = { datos: 'Datos', academico: 'Academico', aula: 'Aula', prefs: 'Prefs' };
+    Object.keys(map).forEach(function (t) {
+        var pane = document.getElementById('perfilPane' + map[t]);
+        if (!pane) return;
+        var on = t === tab;
+        pane.hidden = !on;
+        pane.classList.toggle('active', on);
+    });
+}
+
+
+function aulaPerfilRegistrarActividad(user) {
+    if (!user || !user.email) return;
+    try {
+        var key = 'geometrics_racha_' + String(user.email).toLowerCase();
+        var today = new Date().toISOString().slice(0, 10);
+        var data = {};
+        try { data = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { data = {}; }
+        var days = Array.isArray(data.days) ? data.days : [];
+        if (days.indexOf(today) < 0) days.push(today);
+        days = days.sort().slice(-60);
+        var racha = 0;
+        var d = new Date();
+        for (var i = 0; i < 60; i++) {
+            var iso = d.toISOString().slice(0, 10);
+            if (days.indexOf(iso) >= 0) racha++;
+            else if (i > 0) break;
+            d.setDate(d.getDate() - 1);
+        }
+        data.days = days;
+        data.racha = racha;
+        data.ultimoAcceso = new Date().toISOString();
+        localStorage.setItem(key, JSON.stringify(data));
+    } catch (e2) {}
+}
+function aulaPerfilGetRacha(user) {
+    if (!user || !user.email) return { racha: 0, ultimoAcceso: null };
+    try {
+        var key = 'geometrics_racha_' + String(user.email).toLowerCase();
+        var data = JSON.parse(localStorage.getItem(key) || '{}');
+        return { racha: data.racha || 0, ultimoAcceso: data.ultimoAcceso || null };
+    } catch (e) { return { racha: 0, ultimoAcceso: null }; }
+}
+function aulaPerfilNivel(stats) {
+    var total = (stats.tareas || 0) + (stats.quices || 0) + (stats.chats || 0);
+    if (total >= 20) return { id: 'experto', label: 'Nivel Experto', emoji: '🏆' };
+    if (total >= 10) return { id: 'avanzado', label: 'Nivel Avanzado', emoji: '📐' };
+    if (total >= 4) return { id: 'intermedio', label: 'Nivel Intermedio', emoji: '🧱' };
+    return { id: 'novato', label: 'Nivel Novato', emoji: '🚀' };
+}
+function aulaPerfilLogros(user, stats) {
+    if (user && user.rol === 'docente') {
+        return [
+            { id: 'pub_tarea', emoji: '📋', label: 'Primera tarea', ok: (stats.tareas || 0) >= 1 },
+            { id: 'pub_quiz', emoji: '❓', label: 'Primer quiz', ok: (stats.quices || 0) >= 1 },
+            { id: 'civix_doc', emoji: '🤖', label: 'Usa Civix', ok: (stats.chats || 0) >= 1 },
+            { id: 'productivo', emoji: '⚡', label: 'Productivo', ok: ((stats.tareas || 0) + (stats.quices || 0)) >= 5 },
+            { id: 'racha_3', emoji: '🔥', label: 'Racha 3 días', ok: (stats.racha || 0) >= 3 },
+            { id: 'mentor', emoji: '🎓', label: 'Mentor activo', ok: ((stats.tareas || 0) + (stats.quices || 0)) >= 12 }
+        ];
+    }
+    return [
+        { id: 'primera_entrega', emoji: '📝', label: 'Primera entrega', ok: (stats.tareas || 0) >= 1 },
+        { id: 'quiz_hecho', emoji: '✅', label: 'Primer quiz', ok: (stats.quices || 0) >= 1 },
+        { id: 'civix_10', emoji: '🤖', label: '10 chats Civix', ok: (stats.chats || 0) >= 10 },
+        { id: 'quiz_perfecto', emoji: '⭐', label: 'Quiz perfecto', ok: !!stats.quizPerfecto },
+        { id: 'racha_3', emoji: '🔥', label: 'Racha 3 días', ok: (stats.racha || 0) >= 3 },
+        { id: 'activo_15', emoji: '💪', label: 'Muy activo', ok: ((stats.tareas || 0) + (stats.quices || 0) + (stats.chats || 0)) >= 15 }
+    ];
+}
+
+function aulaPerfilBindUI() {
+    if (window.__perfilUIBound) return;
+    window.__perfilUIBound = true;
+    var tabs = document.getElementById('perfilTabs');
+    if (tabs) {
+        tabs.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-ptab]');
+            if (btn) aulaPerfilSetTab(btn.getAttribute('data-ptab'));
+        });
+    }
+    var av = document.getElementById('perfilAvatarClick');
+    var file = document.getElementById('perfilFotoInput');
+    if (av && file) {
+        av.addEventListener('click', function () { file.click(); });
+        file.addEventListener('change', function () {
+            if (!file.files || !file.files[0]) return;
+            var f = file.files[0];
+            if (f.size > 1.5 * 1024 * 1024) {
+                var err = document.getElementById('perfilError');
+                if (err) err.textContent = 'La foto debe pesar menos de 1.5 MB.';
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function () {
+                window.__perfilFotoPendiente = reader.result;
+                var prev = document.getElementById('perfilFotoPreview');
+                var ph = document.getElementById('perfilFotoPlaceholder');
+                if (prev) { prev.src = reader.result; prev.hidden = false; }
+                if (ph) ph.hidden = true;
+            };
+            reader.readAsDataURL(f);
+        });
+    }
+    var quit = document.getElementById('btnPerfilQuitarFoto');
+    if (quit) {
+        quit.addEventListener('click', function () {
+            window.__perfilFotoPendiente = '';
+            window.__perfilQuitarFoto = true;
+            var prev = document.getElementById('perfilFotoPreview');
+            var ph = document.getElementById('perfilFotoPlaceholder');
+            if (prev) { prev.removeAttribute('src'); prev.hidden = true; }
+            if (ph) {
+                ph.hidden = false;
+                var u = aulaGetSession();
+                ph.textContent = (typeof aulaIniciales === 'function' && u) ? aulaIniciales(u.nombre || '?') : '?';
+            }
+        });
+    }
+    var colors = document.getElementById('perfilColores');
+    if (colors) {
+        colors.addEventListener('click', function (e) {
+            var btn = e.target.closest('.perfil-color');
+            if (!btn) return;
+            colors.querySelectorAll('.perfil-color').forEach(function (c) { c.classList.remove('active'); });
+            btn.classList.add('active');
+            window.__perfilColorPendiente = btn.getAttribute('data-color');
+            var wrap = document.getElementById('perfilAvatarClick');
+            if (wrap) wrap.style.setProperty('--perfil-ring', window.__perfilColorPendiente);
+            var hero = document.getElementById('perfilHero');
+            if (hero) hero.style.setProperty('--perfil-ring', window.__perfilColorPendiente);
+        });
+    }
+    var cancel = document.getElementById('btnPerfilCancelar');
+    if (cancel) {
+        cancel.addEventListener('click', function () {
+            var modal = document.getElementById('modalPerfil');
+            if (modal) modal.hidden = true;
+        });
+    }
+
+    var exp = document.getElementById('btnPerfilExportar');
+    if (exp) {
+        exp.addEventListener('click', function () {
+            var user = aulaGetSession();
+            if (!user) return;
+            if (typeof aulaUsuarioCompleto === 'function') user = aulaUsuarioCompleto(user) || user;
+            var full = Object.assign({}, user);
+            delete full.password;
+            var blob = new Blob([JSON.stringify(full, null, 2)], { type: 'application/json' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'geometrics-perfil-' + String(user.email || 'usuario').replace(/[@.]/g, '_') + '.json';
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+        });
+    }
+    document.querySelectorAll('.perfil-atajo').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var tipo = btn.getAttribute('data-atajo');
+            var modal = document.getElementById('modalPerfil');
+            if (modal) modal.hidden = true;
+            try {
+                var tabMap = { tareas: 'doc-tareas', quices: 'doc-quices', pres: 'doc-presentaciones' };
+                var tab = tabMap[tipo];
+                var btnTab = tab ? document.querySelector('.tab-btn[data-tab="' + tab + '"]') : null;
+                var btnAula = document.getElementById('btnAula');
+                if (btnAula) btnAula.click();
+                setTimeout(function () { if (btnTab) btnTab.click(); }, 200);
+            } catch (e) {}
+        });
+    });
+
+}
+
+function aulaPerfilFunMessage(user, stats) {
+    var g = typeof aulaGeneroUsuario === 'function' ? aulaGeneroUsuario(user) : '';
+    var total = (stats.tareas || 0) + (stats.quices || 0) + (stats.chats || 0);
+    var emoji = '🏗️';
+    var title = 'Ingeniería en marcha';
+    var text = 'Explora ensayos, Civix y tu aula para subir de nivel.';
+    if (total === 0) {
+        emoji = '🚀';
+        title = g === 'mujer' ? '¡Tu camino empieza hoy, ingeniera!' : (g === 'hombre' ? '¡Tu camino empieza hoy, ingeniero!' : '¡Tu camino empieza hoy!');
+        text = 'Entrega una tarea, resuelve un quiz o pregunta a Civix. Cada paso cuenta.';
+    } else if (total < 5) {
+        emoji = '🧱';
+        title = 'Cimentando conocimientos';
+        text = 'Ya tienes actividad. Sigue practicando: la constancia construye criterio técnico.';
+    } else if (total < 15) {
+        emoji = '📐';
+        title = 'Nivel intermedio desbloqueado';
+        text = 'Buen ritmo. Revisa quices y entregas para reforzar lo aprendido.';
+    } else {
+        emoji = '🏆';
+        title = g === 'mujer' ? '¡Referente del laboratorio!' : '¡Referente del laboratorio!';
+        text = 'Tu participación es excelente. Comparte dudas con Civix o en el aula.';
+    }
+    return { emoji: emoji, title: title, text: text };
+}
+
+function aulaPerfilCalcularStats(user) {
+    var stats = { tareas: 0, quices: 0, chats: 0, promedio: null, quizPerfecto: false, racha: 0, total: 0, pendientes: 0 };
+    if (!user) return stats;
+    var r = typeof aulaPerfilGetRacha === 'function' ? aulaPerfilGetRacha(user) : { racha: 0 };
+    stats.racha = r.racha || 0;
+    try {
+        var entregas = aulaLoad(AULA_KEYS.entregas, []) || [];
+        if (user.rol === 'docente') {
+            var tareas = aulaLoad(AULA_KEYS.tareas, []) || [];
+            stats.tareas = tareas.filter(function (t) { return t.docenteId === user.id; }).length;
+            stats.pendientes = entregas.filter(function (e) {
+                var t = tareas.find(function (x) { return x.id === e.tareaId; });
+                return t && t.docenteId === user.id && !e.calificada && e.nota == null;
+            }).length;
+        } else {
+            stats.tareas = entregas.filter(function (e) {
+                return e.estudianteId === user.id || e.estudianteEmail === user.email;
+            }).length;
+        }
+    } catch (e1) {}
+    try {
+        var qe = (typeof aulaQuizLoadEntregas === 'function' ? aulaQuizLoadEntregas() : aulaLoad('geometrics_quiz_entregas', [])) || [];
+        if (user.rol === 'docente') {
+            var quices = (typeof aulaLoadQuices === 'function' ? aulaLoadQuices() : []) || [];
+            stats.quices = quices.filter(function (q) { return q.docenteId === user.id; }).length;
+            var misIds = {};
+            quices.forEach(function (q) { if (q.docenteId === user.id) misIds[q.id] = true; });
+            qe.forEach(function (e) {
+                if (!misIds[e.quizId]) return;
+                (e.respuestas || []).forEach(function (r) {
+                    if (r.tipo === 'abierta' && r.notaAbierta == null && r.correcta == null) stats.pendientes++;
+                });
+            });
+        } else {
+            var mine = qe.filter(function (e) {
+                return e.estudianteId === user.id || e.estudianteEmail === user.email;
+            });
+            stats.quices = mine.length;
+            var scores = [];
+            mine.forEach(function (e) {
+                var auto = e.autoMax > 0 ? (e.autoScore / e.autoMax) : null;
+                var abiertas = (e.respuestas || []).filter(function (r) { return r.tipo === 'abierta' && r.notaAbierta != null; });
+                var sum = 0, n = 0;
+                if (auto != null) { sum += auto; n++; }
+                abiertas.forEach(function (r) { sum += r.notaAbierta; n++; });
+                if (n) {
+                    var p = sum / n;
+                    scores.push(p);
+                    if (p >= 0.99) stats.quizPerfecto = true;
+                }
+            });
+            if (scores.length) stats.promedio = scores.reduce(function (a, b) { return a + b; }, 0) / scores.length;
+        }
+    } catch (e2) {}
+    try {
+        var key = 'civix_chats_' + String(user.email || user.id || '').toLowerCase();
+        var raw = localStorage.getItem(key);
+        if (raw) {
+            var list = JSON.parse(raw);
+            stats.chats = Array.isArray(list) ? list.length : 0;
+        }
+    } catch (e3) {}
+    stats.total = (stats.tareas || 0) + (stats.quices || 0) + (stats.chats || 0);
+    return stats;
+}
 
 function aulaAbrirPerfil() {
     var user = aulaGetSession();
     if (!user) return;
-    var full = null;
-    try {
-        var users = aulaLoad(AULA_KEYS.users, []);
-        full = users.find(function(u) {
-            return u && (u.id === user.id || aulaNormalizarEmail(u.email) === aulaNormalizarEmail(user.email));
-        }) || user;
-    } catch (e) { full = user; }
+    // datos frescos
+    if (typeof aulaUsuarioCompleto === 'function') {
+        user = aulaUsuarioCompleto(user) || user;
+    }
+    aulaPerfilBindUI();
+    if (typeof aulaPerfilRegistrarActividad === 'function') aulaPerfilRegistrarActividad(user);
+    window.__perfilFotoPendiente = null;
+    window.__perfilQuitarFoto = false;
+    window.__perfilColorPendiente = aulaPerfilColorActual(user);
 
     var modal = document.getElementById('modalPerfil');
     if (!modal) return;
     modal.hidden = false;
-    var err = document.getElementById('perfilError');
-    var ok = document.getElementById('perfilOk');
-    if (err) err.textContent = '';
-    if (ok) ok.hidden = true;
+    aulaPerfilSetTab('datos');
 
-    // Tabs
-    document.querySelectorAll('.perfil-tab').forEach(function(t) {
-        t.classList.toggle('active', t.getAttribute('data-ptab') === 'identidad');
-    });
-    document.querySelectorAll('.perfil-panel').forEach(function(p) {
-        var on = p.id === 'ptab-identidad';
-        p.hidden = !on;
-        p.classList.toggle('active', on);
-    });
+    var err = document.getElementById('perfilError');
+    if (err) err.textContent = '';
+    var ok = document.getElementById('perfilOk');
+    if (ok) ok.hidden = true;
 
     var fileInput = document.getElementById('perfilFotoInput');
     if (fileInput) fileInput.value = '';
+
+    var esDoc = user.rol === 'docente';
+    var ce = document.getElementById('perfilCamposEstudiante');
+    var cd = document.getElementById('perfilCamposDocente');
+    if (ce) ce.hidden = !!esDoc;
+    if (cd) cd.hidden = !esDoc;
+    var be = document.getElementById('perfilBloqueEstudianteAcad');
+    var bd = document.getElementById('perfilBloqueDocenteAcad');
+    if (be) be.hidden = !!esDoc;
+    if (bd) bd.hidden = !esDoc;
+    var ad = document.getElementById('perfilAulaDocente');
+    if (ad) ad.hidden = !esDoc;
+    var codWrap = document.getElementById('perfilCodigoWrap');
+    if (codWrap) codWrap.style.display = esDoc ? 'none' : '';
+
+    var setV = function(id, v) {
+        var el = document.getElementById(id);
+        if (el) el.value = (v == null ? '' : v);
+    };
+    setV('perfilSemestre', user.semestre || '');
+    setV('perfilEstadoMatricula', user.estadoMatricula || 'activo');
+    setV('perfilJornada', user.jornada || '');
+    setV('perfilMateriaFavorita', user.materiaFavorita || '');
+    setV('perfilHorarioEstudio', user.horarioEstudio || '');
+    setV('perfilTitulo', user.titulo || '');
+    setV('perfilDepartamento', user.departamento || 'Ingeniería Civil');
+    setV('perfilHorarioAtencion', user.horarioAtencion || '');
+    setV('perfilOficina', user.oficina || '');
+    setV('perfilEstadoAula', user.estadoAula || 'disponible');
+    setV('perfilFirma', user.firma || '');
+    setV('perfilMsgBienvenida', user.msgBienvenida || '');
+    setV('perfilTema', user.temaPerfil || 'auto');
+    var mb = document.getElementById('perfilMostrarBio');
+    if (mb) mb.checked = user.mostrarBio !== false;
+    var nt = document.getElementById('perfilNotifTareas');
+    if (nt) nt.checked = user.notifTareas !== false;
+
+    // Hero
+    var saludo = document.getElementById('perfilSaludo');
+    if (saludo && typeof aulaTextoSaludo === 'function') {
+        saludo.textContent = aulaTextoSaludo(user);
+    }
+    var nom = document.getElementById('perfilNombreTitulo');
+    if (nom) nom.textContent = user.nombre || ((user.nombres || '') + ' ' + (user.apellidos || '')).trim() || 'Usuario';
+    var badge = document.getElementById('perfilRolBadge');
+    if (badge) {
+        badge.textContent = user.rol === 'docente' ? 'Docente' : 'Estudiante';
+        badge.classList.toggle('is-docente', user.rol === 'docente');
+    }
+
+    var color = window.__perfilColorPendiente;
+    var wrap = document.getElementById('perfilAvatarClick');
+    if (wrap) wrap.style.setProperty('--perfil-ring', color);
     var prev = document.getElementById('perfilFotoPreview');
     var ph = document.getElementById('perfilFotoPlaceholder');
-    if (full.foto && prev) {
-        prev.src = full.foto;
+    if (user.foto && prev) {
+        prev.src = user.foto;
         prev.hidden = false;
         if (ph) ph.hidden = true;
     } else {
-        if (prev) { prev.hidden = true; prev.removeAttribute('src'); }
-        if (ph) ph.hidden = false;
+        if (prev) { prev.removeAttribute('src'); prev.hidden = true; }
+        if (ph) {
+            ph.hidden = false;
+            ph.textContent = (typeof aulaIniciales === 'function') ? aulaIniciales(user.nombre || '?') : '?';
+        }
     }
 
-    var setVal = function(id, v) {
-        var el = document.getElementById(id);
-        if (el) el.value = v == null ? '' : String(v);
-    };
-    setVal('perfilNombre', full.nombre || ((full.nombres || '') + ' ' + (full.apellidos || '')).trim());
-    setVal('perfilPreferido', full.nombrePreferido || (full.nombres || '').split(/\s+/)[0] || '');
-    setVal('perfilEmail', full.email || '');
-    setVal('perfilCodigo', full.codigo || '');
-    setVal('perfilTelefono', full.telefono || '');
-    setVal('perfilSemestre', full.semestre || '');
-    setVal('perfilBio', full.bio || '');
-    setVal('perfilCargo', full.cargo || '');
-    setVal('perfilHorario', full.horarioAtencion || '');
-    setVal('perfilLinkTeams', full.linkTeams || '');
-    setVal('perfilTema', full.tema || 'oscuro');
-    setVal('perfilCivixEstilo', full.civixEstilo || 'didactico');
-    setVal('perfilEstado', full.estado || 'disponible');
-    setVal('perfilPortafolioUrl', full.portafolioUrl || '');
-    setVal('perfilPassActual', '');
-    setVal('perfilPassNueva', '');
-    setVal('perfilPassNueva2', '');
-
-    var chk = function(id, def) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        var n = full.notificaciones || {};
-        var p = full.privacidad || {};
-        if (id === 'perfilNotTareas') el.checked = n.tareas !== false;
-        if (id === 'perfilNotChat') el.checked = n.chat !== false;
-        if (id === 'perfilNotNotas') el.checked = n.notas !== false;
-        if (id === 'perfilPrivFoto') el.checked = p.fotoCompaneros !== false;
-        if (id === 'perfilPrivBio') el.checked = p.bioDocente !== false;
-    };
-    chk('perfilNotTareas'); chk('perfilNotChat'); chk('perfilNotNotas');
-    chk('perfilPrivFoto'); chk('perfilPrivBio');
-
-    var isDoc = full.rol === 'docente';
-    var docEx = document.getElementById('perfilDocenteExtra');
-    if (docEx) docEx.hidden = !isDoc;
-    var wrapSem = document.getElementById('wrapSemestre');
-    if (wrapSem) wrapSem.style.display = isDoc ? 'none' : '';
-
-    aulaPerfilRenderAcademico(full);
-    aulaPerfilRenderInsignias(full);
-    aulaPerfilApplyThemePreview(full.tema || 'oscuro');
-}
-
-function aulaPerfilSwitchTab(tabId) {
-    document.querySelectorAll('.perfil-tab').forEach(function(t) {
-        t.classList.toggle('active', t.getAttribute('data-ptab') === tabId);
-    });
-    document.querySelectorAll('.perfil-panel').forEach(function(p) {
-        var on = p.id === 'ptab-' + tabId;
-        p.hidden = !on;
-        p.classList.toggle('active', on);
-    });
-}
-
-function aulaPerfilRenderAcademico(user) {
-    var list = document.getElementById('perfilMateriasList');
-    var docBox = document.getElementById('perfilDocentesAsignados');
-    var prog = document.getElementById('perfilProgreso');
-    var inf = document.getElementById('perfilInformes');
-    var fav = document.getElementById('perfilFavChips');
-    if (!list) return;
-
-    var mats = Array.isArray(user.materias) ? user.materias : [];
-    if (!mats.length && user.materia) {
-        mats = [{ nombre: user.materia, grupo: user.grupo || '' }];
-    }
-    if (!mats.length) {
-        list.innerHTML = '<p class="aula-vacio">Sin materias registradas. Vuelve a registrarte o pide al admin revisar tu cuenta.</p>';
+    // Campos
+    var n = document.getElementById('perfilNombres');
+    var a = document.getElementById('perfilApellidos');
+    if (n) n.value = user.nombres || (user.nombre || '').split(/\s+/).slice(0, -1).join(' ') || user.nombre || '';
+    if (a) a.value = user.apellidos || (user.nombre || '').split(/\s+/).slice(-1).join(' ') || '';
+    var em = document.getElementById('perfilEmail');
+    if (em) em.value = user.email || '';
+    var gen = document.getElementById('perfilGenero');
+    if (gen) gen.value = (typeof aulaGeneroUsuario === 'function' ? aulaGeneroUsuario(user) : '') || user.genero || '';
+    var codWrap = document.getElementById('perfilCodigoWrap');
+    var cod = document.getElementById('perfilCodigo');
+    if (user.rol === 'docente') {
+        if (codWrap) codWrap.style.display = 'none';
     } else {
-        list.innerHTML = '<h4 class="perfil-sub">Materias y grupos</h4>' + mats.map(function(m, i) {
-            var nom = typeof m === 'string' ? m : (m.nombre || m.materia || '');
-            var gr = typeof m === 'string' ? (user.grupo || '') : (m.grupo || '');
-            return '<div class="perfil-mat-row" data-i="' + i + '">' +
-                '<strong>' + aulaEsc(nom) + '</strong>' +
-                '<span>Grupo ' + aulaEsc(gr || '—') + '</span></div>';
-        }).join('');
+        if (codWrap) codWrap.style.display = '';
+        if (cod) cod.value = user.codigo || '';
     }
+    var bio = document.getElementById('perfilBio');
+    if (bio) bio.value = user.bio || '';
 
-    if (docBox) {
-        if (user.rol === 'estudiante' && typeof aulaBuscarDocenteMateria === 'function') {
-            var rows = mats.map(function(m) {
-                var nom = typeof m === 'string' ? m : (m.nombre || '');
-                var gr = typeof m === 'string' ? (user.grupo || '') : (m.grupo || '');
-                var d = aulaBuscarDocenteMateria(nom, gr);
-                var dn = d ? (d.nombre || d.email) : 'Sin docente asignado aún';
-                return '<li><strong>' + aulaEsc(nom) + '</strong> · ' + aulaEsc(dn) + '</li>';
-            }).join('');
-            docBox.innerHTML = '<h4 class="perfil-sub">Docentes de tus cursos</h4><ul>' + (rows || '<li>N/A</li>') + '</ul>';
+    // Académico
+    var chips = document.getElementById('perfilMateriasChips');
+    var mats = [];
+    if (typeof aulaMateriasUsuario === 'function') mats = aulaMateriasUsuario(user) || [];
+    else if (user.materias) mats = user.materias;
+    if (chips) {
+        if (!mats.length) {
+            chips.innerHTML = '<span class="login-hint">Sin materias registradas.</span>';
         } else {
-            docBox.innerHTML = user.rol === 'docente'
-                ? '<p class="login-hint">Como docente dictas las materias que registraste. Los estudiantes de esos grupos te verán en el chat.</p>'
-                : '';
+            chips.innerHTML = mats.map(function (m) {
+                var nomM = m.nombre || m;
+                var g = m.grupo ? (' <span>· ' + String(m.grupo) + '</span>') : '';
+                return '<span class="perfil-chip">' + (typeof aulaEsc === 'function' ? aulaEsc(nomM) : nomM) + g + '</span>';
+            }).join('');
         }
     }
-
-    // Progreso orientativo
-    var entregas = 0, tareas = 0, ensayos = 0;
-    try {
-        var allE = aulaLoad(AULA_KEYS.entregas, []);
-        entregas = allE.filter(function(e) {
-            return e && aulaNormalizarEmail(e.email || e.estudianteEmail) === aulaNormalizarEmail(user.email);
-        }).length;
-    } catch (e1) {}
-    try {
-        for (var i = 0; i < localStorage.length; i++) {
-            var k = localStorage.key(i);
-            if (k && k.indexOf('geometrics_historial') === 0) {
-                var arr = JSON.parse(localStorage.getItem(k) || '[]');
-                if (Array.isArray(arr)) ensayos += arr.length;
-            }
-        }
-    } catch (e2) {}
-    if (prog) {
-        prog.innerHTML = '<h4 class="perfil-sub">Progreso</h4>' +
-            '<div class="perfil-prog-grid">' +
-            '<div><b>' + entregas + '</b><span>Entregas</span></div>' +
-            '<div><b>' + ensayos + '</b><span>Ensayos guardados</span></div>' +
-            '<div><b>' + mats.length + '</b><span>Materias</span></div>' +
-            '</div>';
+    var stats = aulaPerfilCalcularStats(user);
+    var nivel = typeof aulaPerfilNivel === 'function' ? aulaPerfilNivel(stats) : { label: 'Nivel Novato', emoji: '🚀' };
+    var bn = document.getElementById('perfilBadgeNivel');
+    if (bn) { bn.textContent = nivel.label; bn.classList.add('perfil-mini-nivel'); }
+    var st = document.getElementById('perfilStatTareas');
+    var sq = document.getElementById('perfilStatQuices');
+    var sc = document.getElementById('perfilStatChats');
+    if (st) st.textContent = String(stats.tareas);
+    if (sq) sq.textContent = String(stats.quices);
+    if (sc) sc.textContent = String(stats.chats);
+    var stl = document.getElementById('perfilStatTareasLabel');
+    var sql = document.getElementById('perfilStatQuicesLabel');
+    if (stl) stl.textContent = esDoc ? 'Tareas publicadas' : 'Entregas';
+    if (sql) sql.textContent = esDoc ? 'Quices publicados' : 'Quices enviados';
+    var sp = document.getElementById('perfilStatPromedio');
+    if (sp) {
+        if (esDoc) sp.textContent = String(stats.pendientes || 0);
+        else sp.textContent = stats.promedio != null ? Math.round(stats.promedio * 100) + '%' : '—';
+        try {
+            var promLabel = sp.parentElement && sp.parentElement.querySelector('span');
+            if (promLabel) promLabel.textContent = esDoc ? 'Por calificar' : 'Promedio quices';
+        } catch (eL) {}
     }
-    if (inf) {
-        inf.innerHTML = '<h4 class="perfil-sub">Informes</h4><p class="login-hint">Los PDF de laboratorio se generan desde cada ensayo (Descargar informe).</p>';
+    var sr = document.getElementById('perfilStatRacha');
+    if (sr) sr.textContent = String(stats.racha || 0);
+    var fun = aulaPerfilFunMessage(user, stats);
+    var fe = document.getElementById('perfilFunEmoji');
+    var ft = document.getElementById('perfilFunTitle');
+    var fx = document.getElementById('perfilFunText');
+    if (fe) fe.textContent = fun.emoji || nivel.emoji;
+    if (ft) ft.textContent = fun.title || nivel.label;
+    if (fx) fx.textContent = fun.text;
+    var hint = document.getElementById('perfilAcadHint');
+    if (hint) {
+        hint.textContent = esDoc
+            ? 'Materias que dictas, carga publicada y pendientes de revisión.'
+            : 'Tu matrícula, progreso, logros y actividad reciente.';
     }
-
-    var favoritos = Array.isArray(user.favoritos) ? user.favoritos : [];
-    var opts = [
-        'Contenido de humedad', 'Granulometría', 'Límites de Atterberg', 'Corte directo',
-        'Compresión inconfinada', 'Consolidación', 'Triaxial', 'Resistencia — Tracción', 'Civix'
-    ];
-    if (fav) {
-        fav.innerHTML = opts.map(function(o) {
-            var on = favoritos.indexOf(o) >= 0;
-            return '<button type="button" class="perfil-chip' + (on ? ' on' : '') + '" data-fav="' + aulaEsc(o) + '">' + aulaEsc(o) + '</button>';
+    var logrosEl = document.getElementById('perfilLogros');
+    if (logrosEl && typeof aulaPerfilLogros === 'function') {
+        logrosEl.innerHTML = aulaPerfilLogros(user, stats).map(function (l) {
+            return '<div class="perfil-logro' + (l.ok ? ' unlocked' : '') + '"><span>' + l.emoji + '</span> ' + l.label + '</div>';
         }).join('');
-        fav.onclick = function(ev) {
-            var b = ev.target.closest('[data-fav]');
-            if (!b) return;
-            b.classList.toggle('on');
-        };
     }
-}
-
-function aulaPerfilRenderInsignias(user) {
-    var box = document.getElementById('perfilInsignias');
-    if (!box) return;
-    var entregas = 0, ensayos = 0;
-    try {
-        var allE = aulaLoad(AULA_KEYS.entregas, []);
-        entregas = allE.filter(function(e) {
-            return e && aulaNormalizarEmail(e.email || e.estudianteEmail) === aulaNormalizarEmail(user.email);
-        }).length;
-    } catch (e) {}
-    try {
-        for (var i = 0; i < localStorage.length; i++) {
-            var k = localStorage.key(i);
-            if (k && k.indexOf('geometrics_historial') === 0) {
-                var arr = JSON.parse(localStorage.getItem(k) || '[]');
-                if (Array.isArray(arr)) ensayos += arr.length;
+    var rInfo = typeof aulaPerfilGetRacha === 'function' ? aulaPerfilGetRacha(user) : {};
+    var ua = document.getElementById('perfilUltimoAcceso');
+    if (ua) {
+        var ts = rInfo.ultimoAcceso || user.ultimoAcceso;
+        ua.textContent = ts ? ('Último acceso: ' + new Date(ts).toLocaleString('es-CO')) : 'Último acceso: ahora';
+    }
+    // Listas estudiante / docente
+    if (!esDoc) {
+        var ue = document.getElementById('perfilUltimasEntregas');
+        if (ue) {
+            var entregas = (aulaLoad(AULA_KEYS.entregas, []) || []).filter(function (e) {
+                return e.estudianteId === user.id || e.estudianteEmail === user.email;
+            }).sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')); }).slice(0, 3);
+            var tareasAll = aulaLoad(AULA_KEYS.tareas, []) || [];
+            if (!entregas.length) ue.innerHTML = '<p class="login-hint">Aún no hay entregas.</p>';
+            else {
+                ue.innerHTML = entregas.map(function (e) {
+                    var t = tareasAll.find(function (x) { return x.id === e.tareaId; });
+                    var titulo = (t && t.titulo) || 'Entrega';
+                    var est = (e.calificada || e.nota != null) ? '<em class="ok">Calificada</em>' : '<em class="pend">Pendiente</em>';
+                    return '<div class="perfil-lista-item"><span>' + (typeof aulaEsc === 'function' ? aulaEsc(titulo) : titulo) + '</span>' + est + '</div>';
+                }).join('');
             }
         }
-    } catch (e2) {}
-    var badges = [
-        { id: 'foto', ok: !!user.foto, t: 'Perfil con foto', d: 'Subiste tu foto de perfil' },
-        { id: 'bio', ok: !!(user.bio && user.bio.length > 10), t: 'Presentación', d: 'Escribiste una biografía' },
-        { id: 'ensayo1', ok: ensayos >= 1, t: 'Primer ensayo', d: 'Guardaste tu primer ensayo' },
-        { id: 'ensayo10', ok: ensayos >= 10, t: 'Laboratorista', d: '10 o más ensayos guardados' },
-        { id: 'entrega1', ok: entregas >= 1, t: 'Primera entrega', d: 'Enviaste una tarea' },
-        { id: 'entrega5', ok: entregas >= 5, t: 'Constancia', d: '5 entregas realizadas' },
-        { id: 'codigo', ok: !!(user.codigo), t: 'Código registrado', d: 'Código institucional en el perfil' }
-    ];
-    box.innerHTML = badges.map(function(b) {
-        return '<div class="perfil-badge' + (b.ok ? ' earned' : '') + '"><strong>' + b.t + '</strong><span>' + b.d + '</span></div>';
-    }).join('');
-}
+        var uq = document.getElementById('perfilQuicesRecientes');
+        if (uq) {
+            var qe = (typeof aulaQuizLoadEntregas === 'function' ? aulaQuizLoadEntregas() : []) || [];
+            var mine = qe.filter(function (e) {
+                return e.estudianteId === user.id || e.estudianteEmail === user.email;
+            }).sort(function (a, b) { return String(b.fecha || '').localeCompare(String(a.fecha || '')); }).slice(0, 3);
+            var quicesAll = (typeof aulaLoadQuices === 'function' ? aulaLoadQuices() : []) || [];
+            if (!mine.length) uq.innerHTML = '<p class="login-hint">Aún no has enviado quices.</p>';
+            else {
+                uq.innerHTML = mine.map(function (e) {
+                    var q = quicesAll.find(function (x) { return x.id === e.quizId; });
+                    var titulo = (q && q.titulo) || 'Quiz';
+                    var score = e.autoMax > 0 ? (Math.round((e.autoScore / e.autoMax) * 100) + '% auto') : 'Enviado';
+                    return '<div class="perfil-lista-item"><span>' + (typeof aulaEsc === 'function' ? aulaEsc(titulo) : titulo) + '</span><em class="ok">' + score + '</em></div>';
+                }).join('');
+            }
+        }
+    } else {
+        var ga = document.getElementById('perfilGruposActivos');
+        if (ga) {
+            var matsD = mats || [];
+            var usersAll = aulaLoad(AULA_KEYS.users, []) || [];
+            if (!matsD.length) ga.innerHTML = '<p class="login-hint">No hay grupos registrados.</p>';
+            else {
+                ga.innerHTML = matsD.map(function (m) {
+                    var gWant = String(m.grupo || '').toUpperCase();
+                    var count = usersAll.filter(function (u) {
+                        if (!u || u.rol !== 'estudiante') return false;
+                        var um = (typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(u) : u.materias) || [];
+                        return um.some(function (x) {
+                            return x.nombre === m.nombre && (!gWant || String(x.grupo || '').toUpperCase() === gWant);
+                        });
+                    }).length;
+                    return '<div class="perfil-lista-item"><span>' + (m.nombre || '') + ' · Grupo ' + (m.grupo || '—') + '</span><em class="ok">' + count + ' est.</em></div>';
+                }).join('');
+            }
+        }
+        var pc = document.getElementById('perfilPendientesCalificar');
+        if (pc) {
+            pc.innerHTML = stats.pendientes > 0
+                ? ('<div class="perfil-lista-item"><span>Entregas / abiertas sin nota</span><em class="pend">' + stats.pendientes + '</em></div>')
+                : '<p class="login-hint">No tienes pendientes por calificar 🎉</p>';
+        }
+        var rs = document.getElementById('perfilResumenSemanal');
+        if (rs) {
+            rs.textContent = 'Publicaciones en historial: ' + stats.tareas + ' tarea(s) y ' + stats.quices + ' quiz(zes). Pendientes de revisar: ' + stats.pendientes + '.';
+        }
+    }
 
-function aulaPerfilApplyThemePreview(tema) {
-    try {
-        document.documentElement.setAttribute('data-theme', tema === 'claro' ? 'light' : (tema === 'sistema' ? 'system' : 'dark'));
-        if (tema === 'claro') document.body.classList.add('theme-light');
-        else document.body.classList.remove('theme-light');
-    } catch (e) {}
+    // Preferencias
+    document.querySelectorAll('#perfilColores .perfil-color').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-color') === color);
+    });
+    var showCod = document.getElementById('perfilMostrarCodigo');
+    if (showCod) showCod.checked = user.mostrarCodigo !== false;
+    var anim = document.getElementById('perfilAnimaciones');
+    if (anim) anim.checked = user.animaciones !== false;
+    var p1 = document.getElementById('perfilPassNueva');
+    var p2 = document.getElementById('perfilPassNueva2');
+    if (p1) p1.value = '';
+    if (p2) p2.value = '';
 }
 
 function aulaGuardarPerfil() {
     var user = aulaGetSession();
     if (!user) return;
     var err = document.getElementById('perfilError');
-    var ok = document.getElementById('perfilOk');
     if (err) err.textContent = '';
-    if (ok) ok.hidden = true;
+    var okEl = document.getElementById('perfilOk');
+    if (okEl) okEl.hidden = true;
+
+    var nombres = ((document.getElementById('perfilNombres') || {}).value || '').trim();
+    var apellidos = ((document.getElementById('perfilApellidos') || {}).value || '').trim();
+    var genero = ((document.getElementById('perfilGenero') || {}).value || '').trim();
+    var codigo = ((document.getElementById('perfilCodigo') || {}).value || '').trim();
+    var bio = ((document.getElementById('perfilBio') || {}).value || '').trim().slice(0, 120);
+    var pass1 = ((document.getElementById('perfilPassNueva') || {}).value || '');
+    var pass2 = ((document.getElementById('perfilPassNueva2') || {}).value || '');
+    var mostrarCodigo = !!(document.getElementById('perfilMostrarCodigo') || {}).checked;
+    var animaciones = !!(document.getElementById('perfilAnimaciones') || {}).checked;
+    var color = window.__perfilColorPendiente || aulaPerfilColorActual(user);
+
+    if (nombres.length < 2) {
+        if (err) err.textContent = 'Ingresa tus nombres.';
+        aulaPerfilSetTab('datos');
+        return;
+    }
+    if (apellidos.length < 2) {
+        if (err) err.textContent = 'Ingresa tus apellidos.';
+        aulaPerfilSetTab('datos');
+        return;
+    }
+    if (genero && genero !== 'mujer' && genero !== 'hombre') genero = '';
+    if (pass1 || pass2) {
+        if (pass1.length < 6) {
+            if (err) err.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+            aulaPerfilSetTab('prefs');
+            return;
+        }
+        if (pass1 !== pass2) {
+            if (err) err.textContent = 'Las contraseñas no coinciden.';
+            aulaPerfilSetTab('prefs');
+            return;
+        }
+    }
 
     var users = aulaLoad(AULA_KEYS.users, []);
-    var idx = users.findIndex(function(u) {
-        return u && (u.id === user.id || aulaNormalizarEmail(u.email) === aulaNormalizarEmail(user.email));
-    });
+    var idx = users.findIndex(function (u) { return u.id === user.id || u.email === user.email; });
     if (idx < 0) {
-        if (err) err.textContent = 'No se encontró tu usuario.';
-        return;
-    }
-    var u = users[idx];
-
-    var g = function(id) {
-        var el = document.getElementById(id);
-        return el ? String(el.value || '').trim() : '';
-    };
-
-    var nombre = g('perfilNombre');
-    if (nombre.length < 3) {
-        if (err) err.textContent = 'Escribe tu nombre completo.';
-        aulaPerfilSwitchTab('identidad');
+        if (err) err.textContent = 'No se encontró tu cuenta.';
         return;
     }
 
-    // Password change optional
-    var pAct = g('perfilPassActual');
-    var pNew = g('perfilPassNueva');
-    var pNew2 = g('perfilPassNueva2');
-    if (pAct || pNew || pNew2) {
-        if (!pAct || u.password !== pAct) {
-            if (err) err.textContent = 'La contraseña actual no es correcta.';
-            aulaPerfilSwitchTab('seguridad');
-            return;
-        }
-        if (pNew.length < 6) {
-            if (err) err.textContent = 'La nueva contraseña debe tener al menos 6 caracteres.';
-            aulaPerfilSwitchTab('seguridad');
-            return;
-        }
-        if (pNew !== pNew2) {
-            if (err) err.textContent = 'La confirmación de contraseña no coincide.';
-            aulaPerfilSwitchTab('seguridad');
-            return;
-        }
-        u.password = pNew;
-    }
-
-    u.nombre = nombre;
-    u.nombrePreferido = g('perfilPreferido') || nombre.split(/\s+/)[0];
-    u.codigo = g('perfilCodigo');
-    u.telefono = g('perfilTelefono');
-    u.semestre = g('perfilSemestre');
-    u.bio = g('perfilBio').slice(0, 280);
-    u.cargo = g('perfilCargo');
-    u.horarioAtencion = g('perfilHorario');
-    u.linkTeams = g('perfilLinkTeams');
-    u.tema = g('perfilTema') || 'oscuro';
-    u.civixEstilo = g('perfilCivixEstilo') || 'didactico';
-    u.estado = g('perfilEstado') || 'disponible';
-    u.portafolioUrl = g('perfilPortafolioUrl');
-    u.notificaciones = {
-        tareas: !!(document.getElementById('perfilNotTareas') && document.getElementById('perfilNotTareas').checked),
-        chat: !!(document.getElementById('perfilNotChat') && document.getElementById('perfilNotChat').checked),
-        notas: !!(document.getElementById('perfilNotNotas') && document.getElementById('perfilNotNotas').checked)
-    };
-    u.privacidad = {
-        fotoCompaneros: !!(document.getElementById('perfilPrivFoto') && document.getElementById('perfilPrivFoto').checked),
-        bioDocente: !!(document.getElementById('perfilPrivBio') && document.getElementById('perfilPrivBio').checked)
-    };
-    var favs = [];
-    document.querySelectorAll('#perfilFavChips .perfil-chip.on').forEach(function(b) {
-        favs.push(b.getAttribute('data-fav'));
-    });
-    u.favoritos = favs;
-
-    function persist(fotoData) {
-        if (fotoData) u.foto = fotoData;
-        users[idx] = u;
-        aulaSave(AULA_KEYS.users, users);
-        var session = Object.assign({}, u);
-        delete session.password;
-        aulaSetSession(session);
-        if (typeof aulaUpdateMenuUser === 'function') aulaUpdateMenuUser(session);
-        aulaPerfilApplyThemePreview(u.tema);
-        try {
-            localStorage.setItem('geometrics_theme', u.tema || 'oscuro');
-            localStorage.setItem('geometrics_civix_estilo', u.civixEstilo || 'didactico');
-        } catch (e) {}
-        if (ok) { ok.hidden = false; }
-        if (err) err.textContent = '';
-        setTimeout(function() {
-            var modal = document.getElementById('modalPerfil');
-            if (modal) modal.hidden = true;
-        }, 700);
-    }
-
-    var fileInput = document.getElementById('perfilFotoInput');
-    if (fileInput && fileInput.files && fileInput.files[0]) {
-        var f = fileInput.files[0];
-        if (f.size > 1.5 * 1024 * 1024) {
-            if (err) err.textContent = 'La foto debe pesar menos de 1.5 MB.';
-            aulaPerfilSwitchTab('identidad');
-            return;
-        }
-        var reader = new FileReader();
-        reader.onload = function() { persist(reader.result); };
-        reader.onerror = function() {
-            if (err) err.textContent = 'No se pudo leer la imagen.';
-        };
-        reader.readAsDataURL(f);
+    users[idx].nombres = nombres;
+    users[idx].apellidos = apellidos;
+    users[idx].nombre = nombres + ' ' + apellidos;
+    if (genero) users[idx].genero = genero;
+    if (user.rol !== 'docente') users[idx].codigo = codigo;
+    users[idx].bio = bio;
+    users[idx].avatarColor = color;
+    users[idx].mostrarCodigo = mostrarCodigo;
+    users[idx].animaciones = animaciones;
+    users[idx].mostrarBio = !!(document.getElementById('perfilMostrarBio') || {}).checked;
+    users[idx].notifTareas = !!(document.getElementById('perfilNotifTareas') || {}).checked;
+    users[idx].estadoAula = ((document.getElementById('perfilEstadoAula') || {}).value || 'disponible');
+    users[idx].temaPerfil = ((document.getElementById('perfilTema') || {}).value || 'auto');
+    users[idx].ultimoAcceso = new Date().toISOString();
+    if (user.rol === 'docente') {
+        users[idx].titulo = ((document.getElementById('perfilTitulo') || {}).value || '').trim();
+        users[idx].departamento = ((document.getElementById('perfilDepartamento') || {}).value || '').trim();
+        users[idx].horarioAtencion = ((document.getElementById('perfilHorarioAtencion') || {}).value || '').trim();
+        users[idx].oficina = ((document.getElementById('perfilOficina') || {}).value || '').trim();
+        users[idx].firma = ((document.getElementById('perfilFirma') || {}).value || '').trim();
+        users[idx].msgBienvenida = ((document.getElementById('perfilMsgBienvenida') || {}).value || '').trim().slice(0, 240);
     } else {
-        persist(null);
+        users[idx].semestre = ((document.getElementById('perfilSemestre') || {}).value || '').trim();
+        users[idx].estadoMatricula = ((document.getElementById('perfilEstadoMatricula') || {}).value || 'activo');
+        users[idx].jornada = ((document.getElementById('perfilJornada') || {}).value || '').trim();
+        users[idx].materiaFavorita = ((document.getElementById('perfilMateriaFavorita') || {}).value || '').trim();
+        users[idx].horarioEstudio = ((document.getElementById('perfilHorarioEstudio') || {}).value || '').trim();
     }
-}
+    if (pass1) users[idx].password = pass1;
+    try {
+        var hist = Array.isArray(users[idx].historialPerfil) ? users[idx].historialPerfil : [];
+        hist.push({ fecha: new Date().toISOString(), accion: pass1 ? 'perfil+contraseña' : 'perfil' });
+        users[idx].historialPerfil = hist.slice(-20);
+    } catch (eH) {}
 
+    if (window.__perfilQuitarFoto) {
+        users[idx].foto = '';
+    } else if (window.__perfilFotoPendiente) {
+        users[idx].foto = window.__perfilFotoPendiente;
+    }
+
+    aulaSave(AULA_KEYS.users, users);
+    var updated = Object.assign({}, users[idx]);
+    delete updated.password;
+
+    var session = aulaGetSession() || {};
+    session.nombre = updated.nombre;
+    session.nombres = updated.nombres;
+    session.apellidos = updated.apellidos;
+    session.genero = updated.genero;
+    session.codigo = updated.codigo;
+    session.bio = updated.bio;
+    session.foto = updated.foto;
+    session.avatarColor = updated.avatarColor;
+    session.mostrarCodigo = updated.mostrarCodigo;
+    session.animaciones = updated.animaciones;
+    session.id = updated.id || session.id;
+    session.email = updated.email || session.email;
+    session.rol = updated.rol || session.rol;
+    session.materias = updated.materias || session.materias;
+    session.materia = updated.materia || session.materia;
+    session.grupo = updated.grupo || session.grupo;
+    session.semestre = updated.semestre;
+    session.titulo = updated.titulo;
+    session.departamento = updated.departamento;
+    session.estadoAula = updated.estadoAula;
+    session.avatarColor = updated.avatarColor;
+    session.bio = updated.bio;
+    session.genero = updated.genero;
+    session.firma = updated.firma;
+    session.msgBienvenida = updated.msgBienvenida;
+    aulaSetSession(session);
+    aulaUpdateMenuUser(session);
+
+    // refrescar hero del modal
+    var saludo = document.getElementById('perfilSaludo');
+    if (saludo && typeof aulaTextoSaludo === 'function') saludo.textContent = aulaTextoSaludo(session);
+    var nomT = document.getElementById('perfilNombreTitulo');
+    if (nomT) nomT.textContent = session.nombre || 'Usuario';
+
+    if (okEl) {
+        okEl.hidden = false;
+        setTimeout(function () { okEl.hidden = true; }, 2500);
+    }
+    window.__perfilFotoPendiente = null;
+    window.__perfilQuitarFoto = false;
+}
 
 window.__simOrigen = null;
 
@@ -3319,29 +3744,6 @@ function aulaInitUI() {
             aulaAbrirPerfil();
         });
     }
-    document.querySelectorAll('.perfil-tab').forEach(function(tab) {
-        tab.addEventListener('click', function() {
-            var id = tab.getAttribute('data-ptab');
-            if (id && typeof aulaPerfilSwitchTab === 'function') aulaPerfilSwitchTab(id);
-        });
-    });
-    var fotoIn = document.getElementById('perfilFotoInput');
-    if (fotoIn && !fotoIn._previewBound) {
-        fotoIn._previewBound = true;
-        fotoIn.addEventListener('change', function() {
-            var f = fotoIn.files && fotoIn.files[0];
-            if (!f) return;
-            var r = new FileReader();
-            r.onload = function() {
-                var prev = document.getElementById('perfilFotoPreview');
-                var ph = document.getElementById('perfilFotoPlaceholder');
-                if (prev) { prev.src = r.result; prev.hidden = false; }
-                if (ph) ph.hidden = true;
-            };
-            r.readAsDataURL(f);
-        });
-    }
-
     var btnCerrarPerfil = document.getElementById('btnCerrarPerfil');
     if (btnCerrarPerfil) btnCerrarPerfil.addEventListener('click', function() {
         document.getElementById('modalPerfil').hidden = true;
@@ -3986,15 +4388,18 @@ function aulaBuscarDocenteMateria(materia, grupo) {
         return aulaDocenteDicta(u, materia, gWant);
     });
     if (candidatos.length) return candidatos[0];
-    // Sin docente para esa materia/grupo
+    // Sin docente registrado para esa materia/grupo
     return null;
 }
 
 function aulaChatDocenteEmail() {
     var users = aulaLoad(AULA_KEYS.users, []);
-    var d = users.find(function(u) { return u && u.rol === 'docente' && u.email; });
-    if (d) return d.email;
-    return '';
+    var d = users.find(function(u) {
+        if (!u || u.rol !== 'docente' || !u.email) return false;
+        var em = String(u.email).toLowerCase();
+        return em.indexOf('demo') < 0 && em.indexOf('test') < 0;
+    });
+    return d ? d.email : '';
 }
 function aulaChatDocenteNombre() {
     var users = aulaLoad(AULA_KEYS.users, []);
@@ -4367,9 +4772,11 @@ function aulaChatRenderListaEstudiante() {
             ev.stopPropagation();
             var id = btn.getAttribute('data-del-chat');
             if (!id) return;
-            if (!confirm('¿Eliminar esta conversación? No se podrá recuperar.')) return;
-            aulaChatEliminar(id);
-            aulaChatRenderListaEstudiante();
+            gmConfirm('¿Eliminar esta conversación de forma permanente?', { titulo: 'Eliminar conversación' }).then(function(ok) {
+                if (!ok) return;
+                aulaChatEliminar(id);
+                aulaChatRenderListaEstudiante();
+            });
         });
     });
     aulaChatUpdateBadges();
@@ -4514,9 +4921,11 @@ function aulaChatBind() {
         btnEstDel.addEventListener('click', function() {
             var id = btnEstDel.dataset.chatId || window.__chatActivoId;
             if (!id) return;
-            if (!confirm('¿Eliminar esta conversación? No se podrá recuperar.')) return;
-            aulaChatEliminar(id);
-            if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+            gmConfirm('¿Eliminar esta conversación de forma permanente?', { titulo: 'Eliminar conversación' }).then(function(ok) {
+                if (!ok) return;
+                aulaChatEliminar(id);
+                if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+            });
         });
     }
     var btnEst = document.getElementById('btnEstChatEnviar');
@@ -4581,6 +4990,8 @@ function aulaChatBind() {
                 if (tab === 'doc-quices') {
                     if (typeof aulaRenderQuicesDocente === 'function') aulaRenderQuicesDocente();
                     if (typeof aulaQuizCivixBind === 'function') aulaQuizCivixBind();
+                    if (typeof aulaQuizBuilderBind === 'function') aulaQuizBuilderBind();
+                    if (typeof aulaRenderCorreccionQuices === 'function') aulaRenderCorreccionQuices();
                 }
                 if (tab === 'est-quices') {
                     if (typeof aulaRenderQuicesEstudiante === 'function') aulaRenderQuicesEstudiante();
@@ -4638,6 +5049,7 @@ function aulaAbrirAdmin() {
     var dd = document.getElementById('menuUserDropdown');
     if (dd) dd.hidden = true;
     aulaRenderAdmin();
+    try { aulaAdminCivixAvatarInit(); } catch (eAv) {}
 }
 
 function aulaRenderAdmin() {
@@ -4704,8 +5116,8 @@ function aulaRenderAdmin() {
                 if (aulaEsAdminEmail(r.email)) badges += ' <span class="admin-badge">admin</span>';
                 var canRemove = !r.fijo && r.email !== aulaNormalizarEmail(typeof AULA_SUPER_ADMIN !== 'undefined' ? AULA_SUPER_ADMIN : '');
                 return '<div class="admin-row" data-email="' + escHtml(r.email) + '">' +
-                    '<div><strong>' + escHtml(r.nombre || r.email.split('@')[0]) + '</strong>' +
-                    '<br><span>' + escHtml(r.email) + '</span>' + badges + '</div>' +
+                    '<div><strong class="admin-row-name">' + escHtml(r.nombre || r.email.split('@')[0]) + '</strong>' +
+                    '<br><span class="admin-row-email">' + escHtml(r.email) + '</span>' + badges + '</div>' +
                     (canRemove
                         ? '<button type="button" class="btn-admin-del" data-del-doc="' + escHtml(r.email) + '">Quitar docente</button>'
                         : '<span class="login-hint">Protegido</span>') +
@@ -4713,9 +5125,10 @@ function aulaRenderAdmin() {
             }).join('');
             lista.querySelectorAll('[data-del-doc]').forEach(function(btn) {
                 btn.addEventListener('click', function() {
-                    if (confirm('¿Quitar el rol de docente a ' + btn.getAttribute('data-del-doc') + '?')) {
-                        aulaAdminQuitarDocente(btn.getAttribute('data-del-doc'));
-                    }
+                    var em = btn.getAttribute('data-del-doc');
+                    gmConfirm('¿Quitar el rol de docente a ' + em + '?', { titulo: 'Quitar docente', okTexto: 'Quitar' }).then(function(ok) {
+                        if (ok) aulaAdminQuitarDocente(em);
+                    });
                 });
             });
         }
@@ -4726,7 +5139,7 @@ function aulaRenderAdmin() {
         adminsEl.innerHTML = '<h4 style="margin:0 0 8px;color:#c4b5a0;">Administradores actuales</h4>' +
             ads.map(function(e) {
                 var fijo = e === aulaNormalizarEmail(AULA_SUPER_ADMIN);
-                return '<div class="admin-row"><div><strong>' + escHtml(e) + '</strong>' +
+                return '<div class="admin-row"><div><strong class="admin-row-name">' + escHtml(e) + '</strong>' +
                     (fijo ? ' <span class="admin-badge">superadmin</span>' : '') + '</div>' +
                     (fijo ? '' : '<button type="button" class="btn-admin-del" data-del-adm="' + escHtml(e) + '">Quitar admin</button>') +
                     '</div>';
@@ -4853,7 +5266,10 @@ function aulaAdminBind() {
 
 document.addEventListener('DOMContentLoaded', function() {
     try { aulaAdminBind(); } catch (e) {}
+    try { aulaAdminCivixAvatarInit(); } catch (eAv0) {}
     try { if (typeof aulaQuizCivixBind === 'function') aulaQuizCivixBind(); } catch (e2) {}
+    try { if (typeof aulaQuizBuilderBind === 'function') aulaQuizBuilderBind(); } catch (e3) {}
+    try { if (typeof aulaRenderCorreccionQuices === 'function') aulaRenderCorreccionQuices(); } catch (e4) {}
 });
 // also bind immediately if DOM ready
 if (document.readyState !== 'loading') {
@@ -4881,6 +5297,181 @@ function aulaSaveQuices(list) {
     } catch (e) {}
 }
 
+// =========================================
+// QUIZ AVANZADO (tipos, temporizador, aleatorio, corrección)
+// =========================================
+
+var __quizPreguntasDraft = [];
+var __quizTimers = {};
+
+function aulaQuizEsc(s) {
+    return (typeof aulaEsc === 'function') ? aulaEsc(s) : String(s || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function aulaQuizLoadEntregas() {
+    return aulaLoad('geometrics_quiz_entregas', []) || [];
+}
+function aulaQuizSaveEntregas(list) {
+    try { localStorage.setItem('geometrics_quiz_entregas', JSON.stringify(list || [])); } catch (e) {}
+    try {
+        if (window.GeoCloud && GeoCloud.isOn() && typeof firebase !== 'undefined') {
+            try { firebase.database().ref('quiz_entregas').set(list || []); } catch (e2) {}
+        }
+    } catch (e3) {}
+}
+
+function aulaQuizHashSeed(str) {
+    var h = 2166136261;
+    str = String(str || '');
+    for (var i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+}
+function aulaQuizRng(seed) {
+    var s = seed >>> 0;
+    return function () {
+        s = (s + 0x6D2B79F5) >>> 0;
+        var t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+function aulaQuizShuffle(arr, rng) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+        var j = Math.floor(rng() * (i + 1));
+        var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+}
+
+/** Mitad de cada tipo (mín. 1 si hay), aleatorio y estable por estudiante+quiz */
+function aulaQuizSeleccionarParaEstudiante(preguntas, estudianteId, quizId) {
+    var byType = { multiple: [], vf: [], abierta: [] };
+    (preguntas || []).forEach(function (p) {
+        var t = p.tipo || 'abierta';
+        if (!byType[t]) byType[t] = [];
+        byType[t].push(p);
+    });
+    var rng = aulaQuizRng(aulaQuizHashSeed(String(estudianteId) + '|' + String(quizId)));
+    var out = [];
+    Object.keys(byType).forEach(function (t) {
+        var list = byType[t];
+        if (!list.length) return;
+        var n = Math.max(1, Math.floor(list.length / 2));
+        if (n > list.length) n = list.length;
+        var shuffled = aulaQuizShuffle(list, rng);
+        out = out.concat(shuffled.slice(0, n));
+    });
+    return aulaQuizShuffle(out, rng);
+}
+
+function aulaQuizSetTipo(tipo) {
+    var hid = document.getElementById('quizTipoActual');
+    if (hid) hid.value = tipo;
+    var tabs = document.querySelectorAll('#quizTipoTabs .login-tab');
+    tabs.forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-qtipo') === tipo);
+    });
+    var pm = document.getElementById('quizPanelMultiple');
+    var pv = document.getElementById('quizPanelVF');
+    var pa = document.getElementById('quizPanelAbierta');
+    if (pm) pm.hidden = tipo !== 'multiple';
+    if (pv) pv.hidden = tipo !== 'vf';
+    if (pa) pa.hidden = tipo !== 'abierta';
+}
+
+function aulaQuizRenderDraft() {
+    var box = document.getElementById('quizListaPreguntas');
+    var cnt = document.getElementById('quizContadorPreg');
+    if (cnt) cnt.textContent = '(' + __quizPreguntasDraft.length + ')';
+    if (!box) return;
+    if (!__quizPreguntasDraft.length) {
+        box.innerHTML = '<p class="aula-vacio">Aún no has agregado preguntas.</p>';
+        return;
+    }
+    box.innerHTML = __quizPreguntasDraft.map(function (p, idx) {
+        var tipoLabel = p.tipo === 'multiple' ? 'Opción múltiple' : (p.tipo === 'vf' ? 'V/F' : 'Abierta');
+        var extra = '';
+        if (p.tipo === 'multiple') {
+            extra = '<p class="login-hint">A) ' + aulaQuizEsc(p.opciones && p.opciones.A) +
+                ' · B) ' + aulaQuizEsc(p.opciones && p.opciones.B) +
+                ' · C) ' + aulaQuizEsc(p.opciones && p.opciones.C) +
+                ' · <strong>Correcta: ' + aulaQuizEsc(p.correcta) + '</strong></p>';
+        } else if (p.tipo === 'vf') {
+            extra = '<p class="login-hint">Correcta: <strong>' + (p.correcta === 'V' ? 'Verdadero' : 'Falso') + '</strong></p>';
+        } else {
+            extra = '<p class="login-hint">Respuesta abierta' + (p.guia ? ' · Guía: ' + aulaQuizEsc(p.guia) : '') + '</p>';
+        }
+        return '<div class="aula-item" data-idx="' + idx + '">' +
+            '<strong>' + (idx + 1) + '. [' + tipoLabel + '] ' + aulaQuizEsc(p.texto) + '</strong>' +
+            extra +
+            '<button type="button" class="btn-limpiar btn-quiz-draft-del" data-idx="' + idx + '">Quitar</button></div>';
+    }).join('');
+    box.querySelectorAll('.btn-quiz-draft-del').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var i = parseInt(btn.getAttribute('data-idx'), 10);
+            __quizPreguntasDraft.splice(i, 1);
+            aulaQuizRenderDraft();
+        });
+    });
+}
+
+function aulaQuizAgregarPregunta() {
+    var err = document.getElementById('quizError');
+    if (err) err.textContent = '';
+    var tipo = ((document.getElementById('quizTipoActual') || {}).value || 'multiple');
+    var texto = ((document.getElementById('quizEnunciado') || {}).value || '').trim();
+    if (!texto) {
+        if (err) err.textContent = 'Escribe el enunciado de la pregunta.';
+        return;
+    }
+    var p = { id: 'p_' + Date.now() + '_' + Math.floor(Math.random() * 9999), tipo: tipo, texto: texto };
+    if (tipo === 'multiple') {
+        var A = ((document.getElementById('quizOptA') || {}).value || '').trim();
+        var B = ((document.getElementById('quizOptB') || {}).value || '').trim();
+        var C = ((document.getElementById('quizOptC') || {}).value || '').trim();
+        if (!A || !B || !C) {
+            if (err) err.textContent = 'Completa las opciones A, B y C.';
+            return;
+        }
+        p.opciones = { A: A, B: B, C: C };
+        p.correcta = ((document.getElementById('quizCorrectaMultiple') || {}).value || 'A');
+    } else if (tipo === 'vf') {
+        p.opciones = { V: 'Verdadero', F: 'Falso' };
+        p.correcta = ((document.getElementById('quizCorrectaVF') || {}).value || 'V');
+    } else {
+        p.guia = ((document.getElementById('quizGuiaAbierta') || {}).value || '').trim();
+    }
+    __quizPreguntasDraft.push(p);
+    // limpiar campos
+    var en = document.getElementById('quizEnunciado'); if (en) en.value = '';
+    ['quizOptA','quizOptB','quizOptC','quizGuiaAbierta'].forEach(function (id) {
+        var el = document.getElementById(id); if (el) el.value = '';
+    });
+    aulaQuizRenderDraft();
+}
+
+function aulaQuizBuilderBind() {
+    if (window.__quizBuilderBound) return;
+    window.__quizBuilderBound = true;
+    var tabs = document.getElementById('quizTipoTabs');
+    if (tabs) {
+        tabs.addEventListener('click', function (ev) {
+            var btn = ev.target.closest('[data-qtipo]');
+            if (!btn) return;
+            aulaQuizSetTipo(btn.getAttribute('data-qtipo'));
+        });
+    }
+    var add = document.getElementById('btnQuizAgregarPregunta');
+    if (add) add.addEventListener('click', function () { aulaQuizAgregarPregunta(); });
+    aulaQuizSetTipo('multiple');
+    aulaQuizRenderDraft();
+}
+
 function aulaCrearQuiz() {
     var user = aulaRequireSession();
     if (!user || user.rol !== 'docente') return;
@@ -4889,27 +5480,30 @@ function aulaCrearQuiz() {
     var titulo = ((document.getElementById('quizTitulo') || {}).value || '').trim();
     var materia = (document.getElementById('quizMateria') || {}).value || '';
     var grupo = ((document.getElementById('quizGrupo') || {}).value || '').trim();
-    var preguntasRaw = ((document.getElementById('quizPreguntas') || {}).value || '').trim();
+    var tiempoMin = parseInt(((document.getElementById('quizTiempoMin') || {}).value || '15'), 10);
+    if (!tiempoMin || tiempoMin < 1) tiempoMin = 15;
     if (!titulo) { if (err) err.textContent = 'Escribe un título del quiz.'; return; }
-    if (!preguntasRaw) { if (err) err.textContent = 'Agrega al menos una pregunta (una por línea).'; return; }
-    var preguntas = preguntasRaw.split('\n').map(function (l) { return l.trim(); }).filter(Boolean).map(function (t, i) {
-        return { id: 'p' + (i + 1), texto: t };
-    });
+    if (!__quizPreguntasDraft.length) { if (err) err.textContent = 'Agrega al menos una pregunta con el botón «Agregar pregunta».'; return; }
     var list = aulaLoadQuices();
     list.push({
         id: typeof aulaUid === 'function' ? aulaUid() : ('q_' + Date.now()),
         titulo: titulo,
         materia: materia,
         grupo: grupo,
-        preguntas: preguntas,
+        tiempoMin: tiempoMin,
+        preguntas: __quizPreguntasDraft.slice(),
         docenteId: user.id,
         docenteNombre: user.nombre,
         creada: new Date().toISOString()
     });
     aulaSaveQuices(list);
     var t = document.getElementById('quizTitulo'); if (t) t.value = '';
-    var p = document.getElementById('quizPreguntas'); if (p) p.value = '';
+    var g = document.getElementById('quizGrupo'); if (g) g.value = '';
+    __quizPreguntasDraft = [];
+    aulaQuizRenderDraft();
     aulaRenderQuicesDocente();
+    if (typeof aulaRenderCorreccionQuices === 'function') aulaRenderCorreccionQuices();
+    alert('Quiz publicado. Cada estudiante verá la mitad de las preguntas de cada tipo, al azar, con temporizador.');
 }
 
 function aulaRenderQuicesDocente() {
@@ -4922,20 +5516,63 @@ function aulaRenderQuicesDocente() {
         box.innerHTML = '<p class="aula-vacio">Aún no has publicado quices.</p>';
         return;
     }
+    var entregas = aulaQuizLoadEntregas();
     box.innerHTML = list.slice().reverse().map(function (q) {
+        var nEnt = entregas.filter(function (e) { return e.quizId === q.id; }).length;
+        var tipos = { multiple: 0, vf: 0, abierta: 0 };
+        (q.preguntas || []).forEach(function (p) { tipos[p.tipo || 'abierta'] = (tipos[p.tipo || 'abierta'] || 0) + 1; });
         return '<div class="aula-item">' +
-            '<strong>' + (typeof aulaEsc === 'function' ? aulaEsc(q.titulo) : q.titulo) + '</strong>' +
-            '<p>' + (q.materia || '') + ' · Grupo ' + (q.grupo || 'Todos') + ' · ' + (q.preguntas || []).length + ' pregunta(s)</p>' +
+            '<strong>' + aulaQuizEsc(q.titulo) + '</strong>' +
+            '<p>' + aulaQuizEsc(q.materia || '') + ' · Grupo ' + aulaQuizEsc(q.grupo || 'Todos') +
+            ' · ' + (q.preguntas || []).length + ' pregunta(s) (OM:' + tipos.multiple + ' V/F:' + tipos.vf + ' Ab:' + tipos.abierta + ')' +
+            ' · ' + (q.tiempoMin || 15) + ' min · ' + nEnt + ' entrega(s)</p>' +
             '<button type="button" class="btn-limpiar btn-quiz-del" data-id="' + q.id + '">Eliminar</button></div>';
     }).join('');
     box.querySelectorAll('.btn-quiz-del').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var id = btn.getAttribute('data-id');
-            if (!confirm('¿Eliminar este quiz?')) return;
-            aulaSaveQuices(aulaLoadQuices().filter(function (q) { return q.id !== id; }));
-            aulaRenderQuicesDocente();
+            gmConfirm('¿Eliminar este quiz y sus entregas asociadas?', { titulo: 'Eliminar quiz' }).then(function(ok) {
+                if (!ok) return;
+                aulaSaveQuices(aulaLoadQuices().filter(function (q) { return q.id !== id; }));
+                aulaQuizSaveEntregas(aulaQuizLoadEntregas().filter(function (e) { return e.quizId !== id; }));
+                aulaRenderQuicesDocente();
+                if (typeof aulaRenderCorreccionQuices === 'function') aulaRenderCorreccionQuices();
+            });
         });
     });
+}
+
+function aulaQuizYaEntrego(quizId, estudianteId) {
+    return aulaQuizLoadEntregas().some(function (e) {
+        return e.quizId === quizId && e.estudianteId === estudianteId;
+    });
+}
+
+function aulaQuizIniciarTimer(quizId, minutos, card) {
+    if (__quizTimers[quizId]) {
+        clearInterval(__quizTimers[quizId].iv);
+    }
+    var total = Math.max(1, minutos | 0) * 60;
+    var ends = Date.now() + total * 1000;
+    var el = card.querySelector('.quiz-timer');
+    function tick() {
+        var left = Math.max(0, Math.floor((ends - Date.now()) / 1000));
+        var m = Math.floor(left / 60);
+        var s = left % 60;
+        if (el) {
+            el.textContent = '⏱ Tiempo restante: ' + m + ':' + (s < 10 ? '0' : '') + s;
+            if (left <= 60) el.style.color = '#F87171';
+        }
+        if (left <= 0) {
+            clearInterval(__quizTimers[quizId].iv);
+            var btn = card.querySelector('.btn-quiz-enviar');
+            if (btn && !btn.disabled) {
+                btn.click();
+            }
+        }
+    }
+    __quizTimers[quizId] = { iv: setInterval(tick, 500), ends: ends };
+    tick();
 }
 
 function aulaRenderQuicesEstudiante() {
@@ -4959,25 +5596,88 @@ function aulaRenderQuicesEstudiante() {
         return;
     }
     box.innerHTML = list.slice().reverse().map(function (q) {
-        var qs = (q.preguntas || []).map(function (p, i) {
-            return '<label class="quiz-preg">'+ (i + 1) + '. ' + (p.texto || '') +
-                '<textarea class="quiz-resp" data-qid="' + q.id + '" data-pid="' + p.id + '" rows="2" placeholder="Tu respuesta"></textarea></label>';
+        var ya = aulaQuizYaEntrego(q.id, user.id);
+        if (ya) {
+            return '<div class="aula-item quiz-card" data-quiz="' + q.id + '">' +
+                '<strong>' + aulaQuizEsc(q.titulo || '') + '</strong>' +
+                '<p>' + aulaQuizEsc(q.materia || '') + ' · ' + aulaQuizEsc(q.docenteNombre || '') + '</p>' +
+                '<p class="login-hint">Ya enviaste este quiz.</p></div>';
+        }
+        var seleccion = aulaQuizSeleccionarParaEstudiante(q.preguntas || [], user.id, q.id);
+        var qs = seleccion.map(function (p, i) {
+            var html = '<div class="quiz-preg" data-pid="' + p.id + '" data-tipo="' + (p.tipo || 'abierta') + '">' +
+                '<p><strong>' + (i + 1) + '.</strong> ' + aulaQuizEsc(p.texto || '') + '</p>';
+            if (p.tipo === 'multiple') {
+                ['A','B','C'].forEach(function (k) {
+                    html += '<label style="display:block;margin:4px 0;"><input type="radio" name="qr_' + q.id + '_' + p.id + '" value="' + k + '"> ' +
+                        k + ') ' + aulaQuizEsc(p.opciones && p.opciones[k]) + '</label>';
+                });
+            } else if (p.tipo === 'vf') {
+                html += '<label style="display:block;margin:4px 0;"><input type="radio" name="qr_' + q.id + '_' + p.id + '" value="V"> Verdadero</label>';
+                html += '<label style="display:block;margin:4px 0;"><input type="radio" name="qr_' + q.id + '_' + p.id + '" value="F"> Falso</label>';
+            } else {
+                html += '<textarea class="quiz-resp-abierta" data-pid="' + p.id + '" rows="3" placeholder="Escribe tu respuesta…"></textarea>';
+            }
+            html += '</div>';
+            return html;
         }).join('');
-        return '<div class="aula-item quiz-card" data-quiz="' + q.id + '">' +
-            '<strong>' + (q.titulo || '') + '</strong>' +
-            '<p>' + (q.materia || '') + ' · ' + (q.docenteNombre || '') + '</p>' + qs +
-            '<button type="button" class="btn-calcular btn-quiz-enviar" data-id="' + q.id + '">Enviar respuestas</button></div>';
+        return '<div class="aula-item quiz-card" data-quiz="' + q.id + '" data-tiempo="' + (q.tiempoMin || 15) + '">' +
+            '<strong>' + aulaQuizEsc(q.titulo || '') + '</strong>' +
+            '<p>' + aulaQuizEsc(q.materia || '') + ' · ' + aulaQuizEsc(q.docenteNombre || '') +
+            ' · ' + seleccion.length + ' pregunta(s) asignadas</p>' +
+            '<p class="quiz-timer" style="font-weight:700;color:var(--acento,#2DD4BF);">⏱ Temporizador al iniciar</p>' +
+            '<div class="quiz-preguntas-box" hidden>' + qs + '</div>' +
+            '<button type="button" class="btn-limpiar btn-quiz-iniciar" data-id="' + q.id + '">Iniciar quiz</button> ' +
+            '<button type="button" class="btn-calcular btn-quiz-enviar" data-id="' + q.id + '" hidden>Enviar respuestas</button></div>';
     }).join('');
+
+    box.querySelectorAll('.btn-quiz-iniciar').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-id');
+            var card = box.querySelector('[data-quiz="' + id + '"]');
+            if (!card) return;
+            var boxP = card.querySelector('.quiz-preguntas-box');
+            if (boxP) boxP.hidden = false;
+            btn.hidden = true;
+            var send = card.querySelector('.btn-quiz-enviar');
+            if (send) send.hidden = false;
+            var min = parseInt(card.getAttribute('data-tiempo') || '15', 10);
+            aulaQuizIniciarTimer(id, min, card);
+        });
+    });
+
     box.querySelectorAll('.btn-quiz-enviar').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var id = btn.getAttribute('data-id');
             var card = box.querySelector('[data-quiz="' + id + '"]');
             if (!card) return;
+            if (__quizTimers[id]) { clearInterval(__quizTimers[id].iv); delete __quizTimers[id]; }
+            var quiz = (aulaLoadQuices() || []).find(function (q) { return q.id === id; });
+            var seleccion = aulaQuizSeleccionarParaEstudiante((quiz && quiz.preguntas) || [], user.id, id);
             var respuestas = [];
-            card.querySelectorAll('.quiz-resp').forEach(function (ta) {
-                respuestas.push({ preguntaId: ta.getAttribute('data-pid'), texto: ta.value || '' });
+            var autoScore = 0;
+            var autoMax = 0;
+            seleccion.forEach(function (p) {
+                var val = '';
+                if (p.tipo === 'multiple' || p.tipo === 'vf') {
+                    var checked = card.querySelector('input[name="qr_' + id + '_' + p.id + '"]:checked');
+                    val = checked ? checked.value : '';
+                    autoMax += 1;
+                    if (val && val === p.correcta) autoScore += 1;
+                } else {
+                    var ta = card.querySelector('textarea.quiz-resp-abierta[data-pid="' + p.id + '"]');
+                    val = ta ? (ta.value || '') : '';
+                }
+                respuestas.push({
+                    preguntaId: p.id,
+                    tipo: p.tipo || 'abierta',
+                    texto: val,
+                    correcta: (p.tipo === 'multiple' || p.tipo === 'vf') ? (val === p.correcta) : null
+                });
             });
-            var entregas = aulaLoad('geometrics_quiz_entregas', []) || [];
+            var entregas = aulaQuizLoadEntregas();
+            // evitar duplicados
+            entregas = entregas.filter(function (e) { return !(e.quizId === id && e.estudianteId === user.id); });
             entregas.push({
                 id: 'qe_' + Date.now(),
                 quizId: id,
@@ -4985,18 +5685,86 @@ function aulaRenderQuicesEstudiante() {
                 estudianteEmail: user.email,
                 estudianteNombre: user.nombre,
                 respuestas: respuestas,
+                autoScore: autoScore,
+                autoMax: autoMax,
+                abiertasPendientes: respuestas.filter(function (r) { return r.tipo === 'abierta'; }).length,
                 fecha: new Date().toISOString()
             });
-            try { localStorage.setItem('geometrics_quiz_entregas', JSON.stringify(entregas)); } catch (e) {}
+            aulaQuizSaveEntregas(entregas);
             btn.textContent = 'Enviado ✓';
             btn.disabled = true;
-            alert('Respuestas enviadas.');
+            card.querySelectorAll('input, textarea').forEach(function (el) { el.disabled = true; });
+            alert('Respuestas enviadas. Automáticas: ' + autoScore + '/' + autoMax + '. Las abiertas las revisará tu docente.');
         });
     });
 }
 
+function aulaRenderCorreccionQuices() {
+    var box = document.getElementById('listaCorreccionQuices');
+    if (!box) return;
+    var user = aulaGetSession();
+    if (!user || user.rol !== 'docente') return;
+    var misQuices = aulaLoadQuices().filter(function (q) { return q.docenteId === user.id; });
+    var qMap = {};
+    misQuices.forEach(function (q) { qMap[q.id] = q; });
+    var entregas = aulaQuizLoadEntregas().filter(function (e) { return qMap[e.quizId]; });
+    if (!entregas.length) {
+        box.innerHTML = '<p class="aula-vacio">Aún no hay entregas de tus quices.</p>';
+        return;
+    }
+    box.innerHTML = entregas.slice().reverse().map(function (e) {
+        var q = qMap[e.quizId];
+        var pMap = {};
+        (q.preguntas || []).forEach(function (p) { pMap[p.id] = p; });
+        var rows = (e.respuestas || []).map(function (r) {
+            var p = pMap[r.preguntaId] || {};
+            if (r.tipo === 'abierta') {
+                var nota = (r.notaAbierta != null) ? r.notaAbierta : '';
+                return '<div class="aula-item" style="margin:8px 0;">' +
+                    '<p><strong>Abierta:</strong> ' + aulaQuizEsc(p.texto || r.preguntaId) + '</p>' +
+                    (p.guia ? '<p class="login-hint">Guía: ' + aulaQuizEsc(p.guia) + '</p>' : '') +
+                    '<p>Respuesta del estudiante: <em>' + aulaQuizEsc(r.texto || '(vacío)') + '</em></p>' +
+                    '<label>Nota (0–1) <input type="number" min="0" max="1" step="0.5" class="quiz-nota-abierta" data-eid="' + e.id + '" data-pid="' + r.preguntaId + '" value="' + nota + '" style="width:70px"></label>' +
+                    '<label style="margin-left:8px;">Comentario <input type="text" class="quiz-comentario-abierta" data-eid="' + e.id + '" data-pid="' + r.preguntaId + '" value="' + aulaQuizEsc(r.comentarioDocente || '') + '" style="min-width:180px"></label>' +
+                    '</div>';
+            }
+            var ok = r.correcta === true;
+            return '<p>' + (ok ? '✅' : '❌') + ' [' + (r.tipo || '') + '] ' + aulaQuizEsc(p.texto || '') +
+                ' → ' + aulaQuizEsc(r.texto || '—') +
+                (p.correcta ? ' (correcta: ' + aulaQuizEsc(p.correcta) + ')' : '') + '</p>';
+        }).join('');
+        return '<div class="aula-item" data-entrega="' + e.id + '">' +
+            '<strong>' + aulaQuizEsc(e.estudianteNombre || e.estudianteEmail) + '</strong> — ' +
+            aulaQuizEsc(q.titulo || '') +
+            '<p class="login-hint">Automático: ' + (e.autoScore || 0) + '/' + (e.autoMax || 0) +
+            ' · Enviado: ' + aulaQuizEsc((e.fecha || '').slice(0, 16).replace('T', ' ')) + '</p>' +
+            rows +
+            '<button type="button" class="btn-calcular btn-quiz-guardar-notas" data-eid="' + e.id + '" style="margin-top:8px">Guardar corrección</button></div>';
+    }).join('');
 
-
+    box.querySelectorAll('.btn-quiz-guardar-notas').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var eid = btn.getAttribute('data-eid');
+            var list = aulaQuizLoadEntregas();
+            var ent = list.find(function (x) { return x.id === eid; });
+            if (!ent) return;
+            (ent.respuestas || []).forEach(function (r) {
+                if (r.tipo !== 'abierta') return;
+                var inp = box.querySelector('.quiz-nota-abierta[data-eid="' + eid + '"][data-pid="' + r.preguntaId + '"]');
+                var com = box.querySelector('.quiz-comentario-abierta[data-eid="' + eid + '"][data-pid="' + r.preguntaId + '"]');
+                if (inp) {
+                    var v = parseFloat(inp.value);
+                    r.notaAbierta = isNaN(v) ? null : Math.max(0, Math.min(1, v));
+                    r.correcta = r.notaAbierta != null ? (r.notaAbierta >= 0.5) : null;
+                }
+                if (com) r.comentarioDocente = com.value || '';
+            });
+            aulaQuizSaveEntregas(list);
+            btn.textContent = 'Guardado ✓';
+            setTimeout(function () { btn.textContent = 'Guardar corrección'; }, 1500);
+        });
+    });
+}
 
 // =========================================
 // QUIZ CON CIVIX (panel docente)
@@ -5201,15 +5969,22 @@ function aulaQuizCivixCargarFormulario() {
         if (err) err.textContent = 'Marca al menos una pregunta.';
         return;
     }
-    var ta = document.getElementById('quizPreguntas');
-    if (ta) ta.value = sel.join('\n');
+    // Cargar como preguntas abiertas en el constructor nuevo
+    sel.forEach(function (texto) {
+        __quizPreguntasDraft.push({
+            id: 'p_civix_' + Date.now() + '_' + Math.floor(Math.random() * 9999),
+            tipo: 'abierta',
+            texto: String(texto || '').trim(),
+            guia: ''
+        });
+    });
+    if (typeof aulaQuizRenderDraft === 'function') aulaQuizRenderDraft();
     var matC = document.getElementById('quizCivixMateria');
     var mat = document.getElementById('quizMateria');
     if (mat && matC) mat.value = matC.value;
     if (err) err.textContent = '';
     var st = document.getElementById('quizCivixStatus');
-    if (st) { st.hidden = false; st.textContent = sel.length + ' preguntas cargadas en «Publicar quiz». Revisa y pulsa PUBLICAR QUIZ.'; }
-    // scroll to form
+    if (st) { st.hidden = false; st.textContent = sel.length + ' preguntas (abiertas) cargadas en el constructor. Puedes editar el tipo o publicar.'; }
     var form = document.getElementById('quizTitulo');
     if (form) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
@@ -5339,3 +6114,69 @@ async function aulaQuizCivixDescargarPDF() {
     }
 }
 
+
+
+/** Avatar global de Civix (admin) */
+function aulaCivixAvatarDefault() { return 'docs/civix-robot.svg'; }
+function aulaCivixAvatarGet() {
+    try {
+        var c = localStorage.getItem('geometrics_civix_avatar');
+        if (c && c.length > 20) return c;
+    } catch (e) {}
+    return aulaCivixAvatarDefault();
+}
+function aulaCivixAvatarSet(dataUrl) {
+    try {
+        if (dataUrl) localStorage.setItem('geometrics_civix_avatar', dataUrl);
+        else localStorage.removeItem('geometrics_civix_avatar');
+    } catch (e) {}
+    try {
+        if (typeof civixAplicarAvatar === 'function') civixAplicarAvatar();
+        else {
+            var img = document.getElementById('civixAvatarImg');
+            if (img) img.src = aulaCivixAvatarGet();
+            var prev = document.getElementById('adminCivixAvatarPreview');
+            if (prev) prev.src = aulaCivixAvatarGet();
+        }
+    } catch (e2) {}
+}
+function aulaAdminCivixAvatarInit() {
+    var prev = document.getElementById('adminCivixAvatarPreview');
+    if (prev) prev.src = aulaCivixAvatarGet();
+    var btn = document.getElementById('btnAdminCivixAvatar');
+    var input = document.getElementById('adminCivixAvatarInput');
+    var reset = document.getElementById('btnAdminCivixAvatarReset');
+    var err = document.getElementById('adminCivixAvatarError');
+    var ok = document.getElementById('adminCivixAvatarOk');
+    if (btn && input && !btn.__bound) {
+        btn.__bound = true;
+        btn.addEventListener('click', function () { input.click(); });
+        input.addEventListener('change', function () {
+            if (err) err.textContent = '';
+            if (ok) ok.hidden = true;
+            if (!input.files || !input.files[0]) return;
+            var f = input.files[0];
+            if (f.size > 10 * 1024 * 1024) {
+                if (err) err.textContent = 'La imagen debe pesar menos de 10 MB.';
+                return;
+            }
+            var reader = new FileReader();
+            reader.onload = function () {
+                aulaCivixAvatarSet(reader.result);
+                if (ok) { ok.hidden = false; setTimeout(function () { ok.hidden = true; }, 2500); }
+            };
+            reader.onerror = function () {
+                if (err) err.textContent = 'No se pudo leer la imagen.';
+            };
+            reader.readAsDataURL(f);
+        });
+    }
+    if (reset && !reset.__bound) {
+        reset.__bound = true;
+        reset.addEventListener('click', function () {
+            aulaCivixAvatarSet(null);
+            if (input) input.value = '';
+            if (ok) { ok.hidden = false; ok.textContent = '✓ Avatar restablecido'; setTimeout(function () { ok.hidden = true; ok.textContent = '✓ Avatar actualizado'; }, 2500); }
+        });
+    }
+}
