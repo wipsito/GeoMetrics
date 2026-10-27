@@ -6116,8 +6116,12 @@ async function aulaQuizCivixDescargarPDF() {
 
 
 
-/** Avatar global de Civix (admin) */
+/** Avatar global de Civix (admin) — sincronizado en Firebase entre dispositivos */
+var __civixAvatarCloudBound = false;
+var __civixAvatarApplyingRemote = false;
+
 function aulaCivixAvatarDefault() { return 'docs/civix-robot.svg'; }
+
 function aulaCivixAvatarGet() {
     try {
         var c = localStorage.getItem('geometrics_civix_avatar');
@@ -6125,24 +6129,153 @@ function aulaCivixAvatarGet() {
     } catch (e) {}
     return aulaCivixAvatarDefault();
 }
-function aulaCivixAvatarSet(dataUrl) {
-    try {
-        if (dataUrl) localStorage.setItem('geometrics_civix_avatar', dataUrl);
-        else localStorage.removeItem('geometrics_civix_avatar');
-    } catch (e) {}
+
+function aulaCivixAvatarApplyLocal(src) {
+    src = src || aulaCivixAvatarGet();
     try {
         if (typeof civixAplicarAvatar === 'function') civixAplicarAvatar();
-        else {
-            var img = document.getElementById('civixAvatarImg');
-            if (img) img.src = aulaCivixAvatarGet();
-            var prev = document.getElementById('adminCivixAvatarPreview');
-            if (prev) prev.src = aulaCivixAvatarGet();
-        }
-    } catch (e2) {}
+    } catch (e0) {}
+    try {
+        var img = document.getElementById('civixAvatarImg');
+        if (img) img.src = src;
+        var prev = document.getElementById('adminCivixAvatarPreview');
+        if (prev) prev.src = src;
+    } catch (e1) {}
 }
+
+/** Reduce la imagen para no saturar Realtime Database (~max 256px, JPEG) */
+function aulaCivixAvatarCompress(dataUrl, cb) {
+    try {
+        if (!dataUrl || dataUrl.indexOf('data:image') !== 0) {
+            cb(dataUrl);
+            return;
+        }
+        var img = new Image();
+        img.onload = function () {
+            try {
+                var max = 256;
+                var w = img.width;
+                var h = img.height;
+                if (w > max || h > max) {
+                    var r = Math.min(max / w, max / h);
+                    w = Math.round(w * r);
+                    h = Math.round(h * r);
+                }
+                var c = document.createElement('canvas');
+                c.width = w;
+                c.height = h;
+                var ctx = c.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                var out = c.toDataURL('image/jpeg', 0.82);
+                // Firebase RTDB: evitar payloads enormes
+                if (out.length > 900000) {
+                    out = c.toDataURL('image/jpeg', 0.65);
+                }
+                cb(out);
+            } catch (e) {
+                cb(dataUrl);
+            }
+        };
+        img.onerror = function () { cb(dataUrl); };
+        img.src = dataUrl;
+    } catch (e2) {
+        cb(dataUrl);
+    }
+}
+
+function aulaCivixAvatarCloudRef() {
+    try {
+        if (window.GeoCloud && GeoCloud.isOn() && typeof firebase !== 'undefined' && firebase.database) {
+            return firebase.database().ref('config/civixAvatar');
+        }
+    } catch (e) {}
+    return null;
+}
+
+function aulaCivixAvatarPushCloud(dataUrl) {
+    var ref = aulaCivixAvatarCloudRef();
+    if (!ref) return;
+    try {
+        if (dataUrl) {
+            ref.set({
+                dataUrl: dataUrl,
+                updatedAt: Date.now(),
+                updatedBy: (typeof aulaGetSession === 'function' && aulaGetSession())
+                    ? String((aulaGetSession().email || '')).toLowerCase()
+                    : ''
+            });
+        } else {
+            ref.remove();
+        }
+    } catch (e) {
+        console.warn('Civix avatar cloud push', e);
+    }
+}
+
+/** Escucha cambios de otros admins / otros dispositivos */
+function aulaCivixAvatarStartCloudSync() {
+    if (__civixAvatarCloudBound) return;
+    var ref = aulaCivixAvatarCloudRef();
+    if (!ref) {
+        // Reintentar cuando Firebase esté listo
+        setTimeout(function () {
+            if (!__civixAvatarCloudBound) aulaCivixAvatarStartCloudSync();
+        }, 2000);
+        return;
+    }
+    __civixAvatarCloudBound = true;
+    ref.on('value', function (snap) {
+        try {
+            var v = snap.val();
+            var remote = (v && v.dataUrl) ? String(v.dataUrl) : '';
+            var local = '';
+            try { local = localStorage.getItem('geometrics_civix_avatar') || ''; } catch (eL) {}
+            if (remote && remote.length > 20) {
+                if (remote === local) {
+                    aulaCivixAvatarApplyLocal(remote);
+                    return;
+                }
+                __civixAvatarApplyingRemote = true;
+                try { localStorage.setItem('geometrics_civix_avatar', remote); } catch (eS) {}
+                aulaCivixAvatarApplyLocal(remote);
+                __civixAvatarApplyingRemote = false;
+            } else if (!remote) {
+                // Solo limpiar si en la nube está vacío (admin restableció)
+                if (local) {
+                    try { localStorage.removeItem('geometrics_civix_avatar'); } catch (eR) {}
+                }
+                aulaCivixAvatarApplyLocal(aulaCivixAvatarDefault());
+            }
+        } catch (eV) {
+            __civixAvatarApplyingRemote = false;
+        }
+    });
+}
+
+function aulaCivixAvatarSet(dataUrl) {
+    if (dataUrl) {
+        aulaCivixAvatarCompress(dataUrl, function (compressed) {
+            try { localStorage.setItem('geometrics_civix_avatar', compressed); } catch (e) {}
+            aulaCivixAvatarApplyLocal(compressed);
+            if (!__civixAvatarApplyingRemote) {
+                aulaCivixAvatarPushCloud(compressed);
+            }
+        });
+    } else {
+        try { localStorage.removeItem('geometrics_civix_avatar'); } catch (e) {}
+        aulaCivixAvatarApplyLocal(aulaCivixAvatarDefault());
+        if (!__civixAvatarApplyingRemote) {
+            aulaCivixAvatarPushCloud(null);
+        }
+    }
+}
+
 function aulaAdminCivixAvatarInit() {
     var prev = document.getElementById('adminCivixAvatarPreview');
     if (prev) prev.src = aulaCivixAvatarGet();
+    aulaCivixAvatarApplyLocal(aulaCivixAvatarGet());
+    aulaCivixAvatarStartCloudSync();
+
     var btn = document.getElementById('btnAdminCivixAvatar');
     var input = document.getElementById('adminCivixAvatarInput');
     var reset = document.getElementById('btnAdminCivixAvatarReset');
@@ -6163,7 +6296,14 @@ function aulaAdminCivixAvatarInit() {
             var reader = new FileReader();
             reader.onload = function () {
                 aulaCivixAvatarSet(reader.result);
-                if (ok) { ok.hidden = false; setTimeout(function () { ok.hidden = true; }, 2500); }
+                if (ok) {
+                    ok.hidden = false;
+                    ok.textContent = '✓ Avatar actualizado (se sincroniza en todos los dispositivos)';
+                    setTimeout(function () {
+                        ok.hidden = true;
+                        ok.textContent = '✓ Avatar actualizado';
+                    }, 3200);
+                }
             };
             reader.onerror = function () {
                 if (err) err.textContent = 'No se pudo leer la imagen.';
@@ -6176,7 +6316,15 @@ function aulaAdminCivixAvatarInit() {
         reset.addEventListener('click', function () {
             aulaCivixAvatarSet(null);
             if (input) input.value = '';
-            if (ok) { ok.hidden = false; ok.textContent = '✓ Avatar restablecido'; setTimeout(function () { ok.hidden = true; ok.textContent = '✓ Avatar actualizado'; }, 2500); }
+            if (ok) {
+                ok.hidden = false;
+                ok.textContent = '✓ Avatar restablecido en todos los dispositivos';
+                setTimeout(function () {
+                    ok.hidden = true;
+                    ok.textContent = '✓ Avatar actualizado';
+                }, 2800);
+            }
         });
     }
 }
+

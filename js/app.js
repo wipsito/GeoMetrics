@@ -1670,6 +1670,14 @@ function civixAplicarAvatar() {
     var prev = document.getElementById('adminCivixAvatarPreview');
     if (prev) prev.src = src;
 }
+// Mantener avatar de Civix al día con la nube
+try {
+    if (typeof aulaCivixAvatarStartCloudSync === 'function') {
+        document.addEventListener('DOMContentLoaded', function () {
+            setTimeout(function () { aulaCivixAvatarStartCloudSync(); }, 800);
+        });
+    }
+} catch (eAvSync) {}
 
 
 function civixInstruccionModo(modo) {
