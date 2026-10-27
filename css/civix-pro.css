@@ -1,0 +1,294 @@
+/* Civix Pro — layout tipo mockup (sidebar + chat + panel derecho) */
+.asistente-modal.civix-pro {
+  padding: 0 !important;
+  background: #020617 !important;
+}
+.civix-shell-pro {
+  display: grid !important;
+  grid-template-columns: 240px minmax(0, 1fr) 300px !important;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  background:
+    radial-gradient(900px 500px at 10% -10%, rgba(34, 211, 238, 0.12), transparent 50%),
+    radial-gradient(700px 400px at 90% 100%, rgba(59, 130, 246, 0.1), transparent 45%),
+    #050b16 !important;
+  overflow: hidden !important;
+}
+.civix-side-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 14px;
+  border-right: 1px solid rgba(34, 211, 238, 0.18);
+  background: linear-gradient(180deg, rgba(6, 16, 32, 0.98), rgba(3, 10, 22, 0.98));
+}
+.civix-brand {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 8px 16px;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.12);
+}
+.civix-brand-mark {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  display: grid; place-items: center;
+  font-size: 20px;
+  background: radial-gradient(circle at 30% 30%, rgba(34,211,238,.35), rgba(15,23,42,.9));
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.25);
+}
+.civix-brand-name {
+  font-weight: 900;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+  color: #E0F2FE;
+}
+.civix-brand-sub {
+  font-size: 10px;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.civix-side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.civix-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94A3B8;
+  font-weight: 700;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.civix-nav-item:hover {
+  color: #E2E8F0;
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.2);
+}
+.civix-nav-item.active {
+  color: #ECFEFF;
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.35), rgba(8, 47, 73, 0.4));
+  border-color: rgba(34, 211, 238, 0.45);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.15);
+}
+.civix-nav-ico { width: 1.25em; text-align: center; }
+.civix-side-card {
+  margin-top: auto;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  background: rgba(8, 20, 40, 0.8);
+}
+.civix-side-wire {
+  font-size: 22px;
+  color: #22D3EE;
+  margin-bottom: 6px;
+  text-shadow: 0 0 12px rgba(34,211,238,.5);
+}
+.civix-side-card strong { color: #F1F5F9; display: block; margin-bottom: 4px; }
+.civix-side-card p { margin: 0; font-size: 12px; color: #64748B; line-height: 1.4; }
+
+.civix-main-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  border-right: 1px solid rgba(34, 211, 238, 0.12);
+}
+.civix-header-pro {
+  flex: 0 0 auto;
+  padding: 14px 18px !important;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.15) !important;
+  background: rgba(8, 16, 32, 0.55) !important;
+}
+.civix-pro .civix-toolbar {
+  flex: 0 0 auto;
+  padding: 8px 14px !important;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.9);
+  background: rgba(5, 12, 24, 0.5);
+}
+.civix-pro .asistente-chat,
+.civix-pro .civix-chat {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 20px 22px !important;
+  background-image:
+    linear-gradient(rgba(34, 211, 238, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.civix-pro .mensaje-bot {
+  background: rgba(8, 47, 73, 0.65) !important;
+  border: 1px solid rgba(34, 211, 238, 0.25) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  max-width: min(720px, 92%) !important;
+}
+.civix-pro .mensaje-usuario {
+  background: linear-gradient(135deg, #0369A1, #0EA5E9) !important;
+  border: 1px solid rgba(125, 211, 252, 0.35) !important;
+  max-width: min(640px, 90%) !important;
+}
+.civix-footer-zone {
+  flex: 0 0 auto;
+  padding: 10px 16px 8px;
+  border-top: 1px solid rgba(34, 211, 238, 0.12);
+  background: rgba(5, 12, 24, 0.85);
+}
+.civix-input-pro {
+  display: flex !important;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 10px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(34, 211, 238, 0.35) !important;
+  background: rgba(8, 18, 36, 0.95) !important;
+  box-shadow: 0 0 24px rgba(34, 211, 238, 0.08);
+}
+.civix-input-pro textarea#inputAsistente {
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  color: #F1F5F9 !important;
+  resize: none;
+  max-height: 120px;
+  padding: 10px 6px !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.civix-send-btn {
+  width: 44px; height: 44px;
+  border-radius: 50% !important;
+  border: none !important;
+  background: linear-gradient(135deg, #06B6D4, #0284C7) !important;
+  color: #fff !important;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.45);
+}
+.civix-footer-bar {
+  text-align: center;
+  font-size: 11px;
+  color: #475569;
+  padding: 4px 0 10px;
+  letter-spacing: 0.04em;
+}
+
+.civix-side-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 14px;
+  overflow-y: auto;
+  background: linear-gradient(180deg, rgba(6, 16, 32, 0.95), rgba(3, 10, 22, 0.98));
+}
+.civix-promo-card {
+  position: relative;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  background:
+    radial-gradient(circle at 90% 20%, rgba(34,211,238,.2), transparent 45%),
+    rgba(8, 20, 40, 0.9);
+  box-shadow: 0 0 30px rgba(34, 211, 238, 0.12);
+}
+.civix-promo-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.6rem;
+  font-style: italic;
+  color: #67E8F9;
+  text-shadow: 0 0 16px rgba(34,211,238,.4);
+}
+.civix-promo-quote {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: #94A3B8;
+  line-height: 1.45;
+  max-width: 70%;
+}
+.civix-promo-bot {
+  position: absolute;
+  right: 12px; bottom: 8px;
+  font-size: 42px;
+  filter: drop-shadow(0 0 12px rgba(34,211,238,.5));
+}
+.civix-panel-block h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #E0F2FE;
+  letter-spacing: 0.02em;
+}
+.civix-quick {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  margin-bottom: 8px;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  background: rgba(8, 18, 36, 0.85);
+  color: #E2E8F0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.civix-quick::after {
+  content: "›";
+  color: #22D3EE;
+  font-size: 18px;
+  font-weight: 700;
+}
+.civix-quick:hover {
+  border-color: rgba(34, 211, 238, 0.5);
+  background: rgba(8, 47, 73, 0.55);
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.12);
+}
+
+@media (max-width: 1100px) {
+  .civix-shell-pro {
+    grid-template-columns: 72px minmax(0, 1fr) 260px !important;
+  }
+  .civix-brand-sub, .civix-nav-item { font-size: 0; }
+  .civix-nav-item { justify-content: center; }
+  .civix-nav-ico { font-size: 18px; }
+  .civix-brand-name { font-size: 0; }
+  .civix-side-card { display: none; }
+}
+@media (max-width: 860px) {
+  .civix-shell-pro {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto 1fr auto;
+  }
+  .civix-side-left {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid rgba(34,211,238,.15);
+  }
+  .civix-side-nav { flex-direction: row; flex-wrap: wrap; }
+  .civix-side-right { display: none; }
+}
