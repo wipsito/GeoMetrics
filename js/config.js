@@ -8,24 +8,30 @@
  * 3) Ejemplo: https://geometrics-civix.TU_USUARIO.workers.dev/api/chat
  */
 var AI_CONFIG = {
-    provider: 'backend',
-    // ← Cambia esto por la URL de tu Worker después de wrangler deploy
+    provider: 'groq', // groq | openai | anthropic | gemini | deepseek | xai
     backendUrl: 'https://geometrics-civix.ae860616.workers.dev/api/chat',
-    model: 'llama-3.3-70b-versatile',
-    // Modelos disponibles en el Worker (Groq)
-    models: [
-        { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
-        { id: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
-        { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
-        { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (rápido)' },
-        { id: 'qwen/qwen3-32b', label: 'Qwen3 32B' },
-        { id: 'gemma2-9b-it', label: 'Gemma2 9B' }
-    ],
-    // systemPrompt queda en el servidor
+    model: 'openai/gpt-oss-20b',
     systemPrompt: ''
 };
+
+/** Catálogo de modelos Civix (las keys viven solo en el Worker) */
+var CIVIX_MODELS = [
+    { provider: 'groq', id: 'openai/gpt-oss-20b', label: 'Groq · GPT-OSS 20B' },
+    { provider: 'groq', id: 'openai/gpt-oss-120b', label: 'Groq · GPT-OSS 120B' },
+    { provider: 'groq', id: 'llama-3.3-70b-versatile', label: 'Groq · Llama 3.3 70B' },
+    { provider: 'groq', id: 'llama-3.1-8b-instant', label: 'Groq · Llama 3.1 8B' },
+    { provider: 'groq', id: 'qwen/qwen3.8-27b', label: 'Groq · Qwen 3.8 27B' },
+    { provider: 'openai', id: 'gpt-4o-mini', label: 'OpenAI · GPT-4o mini' },
+    { provider: 'openai', id: 'gpt-4o', label: 'OpenAI · GPT-4o' },
+    { provider: 'anthropic', id: 'claude-sonnet-4-5', label: 'Claude · Sonnet 4.5' },
+    { provider: 'anthropic', id: 'claude-haiku-4-5-20251001', label: 'Claude · Haiku 4.5' },
+    { provider: 'gemini', id: 'gemini-2.0-flash', label: 'Gemini · 2.0 Flash' },
+    { provider: 'gemini', id: 'gemini-2.5-flash', label: 'Gemini · 2.5 Flash' },
+    { provider: 'deepseek', id: 'deepseek-chat', label: 'DeepSeek · Chat' },
+    { provider: 'xai', id: 'grok-2-latest', label: 'xAI · Grok 2' }
+];
+
 var API_URLS = {
-    // Solo se usan si backendUrl está vacío (no recomendado)
     groq: 'https://api.groq.com/openai/v1/chat/completions',
     openai: 'https://api.openai.com/v1/chat/completions'
 };
@@ -33,11 +39,9 @@ var API_URLS = {
 // Dominio institucional y docentes autorizados
 var AULA_CONFIG = {
     dominio: 'unipamplona.edu.co',
-    docentes: [
-        // Agrega aquí los correos docentes autorizados, ej:
-        // 'nombre.apellido@unipamplona.edu.co'
-    ],
-    pilotoDocenteAbierto: true
+    // Lista vacía: los docentes se autorizan desde el panel de administrador
+    docentes: [],
+    pilotoDocenteAbierto: false
 };
 
 /**

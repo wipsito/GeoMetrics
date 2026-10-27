@@ -11,7 +11,7 @@ if (typeof AI_CONFIG === 'undefined') {
         provider: 'groq',
         apiKey: '',
         model: 'openai/gpt-oss-20b',
-        systemPrompt: 'Eres Civix, la mascota asistente de GeoMetrics, laboratorio virtual de Ingeniería Civil de la Universidad de Pamplona. Eres cercano, motivador y experto en mecánica de suelos, resistencia de materiales, cimentaciones y temas afines. Responde siempre en español de forma clara, didáctica y concisa. Trata al estudiante como futuro ingeniero o futura ingeniera según corresponda. Cuando escribas fórmulas usa LaTeX con \\( ... \\) en línea y $$ ... $$ en bloque.'
+        systemPrompt: 'Eres Civix, la mascota asistente de GeoMetrics, laboratorio virtual de Ingeniería Civil de la Universidad de Pamplona. Eres cercano, motivador y experto en mecánica de suelos, resistencia de materiales, cimentaciones y temas afines. Responde siempre en español de forma clara, didáctica y concisa. Trata al estudiante como futuro ingeniero. Cuando escribas fórmulas usa LaTeX con \\( ... \\) en línea y $$ ... $$ en bloque.'
     };
 }
 if (typeof API_URLS === 'undefined') {
@@ -492,6 +492,8 @@ async function civixMejorarPrompt(textoOriginal) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             mode: 'improve',
+            provider: (typeof civixGetProvider === 'function' ? civixGetProvider() : (AI_CONFIG.provider || 'groq')),
+            model: (typeof civixGetModel === 'function' ? civixGetModel() : (AI_CONFIG.model || 'openai/gpt-oss-20b')),
             messages: [{ role: 'user', content: textoOriginal }]
         })
     });
@@ -506,9 +508,24 @@ async function civixMejorarPrompt(textoOriginal) {
 }
 
 
-/** Conversaciones Civix por usuario (local + Firebase opcional) */
+/** Conversaciones Civix por usuario (local + Firebase) — privadas por correo */
 var CIVIX_CHATS_KEY = 'geometrics_civix_conversations';
 var civixChatActualId = null;
+var civixLastEmail = '';
+
+/** Nombre con el que Civix debe dirigirse al usuario (perfil → nombre preferido) */
+function civixNombrePreferido() {
+    try {
+        var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+        if (!ses) return '';
+        var pref = String(ses.nombrePreferido || '').trim();
+        if (pref) return pref.split(/\s+/)[0];
+        var nom = String(ses.nombre || ses.nombres || '').trim();
+        if (nom) return nom.split(/\s+/)[0];
+        if (ses.email) return String(ses.email).split('@')[0];
+    } catch (e) {}
+    return '';
+}
 
 function civixEmailActual() {
     try {
@@ -527,6 +544,112 @@ function civixEmailActual() {
     return '';
 }
 
+/** Clave de buzón = correo (estudiante y docente = cuentas distintas) */
+function civixClaveUsuario() {
+    return civixEmailActual();
+}
+
+/** Limpia UI y memoria del chat visible (no borra historial guardado de la cuenta) */
+function civixResetSesion(opts) {
+    opts = opts || {};
+    chatHistory = [];
+    civixChatActualId = null;
+    try {
+        var chatMensajes = document.getElementById('chatMensajes');
+        if (chatMensajes) chatMensajes.innerHTML = '';
+        var panel = document.getElementById('civixHistorialPanel');
+        if (panel) panel.hidden = true;
+        var lista = document.getElementById('civixHistorialLista');
+        if (lista) lista.innerHTML = '';
+        var input = document.getElementById('inputMensaje');
+        if (input) input.value = '';
+        window.__civixAdjunto = null;
+        var fn = document.getElementById('civixFileName');
+        if (fn) {
+            fn.textContent = '';
+            fn.hidden = true;
+        }
+    } catch (e) {}
+    if (!opts.skipWelcome && civixEmailActual()) {
+        try { civixRenderBienvenida(); } catch (e2) {}
+    }
+}
+
+/** Si cambió el usuario logueado, vacía el chat en pantalla (sin borrar historial guardado) */
+function civixAsegurarUsuarioActual() {
+    var email = civixEmailActual();
+    if (!email) {
+        civixResetSesion({ skipWelcome: true });
+        civixLastEmail = '';
+        return false;
+    }
+    if (civixLastEmail && civixLastEmail !== email) {
+        // Solo limpia memoria/UI; los chats en localStorage/Firebase del otro perfil permanecen
+        civixResetSesion({ skipWelcome: true });
+    }
+    civixLastEmail = email;
+    return true;
+}
+
+function civixLastChatStorageKey(email) {
+    email = String(email || '').trim().toLowerCase();
+    return email ? ('geometrics_civix_last_' + email) : '';
+}
+
+function civixRecordarChatActual() {
+    try {
+        var email = civixEmailActual();
+        var k = civixLastChatStorageKey(email);
+        if (!k) return;
+        if (civixChatActualId) localStorage.setItem(k, String(civixChatActualId));
+    } catch (e) {}
+}
+
+/**
+ * Abre Civix para el perfil actual:
+ * - sincroniza sus chats
+ * - restaura la última conversación de ESA cuenta
+ * - no mezcla con otra cuenta
+ */
+function civixPrepararUIUsuario() {
+    if (!civixAsegurarUsuarioActual()) {
+        civixResetSesion({ skipWelcome: true });
+        return Promise.resolve();
+    }
+    var email = civixEmailActual();
+    return civixSyncFromCloud().then(function () {
+        try { civixPintarHistorial(); } catch (e) {}
+        var list = civixListaUsuario();
+        var lastId = '';
+        try {
+            lastId = localStorage.getItem(civixLastChatStorageKey(email)) || '';
+        } catch (e2) { lastId = ''; }
+        var found = null;
+        if (lastId) {
+            for (var i = 0; i < list.length; i++) {
+                if (list[i] && String(list[i].id) === String(lastId)) { found = list[i]; break; }
+            }
+        }
+        if (found) {
+            civixAbrirConversacion(found.id);
+        } else if (civixChatActualId) {
+            // mantener chat en memoria si sigue siendo del usuario
+            var ok = list.some(function (c) { return c && String(c.id) === String(civixChatActualId); });
+            if (!ok) {
+                civixChatActualId = null;
+                chatHistory = [];
+                civixRenderBienvenida();
+            }
+        } else {
+            civixRenderBienvenida();
+        }
+        try { civixStartRealtime(); } catch (e3) {}
+    }).catch(function () {
+        try { civixPintarHistorial(); } catch (e4) {}
+        civixRenderBienvenida();
+    });
+}
+
 function civixCargarTodos() {
     try {
         var all = JSON.parse(localStorage.getItem(CIVIX_CHATS_KEY) || '{}');
@@ -539,17 +662,11 @@ function civixGuardarTodos(all) {
         localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(all));
     } catch (e) { console.warn('civix local save', e); }
     try {
-        if (!window.GeoCloud || !GeoCloud.isOn() || !GeoCloud.pushCivix) {
-            console.warn('Civix: Firebase no disponible, solo local');
-            return;
-        }
+        if (!window.GeoCloud || !GeoCloud.isOn() || !GeoCloud.pushCivix) return;
         var email = civixEmailActual();
-        if (!email) {
-            console.warn('Civix: sin sesión, no se sube a la nube');
-            return;
-        }
+        if (!email) return;
         var partial = {};
-        partial[email] = all[email] || [];
+        partial[email] = Array.isArray(all[email]) ? all[email] : [];
         GeoCloud.pushCivix(partial).then(function (ok) {
             console.info('Civix: chats subidos para', email, ok);
         }).catch(function (err) {
@@ -559,47 +676,52 @@ function civixGuardarTodos(all) {
 }
 
 function civixSyncFromCloud() {
-    if (!window.GeoCloud || !GeoCloud.isOn()) return Promise.resolve();
+    if (!window.GeoCloud || !GeoCloud.isOn() || !GeoCloud.pullCivix) return Promise.resolve();
     return GeoCloud.pullCivix().then(function (remote) {
         if (!remote || typeof remote !== 'object') return;
-        var local = civixCargarTodos();
         var my = civixEmailActual();
-        Object.keys(remote).forEach(function (email) {
-            email = String(email).trim().toLowerCase();
-            var r = remote[email] || [];
-            if (!Array.isArray(r)) r = [];
-            var remoteMap = {};
-            r.forEach(function (c) {
-                if (c && c.id) remoteMap[String(c.id)] = c;
-            });
-            var l = local[email] || [];
-            if (!Array.isArray(l)) l = [];
-            var map = {};
-            Object.keys(remoteMap).forEach(function (id) {
-                var rc = remoteMap[id];
-                var lc = null;
-                for (var i = 0; i < l.length; i++) {
-                    if (l[i] && String(l[i].id) === id) { lc = l[i]; break; }
-                }
-                if (lc && (lc.updatedAt || 0) > (rc.updatedAt || 0)) map[id] = lc;
-                else map[id] = rc;
-            });
-            // no reintroducir chats locales que ya no están en la nube (borrados)
-            var now = Date.now();
-            l.forEach(function (c) {
-                if (!c || !c.id) return;
-                var id = String(c.id);
-                if (map[id]) return;
-                if (now - (c.updatedAt || 0) < 8000) map[id] = c;
-            });
-            local[email] = Object.keys(map).map(function (k) { return map[k]; });
-        });
-        // Si mi usuario está en remote con lista vacía, limpiar local
-        if (my && Object.prototype.hasOwnProperty.call(remote, my)) {
-            // already merged above
+        if (!my) {
+            console.info('Civix: sync omitido (sin sesión)');
+            return;
         }
+        var local = civixCargarTodos();
+        var r = remote[my];
+        if (!Array.isArray(r)) {
+            // buscar clave case-insensitive
+            r = [];
+            Object.keys(remote).forEach(function (k) {
+                if (String(k).trim().toLowerCase() === my) {
+                    var chunk = remote[k];
+                    if (Array.isArray(chunk)) r = r.concat(chunk);
+                }
+            });
+        }
+        var remoteMap = {};
+        (r || []).forEach(function (c) {
+            if (c && c.id) remoteMap[String(c.id)] = c;
+        });
+        var l = Array.isArray(local[my]) ? local[my] : [];
+        var map = {};
+        Object.keys(remoteMap).forEach(function (id) {
+            var rc = remoteMap[id];
+            var lc = null;
+            for (var i = 0; i < l.length; i++) {
+                if (l[i] && String(l[i].id) === id) { lc = l[i]; break; }
+            }
+            if (lc && (lc.updatedAt || 0) > (rc.updatedAt || 0)) map[id] = lc;
+            else map[id] = rc;
+        });
+        // conservar chats locales muy recientes aún no subidos
+        var now = Date.now();
+        l.forEach(function (c) {
+            if (!c || !c.id) return;
+            var id = String(c.id);
+            if (map[id]) return;
+            if (now - (c.updatedAt || 0) < 12000) map[id] = c;
+        });
+        local[my] = Object.keys(map).map(function (k) { return map[k]; });
         try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(local)); } catch (e) {}
-        console.info('Civix: sync down OK. Usuario:', my, 'chats:', my ? (local[my] || []).length : 0);
+        console.info('Civix: sync down OK. Usuario:', my, 'chats:', local[my].length);
         return local;
     }).catch(function (e) { console.warn('Civix sync down', e); });
 }
@@ -610,73 +732,62 @@ function civixStartRealtime() {
     window.__civixListening = true;
     GeoCloud.listenCivix(function (remote) {
         if (!remote || typeof remote !== 'object') return;
-        var local = civixCargarTodos();
-        var changed = false;
         var my = civixEmailActual();
-        // Aplicar remotos; si un chat ya no está en la nube → borrarlo local
-        Object.keys(remote).forEach(function (email) {
-            email = String(email).trim().toLowerCase();
-            var r = remote[email] || [];
-            if (!Array.isArray(r)) r = [];
-            var remoteMap = {};
-            r.forEach(function (c) {
-                if (c && c.id) remoteMap[String(c.id)] = c;
-            });
-            var l = local[email] || [];
-            if (!Array.isArray(l)) l = [];
-            var map = {};
-            // Base: lo que hay en la nube
-            Object.keys(remoteMap).forEach(function (id) {
-                var remoteChat = remoteMap[id];
-                var localChat = null;
-                for (var i = 0; i < l.length; i++) {
-                    if (l[i] && String(l[i].id) === id) { localChat = l[i]; break; }
-                }
-                if (localChat && (localChat.updatedAt || 0) > (remoteChat.updatedAt || 0)) {
-                    map[id] = localChat;
-                } else {
-                    map[id] = remoteChat;
+        if (!my) return;
+        var local = civixCargarTodos();
+        var r = remote[my] || [];
+        if (!Array.isArray(r)) {
+            r = [];
+            Object.keys(remote).forEach(function (k) {
+                if (String(k).trim().toLowerCase() === my && Array.isArray(remote[k])) {
+                    r = r.concat(remote[k]);
                 }
             });
-            // Chats solo locales: mantener solo si son muy recientes (aún subiendo)
-            var now = Date.now();
-            l.forEach(function (c) {
-                if (!c || !c.id) return;
-                var id = String(c.id);
-                if (map[id]) return;
-                if (now - (c.updatedAt || 0) < 8000) {
-                    map[id] = c; // gracia por si el upload no terminó
-                } else {
-                    changed = true; // se elimina (borrado en otro dispositivo)
-                }
-            });
-            var merged = Object.keys(map).map(function (k) { return map[k]; });
-            if (JSON.stringify(merged) !== JSON.stringify(l)) changed = true;
-            local[email] = merged;
+        }
+        var remoteMap = {};
+        r.forEach(function (c) {
+            if (c && c.id) remoteMap[String(c.id)] = c;
         });
-        if (changed) {
-            try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(local)); } catch (e) {}
-            try { civixPintarHistorial(); } catch (e2) {}
-            // Si el chat abierto fue borrado en otro dispositivo, volver a bienvenida
-            if (my && civixChatActualId) {
-                var still = (local[my] || []).some(function (c) {
-                    return c && String(c.id) === String(civixChatActualId);
-                });
-                if (!still) {
-                    try { civixNuevaConversacion(); } catch (e3) {}
-                }
+        var l = Array.isArray(local[my]) ? local[my] : [];
+        var map = {};
+        Object.keys(remoteMap).forEach(function (id) {
+            var remoteChat = remoteMap[id];
+            var localChat = null;
+            for (var i = 0; i < l.length; i++) {
+                if (l[i] && String(l[i].id) === id) { localChat = l[i]; break; }
+            }
+            if (localChat && (localChat.updatedAt || 0) > (remoteChat.updatedAt || 0)) map[id] = localChat;
+            else map[id] = remoteChat;
+        });
+        var now = Date.now();
+        l.forEach(function (c) {
+            if (!c || !c.id) return;
+            var id = String(c.id);
+            if (map[id]) return;
+            if (now - (c.updatedAt || 0) < 12000) map[id] = c;
+        });
+        local[my] = Object.keys(map).map(function (k) { return map[k]; });
+        try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(local)); } catch (e) {}
+        try { civixPintarHistorial(); } catch (e2) {}
+        if (civixChatActualId) {
+            var still = local[my].some(function (c) {
+                return c && String(c.id) === String(civixChatActualId);
+            });
+            if (!still) {
+                try { civixNuevaConversacion(); } catch (e3) {}
             }
         }
     });
 }
 
 function civixListaUsuario() {
+    civixAsegurarUsuarioActual();
     var email = civixEmailActual();
     if (!email) return [];
     var all = civixCargarTodos();
     var list = all[email] || [];
     if (!Array.isArray(list)) list = [];
-    return list.sort(function(a, b) {
+    return list.sort(function (a, b) {
         return (b.updatedAt || 0) - (a.updatedAt || 0);
     });
 }
@@ -694,93 +805,69 @@ function civixTituloDesdeMensajes(messages) {
         }
     }
     if (!raw) return '✨ Nueva conversación';
-
-    // Quitar instrucciones largas de metodología; quedarse con lo esencial
     var t = raw
         .replace(/act[uú]a como docente[\s\S]{0,200}/i, '')
         .replace(/asignatura\s*:\s*/i, '')
         .replace(/textos?\s*gu[ií]a[s]?\s*:\s*/i, '')
         .trim();
     if (t.length < 8) t = raw;
-
     var low = t.toLowerCase();
     var mapa = [
         { re: /momento\s*flector|flexi[oó]n/, name: '📐 Momento flector' },
         { re: /esfuerzo\s*cortante|cortante|shear/, name: '✂️ Esfuerzo cortante' },
-        { re: /tracci[oó]n|tensi[oó]n\s*axial/, name: '🔗 Ensayo de tracción' },
+        { re: /tracci[oó]n/, name: '🔗 Tracción' },
         { re: /compresi[oó]n/, name: '⬇️ Compresión' },
-        { re: /torsión|torsion/, name: '🌀 Torsión' },
-        { re: /m[oó]dulo\s*de\s*elasticidad|young|hooke/, name: '📈 Módulo de elasticidad' },
-        { re: /c[ií]rculo\s*de\s*mohr|mohr/, name: '⭕ Círculo de Mohr' },
         { re: /corte\s*directo/, name: '🧪 Corte directo' },
-        { re: /consolidaci[oó]n|ed[oó]metro/, name: '📚 Consolidación' },
+        { re: /consolidaci[oó]n/, name: '📚 Consolidación' },
         { re: /inconfinad/, name: '🧱 Compresión inconfinada' },
         { re: /triaxial/, name: '🔬 Triaxial' },
-        { re: /granulometr|curva\s*granul/, name: '📊 Granulometría' },
-        { re: /l[ií]mites?\s*de\s*atterberg|l[ií]mite\s*l[ií]quido|plasticidad/, name: '📏 Límites de Atterberg' },
-        { re: /humedad|contenido\s*de\s*agua/, name: '💧 Contenido de humedad' },
-        { re: /proctor|compactaci[oó]n/, name: '🏗️ Compactación Proctor' },
-        { re: /permeabilidad/, name: '💦 Permeabilidad' },
-        { re: /clasificaci[oó]n\s*de\s*suelos|usc[s]?|aasho/, name: '🗂️ Clasificación de suelos' },
-        { re: /nsr-?10|norma\s*sismo/, name: '📋 NSR-10' },
-        { re: /beer|hibbeler|resistencia\s*de\s*materiales/, name: '📖 Resistencia de materiales' },
-        { re: /das|suelos|geot[eé]cnic/, name: '🌍 Mecánica de suelos' },
-        { re: /python|c[oó]digo|error|debug/, name: '🐛 Corrección de código' },
-        { re: /resuelve|ejercicio|taller|problema/, name: '✏️ Ejercicio guiado' },
-        { re: /explica|qu[eé]\s*es|tema/, name: '🎓 Tutoría de tema' }
+        { re: /granulometr/, name: '📊 Granulometría' },
+        { re: /humedad/, name: '💧 Contenido de humedad' },
+        { re: /proctor|compactaci[oó]n/, name: '🏗️ Compactación' }
     ];
     for (var j = 0; j < mapa.length; j++) {
         if (mapa[j].re.test(low)) return mapa[j].name;
     }
-    // Título llamativo genérico a partir del prompt
     var corto = t.replace(/[^\wáéíóúñüÁÉÍÓÚÑÜ\s\-]/gi, '').trim();
     if (corto.length > 42) corto = corto.slice(0, 42).replace(/\s+\S*$/, '') + '…';
     if (!corto) corto = 'Consulta Civix';
     return '💡 ' + corto.charAt(0).toUpperCase() + corto.slice(1);
 }
 
-
 function civixGuardarConversacionActual() {
     if (!chatHistory || !chatHistory.length) return;
     var email = civixEmailActual();
+    if (!email) return;
+    civixAsegurarUsuarioActual();
     var all = civixCargarTodos();
-    if (!all[email]) all[email] = [];
+    if (!Array.isArray(all[email])) all[email] = [];
     var list = all[email];
     var id = civixChatActualId || civixUid();
     civixChatActualId = id;
     var item = {
         id: id,
+        ownerEmail: email,
         title: civixTituloDesdeMensajes(chatHistory),
         updatedAt: Date.now(),
-        messages: chatHistory.map(function(m) {
+        messages: chatHistory.map(function (m) {
             return { role: m.role, content: m.content };
         })
     };
     var idx = -1;
     for (var i = 0; i < list.length; i++) {
-        if (list[i].id === id) { idx = i; break; }
+        if (list[i] && String(list[i].id) === String(id)) { idx = i; break; }
     }
     if (idx >= 0) list[idx] = item;
     else list.unshift(item);
-    // Máximo 40 chats por usuario
     if (list.length > 40) list = list.slice(0, 40);
     all[email] = list;
     civixGuardarTodos(all);
-
-    // Nube (si Firebase está activo)
+    civixRecordarChatActual();
     try {
-        if (typeof GeoCloud !== 'undefined' && GeoCloud.pushChat) {
-            var key = (typeof GeoCloud.emailKey === 'function')
-                ? GeoCloud.emailKey(email)
-                : String(email).replace(/[.#$\[\]]/g, '_');
-            if (typeof GeoCloud.cloudSet === 'function') {
-                GeoCloud.cloudSet('civixChats/' + key + '/' + id, item);
-            } else {
-                // reutilizar pushChat con id prefijado
-                GeoCloud.pushChat(Object.assign({}, item, { id: 'civix_' + key + '_' + id, tipo: 'civix', email: email }));
-            }
+        if (window.GeoCloud && GeoCloud.isOn() && GeoCloud.setCivixUserChats) {
+            GeoCloud.setCivixUserChats(email, list);
         }
-    } catch (e) {}
+    } catch (eN) {}
 }
 
 function civixRenderBienvenida() {
@@ -789,20 +876,22 @@ function civixRenderBienvenida() {
     chatMensajes.innerHTML = '';
     var div = document.createElement('div');
     div.className = 'mensaje mensaje-bot';
-    var user = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+    var nom = civixNombrePreferido();
+    var rol = '';
     try {
-        if (user && typeof aulaUsuarioCompleto === 'function') user = aulaUsuarioCompleto(user) || user;
-    } catch (eU) {}
-    var nombre = (typeof civixNombrePreferido === 'function') ? civixNombrePreferido() : '';
-    var html;
-    if (typeof aulaTextoCivixHola === 'function') {
-        html = '<p>' + aulaTextoCivixHola(user) + '</p>';
+        var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+        if (ses && ses.rol === 'docente') rol = 'docente';
+    } catch (e) {}
+    var saludo;
+    if (nom && rol === 'docente') {
+        saludo = '¡Hola, <strong>' + nom + '</strong>! Soy <strong>Civix</strong>. Puedo ayudarte con diseño, correcciones y material de clase.';
+    } else if (nom) {
+        saludo = '¡Hola, <strong>' + nom + '</strong>! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.';
     } else {
-        html = '<p>¡Hola' + (nombre && nombre !== 'estudiante' ? (' ' + nombre) : '') + '! Soy <strong>Civix</strong>. Elige un modo y pregunta sobre suelos o materiales.</p>';
+        saludo = '¡Hola futuro ingeniero! Soy <strong>Civix</strong>. Pregúntame sobre suelos, materiales, diseño estructural o adjunta un archivo con el clip para corregir errores.';
     }
-    div.innerHTML = html;
+    div.innerHTML = '<p>' + saludo + '</p>';
     chatMensajes.appendChild(div);
-    try { civixAplicarAvatar(); } catch (eA) {}
 }
 
 function civixNuevaConversacion() {
@@ -817,11 +906,11 @@ function civixAbrirConversacion(id) {
     var list = civixListaUsuario();
     var found = null;
     for (var i = 0; i < list.length; i++) {
-        if (list[i].id === id) { found = list[i]; break; }
+        if (list[i] && String(list[i].id) === String(id)) { found = list[i]; break; }
     }
     if (!found) return;
     civixChatActualId = found.id;
-    chatHistory = (found.messages || []).map(function(m) {
+    chatHistory = (found.messages || []).map(function (m) {
         return { role: m.role, content: m.content };
     });
     var chatMensajes = document.getElementById('chatMensajes');
@@ -830,36 +919,50 @@ function civixAbrirConversacion(id) {
     if (!chatHistory.length) {
         civixRenderBienvenida();
     } else {
-        chatHistory.forEach(function(m) {
+        chatHistory.forEach(function (m) {
             if (m.role === 'user') agregarMensaje(m.content, 'usuario');
-            else agregarMensajeBotConDescargas(m.content);
+            else if (typeof agregarMensajeBotConDescargas === 'function') agregarMensajeBotConDescargas(m.content);
+            else if (typeof agregarMensaje === 'function') agregarMensaje(m.content, 'bot');
         });
     }
     var panel = document.getElementById('civixHistorialPanel');
     if (panel) panel.hidden = true;
+    civixRecordarChatActual();
 }
 
 function civixEliminarConversacion(id) {
     var email = civixEmailActual();
-    if (!email || !id) return;
+    if (!email || !id) {
+        console.warn('Civix delete: sin email o id');
+        return;
+    }
     var all = civixCargarTodos();
-    var list = (all[email] || []).filter(function(c) { return String(c.id) !== String(id); });
+    var prev = Array.isArray(all[email]) ? all[email] : [];
+    var list = prev.filter(function (c) {
+        return !(c && String(c.id) === String(id));
+    });
     all[email] = list;
     try { localStorage.setItem(CIVIX_CHATS_KEY, JSON.stringify(all)); } catch (e) {}
-    // Borrado definitivo en Firebase (todos los dispositivos)
-    if (window.GeoCloud && GeoCloud.isOn()) {
-        var p = GeoCloud.removeCivixChat
-            ? GeoCloud.removeCivixChat(email, id)
-            : Promise.resolve(false);
-        p.then(function () {
-            if (GeoCloud.setCivixUserChats) return GeoCloud.setCivixUserChats(email, list);
-        }).then(function () {
-            console.info('Civix: chat eliminado en la nube', id);
-        }).catch(function (err) {
-            console.warn('Civix delete cloud', err);
-        });
+    // Nube: borrar nodo y reescribir lista
+    try {
+        if (window.GeoCloud && GeoCloud.isOn()) {
+            var chain = Promise.resolve();
+            if (GeoCloud.removeCivixChat) {
+                chain = chain.then(function () { return GeoCloud.removeCivixChat(email, id); });
+            }
+            if (GeoCloud.setCivixUserChats) {
+                chain = chain.then(function () { return GeoCloud.setCivixUserChats(email, list); });
+            }
+            chain.then(function () {
+                console.info('Civix: chat eliminado', id, 'restantes', list.length);
+            }).catch(function (err) {
+                console.warn('Civix delete cloud', err);
+            });
+        }
+    } catch (e2) { console.warn('Civix delete', e2); }
+    if (String(civixChatActualId) === String(id)) {
+        civixNuevaConversacion();
     }
-    if (String(civixChatActualId) === String(id)) civixNuevaConversacion();
     civixPintarHistorial();
 }
 
@@ -872,24 +975,37 @@ function civixPintarHistorial() {
         return;
     }
     lista.innerHTML = '';
-    items.forEach(function(c) {
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'civix-hist-item';
+    items.forEach(function (c) {
+        if (!c || !c.id) return;
+        var row = document.createElement('div');
+        row.className = 'civix-hist-item';
+        row.setAttribute('data-id', String(c.id));
         var fecha = c.updatedAt ? new Date(c.updatedAt).toLocaleString('es-CO') : '';
-        btn.innerHTML = '<button type="button" class="civix-hist-del" title="Eliminar">🗑</button>' +
-            '<strong></strong><span></span>';
-        btn.querySelector('strong').textContent = c.title || 'Chat';
-        btn.querySelector('span').textContent = fecha;
-        btn.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('civix-hist-del')) {
-                e.stopPropagation();
-                gmConfirm('¿Eliminar esta conversación de forma permanente?', { titulo: 'Eliminar conversación' }).then(function(ok){ if (ok) civixEliminarConversacion(c.id); });
-                return;
-            }
+        var openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'civix-hist-open';
+        openBtn.innerHTML = '<strong></strong><span></span>';
+        openBtn.querySelector('strong').textContent = c.title || 'Chat';
+        openBtn.querySelector('span').textContent = fecha;
+        openBtn.addEventListener('click', function () {
             civixAbrirConversacion(c.id);
         });
-        lista.appendChild(btn);
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'civix-hist-del';
+        delBtn.title = 'Eliminar conversación';
+        delBtn.setAttribute('aria-label', 'Eliminar');
+        delBtn.textContent = '🗑';
+        delBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (confirm('¿Eliminar esta conversación de forma permanente?')) {
+                civixEliminarConversacion(c.id);
+            }
+        });
+        row.appendChild(openBtn);
+        row.appendChild(delBtn);
+        lista.appendChild(row);
     });
 }
 
@@ -897,23 +1013,22 @@ function abrirCivixModal() {
     var modal = document.getElementById('asistenteModal');
     if (!modal) return;
     modal.style.display = 'flex';
-    modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
-    // Refrescar saludo con nombre de perfil si el chat está vacío / solo bienvenida
     try {
-        if (!chatHistory || !chatHistory.length) {
-            civixRenderBienvenida();
+        if (typeof civixInitModelSelect === 'function') civixInitModelSelect();
+                if (typeof civixPrepararUIUsuario === 'function') civixPrepararUIUsuario();
+        else {
+            civixAsegurarUsuarioActual();
+            civixSyncFromCloud().then(function () {
+                try { civixPintarHistorial(); } catch (e) {}
+            });
+            civixStartRealtime();
         }
-    } catch (e0) {}
-    civixSyncFromCloud().then(function () {
-        try { civixPintarHistorial(); } catch (e) {}
-    });
-    civixStartRealtime();
+    } catch (e0) {
+        console.warn('abrirCivixModal', e0);
+    }
 }
 function inicializarAsistenteAI() {
-    try { if (typeof civixInitUIExtras === "function") civixInitUIExtras(); } catch (eX) {}
-    try { civixAplicarAvatar(); } catch (eAv) {}
-
     var btnAsistente = document.getElementById('btnAsistenteAI');
     var modal = document.getElementById('asistenteModal');
     var btnCerrar = document.getElementById('btnCerrarAsistente');
@@ -929,13 +1044,10 @@ function inicializarAsistenteAI() {
     if (btnAsistente) {
         btnAsistente.addEventListener('click', function() {
             modal.classList.add('active');
-            try { if (!chatHistory || !chatHistory.length) civixRenderBienvenida(); } catch (eW) {}
             if (input) input.focus();
             try {
-                civixSyncFromCloud().then(function () {
-                    try { civixPintarHistorial(); } catch (e) {}
-                });
-                civixStartRealtime();
+                if (typeof civixInitModelSelect === 'function') civixInitModelSelect();
+                if (typeof civixPrepararUIUsuario === 'function') civixPrepararUIUsuario();
             } catch (e) {}
         });
     }
@@ -944,14 +1056,11 @@ function inicializarAsistenteAI() {
         card.addEventListener('click', function() {
             if (modal) {
                 modal.classList.add('active');
-                try { if (!chatHistory || !chatHistory.length) civixRenderBienvenida(); } catch (eW) {}
                 if (input) input.focus();
             }
             try {
-                civixSyncFromCloud().then(function () {
-                    try { civixPintarHistorial(); } catch (e) {}
-                });
-                civixStartRealtime();
+                if (typeof civixInitModelSelect === 'function') civixInitModelSelect();
+                if (typeof civixPrepararUIUsuario === 'function') civixPrepararUIUsuario();
             } catch (e) {}
         });
     });
@@ -1051,8 +1160,7 @@ function inicializarAsistenteAI() {
 
         limpiarAdjunto();
 
-        var _thinkTxt = window.__civixWebSearch ? 'Buscando en la web…' : 'Pensando…';
-        var escribiendo = agregarMensaje('<span class="civix-thinking"><span class="civix-typing" aria-hidden="true"><span></span><span></span><span></span></span><span class="civix-thinking-text">' + _thinkTxt + '</span></span>', 'bot', true);
+        var escribiendo = agregarMensaje('🤖 Analizando...', 'bot', true);
 
         llamarIA(payload).then(function(respuesta) {
             escribiendo.remove();
@@ -1365,15 +1473,9 @@ function agregarMensaje(texto, tipo, temporal) {
     div.className = 'mensaje mensaje-' + (tipo === 'usuario' ? 'usuario' : 'bot');
     if (temporal) div.classList.add('mensaje-temporal');
     var p = document.createElement('p');
+    p.style.whiteSpace = 'pre-wrap';
     p.style.wordBreak = 'break-word';
-    // Mensajes temporales (pensando) pueden llevar HTML seguro del indicador
-    if (temporal && String(texto).indexOf('civix-typing') >= 0) {
-        p.style.whiteSpace = 'normal';
-        p.innerHTML = texto;
-    } else {
-        p.style.whiteSpace = 'pre-wrap';
-        p.textContent = texto;
-    }
+    p.textContent = texto;
     div.appendChild(p);
     chatMensajes.appendChild(div);
     chatMensajes.scrollTop = chatMensajes.scrollHeight;
@@ -1584,7 +1686,6 @@ function agregarMensajeBotConDescargas(texto) {
     });
 
     chatMensajes.appendChild(div);
-    try { if (typeof civixAdjuntarAcciones === 'function') civixAdjuntarAcciones(div, texto); } catch (eAct) {}
     chatMensajes.scrollTop = chatMensajes.scrollHeight;
 }
 
@@ -1600,292 +1701,81 @@ function civixExtDesdeLang(lang) {
 }
 
 
-/** Modo activo de tutoría Civix */
-window.__civixModo = window.__civixModo || 'explicar';
-window.__civixWebSearch = false;
-
-function civixGetSelectedModel() {
+function civixGetModel() {
     try {
         var sel = document.getElementById('civixModelSelect');
-        if (sel && sel.value) return sel.value;
+        if (sel && sel.value) {
+            var opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset && opt.dataset.model) return opt.dataset.model;
+            // value format provider|model
+            var parts = String(sel.value).split('|');
+            if (parts.length === 2) return parts[1];
+            return sel.value;
+        }
+    } catch (e) {}
+    try {
         var saved = localStorage.getItem('civix_model');
-        if (saved) return saved;
-    } catch (e) {}
-    return (typeof AI_CONFIG !== 'undefined' && AI_CONFIG.model) ? AI_CONFIG.model : 'llama-3.3-70b-versatile';
+        if (saved) {
+            var p = saved.split('|');
+            return p.length === 2 ? p[1] : saved;
+        }
+    } catch (e2) {}
+    return (typeof AI_CONFIG !== 'undefined' && AI_CONFIG.model) ? AI_CONFIG.model : 'openai/gpt-oss-20b';
 }
 
-
-function civixNombrePreferido() {
-    /* Siempre el primer nombre de registro (nombres o nombre completo) */
+function civixGetProvider() {
     try {
-        var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
-        var user = ses;
-        try {
-            if (ses && typeof aulaUsuarioCompleto === 'function') {
-                user = aulaUsuarioCompleto(ses) || ses;
-            } else if (ses && typeof aulaLoad === 'function' && typeof AULA_KEYS !== 'undefined') {
-                var all = aulaLoad(AULA_KEYS.users, []) || [];
-                var found = all.find(function (u) {
-                    return u && (u.id === ses.id || String(u.email || '').toLowerCase() === String(ses.email || '').toLowerCase());
-                });
-                if (found) user = found;
-            }
-        } catch (e2) {}
-        if (!user) return 'estudiante';
-        if (user.nombres) return String(user.nombres).trim().split(/\s+/)[0] || 'estudiante';
-        if (user.nombre) return String(user.nombre).trim().split(/\s+/)[0] || 'estudiante';
-    } catch (e) {}
-    return 'estudiante';
-}
-
-/** Si el nombre no aparece en la respuesta, la inicia de forma natural con el nombre */
-function civixForzarNombreEnRespuesta(texto, nombre) {
-    nombre = String(nombre || '').trim();
-    texto = String(texto || '').trim();
-    if (!nombre || !texto || nombre === 'estudiante') return texto;
-    if (texto.indexOf('```') === 0) return texto;
-    // Si ya menciona el nombre en el texto, no forzar nada
-    var reNom = new RegExp(nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    if (reNom.test(texto)) return texto;
-    // Prefijo estético natural
-    var firstChar = texto.charAt(0);
-    if (firstChar === firstChar.toLowerCase() && /[a-záéíóúñ]/i.test(firstChar)) {
-        texto = texto.charAt(0).toUpperCase() + texto.slice(1);
-    }
-    return nombre + ', ' + texto;
-}
-
-function civixAvatarSrc() {
-    try {
-        var custom = localStorage.getItem('geometrics_civix_avatar');
-        if (custom && custom.length > 20) return custom;
-    } catch (e) {}
-    return 'docs/civix-robot.svg';
-}
-
-function civixAplicarAvatar() {
-    var src = civixAvatarSrc();
-    var img = document.getElementById('civixAvatarImg');
-    if (img) img.src = src;
-    var prev = document.getElementById('adminCivixAvatarPreview');
-    if (prev) prev.src = src;
-}
-
-
-function civixInstruccionModo(modo) {
-    modo = modo || window.__civixModo || 'explicar';
-    if (modo === 'pistas') {
-        return 'MODO SOLO PISTAS: no des la respuesta final completa. Da pistas y preguntas guía, con tono natural de tutor.';
-    }
-    if (modo === 'corregir') {
-        return 'MODO CORREGIR: revisa el texto o procedimiento del usuario. Comenta aciertos y errores de forma clara y natural, sin plantillas numeradas rígidas.';
-    }
-    if (modo === 'quiz') {
-        return 'MODO PREPARAR QUIZ: propone preguntas de práctica. Puedes numerar solo las preguntas. Incluye respuestas al final, aparte.';
-    }
-    return 'MODO EXPLICAR: responde de forma NATURAL y conversacional, como un tutor cercano. '
-        + 'NO uses la plantilla fija "1) Identificación del tema / 2) Fundamento teórico / 3) Fórmulas / 4) Ejemplo / 5) Ejercicio / Resumen / Fuentes" '
-        + 'salvo que el usuario pida explícitamente una clase estructurada o un tema de estudio paso a paso. '
-        + 'Para preguntas cotidianas, cartas, fechas o dudas generales: respuesta directa, clara y amable, en párrafos. '
-        + 'Si hay un ejemplo de documento (carta, informe), preséntalo de forma legible sin envolverlo innecesariamente en bloques de código, salvo que sea código real.';
-}
-
-function civixBuildContextSystem() {
-    var nombre = civixNombrePreferido();
-    var partes = [];
-    partes.push(
-        'El primer nombre del usuario es "' + nombre + '". ' +
-        'Involúcralo de forma natural y estética en tus respuestas (no de forma forzada ni mecánica). ' +
-        'Puedes empezar frases con el nombre ("' + nombre + ', la porosidad se define…") o usarlo en saludos y cierres ("¡Hola, ' + nombre + '!", "¿Te queda claro, ' + nombre + '?"). ' +
-        'No insertes el nombre en medio de fechas, números ni títulos. Usa el nombre 1 vez al inicio o cuando aporte cercanía; no lo repitas en cada oración.'
-    );
-    partes.push(civixInstruccionModo(window.__civixModo));
-    try {
-        var ses = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
-        if (ses) {
-            if (typeof aulaUsuarioCompleto === 'function') ses = aulaUsuarioCompleto(ses) || ses;
-            var rol = ses.rol === 'docente' ? 'docente' : 'estudiante';
-            partes.push('Rol: ' + rol + '.');
-            var g = (typeof aulaGeneroUsuario === 'function') ? aulaGeneroUsuario(ses) : (ses.genero || '');
-            if (g === 'mujer') partes.push('Género: mujer. Usa formas en femenino (ingeniera) cuando aplique.');
-            else if (g === 'hombre') partes.push('Género: hombre. Usa formas en masculino (ingeniero) cuando aplique.');
-            var mats = [];
-            if (typeof aulaMateriasUsuario === 'function') mats = aulaMateriasUsuario(ses) || [];
-            else if (ses.materias) mats = ses.materias;
-            if (mats && mats.length) {
-                var list = mats.map(function (m) {
-                    return (m.nombre || m) + (m.grupo ? (' (grupo ' + m.grupo + ')') : '');
-                }).join('; ');
-                partes.push('Materias/grupos: ' + list + '.');
-            }
-            if (ses.materiaFavorita) partes.push('Materia de interés prioritario: ' + ses.materiaFavorita + '.');
-            if (ses.semestre) partes.push('Semestre/cohorte: ' + ses.semestre + '.');
-            if (ses.titulo && rol === 'docente') partes.push('Título del docente: ' + ses.titulo + '.');
-            if (ses.bio) partes.push('Bio del usuario: ' + String(ses.bio).slice(0, 120));
+        var sel = document.getElementById('civixModelSelect');
+        if (sel && sel.value) {
+            var opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset && opt.dataset.provider) return opt.dataset.provider;
+            var parts = String(sel.value).split('|');
+            if (parts.length === 2) return parts[0];
         }
     } catch (e) {}
-    partes.push('Prioriza textos guía adjuntos. No inventes datos numéricos de laboratorio. Si faltan datos, pídelos.');
-    partes.push('Estilo de respuesta: natural, fluido y humano. Evita esquemas rígidos con Identificación del tema / Fundamento teórico / Fórmulas / Ejemplo práctico / Ejercicio de refuerzo / Fuentes, a menos que el usuario pida una clase formal del tema.');
-    partes.push('Responde siempre en español. Cuando uses el documento, cita páginas si aparecen como "--- Página N ---".');
-    return partes.join(' ');
+    try {
+        var saved = localStorage.getItem('civix_model');
+        if (saved && saved.indexOf('|') >= 0) return saved.split('|')[0];
+    } catch (e2) {}
+    return (typeof AI_CONFIG !== 'undefined' && AI_CONFIG.provider) ? AI_CONFIG.provider : 'groq';
 }
 
-function civixAdjuntarAcciones(msgEl, textoRespuesta) {
-    if (!msgEl || msgEl.querySelector('.civix-msg-actions')) return;
-    var bar = document.createElement('div');
-    bar.className = 'civix-msg-actions';
-    bar.innerHTML = ''
-        + '<button type="button" class="civix-act" data-act="copy">Copiar</button>'
-        + '<button type="button" class="civix-act" data-act="regen">Regenerar</button>'
-        + '<button type="button" class="civix-act" data-act="up">👍 Útil</button>'
-        + '<button type="button" class="civix-act" data-act="down">👎</button>';
-    bar.addEventListener('click', function (e) {
-        var btn = e.target.closest('[data-act]');
-        if (!btn) return;
-        var act = btn.getAttribute('data-act');
-        if (act === 'copy') {
-            var t = textoRespuesta || msgEl.innerText || '';
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(t).then(function () {
-                    btn.textContent = '✓ Copiado';
-                    setTimeout(function () { btn.textContent = 'Copiar'; }, 1500);
-                }).catch(function () {});
-            }
-        } else if (act === 'regen') {
-            civixRegenerarUltima();
-        } else if (act === 'up' || act === 'down') {
-            bar.querySelectorAll('[data-act="up"],[data-act="down"]').forEach(function (b) {
-                b.classList.remove('active-up', 'active-down');
-            });
-            btn.classList.add(act === 'up' ? 'active-up' : 'active-down');
-            try {
-                var key = 'civix_feedback';
-                var list = JSON.parse(localStorage.getItem(key) || '[]');
-                list.push({ v: act, t: Date.now(), modo: window.__civixModo || 'explicar' });
-                localStorage.setItem(key, JSON.stringify(list.slice(-200)));
-            } catch (e2) {}
-        }
-    });
-    msgEl.appendChild(bar);
-}
-
-function civixRegenerarUltima() {
-    if (!chatHistory.length) return;
-    // Quitar última respuesta del asistente
-    if (chatHistory[chatHistory.length - 1].role === 'assistant') {
-        chatHistory.pop();
-    }
-    var lastUser = null;
-    for (var i = chatHistory.length - 1; i >= 0; i--) {
-        if (chatHistory[i].role === 'user') { lastUser = chatHistory[i].content; break; }
-    }
-    if (!lastUser) return;
-    // Quitar último mensaje bot del DOM
-    var chat = document.getElementById('chatMensajes');
-    if (chat) {
-        var bots = chat.querySelectorAll('.mensaje-bot');
-        if (bots.length) bots[bots.length - 1].remove();
-    }
-    var escribiendo = agregarMensaje('<span class="civix-thinking"><span class="civix-typing" aria-hidden="true"><span></span><span></span><span></span></span><span class="civix-thinking-text">Regenerando…</span></span>', 'bot', true);
-    // No volver a empujar el user message: llamarIA lo hace
-    // Ajustar: llamarIA hace push del user; así que quitamos el last user temporalmente
-    if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') {
-        chatHistory.pop();
-    }
-    llamarIA(lastUser).then(function (respuesta) {
-        if (escribiendo && escribiendo.remove) escribiendo.remove();
-        agregarMensajeBotConDescargas(respuesta);
-        try { civixGuardarConversacionActual(); } catch (e) {}
-    }).catch(function (err) {
-        if (escribiendo && escribiendo.remove) escribiendo.remove();
-        agregarMensaje('Error: ' + (err.message || err), 'bot');
-    });
-}
-
-function civixInitUIExtras() {
-    if (window.__civixUIExtras) return;
-    window.__civixUIExtras = true;
-    var ta = document.getElementById('inputAsistente');
-    if (ta && !ta.__civixResize) {
-        ta.__civixResize = true;
-        ta.addEventListener('input', function () {
-            ta.style.height = 'auto';
-            ta.style.height = Math.min(120, Math.max(40, ta.scrollHeight)) + 'px';
-        });
-    }
-    var modos = document.getElementById('civixModos');
-    if (modos) {
-        modos.addEventListener('click', function (e) {
-            var btn = e.target.closest('[data-modo]');
-            if (!btn) return;
-            modos.querySelectorAll('.civix-modo').forEach(function (b) { b.classList.remove('active'); });
-            btn.classList.add('active');
-            window.__civixModo = btn.getAttribute('data-modo') || 'explicar';
-            var labels = { explicar: 'Explicar', pistas: 'Solo pistas', corregir: 'Corregir', quiz: 'Preparar quiz' };
-            var pill = document.getElementById('civixModePill');
-            if (pill) pill.innerHTML = 'Modo: <strong>' + (labels[window.__civixModo] || 'Explicar') + '</strong>';
-            var input = document.getElementById('inputAsistente');
-            if (input) {
-                var ph = {
-                    explicar: '¿Qué tema quieres que te explique?',
-                    pistas: 'Describe el problema (solo te daré pistas)…',
-                    corregir: 'Pega tu procedimiento o adjunta el archivo a corregir…',
-                    quiz: 'Tema para generar preguntas de práctica…'
-                };
-                input.placeholder = ph[window.__civixModo] || 'Escribe tu duda a Civix…';
-            }
-        });
-    }
-    var chips = document.getElementById('civixChips');
-    if (chips) {
-        chips.addEventListener('click', function (e) {
-            var chip = e.target.closest('.civix-chip');
-            if (!chip) return;
-            var q = chip.getAttribute('data-q') || chip.textContent;
-            var input = document.getElementById('inputAsistente');
-            if (input) {
-                input.value = q;
-                input.focus();
-            }
-            var btnSend = document.getElementById('btnEnviarMensaje');
-            if (btnSend) btnSend.click();
-        });
-    }
-
-    // Modelo preferido
+function civixInitModelSelect() {
     var sel = document.getElementById('civixModelSelect');
-    if (sel) {
-        try {
-            var saved = localStorage.getItem('civix_model');
-            if (saved) {
-                for (var i = 0; i < sel.options.length; i++) {
-                    if (sel.options[i].value === saved) { sel.value = saved; break; }
-                }
-            }
-        } catch (eM) {}
-        sel.addEventListener('change', function () {
-            try { localStorage.setItem('civix_model', sel.value); } catch (eS) {}
-        });
+    if (!sel || sel._ready) return;
+    sel._ready = true;
+    var list = (typeof CIVIX_MODELS !== 'undefined' && Array.isArray(CIVIX_MODELS)) ? CIVIX_MODELS : [];
+    sel.innerHTML = '';
+    list.forEach(function (m) {
+        var o = document.createElement('option');
+        o.value = m.provider + '|' + m.id;
+        o.dataset.provider = m.provider;
+        o.dataset.model = m.id;
+        o.textContent = m.label;
+        sel.appendChild(o);
+    });
+    var saved = '';
+    try { saved = localStorage.getItem('civix_model') || ''; } catch (e) {}
+    if (saved) {
+        sel.value = saved;
+        if (sel.value !== saved && list.length) sel.selectedIndex = 0;
     }
-
-    // Toggle búsqueda web
-    var webBtn = document.getElementById('civixWebToggle');
-    if (webBtn && !webBtn.__bound) {
-        webBtn.__bound = true;
-        try {
-            window.__civixWebSearch = localStorage.getItem('civix_web') === '1';
-        } catch (eW) { window.__civixWebSearch = false; }
-        if (window.__civixWebSearch) {
-            webBtn.classList.add('active');
-            webBtn.setAttribute('aria-pressed', 'true');
+    sel.addEventListener('change', function () {
+        try { localStorage.setItem('civix_model', sel.value); } catch (e) {}
+        if (typeof AI_CONFIG !== 'undefined') {
+            var parts = String(sel.value).split('|');
+            AI_CONFIG.provider = parts[0] || 'groq';
+            AI_CONFIG.model = parts[1] || AI_CONFIG.model;
         }
-        webBtn.addEventListener('click', function () {
-            window.__civixWebSearch = !window.__civixWebSearch;
-            webBtn.classList.toggle('active', window.__civixWebSearch);
-            webBtn.setAttribute('aria-pressed', window.__civixWebSearch ? 'true' : 'false');
-            try { localStorage.setItem('civix_web', window.__civixWebSearch ? '1' : '0'); } catch (e2) {}
-        });
-    }
+    });
+    // aplicar selección actual a AI_CONFIG
+    try {
+        var parts = String(sel.value).split('|');
+        if (typeof AI_CONFIG !== 'undefined' && parts.length === 2) {
+            AI_CONFIG.provider = parts[0];
+            AI_CONFIG.model = parts[1];
+        }
+    } catch (e3) {}
 }
 
 async function llamarIA(mensaje) {
@@ -1905,32 +1795,38 @@ async function llamarIA(mensaje) {
 
     var response;
     try {
-        var primerNombre = (typeof civixNombrePreferido === 'function') ? civixNombrePreferido() : 'estudiante';
+        var primerNombre = (typeof civixNombrePreferido === 'function' && civixNombrePreferido()) || 'estudiante';
+        try {
+            var sesEstilo = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+            var estilo = (sesEstilo && sesEstilo.civixEstilo) || (localStorage.getItem('geometrics_civix_estilo') || 'didactico');
+        } catch (eEst) { var estilo = 'didactico'; }
         var msgs = chatHistory.slice();
-        // Contexto académico + modo de tutoría
-        var sysCtx = (typeof civixBuildContextSystem === 'function')
-            ? civixBuildContextSystem()
-            : ('El usuario se llama ' + primerNombre + '. Responde en español.');
-        msgs = [{ role: 'system', content: sysCtx }].concat(msgs);
+        var estiloTxt = {
+            formal: 'Usa un tono formal y académico.',
+            breve: 'Sé breve y directo, sin relleno.',
+            didactico: 'Usa un tono didáctico, cercano y motivador.'
+        };
+        // Contexto de nombre preferido (perfil del usuario) en cada turno
+        msgs = [{
+            role: 'system',
+            content: 'El usuario prefiere que lo llames "' + primerNombre + '". '
+                + 'Dirígete SIEMPRE a esta persona por ese nombre de forma natural (no digas solo "futuro ingeniero" genérico si conoces el nombre). '
+                + (estiloTxt[estilo] || estiloTxt.didactico) + ' '
+                + 'Puedes usar conocimiento general sólido de ingeniería civil cuando ayude, '
+                + 'sin inventar datos numéricos de laboratorio. Si hay textos guía de la materia, priorízalos y cítalos.'
+        }].concat(msgs);
 
-        var temp = 0.4;
-        if (window.__civixModo === 'pistas') temp = 0.35;
-        if (window.__civixModo === 'quiz') temp = 0.5;
-        if (window.__civixModo === 'corregir') temp = 0.3;
-
-        var modelId = (typeof civixGetSelectedModel === 'function') ? civixGetSelectedModel() : (AI_CONFIG.model || '');
-        var useWeb = !!window.__civixWebSearch;
         response = await fetch(backend, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 mode: 'chat',
-                model: modelId,
+                provider: (typeof civixGetProvider === 'function' ? civixGetProvider() : (AI_CONFIG.provider || 'groq')),
+                model: (typeof civixGetModel === 'function' ? civixGetModel() : (AI_CONFIG.model || 'openai/gpt-oss-20b')),
                 messages: msgs,
                 userName: primerNombre,
-                temperature: temp,
-                max_tokens: 4096,
-                webSearch: useWeb
+                temperature: 0.4,
+                max_tokens: 4096
             })
         });
     } catch (networkErr) {
@@ -1956,9 +1852,6 @@ async function llamarIA(mensaje) {
         chatHistory.pop();
         throw new Error('Civix no devolvió texto. Intenta de nuevo.');
     }
-    try {
-        respuesta = civixForzarNombreEnRespuesta(respuesta, civixNombrePreferido());
-    } catch (eN) {}
     chatHistory.push({ role: 'assistant', content: respuesta });
     return respuesta;
 }
@@ -5374,15 +5267,13 @@ function guardarResultado(nombre, resultado, detalle) {
 
 function eliminarResultado(id) {
     if (!id) return;
-    gmConfirm('¿Eliminar este resultado guardado?', { titulo: 'Eliminar resultado' }).then(function(ok) {
-        if (!ok) return;
-        var key = historialStorageKey();
-        var historial = [];
-        try { historial = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { historial = []; }
-        historial = historial.filter(function(item) { return item.id !== id; });
-        localStorage.setItem(key, JSON.stringify(historial));
-        cargarHistorial();
-    });
+    if (!confirm('¿Eliminar este resultado guardado?')) return;
+    var key = historialStorageKey();
+    var historial = [];
+    try { historial = JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { historial = []; }
+    historial = historial.filter(function(item) { return item.id !== id; });
+    localStorage.setItem(key, JSON.stringify(historial));
+    cargarHistorial();
 }
 
 /** Restaura datos del historial y genera el PDF del ensayo */
