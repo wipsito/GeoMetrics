@@ -1859,6 +1859,21 @@ function civixInitUIExtras() {
             if (btnSend) btnSend.click();
         });
     }
+    // Preguntas rápidas / herramientas (panel derecho Civix Pro)
+    document.querySelectorAll('.civix-quick').forEach(function (btn) {
+        if (btn.__boundQuick) return;
+        btn.__boundQuick = true;
+        btn.addEventListener('click', function () {
+            var q = btn.getAttribute('data-q') || btn.textContent;
+            var input = document.getElementById('inputAsistente');
+            if (input) {
+                input.value = q;
+                input.focus();
+            }
+            var btnSend = document.getElementById('btnEnviarMensaje');
+            if (btnSend) btnSend.click();
+        });
+    });
 
     // Modelo preferido
     var sel = document.getElementById('civixModelSelect');

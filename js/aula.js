@@ -4966,9 +4966,60 @@ function aulaChatStartCloudListen() {
     });
 }
 
+
+function aulaChatBindSearchFilters() {
+    function bindSearch(inputId, listId) {
+        var inp = document.getElementById(inputId);
+        var list = document.getElementById(listId);
+        if (!inp || !list || inp.__boundSearch) return;
+        inp.__boundSearch = true;
+        inp.addEventListener('input', function () {
+            var q = String(inp.value || '').toLowerCase().trim();
+            list.querySelectorAll('.chat-aula-item').forEach(function (el) {
+                var txt = (el.textContent || '').toLowerCase();
+                el.style.display = (!q || txt.indexOf(q) >= 0) ? '' : 'none';
+            });
+        });
+    }
+    bindSearch('estChatSearch', 'estChatLista');
+    bindSearch('docChatSearch', 'docChatLista');
+    document.querySelectorAll('[data-tab-jump]').forEach(function (btn) {
+        if (btn.__boundJump) return;
+        btn.__boundJump = true;
+        btn.addEventListener('click', function () {
+            var tab = btn.getAttribute('data-tab-jump');
+            var root = document.getElementById('pantallaDocente');
+            if (!root || !tab) return;
+            var tbtn = root.querySelector('.tab-btn[data-tab="' + tab + '"]');
+            if (tbtn) tbtn.click();
+        });
+    });
+    var gInt = document.getElementById('btnEstChatGotoIntegrantes');
+    if (gInt && !gInt.__bound) {
+        gInt.__bound = true;
+        gInt.addEventListener('click', function () {
+            var root = document.getElementById('pantallaEstudiante');
+            if (!root) return;
+            var tbtn = root.querySelector('.tab-btn[data-tab="est-integrantes"]');
+            if (tbtn) tbtn.click();
+        });
+    }
+    var gTar = document.getElementById('btnEstChatGotoTareas');
+    if (gTar && !gTar.__bound) {
+        gTar.__bound = true;
+        gTar.addEventListener('click', function () {
+            var root = document.getElementById('pantallaEstudiante');
+            if (!root) return;
+            var tbtn = root.querySelector('.tab-btn[data-tab="est-tareas"]');
+            if (tbtn) tbtn.click();
+        });
+    }
+}
+
 function aulaChatBind() {
     try {
         aulaChatStartCloudListen();
+        aulaChatBindSearchFilters();
         if (window.GeoCloud && GeoCloud.isOn() && !window.__chatCloudListening) {
             window.__chatCloudListening = true;
             GeoCloud.listenChats(function (list) {
