@@ -13,34 +13,11 @@
  * Despliegue: wrangler deploy
  */
 
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
+const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 /** id → { label, provider, tier } */
 const ALLOWED_MODELS = {
-  // Groq
-  'llama-3.3-70b-versatile': { label: 'Llama 3.3 70B', provider: 'groq', tier: 'potente' },
-  'llama-3.1-8b-instant': { label: 'Llama 3.1 8B', provider: 'groq', tier: 'rapido' },
-  'openai/gpt-oss-20b': { label: 'GPT-OSS 20B', provider: 'groq', tier: 'equilibrado' },
   'openai/gpt-oss-120b': { label: 'GPT-OSS 120B', provider: 'groq', tier: 'maximo' },
-  'qwen/qwen3-32b': { label: 'Qwen3 32B', provider: 'groq', tier: 'potente' },
-  'qwen/qwen3.8-27b': { label: 'Qwen 3.8 27B', provider: 'groq', tier: 'potente' },
-  'gemma2-9b-it': { label: 'Gemma2 9B', provider: 'groq', tier: 'rapido' },
-  'moonshotai/kimi-k2-instruct': { label: 'Kimi K2', provider: 'groq', tier: 'potente' },
-  // OpenAI
-  'gpt-4o-mini': { label: 'GPT-4o mini', provider: 'openai', tier: 'equilibrado' },
-  'gpt-4o': { label: 'GPT-4o', provider: 'openai', tier: 'potente' },
-  'gpt-4.1-mini': { label: 'GPT-4.1 mini', provider: 'openai', tier: 'equilibrado' },
-  // Claude
-  'claude-sonnet-4-5': { label: 'Claude Sonnet 4.5', provider: 'anthropic', tier: 'potente' },
-  'claude-haiku-4-5-20251001': { label: 'Claude Haiku 4.5', provider: 'anthropic', tier: 'rapido' },
-  // Gemini
-  'gemini-2.0-flash': { label: 'Gemini 2.0 Flash', provider: 'gemini', tier: 'rapido' },
-  'gemini-2.5-flash': { label: 'Gemini 2.5 Flash', provider: 'gemini', tier: 'equilibrado' },
-  // DeepSeek
-  'deepseek-chat': { label: 'DeepSeek Chat', provider: 'deepseek', tier: 'equilibrado' },
-  'deepseek-reasoner': { label: 'DeepSeek Reasoner', provider: 'deepseek', tier: 'potente' },
-  // xAI
-  'grok-2-latest': { label: 'Grok 2', provider: 'xai', tier: 'potente' },
 };
 
 function pickModel(requested, env) {
@@ -53,12 +30,31 @@ function pickModel(requested, env) {
 }
 
 function resolveProvider(body, modelId) {
+  // 1) Catálogo (evita confundir openai/gpt-oss-* de Groq con OpenAI real)
+  if (modelId && ALLOWED_MODELS[modelId] && ALLOWED_MODELS[modelId].provider) {
+    const fromCatalog = ALLOWED_MODELS[modelId].provider;
+    const p = String(body.provider || '').toLowerCase().trim();
+    // Si el cliente manda provider y coincide con catálogo o es explícito distinto válido, preferir body si no es auto
+    if (p && p !== 'auto' && p !== 'backend' && p !== 'groq') {
+      // Si eligió un modelo de OpenAI/Claude/etc., confiar en body.provider
+      if (p === fromCatalog || ['openai', 'anthropic', 'claude', 'gemini', 'google', 'deepseek', 'xai', 'grok'].indexOf(p) >= 0) {
+        return p === 'claude' ? 'anthropic' : (p === 'google' ? 'gemini' : (p === 'grok' ? 'xai' : p));
+      }
+    }
+    return fromCatalog;
+  }
   const p = String(body.provider || '').toLowerCase().trim();
-  if (p && p !== 'auto' && p !== 'backend') return p;
-  if (ALLOWED_MODELS[modelId] && ALLOWED_MODELS[modelId].provider) {
-    return ALLOWED_MODELS[modelId].provider;
+  if (p && p !== 'auto' && p !== 'backend') {
+    if (p === 'claude') return 'anthropic';
+    if (p === 'google') return 'gemini';
+    if (p === 'grok') return 'xai';
+    return p;
   }
   const m = String(modelId || '').toLowerCase();
+  // No tratar "openai/gpt-oss-..." como OpenAI (son modelos de Groq)
+  if (m.indexOf('gpt-oss') >= 0 || m.indexOf('llama') >= 0 || m.indexOf('qwen') >= 0 || m.indexOf('gemma') >= 0 || m.indexOf('kimi') >= 0) {
+    return 'groq';
+  }
   if (m.startsWith('gpt-4') || m.startsWith('gpt-3') || m.startsWith('o1') || m.startsWith('o3')) return 'openai';
   if (m.startsWith('claude')) return 'anthropic';
   if (m.startsWith('gemini')) return 'gemini';
@@ -117,7 +113,7 @@ async function callAnthropic(apiKey, model, messages, temperature, maxTokens) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: model || 'claude-sonnet-4-5',
+      model: model || 'claude-3-5-sonnet-latest',
       max_tokens: maxTokens || 4096,
       temperature,
       system: system || undefined,
@@ -172,24 +168,24 @@ async function callGemini(apiKey, model, messages, temperature, maxTokens) {
 
 async function dispatchLLM(env, provider, model, messages, temperature, maxTokens) {
   if (provider === 'openai') {
-    if (!env.OPENAI_API_KEY) return { ok: false, status: 500, error: 'OPENAI_API_KEY no configurada en el Worker' };
+    if (!env.OPENAI_API_KEY) return { ok: false, status: 500, error: 'Falta OPENAI_API_KEY. En la carpeta del worker ejecuta: npx wrangler secret put OPENAI_API_KEY (pega tu sk-... de platform.openai.com)' };
     return callOpenAICompatible('https://api.openai.com/v1/chat/completions', env.OPENAI_API_KEY, model || 'gpt-4o-mini', messages, temperature, maxTokens);
   }
   if (provider === 'anthropic' || provider === 'claude') {
-    if (!env.ANTHROPIC_API_KEY) return { ok: false, status: 500, error: 'ANTHROPIC_API_KEY no configurada en el Worker' };
-    return callAnthropic(env.ANTHROPIC_API_KEY, model || 'claude-sonnet-4-5', messages, temperature, maxTokens);
+    if (!env.ANTHROPIC_API_KEY) return { ok: false, status: 500, error: 'Falta ANTHROPIC_API_KEY. Ejecuta: npx wrangler secret put ANTHROPIC_API_KEY (pega la key de console.anthropic.com)' };
+    return callAnthropic(env.ANTHROPIC_API_KEY, model || 'claude-3-5-sonnet-latest', messages, temperature, maxTokens);
   }
   if (provider === 'gemini' || provider === 'google') {
     const key = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
-    if (!key) return { ok: false, status: 500, error: 'GEMINI_API_KEY no configurada en el Worker' };
+    if (!key) return { ok: false, status: 500, error: 'Falta GEMINI_API_KEY. Ejecuta: npx wrangler secret put GEMINI_API_KEY (key de aistudio.google.com)' };
     return callGemini(key, model || 'gemini-2.0-flash', messages, temperature, maxTokens);
   }
   if (provider === 'deepseek') {
-    if (!env.DEEPSEEK_API_KEY) return { ok: false, status: 500, error: 'DEEPSEEK_API_KEY no configurada en el Worker' };
+    if (!env.DEEPSEEK_API_KEY) return { ok: false, status: 500, error: 'Falta DEEPSEEK_API_KEY. Ejecuta: npx wrangler secret put DEEPSEEK_API_KEY' };
     return callOpenAICompatible('https://api.deepseek.com/chat/completions', env.DEEPSEEK_API_KEY, model || 'deepseek-chat', messages, temperature, maxTokens);
   }
   if (provider === 'xai' || provider === 'grok') {
-    if (!env.XAI_API_KEY) return { ok: false, status: 500, error: 'XAI_API_KEY no configurada en el Worker' };
+    if (!env.XAI_API_KEY) return { ok: false, status: 500, error: 'Falta XAI_API_KEY. Ejecuta: npx wrangler secret put XAI_API_KEY (console.x.ai)' };
     return callOpenAICompatible('https://api.x.ai/v1/chat/completions', env.XAI_API_KEY, model || 'grok-2-latest', messages, temperature, maxTokens);
   }
   if (!env.GROQ_API_KEY) return { ok: false, status: 500, error: 'GROQ_API_KEY no configurada en el Worker' };
