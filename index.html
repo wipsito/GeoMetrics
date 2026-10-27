@@ -16,6 +16,8 @@
     <link rel="stylesheet" href="css/sim-ms2.css">
     <link rel="stylesheet" href="css/rediseno.css">
     <link rel="stylesheet" href="css/aula-futurista.css">
+    <link rel="stylesheet" href="css/chat-pro.css">
+    <link rel="stylesheet" href="css/civix-pro.css">
     <link rel="stylesheet" href="css/suelos1.css">
 
 <!-- ═══════════════ GeoMetrics · Pantalla de carga (retroexcavadora) ═══════════════
@@ -968,115 +970,140 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
             </button>
         </section>
 
-        <!-- Ventana del Asistente AI -->
-        <div class="asistente-modal civix-fx" id="asistenteModal">
-            <div class="asistente-contenido civix-shell">
-                <div class="civix-glow" aria-hidden="true"></div>
-                <div class="asistente-header civix-header">
-                    <div class="asistente-info">
-                        <div class="civix-avatar-orb" aria-hidden="true">
-                            <img src="docs/civix-robot.svg" alt="Civix" class="civix-avatar-img" id="civixAvatarImg" width="44" height="44">
-                            <span class="civix-orb-ring"></span>
-                        </div>
+        <!-- Ventana del Asistente AI — diseño pro -->
+        <div class="asistente-modal civix-fx civix-pro" id="asistenteModal">
+            <div class="asistente-contenido civix-shell civix-shell-pro">
+                <aside class="civix-side-left" aria-label="Navegación Civix">
+                    <div class="civix-brand">
+                        <div class="civix-brand-mark">⛰</div>
                         <div>
-                            <h3>Civix <span class="civix-online">● en línea</span></h3>
-                            <p>Tutor IA · Ingeniería Civil · UniPamplona</p>
+                            <div class="civix-brand-name">GeoMetrics</div>
+                            <div class="civix-brand-sub">Ingeniería Civil · UniPamplona</div>
                         </div>
                     </div>
-                    <div class="asistente-acciones">
-                        <button type="button" class="btn-civix-historial" id="btnCivixHistorial" title="Mis conversaciones"><span>💬</span><span class="civix-btn-lbl">Chats</span></button>
-                        <button type="button" class="btn-civix-nuevo" id="btnCivixNuevo" title="Nueva conversación"><span>＋</span><span class="civix-btn-lbl">Nuevo</span></button>
-                        <button class="btn-cerrar-asistente" id="btnCerrarAsistente" title="Cerrar">×</button>
-                    </div>
-                </div>
-
-                <div class="civix-toolbar">
-                    <div class="civix-modos" id="civixModos" role="tablist" aria-label="Modo de tutoría">
-                        <button type="button" class="civix-modo active" data-modo="explicar" title="Explicación completa">
-                            <span class="civix-modo-ico">📘</span><span class="civix-modo-txt">Explicar</span>
+                    <nav class="civix-side-nav">
+                        <button type="button" class="civix-nav-item active" data-civix-nav="chat" id="civixNavChat">
+                            <span class="civix-nav-ico">💬</span> Chat
                         </button>
-                        <button type="button" class="civix-modo" data-modo="pistas" title="Solo pistas, sin respuesta final">
-                            <span class="civix-modo-ico">🎯</span><span class="civix-modo-txt">Pistas</span>
+                        <button type="button" class="civix-nav-item" id="btnCivixHistorial" data-civix-nav="historial" title="Mis conversaciones">
+                            <span class="civix-nav-ico">🕐</span> Mis conversaciones
                         </button>
-                        <button type="button" class="civix-modo" data-modo="corregir" title="Corregir procedimiento o entrega">
-                            <span class="civix-modo-ico">🛠️</span><span class="civix-modo-txt">Corregir</span>
+                        <button type="button" class="civix-nav-item" id="btnCivixNuevo" data-civix-nav="nuevo" title="Nueva conversación">
+                            <span class="civix-nav-ico">＋</span> Nueva conversación
                         </button>
-                        <button type="button" class="civix-modo" data-modo="quiz" title="Preparar evaluación">
-                            <span class="civix-modo-ico">📝</span><span class="civix-modo-txt">Quiz</span>
+                        <button type="button" class="civix-nav-item" data-civix-nav="recursos" id="civixNavRecursos">
+                            <span class="civix-nav-ico">📚</span> Recursos académicos
                         </button>
-                    </div>
-                    <div class="civix-toolbar-right">
-                        <label class="civix-model-wrap" title="Modelo de IA">
-                            <span class="civix-model-ico">🧠</span>
-                            <select id="civixModelSelect" class="civix-model-select" aria-label="Modelo de IA">
-                                <option value="openai/gpt-oss-120b" data-provider="groq">Groq · GPT-OSS 120B</option>
-                            </select>
-                        </label>
-                        <button type="button" class="civix-web-toggle" id="civixWebToggle" aria-pressed="false" title="Incluir búsqueda web">
-                            <span class="civix-web-dot"></span>
-                            <span class="civix-web-lbl">Web</span>
+                        <button type="button" class="civix-nav-item" data-civix-nav="herramientas" id="civixNavTools">
+                            <span class="civix-nav-ico">🛠️</span> Herramientas
                         </button>
-                        <div class="civix-mode-pill" id="civixModePill">Modo: <strong>Explicar</strong></div>
+                    </nav>
+                    <div class="civix-side-card">
+                        <div class="civix-side-wire">◈</div>
+                        <strong>Construyendo el futuro</strong>
+                        <p>Con conocimiento, precisión y tecnología.</p>
                     </div>
-                </div>
+                </aside>
 
-                <div class="civix-historial-panel" id="civixHistorialPanel" hidden>
-                    <div class="civix-historial-head">
-                        <strong>Mis conversaciones</strong>
-                        <button type="button" id="btnCerrarHistorialCivix" class="btn-cerrar-hist-civix">×</button>
-                    </div>
-                    <div class="civix-historial-lista" id="civixHistorialLista">
-                        <p class="login-hint">Aún no hay chats guardados.</p>
-                    </div>
-                </div>
-
-                <div class="asistente-chat civix-chat" id="chatMensajes">
-                    <div class="mensaje mensaje-bot">
-                        <p>¡Hola! Soy <strong>Civix</strong>. Elige un modo arriba y pregúntame sobre suelos, materiales o diseño. También puedes adjuntar un archivo.</p>
-                    </div>
-                </div>
-
-                <div class="civix-footer-zone">
-                    <div class="civix-chips-label">Sugerencias rápidas</div>
-                    <div class="civix-chips" id="civixChips" aria-label="Sugerencias">
-                        <button type="button" class="civix-chip" data-q="Explícame los límites de Atterberg con un ejemplo numérico">Límites de Atterberg</button>
-                        <button type="button" class="civix-chip" data-q="Diferencias entre Proctor estándar y modificado">Proctor std vs mod</button>
-                        <button type="button" class="civix-chip" data-q="¿Cómo se interpreta una curva granulométrica?">Granulometría</button>
-                        <button type="button" class="civix-chip" data-q="Guíame paso a paso en un ensayo de corte directo">Corte directo</button>
-                        <button type="button" class="civix-chip" data-q="Resume este tema en 5 puntos clave para estudiar">Resumen 5 puntos</button>
-                    </div>
-
-                    <div class="asistente-input-wrap civix-input-wrap">
-                        <div class="asistente-file-chip" id="civixFileChip" hidden style="display:none">
-                            <span class="adjunto-nombre" id="civixFileName"></span>
-                            <button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" title="Quitar archivo">×</button>
+                <section class="civix-main-col">
+                    <header class="asistente-header civix-header civix-header-pro">
+                        <div class="asistente-info">
+                            <div class="civix-avatar-orb" aria-hidden="true">
+                                <img src="docs/civix-robot.svg" alt="Civix" class="civix-avatar-img" id="civixAvatarImg" width="44" height="44">
+                                <span class="civix-orb-ring"></span>
+                            </div>
+                            <div>
+                                <h3>Civix <span class="civix-online">● en línea</span></h3>
+                                <p>Tu asistente académico de Ingeniería Civil</p>
+                            </div>
                         </div>
-                        <div class="asistente-input civix-input-bar">
-                            <label class="btn-adjuntar-icon civix-attach" for="civixFileInput" title="Adjuntar archivo">📎</label>
-                            <textarea id="inputAsistente" rows="1" placeholder="Escribe tu duda a Civix…"></textarea>
-                            <input type="file" id="civixFileInput" hidden
-                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.py,.js,.ts,.txt,.csv,.json,.md,.m,.dxf,.ifc,.xml,.dat,.in,.log,.sql,.html,.css,.ipynb,.geojson,.obj,.rtf,.odt,.ods,.odp,image/*">
-                            <button id="btnEnviarMensaje" type="button" class="civix-send" title="Enviar (Enter)">
-                                <span class="civix-send-ico">↑</span>
+                        <div class="asistente-acciones">
+                            <button class="btn-cerrar-asistente" id="btnCerrarAsistente" title="Cerrar">×</button>
+                        </div>
+                    </header>
+
+                    <div class="civix-toolbar">
+                        <div class="civix-modos" id="civixModos" role="tablist" aria-label="Modo de tutoría">
+                            <button type="button" class="civix-modo active" data-modo="explicar" title="Explicación completa">
+                                <span class="civix-modo-ico">📘</span><span class="civix-modo-txt">Explicar</span>
+                            </button>
+                            <button type="button" class="civix-modo" data-modo="pistas" title="Solo pistas">
+                                <span class="civix-modo-ico">🎯</span><span class="civix-modo-txt">Pistas</span>
+                            </button>
+                            <button type="button" class="civix-modo" data-modo="corregir" title="Corregir">
+                                <span class="civix-modo-ico">🛠️</span><span class="civix-modo-txt">Corregir</span>
+                            </button>
+                            <button type="button" class="civix-modo" data-modo="quiz" title="Quiz">
+                                <span class="civix-modo-ico">📝</span><span class="civix-modo-txt">Quiz</span>
                             </button>
                         </div>
-                        <p class="civix-input-hint"><kbd>Enter</kbd> enviar · <kbd>Shift</kbd>+<kbd>Enter</kbd> nueva línea · PDF, Word, Excel</p>
+                        <div class="civix-toolbar-right">
+                            <label class="civix-model-wrap" title="Modelo de IA">
+                                <span class="civix-model-ico">🧠</span>
+                                <select id="civixModelSelect" class="civix-model-select" aria-label="Modelo de IA">
+                                    <option value="openai/gpt-oss-120b" data-provider="groq">Groq · GPT-OSS 120B</option>
+                                </select>
+                            </label>
+                            <button type="button" class="civix-web-toggle" id="civixWebToggle" aria-pressed="false" title="Búsqueda web">
+                                <span class="civix-web-dot"></span>
+                                <span class="civix-web-lbl">Web</span>
+                            </button>
+                            <div class="civix-mode-pill" id="civixModePill">Modo: <strong>Explicar</strong></div>
+                        </div>
                     </div>
-                </div>
+
+                    <div class="civix-historial-panel" id="civixHistorialPanel" hidden>
+                        <div class="civix-historial-head">
+                            <strong>Mis conversaciones</strong>
+                            <button type="button" id="btnCivixHistorialCerrar" class="civix-hist-close">Cerrar</button>
+                        </div>
+                        <div class="civix-historial-lista" id="civixHistorialLista"></div>
+                    </div>
+
+                    <div class="asistente-chat civix-chat" id="chatMensajes"></div>
+
+                    <div class="civix-footer-zone">
+                        <div class="civix-chips" id="civixChips" aria-label="Sugerencias" hidden></div>
+                        <div class="asistente-file-chip" id="asistenteFileChip" hidden></div>
+                        <div class="asistente-input-wrap">
+                            <div class="asistente-input civix-input-pro">
+                                <button type="button" class="btn-adjuntar-icon" id="btnAdjuntarArchivo" title="Adjuntar">📎</button>
+                                <input type="file" id="inputAsistenteFile" hidden accept=".py,.txt,.csv,.dxf,.ifc,.json,.log,.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg">
+                                <textarea id="inputAsistente" rows="1" placeholder="Escribe tu mensaje..."></textarea>
+                                <button type="button" class="btn-mejorar-prompt" id="btnMejorarPrompt" title="Mejorar prompt">✨</button>
+                                <button type="button" id="btnEnviarMensaje" class="civix-send-btn" title="Enviar">➤</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="civix-footer-bar">GeoMetrics · Universidad de Pamplona</div>
+                </section>
+
+                <aside class="civix-side-right" aria-label="Accesos rápidos Civix">
+                    <div class="civix-promo-card">
+                        <div class="civix-promo-title">Civix</div>
+                        <p class="civix-promo-quote">“La ingeniería se construye con grandes ideas y buenas preguntas”</p>
+                        <div class="civix-promo-bot" aria-hidden="true">🤖</div>
+                    </div>
+                    <div class="civix-panel-block">
+                        <h4>⚡ Preguntas rápidas</h4>
+                        <button type="button" class="civix-quick" data-q="Resuelve este ejercicio de ingeniería civil paso a paso">Resuelve un ejercicio</button>
+                        <button type="button" class="civix-quick" data-q="Explícame este concepto de Ingeniería Civil de forma clara">Explica un concepto</button>
+                        <button type="button" class="civix-quick" data-q="Ayúdame con esta fórmula y el significado de cada variable">Ayúdame con una fórmula</button>
+                        <button type="button" class="civix-quick" data-q="Dame un paso a paso detallado para este problema">Dame un paso a paso</button>
+                        <button type="button" class="civix-quick" data-q="Revisa mi tarea y dime qué puedo mejorar">Revisa mi tarea</button>
+                    </div>
+                    <div class="civix-panel-block">
+                        <h4>🛠️ Herramientas útiles</h4>
+                        <button type="button" class="civix-quick" data-q="Actúa como calculadora de ingeniería: ayúdame a calcular">Calculadora</button>
+                        <button type="button" class="civix-quick" data-q="Convierte estas unidades de ingeniería (SI y laboratorios)">Conversor de unidades</button>
+                        <button type="button" class="civix-quick" data-q="Muéstrame tablas y fórmulas clave de la materia">Tablas y fórmulas</button>
+                        <button type="button" class="civix-quick" data-q="Dame enlaces y recursos útiles de Ingeniería Civil">Enlaces de interés</button>
+                    </div>
+                </aside>
             </div>
         </div>
 
-        <footer class="menu-footer">
-            <span>Universidad de Pamplona</span>
-            <span>•</span>
-            <span>Ingeniería Civil</span>
-        </footer>
-    </main>
-
-    <!-- ============================================
-         PANTALLA MECÁNICA DE SUELOS I
-    ============================================= -->
-    <main class="pantalla-curso" id="pantallaSuelos">
+<main class="pantalla-curso" id="pantallaSuelos">
         <header class="seccion-encabezado seccion-encabezado-doc">
             <div class="seccion-titulo">
                 <div class="seccion-icono">🧱</div>
@@ -1878,33 +1905,56 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         </section>
     
         <section class="tab-content" id="doc-chat">
-            <div class="aula-card aula-card-wide chat-aula-wrap">
-                <h3>Chat por materia</h3>
-                <p class="login-hint">Conversaciones con estudiantes. Filtra por materia y grupo.</p>
-                <div class="filtros-aula">
-                    <label>Materia</label>
-                    <select id="docChatMateria">
-                        <option value="">Todas</option>
-                        <option>Mecánica de Suelos I</option>
-                        <option>Mecánica de Suelos II</option>
-                        <option>Resistencia de Materiales</option>
-                    </select>
-                    <label>Grupo</label>
-                    <input type="text" id="docChatGrupo" placeholder="Ej. A">
-                    <button class="btn-limpiar" type="button" id="btnDocChatFiltro">APLICAR</button>
-                </div>
-                <div class="chat-aula-layout">
-                    <div class="chat-aula-lista" id="docChatLista">
-                        <p class="login-hint">No hay conversaciones aún.</p>
+            <div class="aula-card aula-card-wide chat-aula-wrap chat-pro">
+                <div class="chat-pro-top">
+                    <div>
+                        <h3>Chats</h3>
+                        <p class="login-hint chat-pro-hint">Conversaciones con estudiantes · filtra por materia y grupo</p>
                     </div>
-                    <div class="chat-aula-panel">
-                        <div class="chat-aula-header" id="docChatHeader">Selecciona una conversación</div>
-                        <div class="chat-aula-mensajes" id="docChatMsgs"></div>
-                        <div class="chat-aula-input-row">
-                            <input type="text" id="docChatInput" placeholder="Escribe un mensaje…" disabled>
-                            <button class="btn-calcular" type="button" id="btnDocChatEnviar" disabled>Enviar</button>
+                    <div class="filtros-aula chat-pro-filters">
+                        <select id="docChatMateria" aria-label="Materia">
+                            <option value="">Todas</option>
+                            <option>Mecánica de Suelos I</option>
+                            <option>Mecánica de Suelos II</option>
+                            <option>Resistencia de Materiales</option>
+                            <option>Diseño de Mezclas</option>
+                        </select>
+                        <input type="text" id="docChatGrupo" placeholder="Grupo">
+                        <button class="btn-limpiar" type="button" id="btnDocChatFiltro">Filtrar</button>
+                    </div>
+                </div>
+                <div class="chat-aula-layout chat-pro-layout">
+                    <div class="chat-pro-list-col">
+                        <div class="chat-pro-search">
+                            <span>🔍</span>
+                            <input type="search" id="docChatSearch" placeholder="Buscar chats o estudiantes…" autocomplete="off">
+                        </div>
+                        <div class="chat-aula-lista" id="docChatLista">
+                            <p class="login-hint">No hay conversaciones aún.</p>
                         </div>
                     </div>
+                    <div class="chat-aula-panel chat-pro-panel">
+                        <div class="chat-aula-header-row">
+                            <div class="chat-aula-header" id="docChatHeader">Selecciona una conversación</div>
+                        </div>
+                        <div class="chat-aula-mensajes" id="docChatMsgs"></div>
+                        <div class="chat-aula-input-row chat-pro-input">
+                            <input type="text" id="docChatInput" placeholder="Escribe un mensaje…" disabled>
+                            <button class="btn-calcular chat-send-fab" type="button" id="btnDocChatEnviar" disabled title="Enviar">➤</button>
+                        </div>
+                    </div>
+                    <aside class="chat-pro-side" id="docChatSide">
+                        <div class="chat-pro-side-card">
+                            <h4>Panel docente</h4>
+                            <p>Responde dudas del curso, comparte indicaciones y da seguimiento a entregas.</p>
+                        </div>
+                        <div class="chat-pro-side-card">
+                            <h4>Acciones rápidas</h4>
+                            <button type="button" class="chat-pro-action" data-tab-jump="doc-tareas">Crear / ver tareas</button>
+                            <button type="button" class="chat-pro-action" data-tab-jump="doc-entregas">Revisar entregas</button>
+                            <button type="button" class="chat-pro-action" data-tab-jump="doc-integrantes">Integrantes del curso</button>
+                        </div>
+                    </aside>
                 </div>
             </div>
         </section>
@@ -2159,29 +2209,53 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         </section>
     
         <section class="tab-content" id="est-chat">
-            <div class="aula-card aula-card-wide chat-aula-wrap">
-                <h3>Chat con el Docente — Compañer@s</h3>
-                <p class="login-hint">Chatea con el docente de cada materia o con tus compañer@s del mismo grupo. Toca un chat de la lista para cambiar de conversación.</p>
-                <div class="filtros-aula">
-                    <label>Materia</label>
-                    <select id="estChatMateria"></select>
-                    <button class="btn-limpiar" type="button" id="btnEstChatAbrir">ABRIR CHAT</button>
-                </div>
-                <div class="chat-aula-layout">
-                    <div class="chat-aula-lista" id="estChatLista">
-                        <p class="login-hint">Elige una materia para chatear.</p>
+            <div class="aula-card aula-card-wide chat-aula-wrap chat-pro">
+                <div class="chat-pro-top">
+                    <div>
+                        <h3>Chats</h3>
+                        <p class="login-hint chat-pro-hint">Docente y compañer@s del mismo grupo · sincronizado en la nube</p>
                     </div>
-                    <div class="chat-aula-panel">
+                    <div class="filtros-aula chat-pro-filters">
+                        <select id="estChatMateria" aria-label="Materia"></select>
+                        <button class="btn-limpiar" type="button" id="btnEstChatAbrir">Abrir</button>
+                    </div>
+                </div>
+                <div class="chat-aula-layout chat-pro-layout">
+                    <div class="chat-pro-list-col">
+                        <div class="chat-pro-search">
+                            <span>🔍</span>
+                            <input type="search" id="estChatSearch" placeholder="Buscar chats o personas…" autocomplete="off">
+                        </div>
+                        <div class="chat-aula-lista" id="estChatLista">
+                            <p class="login-hint">Elige una materia para chatear.</p>
+                        </div>
+                    </div>
+                    <div class="chat-aula-panel chat-pro-panel">
                         <div class="chat-aula-header-row">
                             <div class="chat-aula-header" id="estChatHeader">Selecciona un chat</div>
-                            <button type="button" class="btn-limpiar btn-chat-eliminar" id="btnEstChatEliminar" hidden title="Eliminar este chat">Eliminar chat</button>
+                            <button type="button" class="btn-limpiar btn-chat-eliminar" id="btnEstChatEliminar" hidden title="Eliminar este chat">Eliminar</button>
                         </div>
                         <div class="chat-aula-mensajes" id="estChatMsgs"></div>
-                        <div class="chat-aula-input-row">
+                        <div class="chat-aula-input-row chat-pro-input">
                             <input type="text" id="estChatInput" placeholder="Escribe un mensaje…" disabled>
-                            <button class="btn-calcular" type="button" id="btnEstChatEnviar" disabled>Enviar</button>
+                            <button class="btn-calcular chat-send-fab" type="button" id="btnEstChatEnviar" disabled title="Enviar">➤</button>
                         </div>
                     </div>
+                    <aside class="chat-pro-side" id="estChatSide">
+                        <div class="chat-pro-side-card">
+                            <h4 id="estChatSideTitle">Conversación</h4>
+                            <p id="estChatSideDesc">Selecciona un chat para ver detalles del grupo o del contacto.</p>
+                        </div>
+                        <div class="chat-pro-side-card">
+                            <div class="chat-pro-side-head"><h4>Miembros</h4></div>
+                            <div id="estChatSideMembers" class="chat-pro-members"><p class="login-hint">—</p></div>
+                        </div>
+                        <div class="chat-pro-side-card">
+                            <h4>Acciones rápidas</h4>
+                            <button type="button" class="chat-pro-action" id="btnEstChatGotoIntegrantes">Ver integrantes del curso</button>
+                            <button type="button" class="chat-pro-action" id="btnEstChatGotoTareas">Ir a mis tareas</button>
+                        </div>
+                    </aside>
                 </div>
             </div>
         </section>
