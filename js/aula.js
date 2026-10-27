@@ -2642,6 +2642,27 @@ function aulaRenderEstudiante() {
     var entregadas = {};
     entregas.forEach(function(e) { entregadas[e.tareaId] = true; });
 
+    // KPIs del estudiante
+    try {
+        var nPend = 0, nEnt = 0, nVen = 0;
+        tareas.forEach(function(t) {
+            var plazo = typeof aulaPlazoInfo === 'function' ? aulaPlazoInfo(t) : { clase: '' };
+            if (entregadas[t.id]) nEnt++;
+            else {
+                nPend++;
+                if (plazo.clase && String(plazo.clase).indexOf('vencid') >= 0) nVen++;
+            }
+        });
+        var setK = function(id, v) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = String(v);
+        };
+        setK('kpiEstTareas', tareas.length);
+        setK('kpiEstPendientes', nPend);
+        setK('kpiEstEntregadas', nEnt);
+        setK('kpiEstVencidas', nVen);
+    } catch (eKpi) {}
+
     if (box) {
         if (!tareas.length) {
             var todas = aulaLoad(AULA_KEYS.tareas, []);
@@ -2650,20 +2671,28 @@ function aulaRenderEstudiante() {
                 return aulaEsc(t.titulo) + ' (' + aulaEsc(t.materia || 'sin materia') + ' / grupo ' + aulaEsc(t.grupo || 'todos') + ')';
             }).join('; ');
             var msg = totalTareas === 0
-                ? 'El docente aún no ha publicado tareas en este navegador.'
-                : ('No hay coincidencias para <strong>' + aulaEsc(materiaSel || '—') + '</strong> / grupo <strong>' +
-                   aulaEsc(grupoSel || '—') + '</strong>.<br><small>Tareas publicadas: ' + detalle +
-                   '</small><br><small>Deja el grupo vacío en la tarea del docente para que la vean todos, o usa exactamente el mismo grupo.</small>');
-            box.innerHTML = '<p class="aula-vacio">' + msg + '</p>';
+                ? 'Aún no hay tareas publicadas. Cuando tu docente publique, aparecerán aquí.'
+                : ('No hay coincidencias para <strong>' + aulaEsc(materiaSel || 'todas') + '</strong>' +
+                   (grupoSel ? (' / grupo <strong>' + aulaEsc(grupoSel) + '</strong>') : '') +
+                   '.<br><small>Prueba «Todas mis materias» o revisa que el grupo coincida con el de la tarea.</small>');
+            box.innerHTML = '<div class="aula-empty-state">' +
+                '<div class="aula-empty-ico">📋</div>' +
+                '<p class="aula-vacio">' + msg + '</p></div>';
         } else {
             box.innerHTML = tareas.slice().reverse().map(function(t) {
-                var estado = entregadas[t.id] ? '<span class="badge-ok">Entregada</span>' : '<span class="badge-pend">Pendiente</span>';
                 var plazo = aulaPlazoInfo(t);
-                return '<div class="aula-item">' +
-                    '<strong>' + aulaEsc(t.titulo) + '</strong> ' + estado +
+                var done = !!entregadas[t.id];
+                var badgeCls = done ? 'badge-ok' : (plazo.clase && String(plazo.clase).indexOf('vencid') >= 0 ? 'badge-late' : 'badge-pend');
+                var badgeTxt = done ? 'Entregada' : (badgeCls === 'badge-late' ? 'Vencida' : 'Pendiente');
+                return '<div class="aula-item aula-item-task">' +
+                    '<div class="aula-item-top">' +
+                    '<strong>' + aulaEsc(t.titulo) + '</strong>' +
+                    '<span class="' + badgeCls + '">' + badgeTxt + '</span></div>' +
                     '<p>' + aulaEsc(t.descripcion || '') + '</p>' +
-                    '<small>' + aulaEsc(t.materia) + ' · Grupo ' + aulaEsc(t.grupo || 'Todos') +
-                    ' · Prof. ' + aulaEsc(t.docenteNombre || '') + '</small>' +
+                    '<div class="aula-item-meta">' +
+                    '<span>' + aulaEsc(t.materia) + '</span>' +
+                    '<span>Grupo ' + aulaEsc(t.grupo || 'Todos') + '</span>' +
+                    '<span>Prof. ' + aulaEsc(t.docenteNombre || '—') + '</span></div>' +
                     '<p class="plazo-info ' + plazo.clase + '">' + aulaEsc(plazo.texto) + '</p></div>';
             }).join('');
         }
