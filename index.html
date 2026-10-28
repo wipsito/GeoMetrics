@@ -2243,10 +2243,18 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                     <div class="perfil-horario-box" id="perfilHorarioBox">
                         <p class="perfil-section-title" style="margin:12px 0 8px">Horario estudiantil</p>
                         <input type="file" id="perfilHorarioFile" accept="application/pdf,.pdf" hidden>
-                        <button type="button" class="btn-limpiar perfil-horario-btn" id="btnCargarHorario" title="Cargar PDF del horario Academusoft">
-                            📖 Cargar horario
-                        </button>
-                        <p class="login-hint" id="perfilHorarioInfo" style="margin-top:6px">Sube TU PDF de Academusoft. Cada cuenta guarda su propio horario (no se mezcla con otros estudiantes). El archivo de ejemplo del repo solo aplica el horario demo.</p>
+                        <div class="perfil-horario-actions" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+                            <button type="button" class="btn-limpiar perfil-horario-btn" id="btnCargarHorario" title="Cargar PDF del horario Academusoft">
+                                📖 Cargar horario
+                            </button>
+                            <button type="button" class="btn-limpiar perfil-horario-btn" id="btnBorrarHorario" title="Eliminar horario guardado" style="min-width:44px;padding:8px 12px" aria-label="Eliminar horario">
+                                🗑️
+                            </button>
+                            <button type="button" class="btn-limpiar perfil-horario-btn" id="btnEjemploHorario" title="Usar horario de ejemplo GeoMetrics (solo tu cuenta)">
+                                📋 Ejemplo
+                            </button>
+                        </div>
+                        <p class="login-hint" id="perfilHorarioInfo" style="margin-top:6px">Sube TU PDF. Se guarda en tu cuenta y se sincroniza con la nube para usarlo en otro PC. El basurero borra el horario antiguo. «Ejemplo» solo carga el demo de GeoMetrics en tu usuario.</p>
                     </div>
                     <p class="login-hint" id="perfilUltimoAcceso">Último acceso: —</p>
                     <div class="perfil-foto-actions">
