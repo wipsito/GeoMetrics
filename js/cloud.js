@@ -532,6 +532,9 @@ function syncUpUsers() {
     }
 
     global.GeoCloud = {
+        cloudGet: cloudGet,
+        cloudSet: cloudSet,
+        emailKey: emailKey,
         isOn: isOn,
         init: init,
         syncDown: syncDown,

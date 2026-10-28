@@ -591,6 +591,7 @@
       }
       bindPerfilHorarioBtn();
       updatePerfilHorarioInfo();
+      try { syncHorarioFromCloud(function () { updatePerfilHorarioInfo(); renderNextClass(); }); } catch (eSy) {}
     } catch (e) {
       console.warn('openEditProfile', e);
       toast('No se pudo abrir el perfil.');
@@ -601,64 +602,117 @@
     var info = $('perfilHorarioInfo');
     if (!info) return;
     var h = loadHorario();
-    if (h.fileName || h.slots.length) {
-      info.textContent = (h.fileName ? ('Archivo: ' + h.fileName + ' · ') : '') +
-        (h.slots.length ? (h.slots.length + ' clases en el calendario') : 'PDF guardado');
+    if (h.fileName || (h.slots && h.slots.length)) {
+      info.textContent = (h.fileName ? ('Archivo: ' + h.fileName) : 'Sin PDF') +
+        (h.slots && h.slots.length ? (' · ' + h.slots.length + ' clases') : ' · sin clases aún') +
+        ' · sincronizado por cuenta';
     } else {
-      info.textContent = 'Sube el PDF del reporte de horario para vincularlo al calendario del aula.';
+      info.textContent = 'Sin horario. Usa «Cargar horario», «Ejemplo» o espera la sync de otro PC.';
     }
+  }
+
+  function applyHorarioPayload(h, msg) {
+    h.personal = true;
+    saveHorario(h);
+    try { updatePerfilHorarioInfo(); } catch (e0) {}
+    try { renderHorarioList(); } catch (e1) {}
+    try { renderCalendar(); } catch (e2) {}
+    try { renderCalendarView(); } catch (e3) {}
+    try { renderNextClass(); } catch (e4) {}
+    if (msg) toast(msg);
   }
 
   function bindPerfilHorarioBtn() {
     var btn = $('btnCargarHorario');
     var file = $('perfilHorarioFile');
+    var btnDel = $('btnBorrarHorario');
+    var btnEj = $('btnEjemploHorario');
     if (!btn || !file) return;
-    if (!btn._avBound) {
-      btn._avBound = true;
-      btn.addEventListener('click', function () { file.click(); });
-    }
-    if (!file._avBound) {
-      file._avBound = true;
-      file.addEventListener('change', function () {
-        var f = file.files && file.files[0];
-        if (!f) return;
-        if (f.type && f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) {
-          toast('Sube un archivo PDF del horario.');
-          return;
-        }
-        if (f.size > 8 * 1024 * 1024) {
-          toast('El PDF supera 8 MB.');
-          return;
-        }
-        var reader = new FileReader();
-        reader.onload = function () {
+
+    // Re-bind seguro cada vez que se abre el perfil
+    btn.onclick = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      try { file.value = ''; } catch (eV) {}
+      file.click();
+    };
+
+    file.onchange = function () {
+      var f = file.files && file.files[0];
+      if (!f) return;
+      if (f.type && f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) {
+        toast('Sube un archivo PDF del horario.');
+        return;
+      }
+      if (f.size > 12 * 1024 * 1024) {
+        toast('El PDF supera 12 MB. Usa un archivo más liviano.');
+        return;
+      }
+      toast('Cargando horario…');
+      var reader = new FileReader();
+      reader.onerror = function () {
+        toast('No se pudo leer el PDF. Intenta de nuevo.');
+      };
+      reader.onload = function () {
+        try {
           var h = loadHorario();
           h.fileName = f.name;
           h.fileData = String(reader.result || '');
           h.personal = true;
           h.fromDefault = false;
-          // Solo el horario de EJEMPLO del repo aplica el demo de GeoMetrics.
-          // Cualquier otro PDF es personal: no se mezclan materias de otro estudiante.
           var isExample = /reportehorario-ejemplo|horario-ejemplo|ejemplo/i.test(f.name || '');
           if (isExample) {
             h.slots = cloneDefaultSlots();
             h.fromDefault = true;
-            toast('Horario de ejemplo GeoMetrics aplicado solo a tu cuenta.');
-          } else if (!h.slots.length) {
-            // PDF personal guardado; las clases se cargan con «Usar horario de ejemplo» o datos ya guardados
-            toast('PDF personal guardado en tu cuenta. No se copió el horario de otro estudiante.');
+            applyHorarioPayload(h, 'Ejemplo aplicado y sincronizado a la nube (solo tu cuenta).');
           } else {
-            toast('PDF actualizado. Se mantienen tus clases ya registradas.');
+            // PDF personal: conservar slots previos si existen; si no, dejar listo para ejemplo o nube
+            if (!h.slots || !h.slots.length) {
+              applyHorarioPayload(h, 'PDF guardado en tu cuenta. Si no ves clases, pulsa «Ejemplo» o sincroniza desde el otro PC.');
+            } else {
+              applyHorarioPayload(h, 'PDF actualizado. Tus clases se mantienen y se sincronizan.');
+            }
           }
-          saveHorario(h);
-          updatePerfilHorarioInfo();
-          try { renderCalendar(); } catch (e1) {}
-          try { renderCalendarView(); } catch (e2) {}
-          try { renderNextClass(); } catch (e3) {}
-          try { renderHorarioList(); } catch (e4) {}
-        };
-        reader.readAsDataURL(f);
-      });
+        } catch (err) {
+          console.warn('perfil horario', err);
+          toast('Error al guardar el horario.');
+        }
+      };
+      reader.readAsDataURL(f);
+    };
+
+    if (btnDel) {
+      btnDel.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var ok = window.confirm('¿Eliminar tu horario guardado (este PC y la nube)?\nPodrás cargar uno nuevo después.');
+        if (!ok) return;
+        var empty = emptyHorario();
+        applyHorarioPayload(empty, 'Horario eliminado. Ya puedes cargar uno nuevo.');
+        try { file.value = ''; } catch (e2) {}
+        // borrar también en Firebase
+        try {
+          var path = horarioCloudPath();
+          if (path && window.GeoCloud && window.GeoCloud.cloudSet) {
+            window.GeoCloud.cloudSet(path, null);
+          }
+        } catch (e3) {}
+      };
+    }
+
+    if (btnEj) {
+      btnEj.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var ok = window.confirm('¿Cargar el horario de EJEMPLO de GeoMetrics solo en TU cuenta?\nSe sincronizará a la nube para otros PCs con el mismo usuario.');
+        if (!ok) return;
+        var h = loadHorario();
+        h.slots = cloneDefaultSlots();
+        h.fileName = h.fileName || 'reporteHorario-ejemplo.pdf';
+        h.fromDefault = true;
+        h.personal = true;
+        applyHorarioPayload(h, 'Ejemplo cargado y sincronizado (solo tu usuario).');
+      };
     }
   }
 
@@ -1360,6 +1414,12 @@
     setView('aula');
     setTimeout(function () { try { renderNextClass(); } catch (e) {} }, 100);
     setTimeout(function () { try { renderNextClass(); } catch (e) {} }, 600);
+    // Sincronizar horario desde la nube (útil en otro PC)
+    setTimeout(function () {
+      try {
+        if (typeof syncHorarioFromCloud === 'function') syncHorarioFromCloud();
+      } catch (eS) {}
+    }, 400);
   }
 
   function hideAulaVirtual() {
