@@ -2241,20 +2241,38 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                         <textarea id="perfilBio" rows="2" maxlength="120" placeholder="Cuéntanos algo de ti…"></textarea>
                     </label>
                     <div class="perfil-horario-box" id="perfilHorarioBox">
-                        <p class="perfil-section-title" style="margin:12px 0 8px">Horario estudiantil</p>
+                        <p class="perfil-section-title" style="margin:12px 0 8px">Horario estudiantil (solo tu cuenta)</p>
                         <input type="file" id="perfilHorarioFile" accept="application/pdf,.pdf" hidden>
                         <div class="perfil-horario-actions" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-                            <button type="button" class="btn-limpiar perfil-horario-btn" id="btnCargarHorario" title="Cargar PDF del horario Academusoft">
-                                📖 Cargar horario
+                            <button type="button" class="btn-limpiar perfil-horario-btn" id="btnCargarHorario" title="Subir PDF Academusoft y extraer clases">
+                                📖 Subir PDF horario
                             </button>
-                            <button type="button" class="btn-limpiar perfil-horario-btn" id="btnBorrarHorario" title="Eliminar horario guardado" style="min-width:44px;padding:8px 12px" aria-label="Eliminar horario">
-                                🗑️
-                            </button>
-                            <button type="button" class="btn-limpiar perfil-horario-btn" id="btnEjemploHorario" title="Usar horario de ejemplo GeoMetrics (solo tu cuenta)">
-                                📋 Ejemplo
-                            </button>
+                            <button type="button" class="btn-limpiar perfil-horario-btn" id="btnBorrarHorario" title="Eliminar horario" style="min-width:44px;padding:8px 12px" aria-label="Eliminar horario">🗑️</button>
+                            <button type="button" class="btn-limpiar perfil-horario-btn" id="btnEjemploHorario" title="Horario demo GeoMetrics">📋 Ejemplo</button>
                         </div>
-                        <p class="login-hint" id="perfilHorarioInfo" style="margin-top:6px">Sube TU PDF. Se guarda en tu cuenta y se sincroniza con la nube para usarlo en otro PC. El basurero borra el horario antiguo. «Ejemplo» solo carga el demo de GeoMetrics en tu usuario.</p>
+                        <p class="login-hint" id="perfilHorarioInfo" style="margin-top:6px">Sube tu reporte Academusoft (PDF). Las clases se extraen y quedan solo en tu usuario (nube + este PC). Nadie más las ve.</p>
+                        <div id="perfilHorarioSlots" class="perfil-horario-slots" style="margin-top:10px;max-height:180px;overflow:auto"></div>
+                        <details class="perfil-horario-editor" style="margin-top:10px">
+                          <summary style="cursor:pointer;font-weight:600">✏️ Editor manual de clases</summary>
+                          <div style="display:grid;gap:6px;margin-top:8px;grid-template-columns:1fr 1fr">
+                            <input type="text" id="heMateria" placeholder="Materia" style="grid-column:1/-1">
+                            <input type="text" id="heGrupo" placeholder="Grupo">
+                            <select id="heDia">
+                              <option value="0">Lunes</option>
+                              <option value="1">Martes</option>
+                              <option value="2">Miércoles</option>
+                              <option value="3">Jueves</option>
+                              <option value="4">Viernes</option>
+                              <option value="5">Sábado</option>
+                              <option value="6">Domingo</option>
+                            </select>
+                            <input type="time" id="heInicio" value="08:00">
+                            <input type="time" id="heFin" value="10:00">
+                            <input type="text" id="heAula" placeholder="Aula">
+                            <input type="text" id="heDocente" placeholder="Docente" style="grid-column:1/-1">
+                            <button type="button" class="btn-limpiar" id="btnHeAgregar" style="grid-column:1/-1">➕ Agregar clase a MI horario</button>
+                          </div>
+                        </details>
                     </div>
                     <p class="login-hint" id="perfilUltimoAcceso">Último acceso: —</p>
                     <div class="perfil-foto-actions">
