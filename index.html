@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="css/civix-pro.css">
     <link rel="stylesheet" href="css/suelos1.css">
     <link rel="stylesheet" href="css/aula-virtual.css">
+    <link rel="stylesheet" href="css/docente-pro.css">
 
 <!-- ═══════════════ GeoMetrics · Pantalla de carga (retroexcavadora) ═══════════════
      Va ANTES de los scripts que bloquean la carga (EmailJS, Firebase, SheetJS, Plotly) para que se pinte al instante.
@@ -1819,97 +1820,283 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <!-- ============================================
          PANTALLA AULA DOCENTE — Panel operativo (Fase 1)
     ============================================= -->
-    <main class="pantalla-curso av-docente" id="pantallaDocente" style="display:none;">
-        <header class="av-doc-top">
-            <div>
-                <p class="av-doc-kicker">GeoMetrics · Gestión académica</p>
-                <h2>Panel del profesor</h2>
-                <p id="docenteSubtitulo">Publica tareas y revisa el avance de tus grupos.</p>
+    <main class="pantalla-curso av-docente av-doc-pro" id="pantallaDocente" style="display:none;">
+        <!-- Top bar -->
+        <header class="dp-top">
+            <div class="dp-brand">
+                <img src="docs/Geometrics.PNG" alt="GeoMetrics" onerror="this.style.display='none'">
+                <div>
+                    <strong>GeoMetrics</strong>
+                    <span>Panel docente</span>
+                </div>
             </div>
-            <button type="button" class="av-btn-menu" id="btnVolverDocente">← Menú</button>
+            <nav class="dp-top-nav" aria-label="Navegación principal">
+                <button type="button" class="active" data-dp-nav="dashboard">Inicio</button>
+                <button type="button" data-dp-nav="cursos">Cursos</button>
+                <button type="button" data-dp-nav="estudiantes">Estudiantes</button>
+            </nav>
+            <div class="dp-search">
+                <span aria-hidden="true">🔍</span>
+                <input type="search" id="dpSearch" placeholder="Buscar cursos, tareas…" autocomplete="off">
+            </div>
+            <div class="dp-top-right">
+                <div class="av-notif-wrap" id="dpNotifWrap">
+                    <button type="button" class="dp-icon-btn" id="dpBtnNotif" title="Notificaciones" aria-label="Notificaciones">
+                        🔔<span class="dp-badge" id="dpNotifBadge" hidden>0</span>
+                    </button>
+                    <div class="av-notif-panel" id="dpNotifPanel" hidden>
+                        <div class="av-notif-head">
+                            <strong>Notificaciones</strong>
+                            <button type="button" class="av-link" id="dpNotifMarkAll">Marcar leídas</button>
+                        </div>
+                        <div class="av-notif-list" id="dpNotifList"></div>
+                    </div>
+                </div>
+                <div class="dp-user-chip" id="dpUserChip" title="Mi cuenta" role="button" tabindex="0">
+                    <div class="dp-user-av" id="dpUserAv">—</div>
+                    <div>
+                        <strong id="dpUserName">Docente</strong>
+                        <small>Docente</small>
+                    </div>
+                </div>
+                <button type="button" class="av-btn-ghost" id="btnVolverDocente" title="Volver al menú">← Menú</button>
+            </div>
         </header>
 
-        <section class="av-doc-kpis" aria-label="Resumen">
-            <div class="av-doc-kpi"><span class="av-doc-kpi-num" id="kpiTareas">0</span><span>Tareas</span></div>
-            <div class="av-doc-kpi"><span class="av-doc-kpi-num" id="kpiEstudiantes">0</span><span>Estudiantes</span></div>
-            <div class="av-doc-kpi"><span class="av-doc-kpi-num" id="kpiEntregas">0</span><span>Entregas</span></div>
-            <div class="av-doc-kpi av-doc-kpi-alert"><span class="av-doc-kpi-num" id="kpiPendientes">0</span><span>Sin calificar</span></div>
-        </section>
+        <div class="dp-body">
+            <!-- Sidebar -->
+            <aside class="dp-side" aria-label="Menú del panel">
+                <div class="dp-side-label">Principal</div>
+                <button type="button" class="active" data-dp-view="dashboard"><span class="dp-ico">📊</span><span class="label">Dashboard</span></button>
+                <button type="button" data-dp-view="tareas"><span class="dp-ico">✅</span><span class="label">Tareas</span></button>
+                <button type="button" data-dp-view="entregas"><span class="dp-ico">📥</span><span class="label">Entregas</span></button>
+                <button type="button" data-dp-view="estudiantes"><span class="dp-ico">👥</span><span class="label">Estudiantes</span></button>
+                <button type="button" data-dp-view="material"><span class="dp-ico">📄</span><span class="label">Material</span></button>
+                <button type="button" data-dp-view="analisis"><span class="dp-ico">📈</span><span class="label">Análisis</span></button>
+                <div class="dp-side-foot">
+                    <button type="button" id="dpBtnPerfil"><span class="dp-ico">👤</span><span class="label">Perfil</span></button>
+                    <button type="button" data-dp-view="entregas" id="dpBtnMsgs"><span class="dp-ico">💬</span><span class="label">Mensajes</span></button>
+                </div>
+            </aside>
 
-        <section class="av-doc-grid">
-            <div class="av-doc-card">
-                <h3 id="formTareaTitulo">Publicar tarea</h3>
-                <input type="hidden" id="tareaEditId" value="">
-                <label>Título<input type="text" id="tareaTitulo" placeholder="Ej. Informe granulometría" autocomplete="off"></label>
-                <label>Descripción<textarea id="tareaDesc" rows="3" placeholder="Indicaciones para el estudiante"></textarea></label>
-                <div class="av-doc-row">
-                    <label>Materia
-                        <select id="tareaMateria">
-                            <option>Mecánica de Suelos I</option>
-                            <option>Mecánica de Suelos II</option>
-                            <option>Resistencia de Materiales</option>
-                            <option>Diseño de Mezclas</option>
-                        </select>
-                    </label>
-                    <label>Grupo<input type="text" id="tareaGrupo" placeholder="Ej. A (vacío = todos)"></label>
-                </div>
-                <div class="av-doc-row">
-                    <label>Fecha límite<input type="date" id="tareaFecha"></label>
-                    <label>Hora límite<input type="time" id="tareaHora"></label>
-                </div>
-                <p id="tareaError" class="av-doc-error" role="alert"></p>
-                <div class="av-doc-actions">
-                    <button type="button" class="av-btn-primary" id="btnCrearTarea">Publicar tarea</button>
-                    <button type="button" class="av-btn-ghost" id="btnCancelarEditTarea">Cancelar edición</button>
-                </div>
-            </div>
+            <div class="dp-main">
+                <!-- DASHBOARD -->
+                <section class="dp-panel active" data-dp-panel="dashboard">
+                    <div class="dp-head">
+                        <div>
+                            <h1>Panel del Docente</h1>
+                            <p id="docenteSubtitulo">Bienvenido/a. Gestiona cursos, tareas y el avance de tus grupos.</p>
+                        </div>
+                        <div class="dp-head-actions">
+                            <button type="button" class="dp-btn-primary" data-dp-view="tareas">+ Nueva tarea</button>
+                        </div>
+                    </div>
 
-            <div class="av-doc-card">
-                <h3>Tareas publicadas <span class="tab-badge" id="badgeEntregas" hidden>0</span></h3>
-                <div class="av-doc-row av-doc-filters">
-                    <label>Filtrar materia
-                        <select id="filtroMateriaTareas">
-                            <option value="">Todas</option>
-                            <option>Mecánica de Suelos I</option>
-                            <option>Mecánica de Suelos II</option>
-                            <option>Resistencia de Materiales</option>
-                            <option>Diseño de Mezclas</option>
-                        </select>
-                    </label>
-                    <label>Grupo<input type="text" id="filtroGrupoTareas" placeholder="Grupo"></label>
-                    <button type="button" class="av-btn-ghost" id="btnFiltrarTareas">Filtrar</button>
-                </div>
-                <div id="listaTareasDocente" class="av-doc-list"></div>
-            </div>
-        </section>
+                    <div class="dp-kpis" aria-label="Resumen">
+                        <div class="dp-kpi">
+                            <span class="dp-kpi-num" id="kpiEstudiantes">0</span>
+                            <span>Estudiantes</span>
+                        </div>
+                        <div class="dp-kpi alert">
+                            <span class="dp-kpi-num" id="kpiPendientes">0</span>
+                            <span>Sin calificar</span>
+                        </div>
+                        <div class="dp-kpi violet">
+                            <span class="dp-kpi-num" id="kpiTareas">0</span>
+                            <span>Tareas publicadas</span>
+                        </div>
+                        <div class="dp-kpi ok">
+                            <span class="dp-kpi-num" id="kpiEntregas">0</span>
+                            <span>Entregas</span>
+                        </div>
+                    </div>
 
-        <section class="av-doc-grid">
-            <div class="av-doc-card">
-                <h3>Material / presentación</h3>
-                <label>Título<input type="text" id="presTitulo" placeholder="Título del material"></label>
-                <div class="av-doc-row">
-                    <label>Materia
-                        <select id="presMateria">
-                            <option>Mecánica de Suelos I</option>
-                            <option>Mecánica de Suelos II</option>
-                            <option>Resistencia de Materiales</option>
-                            <option>Diseño de Mezclas</option>
-                        </select>
-                    </label>
-                    <label>Grupo<input type="text" id="presGrupo" placeholder="Grupo"></label>
-                </div>
-                <label>Archivo<input type="file" id="presArchivo"></label>
-                <p id="presError" class="av-doc-error" role="alert"></p>
-                <button type="button" class="av-btn-primary" id="btnSubirPres">Subir material</button>
-                <div id="listaPresDocente" class="av-doc-list" style="margin-top:12px"></div>
+                    <div class="dp-dash-grid">
+                        <div class="dp-card dp-span-2">
+                            <h3>Actividad semanal <span class="dp-link" data-dp-view="analisis">Ver análisis →</span></h3>
+                            <div class="dp-chart-wrap"><canvas id="dpChartWeek" width="640" height="180" aria-label="Gráfico de actividad semanal"></canvas></div>
+                            <div class="dp-chart-legend">
+                                <span><i style="background:#00D9FF"></i> Entregas</span>
+                                <span><i style="background:#A66CFF"></i> Tareas publicadas</span>
+                            </div>
+                            <p class="dp-empty" id="dpChartEmpty" hidden style="padding:8px 0 0;text-align:left">Sin actividad reciente. Las curvas aparecerán cuando haya entregas o tareas nuevas.</p>
+                        </div>
+
+                        <div class="dp-card">
+                            <h3>Próximos eventos</h3>
+                            <div id="dpEventsList"></div>
+                        </div>
+
+                        <div class="dp-card">
+                            <h3>Mis cursos <span class="dp-link" data-dp-view="estudiantes">Ver todos →</span></h3>
+                            <div id="dpCoursesList"></div>
+                        </div>
+
+                        <div class="dp-card">
+                            <h3>Actividad reciente</h3>
+                            <div id="dpActivityList"></div>
+                        </div>
+
+                        <div class="dp-card">
+                            <h3>Tareas por corregir <span class="tab-badge" id="badgeEntregas" hidden>0</span></h3>
+                            <div id="dpPendingTasks"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TAREAS -->
+                <section class="dp-panel" data-dp-panel="tareas">
+                    <div class="dp-head">
+                        <div>
+                            <h1>Tareas</h1>
+                            <p>Publica, edita y filtra las actividades de tus grupos.</p>
+                        </div>
+                    </div>
+                    <div class="dp-work-grid">
+                        <div class="dp-card">
+                            <h3 id="formTareaTitulo">Publicar tarea</h3>
+                            <input type="hidden" id="tareaEditId" value="">
+                            <label>Título<input type="text" id="tareaTitulo" placeholder="Ej. Informe granulometría" autocomplete="off"></label>
+                            <label>Descripción<textarea id="tareaDesc" rows="3" placeholder="Indicaciones para el estudiante"></textarea></label>
+                            <div class="av-doc-row">
+                                <label>Materia
+                                    <select id="tareaMateria">
+                                        <option>Mecánica de Suelos I</option>
+                                        <option>Mecánica de Suelos II</option>
+                                        <option>Resistencia de Materiales</option>
+                                        <option>Diseño de Mezclas</option>
+                                    </select>
+                                </label>
+                                <label>Grupo<input type="text" id="tareaGrupo" placeholder="Ej. A (vacío = todos)"></label>
+                            </div>
+                            <div class="av-doc-row">
+                                <label>Fecha límite<input type="date" id="tareaFecha"></label>
+                                <label>Hora límite<input type="time" id="tareaHora"></label>
+                            </div>
+                            <p id="tareaError" class="av-doc-error" role="alert"></p>
+                            <div class="av-doc-actions">
+                                <button type="button" class="av-btn-primary" id="btnCrearTarea">Publicar tarea</button>
+                                <button type="button" class="av-btn-ghost" id="btnCancelarEditTarea">Cancelar edición</button>
+                            </div>
+                        </div>
+                        <div class="dp-card">
+                            <h3>Tareas publicadas</h3>
+                            <div class="av-doc-row" style="margin-bottom:10px">
+                                <label>Materia
+                                    <select id="filtroMateriaTareas">
+                                        <option value="">Todas</option>
+                                        <option>Mecánica de Suelos I</option>
+                                        <option>Mecánica de Suelos II</option>
+                                        <option>Resistencia de Materiales</option>
+                                        <option>Diseño de Mezclas</option>
+                                    </select>
+                                </label>
+                                <label>Grupo<input type="text" id="filtroGrupoTareas" placeholder="Grupo"></label>
+                            </div>
+                            <button type="button" class="av-btn-ghost" id="btnFiltrarTareas" style="margin-bottom:10px">Filtrar</button>
+                            <div id="listaTareasDocente" class="av-doc-list"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ENTREGAS -->
+                <section class="dp-panel" data-dp-panel="entregas">
+                    <div class="dp-head">
+                        <div>
+                            <h1>Entregas</h1>
+                            <p>Revisa y califica los trabajos enviados por tus estudiantes.</p>
+                        </div>
+                    </div>
+                    <div class="dp-card">
+                        <div id="listaEntregasDocente" class="av-doc-list"></div>
+                    </div>
+                </section>
+
+                <!-- ESTUDIANTES -->
+                <section class="dp-panel" data-dp-panel="estudiantes">
+                    <div class="dp-head">
+                        <div>
+                            <h1>Estudiantes</h1>
+                            <p>Listado de estudiantes vinculados a tus materias y grupos.</p>
+                        </div>
+                    </div>
+                    <div class="dp-card">
+                        <div id="listaEstudiantes" class="av-doc-list"></div>
+                    </div>
+                </section>
+
+                <!-- MATERIAL -->
+                <section class="dp-panel" data-dp-panel="material">
+                    <div class="dp-head">
+                        <div>
+                            <h1>Material / presentaciones</h1>
+                            <p>Sube archivos para que tus grupos los descarguen en Mi aula.</p>
+                        </div>
+                    </div>
+                    <div class="dp-work-grid">
+                        <div class="dp-card">
+                            <h3>Subir material</h3>
+                            <label>Título<input type="text" id="presTitulo" placeholder="Título del material"></label>
+                            <div class="av-doc-row">
+                                <label>Materia
+                                    <select id="presMateria">
+                                        <option>Mecánica de Suelos I</option>
+                                        <option>Mecánica de Suelos II</option>
+                                        <option>Resistencia de Materiales</option>
+                                        <option>Diseño de Mezclas</option>
+                                    </select>
+                                </label>
+                                <label>Grupo<input type="text" id="presGrupo" placeholder="Grupo"></label>
+                            </div>
+                            <label>Archivo<input type="file" id="presArchivo"></label>
+                            <p id="presError" class="av-doc-error" role="alert"></p>
+                            <button type="button" class="av-btn-primary" id="btnSubirPres">Subir material</button>
+                        </div>
+                        <div class="dp-card">
+                            <h3>Material publicado</h3>
+                            <div id="listaPresDocente" class="av-doc-list"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ANALISIS -->
+                <section class="dp-panel" data-dp-panel="analisis">
+                    <div class="dp-head">
+                        <div>
+                            <h1>Análisis</h1>
+                            <p>Indicadores calculados a partir de tus tareas y entregas reales.</p>
+                        </div>
+                    </div>
+                    <div class="dp-dash-grid">
+                        <div class="dp-card dp-span-2">
+                            <h3>Rendimiento (entregas vs tareas)</h3>
+                            <div class="dp-chart-wrap" style="height:220px"><canvas id="dpChartPerf" width="640" height="220"></canvas></div>
+                        </div>
+                        <div class="dp-card">
+                            <h3>Indicadores</h3>
+                            <div class="dp-metrics">
+                                <div class="dp-metric"><strong id="dpMetricAvg">—</strong><span>Promedio de notas registradas</span></div>
+                                <div class="dp-metric"><strong id="dpMetricRate">—</strong><span>Tasa de entrega (entregas / tareas·estudiantes)</span></div>
+                                <div class="dp-metric"><strong id="dpMetricPending">—</strong><span>Pendientes de calificar</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CURSOS (alias dashboard section for top nav) -->
+                <section class="dp-panel" data-dp-panel="cursos">
+                    <div class="dp-head">
+                        <div>
+                            <h1>Cursos</h1>
+                            <p>Asignaturas que dictas según tu registro.</p>
+                        </div>
+                    </div>
+                    <div class="dp-card">
+                        <div id="dpCoursesListFull" class="av-doc-list"></div>
+                    </div>
+                </section>
             </div>
-            <div class="av-doc-card">
-                <h3>Entregas recientes</h3>
-                <div id="listaEntregasDocente" class="av-doc-list"></div>
-                <h3 style="margin-top:16px">Estudiantes</h3>
-                <div id="listaEstudiantes" class="av-doc-list"></div>
-            </div>
-        </section>
+        </div>
     </main>
 
 
@@ -1937,9 +2124,18 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 </div>
             </div>
             <div class="av-top-actions">
-                <button type="button" class="av-icon-btn" title="Notificaciones" aria-label="Notificaciones">
-                    🔔<span class="av-badge" id="avNotifBadge" hidden>0</span>
-                </button>
+                <div class="av-notif-wrap" id="avNotifWrap">
+                    <button type="button" class="av-icon-btn" id="avBtnNotif" title="Notificaciones" aria-label="Notificaciones">
+                        🔔<span class="av-badge" id="avNotifBadge" hidden>0</span>
+                    </button>
+                    <div class="av-notif-panel" id="avNotifPanel" hidden>
+                        <div class="av-notif-head">
+                            <strong>Notificaciones</strong>
+                            <button type="button" class="av-link" id="avNotifMarkAll">Marcar leídas</button>
+                        </div>
+                        <div class="av-notif-list" id="avNotifList"></div>
+                    </div>
+                </div>
                 <button type="button" class="av-icon-btn" title="Mensajes" aria-label="Mensajes">💬</button>
                 <button type="button" class="av-user-chip" id="avUserChip" title="Abrir mi perfil" aria-label="Abrir perfil">
                     <div class="av-user-fb" id="avUserFb">ES</div>
@@ -2041,9 +2237,27 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                     <div id="avCalEvents" class="av-task-list" style="margin-top:12px"></div>
                 </div>
             </div>
-            <div class="av-view" data-av-view="tareas">
-                <h2>Tareas</h2>
-                <p class="av-view-hint">Tareas de tus materias y grupos. Se actualizan desde el panel docente.</p>
+                        <div class="av-view" data-av-view="tareas">
+                <h2>Mis tareas</h2>
+                <p class="av-view-hint">Actividades de tus materias. Adjunta tu archivo y entrega antes del límite.</p>
+                <div class="av-card av-entrega-card" id="panelEntregaEstudiante">
+                    <h3>Entregar actividad</h3>
+                    <label>Tarea
+                        <select id="entregaTarea">
+                            <option value="">Selecciona una tarea pendiente…</option>
+                        </select>
+                    </label>
+                    <p id="entregaPlazoInfo" class="plazo-info"></p>
+                    <label>Comentario (opcional)
+                        <textarea id="entregaComentario" rows="2" placeholder="Notas para el docente"></textarea>
+                    </label>
+                    <label>Archivo
+                        <input type="file" id="entregaArchivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.png,.jpg,.jpeg,.txt">
+                    </label>
+                    <p id="entregaError" class="av-doc-error" role="alert"></p>
+                    <button type="button" class="av-btn-primary" id="btnEntregar">Entregar actividad</button>
+                </div>
+                <h3 class="av-subh">Listado de tareas</h3>
                 <div id="listaTareasEstudiante" class="av-task-list"></div>
             </div>
             <div class="av-view" data-av-view="foros">
@@ -2248,31 +2462,9 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                                 📖 Subir PDF horario
                             </button>
                             <button type="button" class="btn-limpiar perfil-horario-btn" id="btnBorrarHorario" title="Eliminar horario" style="min-width:44px;padding:8px 12px" aria-label="Eliminar horario">🗑️</button>
-                            <button type="button" class="btn-limpiar perfil-horario-btn" id="btnEjemploHorario" title="Horario demo GeoMetrics">📋 Ejemplo</button>
                         </div>
-                        <p class="login-hint" id="perfilHorarioInfo" style="margin-top:6px">Sube tu reporte Academusoft (PDF). Las clases se extraen y quedan solo en tu usuario (nube + este PC). Nadie más las ve.</p>
+                        <p class="login-hint" id="perfilHorarioInfo" style="margin-top:6px">Sube tu reporte de horario Academusoft (PDF). Las clases quedan solo en tu cuenta (este PC y la nube). No se comparten con otros usuarios.</p>
                         <div id="perfilHorarioSlots" class="perfil-horario-slots" style="margin-top:10px;max-height:180px;overflow:auto"></div>
-                        <details class="perfil-horario-editor" style="margin-top:10px">
-                          <summary style="cursor:pointer;font-weight:600">✏️ Editor manual de clases</summary>
-                          <div style="display:grid;gap:6px;margin-top:8px;grid-template-columns:1fr 1fr">
-                            <input type="text" id="heMateria" placeholder="Materia" style="grid-column:1/-1">
-                            <input type="text" id="heGrupo" placeholder="Grupo">
-                            <select id="heDia">
-                              <option value="0">Lunes</option>
-                              <option value="1">Martes</option>
-                              <option value="2">Miércoles</option>
-                              <option value="3">Jueves</option>
-                              <option value="4">Viernes</option>
-                              <option value="5">Sábado</option>
-                              <option value="6">Domingo</option>
-                            </select>
-                            <input type="time" id="heInicio" value="08:00">
-                            <input type="time" id="heFin" value="10:00">
-                            <input type="text" id="heAula" placeholder="Aula">
-                            <input type="text" id="heDocente" placeholder="Docente" style="grid-column:1/-1">
-                            <button type="button" class="btn-limpiar" id="btnHeAgregar" style="grid-column:1/-1">➕ Agregar clase a MI horario</button>
-                          </div>
-                        </details>
                     </div>
                     <p class="login-hint" id="perfilUltimoAcceso">Último acceso: —</p>
                     <div class="perfil-foto-actions">
@@ -2864,6 +3056,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/mezclas.js"></script>
     <script src="js/mezclas-sim.js"></script>
     <script src="js/aula.js"></script>
+    <script src="js/docente-dashboard.js"></script>
     <script src="js/aula-virtual.js"></script>
     <script src="js/app.js"></script>
     <!-- 2D primero (defs que usa el 3D) -->
