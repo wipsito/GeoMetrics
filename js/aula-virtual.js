@@ -357,16 +357,28 @@
   var PROGRAM_LINK = 'https://www.unipamplona.edu.co/unipamplona/portalIG/home_129/publicacion/publicado/';
   var DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 
-  /** Horario de ejemplo del reporte Academusoft compartido (Andrés Felipe / IC 5). */
+  /**
+   * Horario base según docs/reporteHorario-ejemplo.pdf (Academusoft).
+   * Columnas: Lunes=0 … Domingo=6
+   * Lunes: Suelos II 10:00-12:59 + Álgebra 14:00-16:59
+   * Miércoles: Diseño Experimentos 09:00-11:59
+   * Jueves: Fluidos 13:00-15:59
+   * Viernes: Resistencia 10:00-12:59, Fluidos 14:00-15:59, Suelos II 17:00-18:59, Electiva 19:00-21:59
+   */
+  var HORARIO_VERSION = 5;
   var HORARIO_ACADEMUSOFT_DEFAULT = [
-    { materia: 'ELECTIVA SOCIOHUMANÍSTICA I', grupo: 'B', dia: 4, inicio: '19:00', fin: '21:59', aula: 'CS116', docente: 'VALENTINA MOGOLLON RAMON' },
-    { materia: 'ÁLGEBRA LINEAL', grupo: 'M', dia: 1, inicio: '14:00', fin: '16:59', aula: 'JG 105', docente: 'ALVARO CARRILLO VERA' },
-    { materia: 'RESISTENCIA DE MATERIALES', grupo: 'A', dia: 4, inicio: '10:00', fin: '12:59', aula: 'CS205', docente: 'DAYANA JOSEFA ORTIZ CAMPO' },
+    /* Lunes */
     { materia: 'MECÁNICA DE SUELOS II', grupo: 'C', dia: 0, inicio: '10:00', fin: '12:59', aula: 'LAB100 (AULATIC CIV)', docente: 'ERIKA ALEJANDRA BAUTISTA RICO' },
+    { materia: 'ÁLGEBRA LINEAL', grupo: 'M', dia: 0, inicio: '14:00', fin: '16:59', aula: 'JG 105', docente: 'ALVARO CARRILLO VERA' },
+    /* Martes — Diseño (columna Martes del PDF Academusoft) */
+    { materia: 'DISEÑO DE EXPERIMENTOS I', grupo: 'A', dia: 1, inicio: '09:00', fin: '11:59', aula: 'SVR106 (ING INDUS)', docente: 'NELCY XIOMARA ORJUELA DUARTE' },
+    /* Miércoles / Jueves — Fluidos */
+    { materia: 'MECÁNICA DE FLUIDOS', grupo: 'D', dia: 2, inicio: '13:00', fin: '15:59', aula: 'SVR219', docente: 'MARLON YESID POVEDA PACHON' },
+    { materia: 'MECÁNICA DE FLUIDOS', grupo: 'D', dia: 3, inicio: '14:00', fin: '15:59', aula: 'JG 212', docente: 'MARLON YESID POVEDA PACHON' },
+    /* Viernes */
+    { materia: 'RESISTENCIA DE MATERIALES', grupo: 'A', dia: 4, inicio: '10:00', fin: '12:59', aula: 'CS205', docente: 'DAYANA JOSEFA ORTIZ CAMPO' },
     { materia: 'MECÁNICA DE SUELOS II', grupo: 'C', dia: 4, inicio: '17:00', fin: '18:59', aula: 'LC203', docente: 'ERIKA ALEJANDRA BAUTISTA RICO' },
-    { materia: 'DISEÑO DE EXPERIMENTOS I', grupo: 'A', dia: 2, inicio: '09:00', fin: '11:59', aula: 'SVR106 (ING INDUS)', docente: 'NELCY XIOMARA ORJUELA DUARTE' },
-    { materia: 'MECÁNICA DE FLUIDOS', grupo: 'D', dia: 3, inicio: '13:00', fin: '15:59', aula: 'SVR219', docente: 'MARLON YESID POVEDA PACHON' },
-    { materia: 'MECÁNICA DE FLUIDOS', grupo: 'D', dia: 4, inicio: '14:00', fin: '15:59', aula: 'JG 212', docente: 'MARLON YESID POVEDA PACHON' }
+    { materia: 'ELECTIVA SOCIOHUMANÍSTICA I', grupo: 'B', dia: 4, inicio: '19:00', fin: '21:59', aula: 'CS116', docente: 'VALENTINA MOGOLLON RAMON' }
   ];
 
   function horarioStorageKey() {
@@ -375,24 +387,117 @@
     return 'geometrics_horario_' + id;
   }
 
+  function normalizeDia(v) {
+    if (typeof v === 'number' && !isNaN(v)) {
+      var n = Math.floor(v);
+      return (n >= 0 && n <= 6) ? n : -1;
+    }
+    var s = String(v == null ? '' : v).trim().toLowerCase();
+    try {
+      if (s.normalize) s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    } catch (eN) {
+      s = s.replace(/á/g, 'a').replace(/é/g, 'e').replace(/í/g, 'i')
+           .replace(/ó/g, 'o').replace(/ú/g, 'u');
+    }
+    if (/^[0-6]$/.test(s)) return +s;
+    if (s.indexOf('lunes') === 0 || s === 'lun') return 0;
+    if (s.indexOf('martes') === 0 || s === 'mar') return 1;
+    if (s.indexOf('miercoles') === 0 || s.indexOf('miércoles') === 0 || s === 'mie') return 2;
+    if (s.indexOf('jueves') === 0 || s === 'jue') return 3;
+    if (s.indexOf('viernes') === 0 || s === 'vie') return 4;
+    if (s.indexOf('sabado') === 0 || s.indexOf('sábado') === 0 || s === 'sab') return 5;
+    if (s.indexOf('domingo') === 0 || s === 'dom') return 6;
+    var num = parseInt(s, 10);
+    if (!isNaN(num) && num >= 0 && num <= 6) return num;
+    return -1;
+  }
+
+  function cloneDefaultSlots() {
+    return HORARIO_ACADEMUSOFT_DEFAULT.map(function (x) {
+      return {
+        materia: x.materia,
+        grupo: x.grupo || '',
+        dia: normalizeDia(x.dia),
+        inicio: x.inicio,
+        fin: x.fin,
+        aula: x.aula || '',
+        docente: x.docente || ''
+      };
+    });
+  }
+
   function loadHorario() {
     try {
       var raw = localStorage.getItem(horarioStorageKey());
-      if (!raw) return { slots: [], fileName: '', fileData: '' };
+      if (!raw) {
+        // Sin datos: usar horario del documento base Academusoft
+        return { slots: cloneDefaultSlots(), fileName: 'reporteHorario-ejemplo.pdf', fileData: '', version: HORARIO_VERSION, fromDefault: true };
+      }
       var o = JSON.parse(raw);
+      var ver = Number(o.version || 0);
+      // Migrar si la versión es antigua (corrige días mal asignados p.ej. Álgebra en martes)
+      if (ver < HORARIO_VERSION) {
+        var migrated = {
+          slots: cloneDefaultSlots(),
+          fileName: o.fileName || 'reporteHorario-ejemplo.pdf',
+          fileData: o.fileData || '',
+          version: HORARIO_VERSION
+        };
+        try { localStorage.setItem(horarioStorageKey(), JSON.stringify(migrated)); } catch (eM) {}
+        return migrated;
+      }
+      var slots = (Array.isArray(o.slots) ? o.slots : []).map(function (s) {
+        return {
+          materia: s.materia || '',
+          grupo: s.grupo || '',
+          dia: normalizeDia(s.dia),
+          inicio: s.inicio || '',
+          fin: s.fin || '',
+          aula: s.aula || '',
+          docente: s.docente || ''
+        };
+      }).filter(function (s) { return s.dia >= 0 && s.inicio; });
+      // Si quedó vacío o inválido, volver al documento base Academusoft
+      if (!slots.length) {
+        slots = cloneDefaultSlots();
+        try {
+          localStorage.setItem(horarioStorageKey(), JSON.stringify({
+            slots: slots,
+            fileName: o.fileName || 'reporteHorario-ejemplo.pdf',
+            fileData: o.fileData || '',
+            version: HORARIO_VERSION
+          }));
+        } catch (eE) {}
+      }
       return {
-        slots: Array.isArray(o.slots) ? o.slots : [],
+        slots: slots,
         fileName: o.fileName || '',
-        fileData: o.fileData || ''
+        fileData: o.fileData || '',
+        version: ver || HORARIO_VERSION
       };
     } catch (e) {
-      return { slots: [], fileName: '', fileData: '' };
+      return { slots: cloneDefaultSlots(), fileName: 'reporteHorario-ejemplo.pdf', fileData: '', version: HORARIO_VERSION, fromDefault: true };
     }
   }
 
   function saveHorario(data) {
     try {
-      localStorage.setItem(horarioStorageKey(), JSON.stringify(data || { slots: [], fileName: '', fileData: '' }));
+      var payload = data || { slots: [], fileName: '', fileData: '' };
+      payload.version = HORARIO_VERSION;
+      if (Array.isArray(payload.slots)) {
+        payload.slots = payload.slots.map(function (s) {
+          return {
+            materia: s.materia || '',
+            grupo: s.grupo || '',
+            dia: normalizeDia(s.dia),
+            inicio: s.inicio || '',
+            fin: s.fin || '',
+            aula: s.aula || '',
+            docente: s.docente || ''
+          };
+        }).filter(function (s) { return s.dia >= 0; });
+      }
+      localStorage.setItem(horarioStorageKey(), JSON.stringify(payload));
     } catch (e) {
       toast('No se pudo guardar el horario (almacenamiento lleno o bloqueado).');
     }
@@ -672,46 +777,154 @@
     if (bar) bar.style.width = c.progress + '%';
   }
 
+  function parseHm(str) {
+    try {
+      var p = String(str || '00:00').split(':');
+      return (+p[0]) * 60 + (+(p[1] || 0));
+    } catch (e) { return 0; }
+  }
+
+  function fmtHmPretty(str) {
+    var m = parseHm(str);
+    var h = Math.floor(m / 60);
+    var min = m % 60;
+    var ap = h >= 12 ? 'p. m.' : 'a. m.';
+    var h12 = h % 12;
+    if (h12 === 0) h12 = 12;
+    return h12 + ':' + (min < 10 ? '0' : '') + min + ' ' + ap;
+  }
+
+  /**
+   * Próximas clases — SOLO las del mismo día.
+   * Hoy: las que aún no terminaron. Si no queda ninguna → todas las del siguiente día con clases.
+   */
   function renderNextClass() {
-    var c = courseById(state.courseId);
-    var name = $('avNextName');
-    var theme = $('avNextTheme');
-    var time = $('avNextTime');
-    // Preferir próxima clase del horario semanal
-    var nextSlot = null;
+    var dayNodes = qsa('[data-av-next-day]');
+    var statusNodes = qsa('[data-av-next-status]');
+    var listNodes = qsa('[data-av-next-list]');
+    // compat ids
+    if ($('avNextDay') && dayNodes.indexOf($('avNextDay')) < 0) dayNodes.push($('avNextDay'));
+    if ($('avNextStatus') && statusNodes.indexOf($('avNextStatus')) < 0) statusNodes.push($('avNextStatus'));
+    if ($('avNextList') && listNodes.indexOf($('avNextList')) < 0) listNodes.push($('avNextList'));
+
+    function setDay(txt) {
+      dayNodes.forEach(function (el) { if (el) el.textContent = txt; });
+    }
+    function setStatus(txt, cls, show) {
+      statusNodes.forEach(function (el) {
+        if (!el) return;
+        el.hidden = !show;
+        el.textContent = txt || '';
+        el.className = 'av-meta av-next-status' + (cls ? (' ' + cls) : '');
+      });
+    }
+    function setList(html) {
+      listNodes.forEach(function (el) { if (el) el.innerHTML = html; });
+    }
+
     try {
       var h = loadHorario();
-      var now = new Date();
-      var mon0 = (now.getDay() + 6) % 7;
-      var mins = now.getHours() * 60 + now.getMinutes();
-      var best = null;
-      (h.slots || []).forEach(function (s) {
-        var startM = 0;
-        try {
-          var p = String(s.inicio || '00:00').split(':');
-          startM = (+p[0]) * 60 + (+p[1] || 0);
-        } catch (e0) {}
-        var deltaDay = (Number(s.dia) - mon0 + 7) % 7;
-        if (deltaDay === 0 && startM < mins) deltaDay = 7;
-        var score = deltaDay * 24 * 60 + startM;
-        if (!best || score < best.score) best = { score: score, slot: s, deltaDay: deltaDay };
+      var slots = (h.slots || []).filter(function (s) {
+        return s && normalizeDia(s.dia) >= 0 && s.inicio;
       });
-      if (best) nextSlot = best.slot;
-    } catch (eN) {}
-    if (nextSlot) {
-      if (name) name.textContent = nextSlot.materia;
-      if (theme) theme.textContent = (DIAS[nextSlot.dia] || '') + ' · Aula ' + (nextSlot.aula || '—');
-      if (time) time.textContent = (nextSlot.inicio || '') + ' – ' + (nextSlot.fin || '') + ' · ' + (nextSlot.docente || '');
-      return;
-    }
-    if (!c) return;
-    if (name) name.textContent = c.name;
-    if (theme) theme.textContent = c.theme ? String(c.theme) : 'Sin tema programado';
-    var next = findNextTask(c.name);
-    if (time) {
-      time.textContent = next
-        ? ('Entrega: ' + (next.fechaLimite || 'sin fecha') + (next.horaLimite ? (' ' + next.horaLimite) : ''))
-        : 'Sin horario cargado. Ve a Perfil y sube tu PDF.';
+      if (!slots.length) {
+        setDay('Sin horario');
+        setStatus('', '', false);
+        setList('<p class="av-next-empty">Toca tu nombre (arriba) y carga el PDF de Academusoft, o se usará el horario de ejemplo del documento base.</p>');
+        return;
+      }
+
+      var now = new Date();
+      var hoyMon0 = (now.getDay() + 6) % 7; // 0=Lunes
+      var minsNow = now.getHours() * 60 + now.getMinutes();
+
+      function startM(s) { return parseHm(s.inicio); }
+      function endM(s) {
+        var a = startM(s);
+        var b = parseHm(s.fin);
+        return b > a ? b : a + 60;
+      }
+
+      var byDay = [[], [], [], [], [], [], []];
+      slots.forEach(function (s) {
+        var d = normalizeDia(s.dia);
+        if (d >= 0 && d <= 6) byDay[d].push(s);
+      });
+      byDay.forEach(function (arr) {
+        arr.sort(function (a, b) { return startM(a) - startM(b); });
+      });
+
+      var chosenDelta = -1;
+      var chosenDay = -1;
+      var remaining = [];
+
+      for (var delta = 0; delta < 7; delta++) {
+        var dIdx = (hoyMon0 + delta) % 7;
+        var daySlots = byDay[dIdx];
+        if (!daySlots.length) continue;
+        var pending = (delta === 0)
+          ? daySlots.filter(function (s) { return endM(s) > minsNow; })
+          : daySlots.slice();
+        if (pending.length) {
+          chosenDelta = delta;
+          chosenDay = dIdx;
+          remaining = pending;
+          break;
+        }
+      }
+
+      if (chosenDay < 0 || !remaining.length) {
+        setDay('Sin clases próximas');
+        setStatus('', '', false);
+        setList('<p class="av-next-empty">No hay más clases en los próximos 7 días según el horario cargado.</p>');
+        return;
+      }
+
+      var diaNombre = DIAS[chosenDay] || ('Día ' + chosenDay);
+      var label = diaNombre;
+      if (chosenDelta === 0) label = 'Hoy · ' + diaNombre;
+      else if (chosenDelta === 1) label = 'Mañana · ' + diaNombre;
+      setDay(label);
+
+      var live = 0;
+      if (chosenDelta === 0) {
+        remaining.forEach(function (s) {
+          if (minsNow >= startM(s) && minsNow < endM(s)) live++;
+        });
+      }
+      if (live) setStatus('● ' + live + ' en curso · ' + remaining.length + ' hoy', 'en-curso', true);
+      else if (chosenDelta === 0) setStatus('● ' + remaining.length + ' clase' + (remaining.length > 1 ? 's' : '') + ' por ver hoy', 'hoy', true);
+      else setStatus(remaining.length + ' clase' + (remaining.length > 1 ? 's' : '') + ' · ' + diaNombre, '', true);
+
+      setList(remaining.map(function (s) {
+        var enCurso = (chosenDelta === 0 && minsNow >= startM(s) && minsNow < endM(s));
+        return (
+          '<div class="av-next-item' + (enCurso ? ' is-live' : '') + '">' +
+            '<div class="av-next-item-top">' +
+              '<strong>' + esc(s.materia || 'Clase') + '</strong>' +
+              (enCurso ? '<span class="av-next-live">En curso</span>' : '') +
+            '</div>' +
+            '<div class="av-next-item-time">' + esc(fmtHmPretty(s.inicio)) + ' – ' + esc(fmtHmPretty(s.fin)) + '</div>' +
+            '<div class="av-next-item-meta">' +
+              esc((s.aula ? ('Aula ' + s.aula) : 'Aula —') + (s.grupo ? (' · Grupo ' + s.grupo) : '')) +
+              (s.docente ? (' · ' + esc(s.docente)) : '') +
+            '</div>' +
+          '</div>'
+        );
+      }).join(''));
+
+      var first = remaining[0];
+      var name = $('avNextName');
+      var theme = $('avNextTheme');
+      var time = $('avNextTime');
+      if (name) name.textContent = first.materia || '';
+      if (theme) theme.textContent = 'Aula ' + (first.aula || '—');
+      if (time) time.textContent = fmtHmPretty(first.inicio) + ' – ' + fmtHmPretty(first.fin);
+    } catch (err) {
+      console.warn('renderNextClass', err);
+      setDay('Error');
+      setStatus('', '', false);
+      setList('<p class="av-next-empty">No se pudo calcular el horario. Revisa la consola o recarga el horario en el perfil.</p>');
     }
   }
 
@@ -938,12 +1151,16 @@
       btn.addEventListener('click', function () { setView(btn.getAttribute('data-av-view')); });
     });
 
-    var enter = $('avBtnEnterClass');
-    if (enter) {
-      enter.addEventListener('click', function () {
-        setView('tareas');
-        toast('Revisa las tareas de tu curso activo.');
+    // Nombre / avatar a la derecha → abre el mismo modal de perfil
+    var chip = $('avUserChip') || qs('.av-user-chip');
+    if (chip && !chip._avBound) {
+      chip._avBound = true;
+      chip.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        openEditProfile();
       });
+      chip.style.cursor = 'pointer';
     }
 
     qsa('[data-av-action]').forEach(function (btn) {
@@ -1090,6 +1307,8 @@
     root.style.cssText = 'display:grid!important;position:fixed!important;inset:0!important;z-index:9999!important;visibility:visible!important;opacity:1!important;width:100%!important;height:100%!important;';
     refreshAll();
     setView('aula');
+    setTimeout(function () { try { renderNextClass(); } catch (e) {} }, 100);
+    setTimeout(function () { try { renderNextClass(); } catch (e) {} }, 600);
   }
 
   function hideAulaVirtual() {
@@ -1181,4 +1400,11 @@
   } else {
     init();
   }
+  try {
+    if (!window.__avNextTimer) {
+      window.__avNextTimer = setInterval(function () {
+        try { renderNextClass(); } catch (eT) {}
+      }, 60000);
+    }
+  } catch (eT0) {}
 })();
