@@ -1191,3 +1191,134 @@ button.av-user-chip:hover {
     linear-gradient(90deg, rgba(2,9,20,0.45) 0%, transparent 18%, transparent 72%, rgba(2,9,20,0.35) 100%),
     linear-gradient(180deg, rgba(2,9,20,0.25) 0%, transparent 35%, rgba(2,9,20,0.5) 100%);
 }
+
+/* Notificaciones — panel desplegable */
+.av-notif-wrap {
+  position: relative;
+  z-index: 200;
+}
+.av-notif-panel {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: min(360px, 92vw);
+  max-height: min(420px, 70vh);
+  overflow: auto;
+  z-index: 99999;
+  background: linear-gradient(160deg, rgba(8,26,48,0.99), rgba(6,20,38,0.99));
+  border: 1px solid rgba(0,217,255,0.4);
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.55), 0 0 30px rgba(0,217,255,0.12);
+  padding: 12px;
+}
+.av-notif-panel.is-open,
+.av-notif-panel:not([hidden]) {
+  display: block !important;
+}
+.av-top-actions,
+.dp-top-right,
+.dp-top,
+.av-top {
+  overflow: visible !important;
+}
+.av-notif-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; padding: 0 4px 8px;
+  border-bottom: 1px solid rgba(29,65,100,0.5);
+  font-size: 13px;
+}
+.av-notif-list { display: flex; flex-direction: column; gap: 6px; }
+.av-notif-item {
+  padding: 10px; border-radius: 10px;
+  border: 1px solid rgba(29,65,100,0.45);
+  background: rgba(16,39,68,0.55);
+  cursor: pointer; text-align: left;
+}
+.av-notif-item.unread {
+  border-color: rgba(0,217,255,0.4);
+  box-shadow: 0 0 12px rgba(0,217,255,0.12);
+}
+.av-notif-item strong { display: block; font-size: 12px; color: #EAF4FF; }
+.av-notif-item span { font-size: 11px; color: #8FA8C5; }
+.av-notif-empty { text-align: center; padding: 20px; color: #8FA8C5; font-size: 12px; }
+
+.av-entrega-card {
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,217,255,0.25);
+  background: rgba(8,26,48,0.75);
+}
+.av-entrega-card label {
+  display: block; margin-bottom: 10px; font-size: 12px; color: #8FA8C5;
+}
+.av-entrega-card select,
+.av-entrega-card textarea,
+.av-entrega-card input[type="file"] {
+  display: block; width: 100%; margin-top: 4px;
+  padding: 9px 11px; border-radius: 10px; box-sizing: border-box;
+  border: 1px solid rgba(29,65,100,0.8);
+  background: rgba(2,12,24,0.7); color: #EAF4FF; font-size: 13px;
+}
+.aula-item-task .btn-entregar-item {
+  margin-top: 8px;
+  padding: 7px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid rgba(0,217,255,0.35);
+  background: rgba(0,217,255,0.1); color: #00D9FF; font-size: 12px;
+}
+.aula-item-task .btn-entregar-item:hover { background: rgba(0,217,255,0.2); }
+.plazo-info { font-size: 12px; margin: 6px 0; color: #8FA8C5; }
+.plazo-info.plazo-ok { color: #42D9A0; }
+.plazo-info.plazo-prox { color: #FFCC00; }
+.plazo-info.plazo-vencido, .plazo-info.plazo-tarde { color: #FF6178; }
+.badge-ok { background: rgba(66,217,160,0.15); color: #42D9A0; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+.badge-pend { background: rgba(0,217,255,0.12); color: #00D9FF; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+.badge-late { background: rgba(255,97,120,0.15); color: #FF6178; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+
+/* Clics siempre activos en aulas */
+.av-stage { pointer-events: none !important; }
+.av-stage-overlay { pointer-events: none !important; }
+.av-hologram,
+.av-holo-actions,
+.av-holo-actions button,
+.av-quickbar,
+.av-quickbar button,
+.av-nav,
+.av-nav button,
+.av-view,
+.av-view.active,
+.av-top,
+.av-top-actions,
+.av-side,
+.av-announce {
+  pointer-events: auto !important;
+}
+.av-view.active {
+  z-index: 20 !important;
+  display: block !important;
+}
+.av-holo-actions button,
+.av-quickbar button,
+.av-nav button {
+  cursor: pointer !important;
+}
+.av-holo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.av-holo-actions button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,217,255,0.35);
+  background: rgba(0,217,255,0.1);
+  color: #EAF4FF;
+  font-size: 12px;
+}
+.av-holo-actions button:hover {
+  background: rgba(0,217,255,0.22);
+  border-color: #00D9FF;
+}
