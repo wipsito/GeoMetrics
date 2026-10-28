@@ -672,108 +672,46 @@
     if (bar) bar.style.width = c.progress + '%';
   }
 
-  function parseHm(str) {
-    try {
-      var p = String(str || '00:00').split(':');
-      return (+p[0]) * 60 + (+(p[1] || 0));
-    } catch (e) { return 0; }
-  }
-
-  function fmtHmPretty(str) {
-    var m = parseHm(str);
-    var h = Math.floor(m / 60);
-    var min = m % 60;
-    var ap = h >= 12 ? 'p. m.' : 'a. m.';
-    var h12 = h % 12;
-    if (h12 === 0) h12 = 12;
-    return h12 + ':' + (min < 10 ? '0' : '') + min + ' ' + ap;
-  }
-
-  /** Próxima clase: si la de hoy ya terminó (pasó la hora fin), salta a la siguiente. */
   function renderNextClass() {
     var c = courseById(state.courseId);
     var name = $('avNextName');
     var theme = $('avNextTheme');
     var time = $('avNextTime');
-    var dayEl = $('avNextDay');
-    var status = $('avNextStatus');
+    // Preferir próxima clase del horario semanal
     var nextSlot = null;
-    var bestMeta = null;
     try {
       var h = loadHorario();
       var now = new Date();
-      var mon0 = (now.getDay() + 6) % 7; // 0=lunes
+      var mon0 = (now.getDay() + 6) % 7;
       var mins = now.getHours() * 60 + now.getMinutes();
       var best = null;
       (h.slots || []).forEach(function (s) {
-        var startM = parseHm(s.inicio);
-        var endM = parseHm(s.fin);
-        if (endM <= startM) endM = startM + 60;
+        var startM = 0;
+        try {
+          var p = String(s.inicio || '00:00').split(':');
+          startM = (+p[0]) * 60 + (+p[1] || 0);
+        } catch (e0) {}
         var deltaDay = (Number(s.dia) - mon0 + 7) % 7;
-        // Si es hoy y ya pasó la hora de fin → la próxima es la semana siguiente (u otra del ciclo)
-        if (deltaDay === 0 && endM <= mins) deltaDay = 7;
-        var inProgress = (deltaDay === 0 && mins >= startM && mins < endM);
-        // Orden: clases en curso primero, luego la más cercana
+        if (deltaDay === 0 && startM < mins) deltaDay = 7;
         var score = deltaDay * 24 * 60 + startM;
-        if (inProgress) score = -1;
-        if (!best || score < best.score) {
-          best = { score: score, slot: s, deltaDay: deltaDay, inProgress: inProgress };
-        }
+        if (!best || score < best.score) best = { score: score, slot: s, deltaDay: deltaDay };
       });
-      if (best) {
-        nextSlot = best.slot;
-        bestMeta = best;
-      }
+      if (best) nextSlot = best.slot;
     } catch (eN) {}
     if (nextSlot) {
-      var diaNombre = DIAS[nextSlot.dia] || '';
-      var etiquetaDia = 'Hoy';
-      if (bestMeta && bestMeta.deltaDay === 1) etiquetaDia = 'Mañana';
-      else if (bestMeta && bestMeta.deltaDay > 1 && bestMeta.deltaDay < 7) etiquetaDia = diaNombre;
-      else if (bestMeta && bestMeta.deltaDay >= 7) etiquetaDia = 'Próximo ' + diaNombre;
-      else if (bestMeta && bestMeta.deltaDay === 0) etiquetaDia = 'Hoy';
-      if (dayEl) dayEl.textContent = etiquetaDia + (diaNombre && etiquetaDia !== diaNombre ? (' · ' + diaNombre) : '');
-      if (name) name.textContent = nextSlot.materia || 'Clase';
-      if (theme) {
-        theme.textContent = 'Aula ' + (nextSlot.aula || '—') +
-          (nextSlot.grupo ? (' · Grupo ' + nextSlot.grupo) : '');
-      }
-      if (time) {
-        time.textContent = fmtHmPretty(nextSlot.inicio) + ' – ' + fmtHmPretty(nextSlot.fin) +
-          (nextSlot.docente ? (' · ' + nextSlot.docente) : '');
-      }
-      if (status) {
-        if (bestMeta && bestMeta.inProgress) {
-          status.hidden = false;
-          status.textContent = '● En curso ahora';
-          status.className = 'av-meta av-next-status en-curso';
-        } else if (bestMeta && bestMeta.deltaDay === 0) {
-          status.hidden = false;
-          status.textContent = '● Hoy';
-          status.className = 'av-meta av-next-status hoy';
-        } else {
-          status.hidden = false;
-          status.textContent = 'Siguiente en tu horario';
-          status.className = 'av-meta av-next-status';
-        }
-      }
+      if (name) name.textContent = nextSlot.materia;
+      if (theme) theme.textContent = (DIAS[nextSlot.dia] || '') + ' · Aula ' + (nextSlot.aula || '—');
+      if (time) time.textContent = (nextSlot.inicio || '') + ' – ' + (nextSlot.fin || '') + ' · ' + (nextSlot.docente || '');
       return;
     }
-    if (dayEl) dayEl.textContent = 'Sin horario';
-    if (status) { status.hidden = true; status.textContent = ''; }
-    if (!c) {
-      if (name) name.textContent = 'Carga tu horario';
-      if (theme) theme.textContent = 'Ábrelo desde tu nombre (arriba a la derecha)';
-      if (time) time.textContent = '';
-      return;
-    }
+    if (!c) return;
     if (name) name.textContent = c.name;
     if (theme) theme.textContent = c.theme ? String(c.theme) : 'Sin tema programado';
     var next = findNextTask(c.name);
     if (time) {
       time.textContent = next
         ? ('Entrega: ' + (next.fechaLimite || 'sin fecha') + (next.horaLimite ? (' ' + next.horaLimite) : ''))
-        : 'Sin horario cargado. Toca tu nombre → Cargar horario.';
+        : 'Sin horario cargado. Ve a Perfil y sube tu PDF.';
     }
   }
 
@@ -1000,16 +938,12 @@
       btn.addEventListener('click', function () { setView(btn.getAttribute('data-av-view')); });
     });
 
-    // Nombre / avatar a la derecha → abre el mismo modal de perfil
-    var chip = $('avUserChip') || qs('.av-user-chip');
-    if (chip && !chip._avBound) {
-      chip._avBound = true;
-      chip.addEventListener('click', function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        openEditProfile();
+    var enter = $('avBtnEnterClass');
+    if (enter) {
+      enter.addEventListener('click', function () {
+        setView('tareas');
+        toast('Revisa las tareas de tu curso activo.');
       });
-      chip.style.cursor = 'pointer';
     }
 
     qsa('[data-av-action]').forEach(function (btn) {
