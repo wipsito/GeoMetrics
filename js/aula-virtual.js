@@ -365,7 +365,7 @@
    * Jueves: Fluidos 13:00-15:59
    * Viernes: Resistencia 10:00-12:59, Fluidos 14:00-15:59, Suelos II 17:00-18:59, Electiva 19:00-21:59
    */
-  var HORARIO_VERSION = 5;
+  var HORARIO_VERSION = 6;
   var HORARIO_ACADEMUSOFT_DEFAULT = [
     /* Lunes */
     { materia: 'MECÁNICA DE SUELOS II', grupo: 'C', dia: 0, inicio: '10:00', fin: '12:59', aula: 'LAB100 (AULATIC CIV)', docente: 'ERIKA ALEJANDRA BAUTISTA RICO' },
@@ -426,26 +426,33 @@
     });
   }
 
+  function emptyHorario() {
+    return { slots: [], fileName: '', fileData: '', version: HORARIO_VERSION, personal: true, fromDefault: false };
+  }
+
+  /** ¿El set de slots es el horario de ejemplo de GeoMetrics (Andrés / PDF demo)? */
+  function isDemoScheduleSlots(slots) {
+    if (!slots || !slots.length) return false;
+    var demo = HORARIO_ACADEMUSOFT_DEFAULT;
+    if (slots.length !== demo.length) return false;
+    var key = function (s) {
+      return [normalizeDia(s.dia), s.inicio, s.fin, String(s.materia || '').toUpperCase()].join('|');
+    };
+    var a = slots.map(key).sort().join(';;');
+    var b = demo.map(key).sort().join(';;');
+    return a === b;
+  }
+
   function loadHorario() {
     try {
-      var raw = localStorage.getItem(horarioStorageKey());
+      var key = horarioStorageKey();
+      var raw = localStorage.getItem(key);
       if (!raw) {
-        // Sin datos: usar horario del documento base Academusoft
-        return { slots: cloneDefaultSlots(), fileName: 'reporteHorario-ejemplo.pdf', fileData: '', version: HORARIO_VERSION, fromDefault: true };
+        // Cada estudiante empieza vacío: NO hereda el horario de otra persona
+        return emptyHorario();
       }
       var o = JSON.parse(raw);
       var ver = Number(o.version || 0);
-      // Migrar si la versión es antigua (corrige días mal asignados p.ej. Álgebra en martes)
-      if (ver < HORARIO_VERSION) {
-        var migrated = {
-          slots: cloneDefaultSlots(),
-          fileName: o.fileName || 'reporteHorario-ejemplo.pdf',
-          fileData: o.fileData || '',
-          version: HORARIO_VERSION
-        };
-        try { localStorage.setItem(horarioStorageKey(), JSON.stringify(migrated)); } catch (eM) {}
-        return migrated;
-      }
       var slots = (Array.isArray(o.slots) ? o.slots : []).map(function (s) {
         return {
           materia: s.materia || '',
@@ -457,33 +464,49 @@
           docente: s.docente || ''
         };
       }).filter(function (s) { return s.dia >= 0 && s.inicio; });
-      // Si quedó vacío o inválido, volver al documento base Academusoft
-      if (!slots.length) {
-        slots = cloneDefaultSlots();
-        try {
-          localStorage.setItem(horarioStorageKey(), JSON.stringify({
-            slots: slots,
-            fileName: o.fileName || 'reporteHorario-ejemplo.pdf',
-            fileData: o.fileData || '',
-            version: HORARIO_VERSION
-          }));
-        } catch (eE) {}
+
+      // v6: dejar de compartir el horario demo entre cuentas
+      // - Si se marcó fromDefault o nunca fue personal y coincide con el demo → limpiar
+      // - Si el usuario ya tiene horario personal distinto del demo → conservarlo
+      if (ver < HORARIO_VERSION) {
+        var wasSharedDemo = !!(o.fromDefault) || (!o.personal && isDemoScheduleSlots(slots));
+        if (wasSharedDemo) {
+          slots = [];
+          o.fileName = '';
+          o.fileData = '';
+          o.fromDefault = false;
+        }
+        var fixed = {
+          slots: slots,
+          fileName: o.fileName || '',
+          fileData: o.fileData || '',
+          version: HORARIO_VERSION,
+          personal: true,
+          fromDefault: false
+        };
+        try { localStorage.setItem(key, JSON.stringify(fixed)); } catch (eM) {}
+        return fixed;
       }
+
       return {
         slots: slots,
         fileName: o.fileName || '',
         fileData: o.fileData || '',
-        version: ver || HORARIO_VERSION
+        version: ver || HORARIO_VERSION,
+        personal: o.personal !== false,
+        fromDefault: !!o.fromDefault
       };
     } catch (e) {
-      return { slots: cloneDefaultSlots(), fileName: 'reporteHorario-ejemplo.pdf', fileData: '', version: HORARIO_VERSION, fromDefault: true };
+      return emptyHorario();
     }
   }
 
   function saveHorario(data) {
     try {
-      var payload = data || { slots: [], fileName: '', fileData: '' };
+      var payload = data || emptyHorario();
       payload.version = HORARIO_VERSION;
+      payload.personal = true;
+      if (payload.fromDefault == null) payload.fromDefault = false;
       if (Array.isArray(payload.slots)) {
         payload.slots = payload.slots.map(function (s) {
           return {
@@ -496,7 +519,10 @@
             docente: s.docente || ''
           };
         }).filter(function (s) { return s.dia >= 0; });
+      } else {
+        payload.slots = [];
       }
+      // Guardar SIEMPRE bajo la clave del usuario en sesión (email)
       localStorage.setItem(horarioStorageKey(), JSON.stringify(payload));
     } catch (e) {
       toast('No se pudo guardar el horario (almacenamiento lleno o bloqueado).');
@@ -609,15 +635,27 @@
           var h = loadHorario();
           h.fileName = f.name;
           h.fileData = String(reader.result || '');
-          if (!h.slots.length) {
-            h.slots = HORARIO_ACADEMUSOFT_DEFAULT.map(function (x) { return Object.assign({}, x); });
+          h.personal = true;
+          h.fromDefault = false;
+          // Solo el horario de EJEMPLO del repo aplica el demo de GeoMetrics.
+          // Cualquier otro PDF es personal: no se mezclan materias de otro estudiante.
+          var isExample = /reportehorario-ejemplo|horario-ejemplo|ejemplo/i.test(f.name || '');
+          if (isExample) {
+            h.slots = cloneDefaultSlots();
+            h.fromDefault = true;
+            toast('Horario de ejemplo GeoMetrics aplicado solo a tu cuenta.');
+          } else if (!h.slots.length) {
+            // PDF personal guardado; las clases se cargan con «Usar horario de ejemplo» o datos ya guardados
+            toast('PDF personal guardado en tu cuenta. No se copió el horario de otro estudiante.');
+          } else {
+            toast('PDF actualizado. Se mantienen tus clases ya registradas.');
           }
           saveHorario(h);
           updatePerfilHorarioInfo();
           try { renderCalendar(); } catch (e1) {}
           try { renderCalendarView(); } catch (e2) {}
           try { renderNextClass(); } catch (e3) {}
-          toast('Horario cargado y vinculado al calendario.');
+          try { renderHorarioList(); } catch (e4) {}
         };
         reader.readAsDataURL(f);
       });
@@ -651,16 +689,21 @@
           var h = loadHorario();
           h.fileName = f.name;
           h.fileData = String(reader.result || '');
-          // Si aún no hay slots, cargar el horario del reporte Academusoft (estructura conocida)
-          if (!h.slots.length) {
-            h.slots = HORARIO_ACADEMUSOFT_DEFAULT.map(function (x) { return Object.assign({}, x); });
+          h.personal = true;
+          h.fromDefault = false;
+          var isExample = /reportehorario-ejemplo|horario-ejemplo|ejemplo/i.test(f.name || '');
+          if (isExample) {
+            h.slots = cloneDefaultSlots();
+            h.fromDefault = true;
+            toast('Ejemplo aplicado solo a tu usuario.');
+          } else {
+            toast('PDF personal guardado. Solo tú lo ves en este navegador/cuenta.');
           }
           saveHorario(h);
           renderHorarioList();
           renderCalendar();
           renderCalendarView();
           renderNextClass();
-          toast('PDF guardado. Clases vinculadas al calendario.');
         };
         reader.readAsDataURL(f);
       });
@@ -668,21 +711,29 @@
     if (imp && !imp._avBound) {
       imp._avBound = true;
       imp.addEventListener('click', function () {
+        var ok = window.confirm(
+          '¿Cargar el horario de EJEMPLO de GeoMetrics en TU cuenta?\n\n' +
+          'Solo se guarda para el usuario con el que iniciaste sesión.\n' +
+          'No modifica el horario de otros estudiantes.'
+        );
+        if (!ok) return;
         var h = loadHorario();
-        h.slots = HORARIO_ACADEMUSOFT_DEFAULT.map(function (x) { return Object.assign({}, x); });
-        if (!h.fileName) h.fileName = 'reporteHorario.pdf';
+        h.slots = cloneDefaultSlots();
+        h.fileName = h.fileName || 'reporteHorario-ejemplo.pdf';
+        h.fromDefault = true;
+        h.personal = true;
         saveHorario(h);
         renderHorarioList();
         renderCalendar();
         renderCalendarView();
         renderNextClass();
-        toast('Horario Academusoft vinculado al calendario.');
+        toast('Ejemplo cargado solo en tu cuenta.');
       });
     }
     if (clr && !clr._avBound) {
       clr._avBound = true;
       clr.addEventListener('click', function () {
-        saveHorario({ slots: [], fileName: '', fileData: '' });
+        saveHorario({ slots: [], fileName: '', fileData: '', personal: true, fromDefault: false });
         var fi = $('avHorarioFile');
         if (fi) fi.value = '';
         renderHorarioList();
