@@ -50,10 +50,28 @@
     return null;
   }
 
+  function looksLikeEmail(s) {
+    return /@/.test(String(s || ''));
+  }
+
+  /** Nombre visible (NUNCA correo) para chips, header y perfil. */
   function userDisplayName(u) {
-    if (!u) return 'Estudiante';
-    var n = ((u.nombres || '') + ' ' + (u.apellidos || '')).trim();
-    return n || u.nombre || u.email || 'Estudiante';
+    if (!u) return 'Usuario';
+    var pref = (u.preferenciaNombre || u.nombrePreferido || u.nombreCorto || '').trim();
+    if (pref && !looksLikeEmail(pref)) return pref;
+    var full = ((u.nombres || '') + ' ' + (u.apellidos || '')).trim();
+    if (full && !looksLikeEmail(full)) return full;
+    var nom = (u.nombre || '').trim();
+    if (nom && !looksLikeEmail(nom)) return nom;
+    // último recurso: parte local del correo, sin dominio (ej. andres.enriquezval)
+    var email = String(u.email || '');
+    if (email.indexOf('@') > 0) {
+      var local = email.split('@')[0].replace(/[._]+/g, ' ').trim();
+      if (local) {
+        return local.replace(/\w/g, function (c) { return c.toUpperCase(); });
+      }
+    }
+    return (u.rol === 'docente') ? 'Docente' : 'Estudiante';
   }
 
   function userInitials(u) {
@@ -358,7 +376,7 @@
   var DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 
   /**
-   * Horario base según docs/reporteHorario-ejemplo.pdf (Academusoft).
+   * Horario de referencia interno (NO se distribuye como PDF ni se aplica a otros usuarios).
    * Columnas: Lunes=0 … Domingo=6
    * Lunes: Suelos II 10:00-12:59 + Álgebra 14:00-16:59
    * Miércoles: Diseño Experimentos 09:00-11:59
@@ -996,10 +1014,8 @@
     var btn = $('btnCargarHorario');
     var file = $('perfilHorarioFile');
     var btnDel = $('btnBorrarHorario');
-    var btnEj = $('btnEjemploHorario');
     if (!btn || !file) return;
 
-    // Re-bind seguro cada vez que se abre el perfil
     btn.onclick = function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -1022,16 +1038,14 @@
         h.fromDefault = false;
         if (slots && slots.length) {
           h.slots = slots;
-          applyHorarioPayload(h, '¡Listo! Se extrajeron ' + slots.length + ' clases de TU PDF. Solo tú las ves.');
+          applyHorarioPayload(h, 'Se extrajeron ' + slots.length + ' clases de tu PDF. Solo tu cuenta las ve.');
         } else {
-          // no se pudo parsear: no tocar slots ajenos; ofrecer editor / ejemplo
-          applyHorarioPayload(h, 'PDF recibido, pero no se leyeron clases. Usa el editor manual o «Ejemplo».');
-          toast('Tip: abre «Editor manual» y agrega tus materias, o revisa que el PDF sea el reporte Academusoft.');
+          applyHorarioPayload(h, 'PDF guardado, pero no se detectaron clases. Verifica que sea el reporte Academusoft de horario.');
         }
         renderPerfilHorarioSlots();
       }).catch(function (err) {
         console.warn('PDF horario', err);
-        toast('No se pudo leer el PDF. Prueba el editor manual.');
+        toast('No se pudo leer el PDF. Intenta con otro archivo Academusoft.');
       });
     };
 
@@ -1044,57 +1058,12 @@
         var empty = emptyHorario();
         applyHorarioPayload(empty, 'Horario eliminado. Ya puedes cargar uno nuevo.');
         try { file.value = ''; } catch (e2) {}
-        // borrar también en Firebase
         try {
           var path = horarioCloudPath();
           if (path && window.GeoCloud && window.GeoCloud.cloudSet) {
             window.GeoCloud.cloudSet(path, null);
           }
         } catch (e3) {}
-      };
-    }
-
-    if (btnEj) {
-      btnEj.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var ok = window.confirm('¿Cargar el horario de EJEMPLO de GeoMetrics solo en TU cuenta?\nNo modifica el horario de otros estudiantes.');
-        if (!ok) return;
-        var h = loadHorario();
-        h.slots = cloneDefaultSlots();
-        h.fileName = h.fileName || 'reporteHorario-ejemplo.pdf';
-        h.fromDefault = true;
-        h.personal = true;
-        applyHorarioPayload(h, 'Ejemplo cargado solo en tu cuenta.');
-        renderPerfilHorarioSlots();
-      };
-    }
-
-    var btnAdd = $('btnHeAgregar');
-    if (btnAdd) {
-      btnAdd.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var materia = (($('heMateria') || {}).value || '').trim();
-        if (!materia) { toast('Escribe el nombre de la materia.'); return; }
-        var slot = {
-          materia: materia,
-          grupo: (($('heGrupo') || {}).value || '').trim(),
-          dia: normalizeDia(($('heDia') || {}).value),
-          inicio: (($('heInicio') || {}).value || '08:00').slice(0, 5),
-          fin: (($('heFin') || {}).value || '10:00').slice(0, 5),
-          aula: (($('heAula') || {}).value || '').trim(),
-          docente: (($('heDocente') || {}).value || '').trim()
-        };
-        if (slot.dia < 0) slot.dia = 0;
-        var h = loadHorario();
-        h.slots = (h.slots || []).concat([slot]);
-        h.personal = true;
-        h.fromDefault = false;
-        if (!h.fileName) h.fileName = 'manual';
-        applyHorarioPayload(h, 'Clase agregada a TU horario.');
-        renderPerfilHorarioSlots();
-        if ($('heMateria')) $('heMateria').value = '';
       };
     }
   }
@@ -1128,14 +1097,7 @@
           h.fileData = ''; // PDF no se guarda en local (evita fallos por cuota)
           h.personal = true;
           h.fromDefault = false;
-          var isExample = /reportehorario-ejemplo|horario-ejemplo|ejemplo/i.test(f.name || '');
-          if (isExample) {
-            h.slots = cloneDefaultSlots();
-            h.fromDefault = true;
-            toast('Ejemplo aplicado solo a tu usuario.');
-          } else {
-            toast('PDF personal guardado. Solo tú lo ves en este navegador/cuenta.');
-          }
+          toast('PDF personal guardado. Solo tú lo ves en este navegador/cuenta.');
           saveHorario(h);
           renderHorarioList();
           renderCalendar();
@@ -1143,28 +1105,6 @@
           renderNextClass();
         };
         reader.readAsDataURL(f);
-      });
-    }
-    if (imp && !imp._avBound) {
-      imp._avBound = true;
-      imp.addEventListener('click', function () {
-        var ok = window.confirm(
-          '¿Cargar el horario de EJEMPLO de GeoMetrics en TU cuenta?\n\n' +
-          'Solo se guarda para el usuario con el que iniciaste sesión.\n' +
-          'No modifica el horario de otros estudiantes.'
-        );
-        if (!ok) return;
-        var h = loadHorario();
-        h.slots = cloneDefaultSlots();
-        h.fileName = h.fileName || 'reporteHorario-ejemplo.pdf';
-        h.fromDefault = true;
-        h.personal = true;
-        saveHorario(h);
-        renderHorarioList();
-        renderCalendar();
-        renderCalendarView();
-        renderNextClass();
-        toast('Ejemplo cargado solo en tu cuenta.');
       });
     }
     if (clr && !clr._avBound) {
@@ -1495,44 +1435,17 @@
     });
   }
 
-  function renderTasksStudent() {
+    function renderTasksStudent() {
+    // Delega al renderer completo de aula.js (select + entrega + botones)
+    try {
+      if (typeof aulaRenderEstudiante === 'function') {
+        aulaRenderEstudiante();
+        return;
+      }
+    } catch (e) { console.warn(e); }
     var box = $('listaTareasEstudiante');
     if (!box) return;
-    // Prefer legacy renderer if available (rich badges / plazos)
-    if (typeof aulaRenderEstudiante === 'function') {
-      try {
-        aulaRenderEstudiante();
-        if (box.innerHTML && box.innerHTML.trim()) return;
-      } catch (e) {}
-    }
-    var u = currentUser();
-    if (typeof aulaLoad !== 'function') {
-      box.innerHTML = '<div class="av-empty">Módulo de datos no disponible.</div>';
-      return;
-    }
-    var tareas = (aulaLoad(AULA_KEYS.tareas, []) || []).filter(function (t) { return studentSeesTask(t, u); });
-    var entregas = aulaLoad(AULA_KEYS.entregas, []) || [];
-    var doneMap = {};
-    entregas.forEach(function (e) {
-      if (u && e.estudianteId === u.id) doneMap[e.tareaId] = true;
-    });
-    if (!tareas.length) {
-      box.innerHTML = '<div class="av-empty">Aún no hay tareas publicadas para tus materias/grupos.</div>';
-      return;
-    }
-    box.innerHTML = tareas.slice().reverse().map(function (t) {
-      var done = !!doneMap[t.id];
-      var badge = done ? '<span class="badge-ok">Entregada</span>' : '<span class="badge-pend">Pendiente</span>';
-      return '<div class="aula-item aula-item-task">' +
-        '<div class="aula-item-top"><strong>' + esc(t.titulo) + '</strong>' + badge + '</div>' +
-        '<p>' + esc(t.descripcion || '') + '</p>' +
-        '<div class="aula-item-meta">' +
-        '<span>' + esc(t.materia) + '</span>' +
-        '<span>Grupo ' + esc(t.grupo || 'Todos') + '</span>' +
-        '<span>Prof. ' + esc(t.docenteNombre || '—') + '</span>' +
-        (t.fechaLimite ? '<span>Límite ' + esc(t.fechaLimite) + (t.horaLimite ? ' ' + esc(t.horaLimite) : '') + '</span>' : '') +
-        '</div></div>';
-    }).join('');
+    box.innerHTML = '<div class="av-empty">No se pudo cargar el listado de tareas.</div>';
   }
 
   function renderMaterialsStudent() {
@@ -1641,21 +1554,90 @@
   }
 
   function bind() {
-    qsa('.av-nav button[data-av-view]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var v = btn.getAttribute('data-av-view');
-        if (v === 'perfil') {
-          openEditProfile();
+    // ===== Estudiante: delegación (siempre funciona, aunque se re-renderice el DOM) =====
+    var est = $('pantallaEstudiante');
+    if (est && !est._avDelegate) {
+      est._avDelegate = true;
+      est.addEventListener('click', function (e) {
+        var t = e.target;
+        if (!t || !t.closest) return;
+
+        // Navegación principal / quickbar
+        var navBtn = t.closest('button[data-av-view], [data-av-view]');
+        if (navBtn && est.contains(navBtn)) {
+          var v = navBtn.getAttribute('data-av-view');
+          if (v) {
+            e.preventDefault();
+            if (v === 'perfil') { openEditProfile(); return; }
+            setView(v);
+            return;
+          }
+        }
+
+        // Links tipo "Ver todos"
+        var link = t.closest('[data-av-view-link]');
+        if (link && est.contains(link)) {
+          e.preventDefault();
+          setView(link.getAttribute('data-av-view-link'));
           return;
         }
-        setView(v);
-      });
-    });
-    qsa('.av-quickbar button[data-av-view]').forEach(function (btn) {
-      btn.addEventListener('click', function () { setView(btn.getAttribute('data-av-view')); });
-    });
 
-    // Nombre / avatar a la derecha → abre el mismo modal de perfil
+        // Acciones del holograma / recursos
+        var actEl = t.closest('[data-av-action]');
+        if (actEl && est.contains(actEl)) {
+          e.preventDefault();
+          var act = actEl.getAttribute('data-av-action');
+          if (act === 'biblioteca') {
+            window.open('docs/Guia_detallada_ensayos_GeoMetrics.pdf', '_blank');
+          } else if (act === 'guias' || act === 'temas') setView('recursos');
+          else if (act === 'enlaces') {
+            window.open('https://www.unipamplona.edu.co/unipamplona/portalIG/home_129/publicacion/publicado/', '_blank');
+          } else if (act === 'actividades') setView('tareas');
+          else if (act === 'evaluaciones') setView('calificaciones');
+          else if (act === 'foros') setView('foros');
+          else if (act === 'cursos') setView('cursos');
+          else if (act === 'calendario') setView('calendario');
+          else if (act === 'inicio') setView('inicio');
+          else if (act === 'aula') setView('aula');
+          return;
+        }
+
+        // Laboratorios
+        var lab = t.closest('[data-lab]');
+        if (lab && est.contains(lab)) {
+          e.preventDefault();
+          goToLab(lab.getAttribute('data-lab'));
+          return;
+        }
+
+        // Curso activo (sidebar)
+        var course = t.closest('[data-course]');
+        if (course && est.contains(course)) {
+          e.preventDefault();
+          state.courseId = course.getAttribute('data-course');
+          renderHologram();
+          renderNextClass();
+          try {
+            var c = courseById(state.courseId);
+            if (c) toast('Curso activo: ' + c.name);
+          } catch (eC) {}
+          return;
+        }
+
+        // Abrir curso desde vista Cursos
+        var openC = t.closest('[data-open-course]');
+        if (openC && est.contains(openC)) {
+          e.preventDefault();
+          state.courseId = openC.getAttribute('data-open-course');
+          renderHologram();
+          renderNextClass();
+          setView('aula');
+          return;
+        }
+      });
+    }
+
+    // Chip perfil
     var chip = $('avUserChip') || qs('.av-user-chip');
     if (chip && !chip._avBound) {
       chip._avBound = true;
@@ -1667,68 +1649,36 @@
       chip.style.cursor = 'pointer';
     }
 
-    qsa('[data-av-action]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var act = btn.getAttribute('data-av-action');
-        if (act === 'biblioteca') {
-          window.open('docs/Guia_detallada_ensayos_GeoMetrics.pdf', '_blank');
-        } else if (act === 'guias') setView('recursos');
-        else if (act === 'enlaces') window.open('https://www.unipamplona.edu.co/unipamplona/portalIG/home_129/publicacion/publicado/', '_blank');
-        else if (act === 'temas') setView('recursos');
-        else if (act === 'actividades') setView('tareas');
-        else if (act === 'evaluaciones') setView('calificaciones');
-        else if (act === 'foros') setView('foros');
+    // Mensajes → foros
+    var msgBtn = qs('#pantallaEstudiante .av-icon-btn[aria-label="Mensajes"]');
+    if (msgBtn && !msgBtn._avBound) {
+      msgBtn._avBound = true;
+      msgBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        setView('foros');
       });
-    });
+    }
 
+    // Calendario prev/next
     var prev = $('avCalPrev');
     var next = $('avCalNext');
-    if (prev) prev.addEventListener('click', function () {
-      state.calMonth--;
-      if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
-      renderCalendar();
-    });
-    if (next) next.addEventListener('click', function () {
-      state.calMonth++;
-      if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
-      renderCalendar();
-    });
-
-    function goMenu() {
-      hideAulaVirtual();
-      if (typeof mostrarPantalla === 'function') {
-        try { mostrarPantalla('menu'); } catch (err) {}
-      }
-    }
-    var back = $('btnVolverEstudiante');
-    if (back) back.addEventListener('click', function (e) { e.preventDefault(); goMenu(); });
-    var menuBtn = $('avBtnMenu');
-    if (menuBtn) menuBtn.addEventListener('click', goMenu);
-
-    var backDoc = $('btnVolverDocente');
-    if (backDoc && !backDoc._avBound) {
-      backDoc._avBound = true;
-      backDoc.addEventListener('click', function () {
-        var root = $('pantallaDocente');
-        if (root) {
-          root.classList.remove('av-doc-visible');
-          root.style.display = 'none';
-        }
-        if (typeof mostrarPantalla === 'function') {
-          try { mostrarPantalla('menu'); } catch (e) {}
-        }
+    if (prev && !prev._avBound) {
+      prev._avBound = true;
+      prev.addEventListener('click', function () {
+        state.calMonth--;
+        if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
+        renderCalendar();
+        renderCalendarView();
       });
     }
-
-    var forumSend = $('avForumSend');
-    if (forumSend && !forumSend._avBound) {
-      forumSend._avBound = true;
-      forumSend.addEventListener('click', postForum);
-    }
-    var forumMat = $('avForumMateria');
-    if (forumMat && !forumMat._avBound) {
-      forumMat._avBound = true;
-      forumMat.addEventListener('change', renderForum);
+    if (next && !next._avBound) {
+      next._avBound = true;
+      next.addEventListener('click', function () {
+        state.calMonth++;
+        if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
+        renderCalendar();
+        renderCalendarView();
+      });
     }
     var prev2 = $('avCalPrev2');
     var next2 = $('avCalNext2');
@@ -1750,6 +1700,56 @@
         renderCalendarView();
       });
     }
+
+    function goMenu() {
+      hideAulaVirtual();
+      if (typeof mostrarPantalla === 'function') {
+        try { mostrarPantalla('menu'); } catch (err) {}
+      }
+    }
+    var back = $('btnVolverEstudiante');
+    if (back && !back._avBound) {
+      back._avBound = true;
+      back.addEventListener('click', function (e) { e.preventDefault(); goMenu(); });
+    }
+    var menuBtn = $('avBtnMenu');
+    if (menuBtn && !menuBtn._avBound) {
+      menuBtn._avBound = true;
+      menuBtn.addEventListener('click', function (e) { e.preventDefault(); goMenu(); });
+    }
+
+    var backDoc = $('btnVolverDocente');
+    if (backDoc && !backDoc._avBound) {
+      backDoc._avBound = true;
+      backDoc.addEventListener('click', function (e) {
+        e.preventDefault();
+        hideAulaVirtual();
+        try {
+          var pd = $('pantallaDocente');
+          if (pd) {
+            pd.classList.remove('av-doc-visible', 'av-doc-pro', 'av-docente');
+            pd.style.cssText = '';
+            pd.style.display = 'none';
+            pd.setAttribute('hidden', '');
+          }
+        } catch (eH) {}
+        if (typeof mostrarPantalla === 'function') {
+          try { mostrarPantalla('menu'); } catch (err) {}
+        }
+      });
+    }
+
+    var forumSend = $('avForumSend');
+    if (forumSend && !forumSend._avBound) {
+      forumSend._avBound = true;
+      forumSend.addEventListener('click', postForum);
+    }
+    var forumMat = $('avForumMateria');
+    if (forumMat && !forumMat._avBound) {
+      forumMat._avBound = true;
+      forumMat.addEventListener('change', renderForum);
+    }
+
     var sideBtn = $('avToggleSide');
     var side = $('avSide');
     if (sideBtn && side && !sideBtn._avBound) {
@@ -1758,12 +1758,9 @@
         side.classList.toggle('av-side-open');
       });
     }
-    qsa('[data-av-view-link]').forEach(function (a) {
-      a.addEventListener('click', function (e) {
-        e.preventDefault();
-        setView(a.getAttribute('data-av-view-link'));
-      });
-    });
+
+    // Notificaciones
+    try { if (typeof aulaBindNotifUI === 'function') aulaBindNotifUI(); } catch (eN) {}
   }
 
   function refreshAll() {
@@ -1809,6 +1806,7 @@
     root.classList.add('av-root', 'av-visible');
     root.removeAttribute('hidden');
     root.style.cssText = 'display:grid!important;position:fixed!important;inset:0!important;z-index:9999!important;visibility:visible!important;opacity:1!important;width:100%!important;height:100%!important;';
+    try { bind(); } catch (eB) {}
     refreshAll();
     setView('aula');
     setTimeout(function () { try { renderNextClass(); } catch (e) {} }, 100);
@@ -1839,12 +1837,24 @@
         try { m.setAttribute('hidden', ''); } catch (e) {}
       }
     });
-    root.classList.add('av-docente', 'av-doc-visible');
+    root.classList.add('av-docente', 'av-doc-pro', 'av-doc-visible');
     root.removeAttribute('hidden');
-    root.style.cssText = 'display:block!important;position:fixed!important;inset:0!important;z-index:9998!important;visibility:visible!important;opacity:1!important;';
+    root.style.cssText = 'display:grid!important;grid-template-rows:56px 1fr!important;position:fixed!important;inset:0!important;z-index:9998!important;visibility:visible!important;opacity:1!important;width:100%!important;height:100%!important;background:#061426!important;';
     try {
       if (typeof aulaRenderDocente === 'function') aulaRenderDocente();
     } catch (e) { console.warn('aulaRenderDocente', e); }
+    try {
+      if (window.DocenteDashboard && typeof DocenteDashboard.bind === 'function') {
+        DocenteDashboard.bind();
+      }
+      if (window.DocenteDashboard && typeof DocenteDashboard.setView === 'function') {
+        DocenteDashboard.setView('dashboard');
+      }
+      if (window.DocenteDashboard && typeof DocenteDashboard.refresh === 'function') {
+        DocenteDashboard.refresh();
+      }
+    } catch (e2) {}
+    try { if (typeof aulaBindNotifUI === 'function') aulaBindNotifUI(); } catch (e3) {}
   }
 
   function init() {
@@ -1903,6 +1913,7 @@
       hide: hideAulaVirtual,
       showDocente: showDocentePanel,
       refresh: refreshAll,
+      setView: setView,
       setCourse: function (id) {
         state.courseId = id;
         renderHologram();

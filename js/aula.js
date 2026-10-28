@@ -9,6 +9,7 @@ var AULA_KEYS = {
     tareas: 'geometrics_tareas',
     presentaciones: 'geometrics_presentaciones',
     entregas: 'geometrics_entregas',
+    notificaciones: 'geometrics_notificaciones',
     docentesExtra: 'geometrics_docentes_extra',
     admins: 'geometrics_admins',
     quices: 'geometrics_quices'
@@ -198,6 +199,25 @@ function aulaLimpiarTodosLosResultados() {
     } catch (e) {}
 }
 
+
+
+/** Nombre para UI: nunca devolver correo. */
+function aulaNombreVisible(user) {
+    if (!user) return 'Usuario';
+    function bad(s) { return !s || String(s).indexOf('@') >= 0; }
+    var pref = (user.preferenciaNombre || user.nombrePreferido || '').trim();
+    if (!bad(pref)) return pref;
+    var full = ((user.nombres || '') + ' ' + (user.apellidos || '')).trim();
+    if (!bad(full)) return full;
+    var nom = (user.nombre || '').trim();
+    if (!bad(nom)) return nom;
+    var email = String(user.email || '');
+    if (email.indexOf('@') > 0) {
+        var local = email.split('@')[0].replace(/[._]+/g, ' ').trim();
+        if (local) return local.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+    }
+    return user.rol === 'docente' ? 'Docente' : 'Estudiante';
+}
 
 function aulaGetSession() {
     try {
@@ -1289,7 +1309,7 @@ function aulaEnterApp(user, opts) {
             pe.setAttribute('hidden', '');
         }
         if (pd) {
-            pd.classList.remove('av-doc-visible', 'av-docente');
+            pd.classList.remove('av-doc-visible', 'av-docente', 'av-doc-pro');
             pd.style.display = 'none';
             pd.setAttribute('hidden', '');
         }
@@ -1411,7 +1431,7 @@ function aulaOpenPanel() {
             el.style.zIndex = '9999';
             try { if (window.GeoMetricsAulaVirtual && GeoMetricsAulaVirtual.show) setTimeout(function(){ GeoMetricsAulaVirtual.show(); }, 0); } catch (eS) {}
         } else if (id === 'pantallaDocente') {
-            el.classList.add('av-docente', 'av-doc-visible');
+            el.classList.add('av-docente', 'av-doc-pro', 'av-doc-visible');
             el.style.display = 'block';
             el.style.position = 'fixed';
             el.style.inset = '0';
@@ -1464,6 +1484,7 @@ function aulaOpenPanel() {
         aulaSetAvatarEl(document.getElementById('docIconoAula'), user, '👩‍🏫');
         _activateAulaTab('pantallaDocente', 'doc-tareas');
         try { aulaRenderDocente(); } catch (eR) { console.error('aulaRenderDocente', eR); }
+        try { if (window.DocenteDashboard) DocenteDashboard.setView('dashboard'); } catch (eD) {}
     } else {
         if (typeof mostrarPantalla === 'function') {
             try { mostrarPantalla('estudiante'); } catch (e) {}
@@ -1634,6 +1655,263 @@ function aulaCancelarEditTarea() {
     if (err) err.textContent = '';
 }
 
+
+/* ========== Notificaciones (panel desplegable) ========== */
+function aulaNotifStorageKey(user) {
+    user = user || (typeof aulaGetSession === 'function' ? aulaGetSession() : null);
+    var em = (user && (user.email || user.id)) ? String(user.email || user.id).toLowerCase() : 'anon';
+    return 'geometrics_notificaciones_' + em.replace(/[^a-z0-9@._-]/g, '_');
+}
+function aulaLoadNotifs(user) {
+    try {
+        var raw = localStorage.getItem(aulaNotifStorageKey(user));
+        var list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+    } catch (e) { return []; }
+}
+function aulaSaveNotifs(user, list) {
+    try {
+        localStorage.setItem(aulaNotifStorageKey(user), JSON.stringify(list || []));
+    } catch (e) { console.warn('notif save', e); }
+}
+function aulaPushNotif(targetUser, payload) {
+    if (!targetUser || !payload) return;
+    var list = aulaLoadNotifs(targetUser);
+    list.unshift({
+        id: (typeof aulaUid === 'function' ? aulaUid() : ('n' + Date.now() + Math.random().toString(16).slice(2))),
+        title: payload.title || 'Aviso',
+        body: payload.body || '',
+        type: payload.type || 'info',
+        ref: payload.ref || '',
+        createdAt: Date.now(),
+        read: false
+    });
+    if (list.length > 100) list = list.slice(0, 100);
+    aulaSaveNotifs(targetUser, list);
+}
+function aulaNotifUnreadCount(user) {
+    return aulaLoadNotifs(user).filter(function (n) { return n && !n.read; }).length;
+}
+function aulaMarkNotifsRead(user, id) {
+    var list = aulaLoadNotifs(user);
+    list.forEach(function (n) {
+        if (!id || (n && n.id === id)) n.read = true;
+    });
+    aulaSaveNotifs(user, list);
+}
+function aulaRefreshNotifBadges() {
+    var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+    if (!user) return;
+    var n = aulaNotifUnreadCount(user);
+    ['avNotifBadge', 'dpNotifBadge', 'dpNotifBadge2'].forEach(function (id) {
+        var b = document.getElementById(id);
+        if (!b) return;
+        if (n > 0) {
+            b.hidden = false;
+            b.removeAttribute('hidden');
+            b.textContent = String(n);
+            b.style.display = '';
+        } else {
+            b.hidden = true;
+            b.setAttribute('hidden', '');
+            b.textContent = '0';
+        }
+    });
+}
+function aulaRenderNotifPanel(listId, badgeId) {
+    var user = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+    var listEl = document.getElementById(listId);
+    var list = aulaLoadNotifs(user);
+    aulaRefreshNotifBadges();
+    if (!listEl) return;
+    if (!list.length) {
+        listEl.innerHTML = '<div class="av-notif-empty">No tienes notificaciones nuevas.<br><small>Cuando publiquen tareas o lleguen entregas, aparecerán aquí.</small></div>';
+        return;
+    }
+    listEl.innerHTML = list.slice(0, 40).map(function (n) {
+        var when = '';
+        try {
+            when = new Date(n.createdAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+        } catch (e) {}
+        var title = (typeof aulaEsc === 'function' ? aulaEsc(n.title) : String(n.title || ''));
+        var body = (typeof aulaEsc === 'function' ? aulaEsc(n.body) : String(n.body || ''));
+        var id = (typeof aulaEsc === 'function' ? aulaEsc(n.id) : String(n.id || ''));
+        var ref = (typeof aulaEsc === 'function' ? aulaEsc(n.ref || '') : String(n.ref || ''));
+        return '<button type="button" class="av-notif-item' + (n.read ? '' : ' unread') + '" data-notif-id="' + id + '" data-notif-ref="' + ref + '">' +
+            '<strong>' + title + '</strong>' +
+            '<span>' + body + (when ? (' · ' + when) : '') + '</span></button>';
+    }).join('');
+    listEl.querySelectorAll('[data-notif-id]').forEach(function (btn) {
+        btn.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var id = btn.getAttribute('data-notif-id');
+            aulaMarkNotifsRead(user, id);
+            aulaRenderNotifPanel(listId, badgeId);
+            var ref = btn.getAttribute('data-notif-ref') || '';
+            if (ref === 'tareas' && user && user.rol === 'estudiante') {
+                try {
+                    if (window.GeoMetricsAulaVirtual && GeoMetricsAulaVirtual.setView) GeoMetricsAulaVirtual.setView('tareas');
+                } catch (e) {}
+            }
+            if (ref === 'entregas' && user && user.rol === 'docente') {
+                try {
+                    if (window.DocenteDashboard && DocenteDashboard.setView) DocenteDashboard.setView('entregas');
+                } catch (e2) {}
+            }
+        });
+    });
+}
+function aulaCloseAllNotifPanels() {
+    ['avNotifPanel', 'dpNotifPanel'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.hidden = true;
+        el.setAttribute('hidden', '');
+        el.classList.remove('is-open');
+        el.style.display = 'none';
+    });
+}
+function aulaOpenNotifPanel(panelId, listId, badgeId) {
+    var p = document.getElementById(panelId);
+    if (!p) return;
+    aulaCloseAllNotifPanels();
+    p.hidden = false;
+    p.removeAttribute('hidden');
+    p.classList.add('is-open');
+    p.style.display = 'block';
+    aulaRenderNotifPanel(listId, badgeId);
+}
+function aulaToggleNotifPanel(panelId, listId, badgeId) {
+    var p = document.getElementById(panelId);
+    if (!p) return;
+    var isOpen = !p.hidden && p.classList.contains('is-open');
+    if (isOpen) {
+        aulaCloseAllNotifPanels();
+    } else {
+        aulaOpenNotifPanel(panelId, listId, badgeId);
+    }
+}
+function aulaBindNotifUI() {
+    var b1 = document.getElementById('avBtnNotif');
+    if (b1 && !b1._notifBound) {
+        b1._notifBound = true;
+        b1.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            aulaToggleNotifPanel('avNotifPanel', 'avNotifList', 'avNotifBadge');
+        });
+    }
+    var b2 = document.getElementById('dpBtnNotif');
+    if (b2 && !b2._notifBound) {
+        b2._notifBound = true;
+        b2.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            // Nunca cambiar de vista al abrir el panel
+            aulaToggleNotifPanel('dpNotifPanel', 'dpNotifList', 'dpNotifBadge');
+        }, true);
+    }
+    var b3 = document.getElementById('dpBtnNotif2');
+    if (b3 && !b3._notifBound) {
+        b3._notifBound = true;
+        b3.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            aulaToggleNotifPanel('dpNotifPanel', 'dpNotifList', 'dpNotifBadge');
+        });
+    }
+    var m1 = document.getElementById('avNotifMarkAll');
+    if (m1 && !m1._notifBound) {
+        m1._notifBound = true;
+        m1.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            aulaMarkNotifsRead(typeof aulaGetSession === 'function' ? aulaGetSession() : null);
+            aulaRenderNotifPanel('avNotifList', 'avNotifBadge');
+        });
+    }
+    var m2 = document.getElementById('dpNotifMarkAll');
+    if (m2 && !m2._notifBound) {
+        m2._notifBound = true;
+        m2.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            aulaMarkNotifsRead(typeof aulaGetSession === 'function' ? aulaGetSession() : null);
+            aulaRenderNotifPanel('dpNotifList', 'dpNotifBadge');
+        });
+    }
+    if (!document._gmNotifOutside) {
+        document._gmNotifOutside = true;
+        document.addEventListener('click', function (e) {
+            var t = e.target;
+            if (t && t.closest && (t.closest('#avNotifWrap') || t.closest('#dpNotifWrap'))) return;
+            aulaCloseAllNotifPanels();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') aulaCloseAllNotifPanels();
+        });
+    }
+    aulaRefreshNotifBadges();
+}
+function aulaNotifyStudentsNewTask(tarea) {
+    if (!tarea) return;
+    var users = typeof aulaLoad === 'function' ? aulaLoad(AULA_KEYS.users, []) : [];
+    users.forEach(function (u) {
+        if (!u || u.rol === 'docente') return;
+        if (u.notifTareas === false) return;
+        var ok = false;
+        try {
+            if (typeof aulaTareasParaEstudiante === 'function') {
+                ok = (aulaTareasParaEstudiante(u) || []).some(function (t) { return t.id === tarea.id; });
+            }
+            if (!ok && typeof aulaMateriasUsuario === 'function') {
+                var mats = aulaMateriasUsuario(u) || [];
+                ok = mats.some(function (m) {
+                    var nom = (m && (m.nombre || m)) || '';
+                    var misma = !tarea.materia || String(tarea.materia) === String(nom);
+                    var gT = String(tarea.grupo || '').trim().toLowerCase();
+                    var gU = String((m && m.grupo) || '').trim().toLowerCase();
+                    return misma && (!gT || !gU || gT === gU);
+                });
+            }
+        } catch (e) { ok = true; }
+        if (!ok) return;
+        aulaPushNotif(u, {
+            title: 'Nueva tarea: ' + (tarea.titulo || 'Actividad'),
+            body: (tarea.materia || 'GeoMetrics') + (tarea.fechaLimite ? (' · Límite ' + tarea.fechaLimite) : ''),
+            type: 'tarea',
+            ref: 'tareas'
+        });
+    });
+    aulaRefreshNotifBadges();
+}
+function aulaNotifyDocenteNuevaEntrega(entrega, tarea) {
+    if (!tarea || !tarea.docenteId) return;
+    var users = typeof aulaLoad === 'function' ? aulaLoad(AULA_KEYS.users, []) : [];
+    var doc = users.find(function (u) { return u && u.id === tarea.docenteId; });
+    if (!doc) return;
+    aulaPushNotif(doc, {
+        title: 'Nueva entrega recibida',
+        body: (entrega && entrega.estudianteNombre ? entrega.estudianteNombre : 'Estudiante') + ' · ' + (tarea.titulo || 'Tarea'),
+        type: 'entrega',
+        ref: 'entregas'
+    });
+}
+function aulaNotifyEstudianteNota(entrega, tarea) {
+    if (!entrega || !entrega.estudianteId) return;
+    var users = typeof aulaLoad === 'function' ? aulaLoad(AULA_KEYS.users, []) : [];
+    var est = users.find(function (u) { return u && u.id === entrega.estudianteId; });
+    if (!est) return;
+    aulaPushNotif(est, {
+        title: 'Calificación registrada',
+        body: (tarea && tarea.titulo ? tarea.titulo + ' · ' : '') + 'Nota: ' + String(entrega.nota),
+        type: 'nota',
+        ref: 'tareas'
+    });
+}
+
 function aulaCrearTarea() {
     var user = aulaRequireSession();
     if (!user || user.rol !== 'docente') return;
@@ -1669,7 +1947,7 @@ function aulaCrearTarea() {
             fechaLimite: fecha,
             horaLimite: hora,
             docenteId: user.id,
-            docenteNombre: user.nombre,
+            docenteNombre: (typeof aulaNombreVisible === 'function' ? aulaNombreVisible(user) : (user.nombre || user.nombres || 'Docente')),
             creada: new Date().toISOString()
         });
     }
@@ -1681,9 +1959,16 @@ function aulaCrearTarea() {
             });
         }
     } catch (ePush) {}
+    try {
+        if (!editId) {
+            var publicada = tareas[tareas.length - 1];
+            if (typeof aulaNotifyStudentsNewTask === 'function') aulaNotifyStudentsNewTask(publicada);
+        }
+    } catch (eN) {}
     aulaCancelarEditTarea();
     aulaRenderDocente();
     try { if (window.GeoMetricsAulaVirtual && GeoMetricsAulaVirtual.refresh) GeoMetricsAulaVirtual.refresh(); } catch (eR) {}
+    try { if (typeof aulaRefreshNotifBadges === 'function') aulaRefreshNotifBadges(); } catch (eB) {}
 }
 
 function aulaRenderPresDocente() {
@@ -1863,8 +2148,13 @@ function aulaGuardarCalificacion(id, box) {
     list[i].comentarioDocente = com;
     list[i].calificadaEn = new Date().toISOString();
     aulaSave(AULA_KEYS.entregas, list);
+    try {
+        var tareaG = (aulaLoad(AULA_KEYS.tareas, []) || []).find(function (t) { return t.id === list[i].tareaId; });
+        if (typeof aulaNotifyEstudianteNota === 'function') aulaNotifyEstudianteNota(list[i], tareaG || {});
+    } catch (eNg) {}
     aulaRenderEntregasDocente();
     if (typeof aulaActualizarResumenDocente === 'function') aulaActualizarResumenDocente();
+    try { if (typeof aulaRefreshNotifBadges === 'function') aulaRefreshNotifBadges(); } catch (eB) {}
 }
 
 
@@ -2633,6 +2923,8 @@ function aulaPlazoInfo(t, fechaEntregaIso) {
 }
 
 function aulaRenderEstudiante() {
+    try { if (typeof aulaBindNotifUI === 'function') aulaBindNotifUI(); } catch (eBN) {}
+
     try { var _s = document.getElementById("estChatMateria"); if (_s) _s.dataset.filled = ""; if (typeof aulaChatBind === "function") aulaChatBind(); if (typeof aulaChatUpdateBadges === "function") aulaChatUpdateBadges(); } catch (e) {}
     var user = aulaUsuarioCompleto(aulaGetSession());
     if (!user) return;
@@ -2773,6 +3065,9 @@ function aulaRenderEstudiante() {
                 var done = !!entregadas[t.id];
                 var badgeCls = done ? 'badge-ok' : (plazo.clase && String(plazo.clase).indexOf('vencid') >= 0 ? 'badge-late' : 'badge-pend');
                 var badgeTxt = done ? 'Entregada' : (badgeCls === 'badge-late' ? 'Vencida' : 'Pendiente');
+                var btn = done
+                    ? '<button type="button" class="btn-entregar-item" data-reentregar="' + t.id + '">Reemplazar entrega</button>'
+                    : '<button type="button" class="btn-entregar-item" data-entregar="' + t.id + '">Entregar</button>';
                 return '<div class="aula-item aula-item-task">' +
                     '<div class="aula-item-top">' +
                     '<strong>' + aulaEsc(t.titulo) + '</strong>' +
@@ -2782,8 +3077,41 @@ function aulaRenderEstudiante() {
                     '<span>' + aulaEsc(t.materia) + '</span>' +
                     '<span>Grupo ' + aulaEsc(t.grupo || 'Todos') + '</span>' +
                     '<span>Prof. ' + aulaEsc(t.docenteNombre || '—') + '</span></div>' +
-                    '<p class="plazo-info ' + plazo.clase + '">' + aulaEsc(plazo.texto) + '</p></div>';
+                    '<p class="plazo-info ' + plazo.clase + '">' + aulaEsc(plazo.texto) + '</p>' +
+                    btn + '</div>';
             }).join('');
+            box.querySelectorAll('[data-entregar], [data-reentregar]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var id = btn.getAttribute('data-entregar') || btn.getAttribute('data-reentregar');
+                    var sel = document.getElementById('entregaTarea');
+                    var panel = document.getElementById('panelEntregaEstudiante');
+                    if (sel) {
+                        // asegurar opción en select
+                        var has = false;
+                        for (var i = 0; i < sel.options.length; i++) {
+                            if (sel.options[i].value === id) { has = true; break; }
+                        }
+                        if (!has) {
+                            var tObj = tareas.find(function (x) { return x.id === id; });
+                            if (tObj) {
+                                var opt = document.createElement('option');
+                                opt.value = id;
+                                opt.textContent = tObj.titulo || 'Tarea';
+                                sel.appendChild(opt);
+                            }
+                        }
+                        sel.value = id;
+                        try { sel.dispatchEvent(new Event('change')); } catch (e) {}
+                    }
+                    if (panel) {
+                        try { panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e2) {
+                            panel.scrollIntoView(true);
+                        }
+                    }
+                    var file = document.getElementById('entregaArchivo');
+                    if (file) try { file.focus(); } catch (e3) {}
+                });
+            });
         }
     }
 
@@ -2977,9 +3305,25 @@ function aulaEntregar() {
                 throw e2;
             }
             if (err) err.textContent = '';
-            document.getElementById('entregaComentario').value = '';
-            fileInput.value = '';
-            aulaRenderEstudiante();
+            try {
+                var elCom = document.getElementById('entregaComentario');
+                if (elCom) elCom.value = '';
+            } catch (eC) {}
+            try { fileInput.value = ''; } catch (eF) {}
+            try {
+                var tareaObj = (aulaLoad(AULA_KEYS.tareas, []) || []).find(function (t) { return t.id === tareaId; });
+                if (typeof aulaNotifyDocenteNuevaEntrega === 'function') {
+                    aulaNotifyDocenteNuevaEntrega(row, tareaObj || {});
+                }
+                if (err) err.textContent = '¡Entrega enviada correctamente!';
+                else if (typeof gmToast === 'function') gmToast('Entrega enviada');
+                else try { alert('Entrega enviada correctamente'); } catch (eA) {}
+            } catch (eN) {}
+            try { aulaRenderEstudiante(); } catch (eR) {}
+            try {
+                if (window.GeoMetricsAulaVirtual && GeoMetricsAulaVirtual.refresh) GeoMetricsAulaVirtual.refresh();
+            } catch (eAV) {}
+            try { if (typeof aulaRefreshNotifBadges === 'function') aulaRefreshNotifBadges(); } catch (eB) {}
             if (window.GeoCloud && typeof GeoCloud.syncUp === 'function') {
                 try { GeoCloud.syncUp(); } catch (e3) {}
             }
@@ -3355,7 +3699,7 @@ function aulaAbrirPerfil() {
         saludo.textContent = aulaTextoSaludo(user);
     }
     var nom = document.getElementById('perfilNombreTitulo');
-    if (nom) nom.textContent = user.nombre || ((user.nombres || '') + ' ' + (user.apellidos || '')).trim() || 'Usuario';
+    if (nom) nom.textContent = (typeof aulaNombreVisible === 'function' ? aulaNombreVisible(user) : (((user.nombres || '') + ' ' + (user.apellidos || '')).trim() || user.nombre || 'Usuario'));
     var badge = document.getElementById('perfilRolBadge');
     if (badge) {
         badge.textContent = user.rol === 'docente' ? 'Docente' : 'Estudiante';
@@ -3952,7 +4296,11 @@ function aulaInitUI() {
     var btnCancelEdit = document.getElementById('btnCancelarEditTarea');
     if (btnCancelEdit) btnCancelEdit.addEventListener('click', aulaCancelarEditTarea);
     var btnEntregar = document.getElementById('btnEntregar');
-    if (btnEntregar) btnEntregar.addEventListener('click', aulaEntregar);
+    if (btnEntregar && !btnEntregar._aulaBound) {
+        btnEntregar._aulaBound = true;
+        btnEntregar.addEventListener('click', aulaEntregar);
+    }
+    try { if (typeof aulaBindNotifUI === 'function') aulaBindNotifUI(); } catch (eNot) {}
 
     var btnEstFiltro = document.getElementById('btnEstAplicarFiltro');
     if (btnEstFiltro) {
@@ -6682,3 +7030,17 @@ function aulaAdminCivixAvatarInit() {
     }
 }
 
+
+try {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      try { if (typeof aulaBindNotifUI === 'function') aulaBindNotifUI(); } catch (e) {}
+      try {
+        var be = document.getElementById('btnEntregar');
+        if (be && !be._aulaBound) { be._aulaBound = true; be.addEventListener('click', aulaEntregar); }
+      } catch (e2) {}
+    });
+  } else {
+    try { if (typeof aulaBindNotifUI === 'function') aulaBindNotifUI(); } catch (e) {}
+  }
+} catch (eInit) {}
