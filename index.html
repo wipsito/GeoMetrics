@@ -1941,13 +1941,13 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                     🔔<span class="av-badge" id="avNotifBadge" hidden>0</span>
                 </button>
                 <button type="button" class="av-icon-btn" title="Mensajes" aria-label="Mensajes">💬</button>
-                <button type="button" class="av-user-chip" id="avUserChip" title="Abrir mi perfil" aria-label="Abrir perfil">
+                <div class="av-user-chip" title="Perfil">
                     <div class="av-user-fb" id="avUserFb">ES</div>
-                    <span class="av-user-text">
+                    <span>
                         <span id="avUserName">Estudiante</span>
                         <small id="avUserRole">Estudiante</small>
                     </span>
-                </button>
+                </div>
                 <button type="button" class="av-btn-menu av-toggle-side" id="avToggleSide" title="Panel">☰ Panel</button>
                 <button type="button" class="av-btn-menu" id="avBtnMenu">← Menú</button>
                 <button type="button" class="av-btn-menu" id="btnVolverEstudiante" style="display:none;">← Menú</button>
@@ -1963,6 +1963,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
             <button type="button" data-av-view="foros" title="Foros"><span class="av-ico">💬</span>Foros</button>
             <button type="button" data-av-view="recursos" title="Recursos"><span class="av-ico">📁</span>Recursos</button>
             <button type="button" data-av-view="calificaciones" title="Calificaciones"><span class="av-ico">📊</span>Notas</button>
+            <button type="button" data-av-view="perfil" title="Perfil"><span class="av-ico">👤</span>Perfil</button>
         </nav>
 
         <section class="av-main">
@@ -2065,16 +2066,18 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 <p class="av-view-hint">Estado de tus entregas. Las notas aparecen cuando el docente las registra.</p>
                 <div id="avGradesList" class="av-task-list"></div>
             </div>
+            <div class="av-view" data-av-view="perfil">
+                <!-- Solo abre el modal Editar perfil; sin panel extra -->
+            </div>
         </section>
 
         <aside class="av-side" id="avSide">
             <div class="av-card av-next-class">
                 <h3>📅 Próxima clase</h3>
-                <div class="av-next-day" id="avNextDay">—</div>
-                <div class="av-course-name" id="avNextName">Carga tu horario</div>
-                <div class="av-meta" id="avNextTheme">Sube el PDF en tu perfil</div>
-                <div class="av-meta" id="avNextTime"></div>
-                <div class="av-meta av-next-status" id="avNextStatus" hidden></div>
+                <div class="av-course-name" id="avNextName">Mecánica de Suelos</div>
+                <div class="av-meta" id="avNextTheme">Tema: Granulometría</div>
+                <div class="av-meta" id="avNextTime">28 oct. 2025 · 8:00 a.m. – 10:00 a.m.</div>
+                <button type="button" class="av-btn-primary" id="avBtnEnterClass">Entrar a la clase →</button>
             </div>
 
             <div class="av-card">
