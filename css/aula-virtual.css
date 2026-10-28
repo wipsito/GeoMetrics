@@ -633,22 +633,47 @@ main#pantallaEstudiante.av-visible {
   color: var(--av-cyan);
 }
 
-/* Views (sections inside main) */
+/* Views (cursos, calendario, etc.) — mismo fondo del aula */
 .av-view {
   display: none;
   position: absolute;
   inset: 0;
   overflow-y: auto;
-  padding: 20px;
+  padding: 20px 22px 28px;
   z-index: 4;
-  background: rgba(2,9,20,0.92);
-  backdrop-filter: blur(8px);
+  /* Semi-transparente: se ve el aula-referencia detrás */
+  background:
+    linear-gradient(180deg, rgba(2,10,22,0.55) 0%, rgba(2,10,22,0.72) 100%);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 .av-view.active { display: block; }
 .av-view h2 {
   margin: 0 0 12px;
   font-size: 1.3rem;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.55);
 }
+.av-view .av-view-hint {
+  text-shadow: 0 1px 8px rgba(0,0,0,0.45);
+}
+/* Tarjetas legibles sobre el fondo del aula */
+.av-view .av-card,
+.av-view .av-tile,
+.av-view .av-cal-wide,
+.av-view .av-forum,
+.av-view .av-task-list .aula-item,
+.av-view .av-stats-row > * {
+  background: linear-gradient(160deg, rgba(8,28,48,0.88), rgba(4,16,32,0.92)) !important;
+  border: 1px solid rgba(0,217,255,0.28);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+  backdrop-filter: blur(6px);
+}
+.av-view .av-task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .av-view-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -1154,4 +1179,15 @@ button.av-user-chip:hover {
   padding: 8px 10px; border-radius: 8px;
   border: 1px solid rgba(0,217,255,0.25);
   background: rgba(2,9,20,0.75); color: #e2e8f0;
+}
+
+/* Cuando hay una vista secundaria activa, el escenario sigue visible detrás */
+.av-main.av-has-secondary-view .av-stage {
+  display: block !important;
+  filter: saturate(1.05) contrast(1.05) brightness(0.92);
+}
+.av-main.av-has-secondary-view .av-stage-overlay {
+  background:
+    linear-gradient(90deg, rgba(2,9,20,0.45) 0%, transparent 18%, transparent 72%, rgba(2,9,20,0.35) 100%),
+    linear-gradient(180deg, rgba(2,9,20,0.25) 0%, transparent 35%, rgba(2,9,20,0.5) 100%);
 }
