@@ -3281,6 +3281,8 @@ function aulaPerfilCalcularStats(user) {
 }
 
 function aulaAbrirPerfil() {
+    try { if (typeof window.bindPerfilHorarioBtn === 'function') setTimeout(window.bindPerfilHorarioBtn, 30); } catch (eBH) {}
+
     var user = aulaGetSession();
     if (!user) return;
     // datos frescos

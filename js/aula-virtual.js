@@ -387,6 +387,22 @@
     return 'geometrics_horario_' + id;
   }
 
+  function horarioEmailKey() {
+    var u = currentUser();
+    if (!u || !u.email) return null;
+    try {
+      if (window.GeoCloud && typeof window.GeoCloud.emailKey === 'function') {
+        return window.GeoCloud.emailKey(u.email);
+      }
+    } catch (e) {}
+    return String(u.email).toLowerCase().replace(/\./g, ',').replace(/@/g, '_at_');
+  }
+
+  function horarioCloudPath() {
+    var ek = horarioEmailKey();
+    return ek ? ('horarios/' + ek) : null;
+  }
+
   function normalizeDia(v) {
     if (typeof v === 'number' && !isNaN(v)) {
       var n = Math.floor(v);
@@ -402,10 +418,10 @@
     if (/^[0-6]$/.test(s)) return +s;
     if (s.indexOf('lunes') === 0 || s === 'lun') return 0;
     if (s.indexOf('martes') === 0 || s === 'mar') return 1;
-    if (s.indexOf('miercoles') === 0 || s.indexOf('miércoles') === 0 || s === 'mie') return 2;
+    if (s.indexOf('miercoles') === 0 || s === 'mie') return 2;
     if (s.indexOf('jueves') === 0 || s === 'jue') return 3;
     if (s.indexOf('viernes') === 0 || s === 'vie') return 4;
-    if (s.indexOf('sabado') === 0 || s.indexOf('sábado') === 0 || s === 'sab') return 5;
+    if (s.indexOf('sabado') === 0 || s === 'sab') return 5;
     if (s.indexOf('domingo') === 0 || s === 'dom') return 6;
     var num = parseInt(s, 10);
     if (!isNaN(num) && num >= 0 && num <= 6) return num;
@@ -427,63 +443,76 @@
   }
 
   function emptyHorario() {
-    return { slots: [], fileName: '', fileData: '', version: HORARIO_VERSION, personal: true, fromDefault: false };
+    return {
+      slots: [],
+      fileName: '',
+      fileData: '',
+      version: HORARIO_VERSION,
+      personal: true,
+      fromDefault: false
+    };
   }
 
-  /** ¿El set de slots es el horario de ejemplo de GeoMetrics (Andrés / PDF demo)? */
+  function sanitizeSlots(list) {
+    return (Array.isArray(list) ? list : []).map(function (s) {
+      return {
+        materia: (s && s.materia) || '',
+        grupo: (s && s.grupo) || '',
+        dia: normalizeDia(s && s.dia),
+        inicio: (s && s.inicio) || '',
+        fin: (s && s.fin) || '',
+        aula: (s && s.aula) || '',
+        docente: (s && s.docente) || ''
+      };
+    }).filter(function (s) { return s.dia >= 0 && s.inicio; });
+  }
+
   function isDemoScheduleSlots(slots) {
-    if (!slots || !slots.length) return false;
-    var demo = HORARIO_ACADEMUSOFT_DEFAULT;
+    slots = sanitizeSlots(slots);
+    var demo = cloneDefaultSlots();
     if (slots.length !== demo.length) return false;
     var key = function (s) {
-      return [normalizeDia(s.dia), s.inicio, s.fin, String(s.materia || '').toUpperCase()].join('|');
+      return [s.dia, s.inicio, s.fin, String(s.materia || '').toUpperCase()].join('|');
     };
-    var a = slots.map(key).sort().join(';;');
-    var b = demo.map(key).sort().join(';;');
-    return a === b;
+    return slots.map(key).sort().join(';;') === demo.map(key).sort().join(';;');
+  }
+
+  /** Payload liviano para localStorage (sin PDF base64 enorme). */
+  function horarioToLocalPayload(data) {
+    return {
+      slots: sanitizeSlots(data && data.slots),
+      fileName: (data && data.fileName) || '',
+      // Nunca guardar PDF completo: satura localStorage y falla en muchos PCs
+      fileData: '',
+      version: HORARIO_VERSION,
+      personal: true,
+      fromDefault: !!(data && data.fromDefault),
+      updatedAt: Date.now()
+    };
   }
 
   function loadHorario() {
     try {
       var key = horarioStorageKey();
       var raw = localStorage.getItem(key);
-      if (!raw) {
-        // Cada estudiante empieza vacío: NO hereda el horario de otra persona
-        return emptyHorario();
-      }
+      if (!raw) return emptyHorario();
       var o = JSON.parse(raw);
       var ver = Number(o.version || 0);
-      var slots = (Array.isArray(o.slots) ? o.slots : []).map(function (s) {
-        return {
-          materia: s.materia || '',
-          grupo: s.grupo || '',
-          dia: normalizeDia(s.dia),
-          inicio: s.inicio || '',
-          fin: s.fin || '',
-          aula: s.aula || '',
-          docente: s.docente || ''
-        };
-      }).filter(function (s) { return s.dia >= 0 && s.inicio; });
+      var slots = sanitizeSlots(o.slots);
 
-      // v6: dejar de compartir el horario demo entre cuentas
-      // - Si se marcó fromDefault o nunca fue personal y coincide con el demo → limpiar
-      // - Si el usuario ya tiene horario personal distinto del demo → conservarlo
+      // Migración: quitar demos compartidos por error
       if (ver < HORARIO_VERSION) {
         var wasSharedDemo = !!(o.fromDefault) || (!o.personal && isDemoScheduleSlots(slots));
         if (wasSharedDemo) {
           slots = [];
           o.fileName = '';
-          o.fileData = '';
           o.fromDefault = false;
         }
-        var fixed = {
+        var fixed = horarioToLocalPayload({
           slots: slots,
           fileName: o.fileName || '',
-          fileData: o.fileData || '',
-          version: HORARIO_VERSION,
-          personal: true,
           fromDefault: false
-        };
+        });
         try { localStorage.setItem(key, JSON.stringify(fixed)); } catch (eM) {}
         return fixed;
       }
@@ -491,42 +520,104 @@
       return {
         slots: slots,
         fileName: o.fileName || '',
-        fileData: o.fileData || '',
+        fileData: '',
         version: ver || HORARIO_VERSION,
         personal: o.personal !== false,
         fromDefault: !!o.fromDefault
       };
     } catch (e) {
+      console.warn('loadHorario', e);
       return emptyHorario();
     }
   }
 
-  function saveHorario(data) {
-    try {
-      var payload = data || emptyHorario();
-      payload.version = HORARIO_VERSION;
-      payload.personal = true;
-      if (payload.fromDefault == null) payload.fromDefault = false;
-      if (Array.isArray(payload.slots)) {
-        payload.slots = payload.slots.map(function (s) {
-          return {
-            materia: s.materia || '',
-            grupo: s.grupo || '',
-            dia: normalizeDia(s.dia),
-            inicio: s.inicio || '',
-            fin: s.fin || '',
-            aula: s.aula || '',
-            docente: s.docente || ''
-          };
-        }).filter(function (s) { return s.dia >= 0; });
-      } else {
-        payload.slots = [];
-      }
-      // Guardar SIEMPRE bajo la clave del usuario en sesión (email)
-      localStorage.setItem(horarioStorageKey(), JSON.stringify(payload));
-    } catch (e) {
-      toast('No se pudo guardar el horario (almacenamiento lleno o bloqueado).');
+  function pushHorarioCloud(data) {
+    var path = horarioCloudPath();
+    if (!path) return Promise.resolve(false);
+    if (!window.GeoCloud || typeof window.GeoCloud.cloudSet !== 'function') {
+      return Promise.resolve(false);
     }
+    var payload = {
+      slots: sanitizeSlots(data && data.slots),
+      fileName: (data && data.fileName) || '',
+      version: HORARIO_VERSION,
+      personal: true,
+      fromDefault: !!(data && data.fromDefault),
+      updatedAt: Date.now(),
+      email: (currentUser() && currentUser().email) || ''
+    };
+    return window.GeoCloud.cloudSet(path, payload)
+      .then(function (ok) { return !!ok; })
+      .catch(function (e) {
+        console.warn('pushHorarioCloud', e);
+        return false;
+      });
+  }
+
+  function pullHorarioCloud() {
+    var path = horarioCloudPath();
+    if (!path || !window.GeoCloud || typeof window.GeoCloud.cloudGet !== 'function') {
+      return Promise.resolve(null);
+    }
+    return window.GeoCloud.cloudGet(path).then(function (val) {
+      if (!val || typeof val !== 'object') return null;
+      var h = horarioToLocalPayload({
+        slots: val.slots,
+        fileName: val.fileName || '',
+        fromDefault: !!val.fromDefault
+      });
+      try {
+        localStorage.setItem(horarioStorageKey(), JSON.stringify(h));
+      } catch (e) {}
+      return h;
+    }).catch(function (e) {
+      console.warn('pullHorarioCloud', e);
+      return null;
+    });
+  }
+
+  function saveHorario(data) {
+    var payload = horarioToLocalPayload(data || emptyHorario());
+    var key = horarioStorageKey();
+    try {
+      localStorage.setItem(key, JSON.stringify(payload));
+    } catch (e) {
+      // Reintento sin nada extra
+      try {
+        localStorage.removeItem(key);
+        localStorage.setItem(key, JSON.stringify(payload));
+      } catch (e2) {
+        console.warn('saveHorario local', e2);
+        toast('No se pudo guardar en este navegador (almacenamiento lleno).');
+        return false;
+      }
+    }
+    // Nube (otros PCs)
+    pushHorarioCloud(payload).then(function (ok) {
+      if (ok) {
+        /* silencioso */
+      }
+    });
+    return true;
+  }
+
+  function syncHorarioFromCloud(cb) {
+    return pullHorarioCloud().then(function (remote) {
+      if (remote) {
+        try {
+          renderNextClass();
+          renderCalendar();
+          renderCalendarView();
+          renderHorarioList();
+          updatePerfilHorarioInfo();
+        } catch (e) {}
+      }
+      if (typeof cb === 'function') cb(remote);
+      return remote;
+    }).catch(function () {
+      if (typeof cb === 'function') cb(null);
+      return null;
+    });
   }
 
   /** Días del mes actual (state.calYear/Month) que coinciden con dia semanal 0=Lun..6=Dom */
@@ -640,45 +731,45 @@
     file.onchange = function () {
       var f = file.files && file.files[0];
       if (!f) return;
-      if (f.type && f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name)) {
+      if (f.type && f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name) && !/\.pdf$/i.test(f.name)) {
+        // accept by extension mainly
+      }
+      if (!/\.pdf$/i.test(f.name) && !(f.type && f.type.indexOf('pdf') >= 0)) {
         toast('Sube un archivo PDF del horario.');
         return;
       }
-      if (f.size > 12 * 1024 * 1024) {
-        toast('El PDF supera 12 MB. Usa un archivo más liviano.');
-        return;
-      }
-      toast('Cargando horario…');
-      var reader = new FileReader();
-      reader.onerror = function () {
-        toast('No se pudo leer el PDF. Intenta de nuevo.');
-      };
-      reader.onload = function () {
-        try {
-          var h = loadHorario();
-          h.fileName = f.name;
-          h.fileData = String(reader.result || '');
-          h.personal = true;
-          h.fromDefault = false;
-          var isExample = /reportehorario-ejemplo|horario-ejemplo|ejemplo/i.test(f.name || '');
-          if (isExample) {
+      try {
+        var h = loadHorario();
+        h.fileName = f.name;
+        h.fileData = '';
+        h.personal = true;
+        h.fromDefault = false;
+        var isExample = /reportehorario-ejemplo|horario-ejemplo|ejemplo/i.test(f.name || '');
+        if (isExample) {
+          h.slots = cloneDefaultSlots();
+          h.fromDefault = true;
+          applyHorarioPayload(h, 'Ejemplo aplicado y sincronizado (tu cuenta · todos tus PCs).');
+        } else if (h.slots && h.slots.length) {
+          applyHorarioPayload(h, 'PDF «' + f.name + '» registrado. Se mantienen tus ' + h.slots.length + ' clases.');
+        } else {
+          var useDemo = window.confirm(
+            'Archivo: ' + f.name + '\n\n' +
+            'No se puede leer la tabla del PDF automáticamente.\n' +
+            '¿Aplicar el horario de EJEMPLO en TU cuenta para ver próximas clases?\n\n' +
+            'Se sincroniza a la nube para otros PCs con el mismo correo.'
+          );
+          if (useDemo) {
             h.slots = cloneDefaultSlots();
             h.fromDefault = true;
-            applyHorarioPayload(h, 'Ejemplo aplicado y sincronizado a la nube (solo tu cuenta).');
+            applyHorarioPayload(h, 'Ejemplo cargado y sincronizado.');
           } else {
-            // PDF personal: conservar slots previos si existen; si no, dejar listo para ejemplo o nube
-            if (!h.slots || !h.slots.length) {
-              applyHorarioPayload(h, 'PDF guardado en tu cuenta. Si no ves clases, pulsa «Ejemplo» o sincroniza desde el otro PC.');
-            } else {
-              applyHorarioPayload(h, 'PDF actualizado. Tus clases se mantienen y se sincronizan.');
-            }
+            applyHorarioPayload(h, 'Nombre del PDF guardado. Pulsa «Ejemplo» para cargar clases demo.');
           }
-        } catch (err) {
-          console.warn('perfil horario', err);
-          toast('Error al guardar el horario.');
         }
-      };
-      reader.readAsDataURL(f);
+      } catch (err) {
+        console.warn('perfil horario', err);
+        toast('Error al guardar el horario: ' + (err && err.message ? err.message : 'desconocido'));
+      }
     };
 
     if (btnDel) {
@@ -742,7 +833,7 @@
         reader.onload = function () {
           var h = loadHorario();
           h.fileName = f.name;
-          h.fileData = String(reader.result || '');
+          h.fileData = ''; // PDF no se guarda en local (evita fallos por cuota)
           h.personal = true;
           h.fromDefault = false;
           var isExample = /reportehorario-ejemplo|horario-ejemplo|ejemplo/i.test(f.name || '');
@@ -1493,7 +1584,13 @@
       }
     } catch (eObs) {}
 
-    window.GeoMetricsAulaVirtual = {
+    try {
+    window.bindPerfilHorarioBtn = bindPerfilHorarioBtn;
+    window.syncHorarioFromCloud = syncHorarioFromCloud;
+    window.saveHorario = saveHorario;
+    window.loadHorario = loadHorario;
+  } catch (eExp) {}
+  window.GeoMetricsAulaVirtual = {
       show: showAulaVirtual,
       hide: hideAulaVirtual,
       showDocente: showDocentePanel,
