@@ -899,6 +899,9 @@ function abrirCivixModal() {
     modal.style.display = 'flex';
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
+    try { if (typeof civixBindProNav === 'function') civixBindProNav(); } catch (eB) {}
+    try { if (typeof civixShowView === 'function') civixShowView('chat'); } catch (eV) {}
+    try { if (typeof civixAplicarAvatar === 'function') civixAplicarAvatar(); } catch (eA) {}
     // Refrescar saludo con nombre de perfil si el chat está vacío / solo bienvenida
     try {
         if (!chatHistory || !chatHistory.length) {
@@ -929,6 +932,9 @@ function inicializarAsistenteAI() {
     if (btnAsistente) {
         btnAsistente.addEventListener('click', function() {
             modal.classList.add('active');
+            try { if (typeof civixBindProNav === 'function') civixBindProNav(); } catch (eB) {}
+            try { if (typeof civixShowView === 'function') civixShowView('chat'); } catch (eV) {}
+            try { if (typeof civixAplicarAvatar === 'function') civixAplicarAvatar(); } catch (eA) {}
             try { if (!chatHistory || !chatHistory.length) civixRenderBienvenida(); } catch (eW) {}
             if (input) input.focus();
             try {
@@ -944,6 +950,9 @@ function inicializarAsistenteAI() {
         card.addEventListener('click', function() {
             if (modal) {
                 modal.classList.add('active');
+                try { if (typeof civixBindProNav === 'function') civixBindProNav(); } catch (eB) {}
+                try { if (typeof civixShowView === 'function') civixShowView('chat'); } catch (eV) {}
+                try { if (typeof civixAplicarAvatar === 'function') civixAplicarAvatar(); } catch (eA) {}
                 try { if (!chatHistory || !chatHistory.length) civixRenderBienvenida(); } catch (eW) {}
                 if (input) input.focus();
             }
@@ -1665,11 +1674,81 @@ function civixAvatarSrc() {
 
 function civixAplicarAvatar() {
     var src = civixAvatarSrc();
-    var img = document.getElementById('civixAvatarImg');
-    if (img) img.src = src;
-    var prev = document.getElementById('adminCivixAvatarPreview');
-    if (prev) prev.src = src;
+    ['civixAvatarImg', 'adminCivixAvatarPreview', 'civixPromoAvatar'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.src = src;
+    });
+    document.querySelectorAll('.civix-avatar-sync, .civix-avatar-img').forEach(function (el) {
+        if (el && el.tagName === 'IMG') el.src = src;
+    });
 }
+
+function civixShowView(name) {
+    name = name || 'chat';
+    var chat = document.getElementById('chatMensajes');
+    var rec = document.getElementById('civixViewRecursos');
+    var her = document.getElementById('civixViewHerramientas');
+    var footer = document.querySelector('.civix-footer-zone');
+    var toolbar = document.querySelector('.civix-toolbar');
+    var hist = document.getElementById('civixHistorialPanel');
+    if (hist) hist.hidden = true;
+    if (chat) chat.hidden = name !== 'chat';
+    if (rec) rec.hidden = name !== 'recursos';
+    if (her) her.hidden = name !== 'herramientas';
+    if (footer) footer.style.display = name === 'chat' ? '' : 'none';
+    if (toolbar) toolbar.style.display = name === 'chat' ? '' : 'none';
+    document.querySelectorAll('.civix-nav-item').forEach(function (btn) {
+        var n = btn.getAttribute('data-civix-nav') || '';
+        btn.classList.toggle('active', n === name || (name === 'chat' && n === 'chat'));
+    });
+    if (name === 'chat') {
+        var nc = document.getElementById('civixNavChat');
+        if (nc) nc.classList.add('active');
+    }
+}
+
+function civixBindProNav() {
+    var navChat = document.getElementById('civixNavChat');
+    if (navChat && !navChat.__boundPro) {
+        navChat.__boundPro = true;
+        navChat.addEventListener('click', function () { civixShowView('chat'); });
+    }
+    var navRec = document.getElementById('civixNavRecursos');
+    if (navRec && !navRec.__boundPro) {
+        navRec.__boundPro = true;
+        navRec.addEventListener('click', function () { civixShowView('recursos'); });
+    }
+    var navTools = document.getElementById('civixNavTools');
+    if (navTools && !navTools.__boundPro) {
+        navTools.__boundPro = true;
+        navTools.addEventListener('click', function () { civixShowView('herramientas'); });
+    }
+    function sendPrompt(q) {
+        civixShowView('chat');
+        var input = document.getElementById('inputAsistente');
+        if (input) {
+            input.value = q;
+            input.focus();
+        }
+        var btnSend = document.getElementById('btnEnviarMensaje');
+        if (btnSend) setTimeout(function () { btnSend.click(); }, 30);
+    }
+    document.querySelectorAll('.civix-res-btn, .civix-tool-card, .civix-quick').forEach(function (btn) {
+        if (btn.__boundProSend) return;
+        btn.__boundProSend = true;
+        btn.addEventListener('click', function () {
+            var q = btn.getAttribute('data-q') || btn.textContent;
+            sendPrompt(q);
+        });
+    });
+}
+try {
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+            try { civixBindProNav(); civixAplicarAvatar(); } catch (e) {}
+        }, 200);
+    });
+} catch (ePro) {}
 // Mantener avatar de Civix al día con la nube
 try {
     if (typeof aulaCivixAvatarStartCloudSync === 'function') {
@@ -1860,20 +1939,7 @@ function civixInitUIExtras() {
         });
     }
     // Preguntas rápidas / herramientas (panel derecho Civix Pro)
-    document.querySelectorAll('.civix-quick').forEach(function (btn) {
-        if (btn.__boundQuick) return;
-        btn.__boundQuick = true;
-        btn.addEventListener('click', function () {
-            var q = btn.getAttribute('data-q') || btn.textContent;
-            var input = document.getElementById('inputAsistente');
-            if (input) {
-                input.value = q;
-                input.focus();
-            }
-            var btnSend = document.getElementById('btnEnviarMensaje');
-            if (btnSend) btnSend.click();
-        });
-    });
+    /* civix-quick bound in civixBindProNav */
 
     // Modelo preferido
     var sel = document.getElementById('civixModelSelect');
@@ -2012,16 +2078,37 @@ function mostrarPantalla(pantalla) {
     
     pantallas.forEach(function(id) {
         var el = document.getElementById(id);
-        if (el) el.style.display = 'none';
+        if (!el) return;
+        // Quitar overlays del Aula Virtual que usan display:!important
+        try {
+            el.classList.remove('av-visible', 'av-doc-visible');
+            if (id !== 'pantallaEstudiante' && id !== 'pantallaDocente') {
+                el.classList.remove('av-root', 'av-docente');
+            }
+        } catch (eCls) {}
+        el.style.display = 'none';
+        try { el.setAttribute('hidden', ''); } catch (eH) {}
     });
 
     var targetId = 'pantalla' + capitalize(pantalla);
     var target = document.getElementById(targetId);
     if (target) {
-        target.style.display = (pantalla === 'inicio') ? 'flex' : 'block';
+        try { target.removeAttribute('hidden'); } catch (eR) {}
+        if (pantalla === 'estudiante' && target.querySelector && target.querySelector('.av-top')) {
+            target.classList.add('av-root', 'av-visible');
+            target.style.display = 'grid';
+        } else if (pantalla === 'docente') {
+            target.classList.add('av-docente', 'av-doc-visible');
+            target.style.display = 'block';
+        } else {
+            target.style.display = (pantalla === 'inicio') ? 'flex' : 'block';
+        }
     } else if (pantalla === 'inicio') {
         var ini = document.getElementById('pantallaInicio');
-        if (ini) ini.style.display = 'flex';
+        if (ini) {
+            try { ini.removeAttribute('hidden'); } catch (eI) {}
+            ini.style.display = 'flex';
+        }
     }
     
     window.scrollTo(0, 0);

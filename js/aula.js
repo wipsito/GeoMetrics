@@ -971,10 +971,10 @@ function aulaInitLogin() {
             var email = aulaNormalizarEmail(document.getElementById('loginEmail').value);
             var pass = document.getElementById('loginPass').value || '';
             var err = document.getElementById('loginError');
-            err.textContent = '';
+            if (err) err.textContent = '';
 
             if (!aulaEmailInstitucional(email)) {
-                err.textContent = 'Debes usar un correo @' + aulaDominio();
+                if (err) err.textContent = 'Debes usar un correo @' + aulaDominio();
                 return;
             }
             var users = aulaLoad(AULA_KEYS.users, []);
@@ -982,13 +982,13 @@ function aulaInitLogin() {
             var user = users.find(function(u) { return u.email === email && u.password === pass; });
             if (!user) {
                 if (aulaEsDocenteEmail(email) && !existing) {
-                    err.textContent = 'Docente sin contraseña aún. Ve a la pestaña «Docente» y activa tu cuenta.';
+                    if (err) err.textContent = 'Docente sin contraseña aún. Ve a la pestaña «Docente» y activa tu cuenta.';
                 } else if (aulaEsDocenteEmail(email) && existing) {
-                    err.textContent = 'Contraseña incorrecta.';
+                    if (err) err.textContent = 'Contraseña incorrecta.';
                 } else if (!existing) {
-                    err.textContent = 'Correo no registrado. Si eres estudiante, usa la pestaña «Estudiante».';
+                    if (err) err.textContent = 'Correo no registrado. Si eres estudiante, usa la pestaña «Estudiante».';
                 } else {
-                    err.textContent = 'Contraseña incorrecta.';
+                    if (err) err.textContent = 'Contraseña incorrecta.';
                 }
                 return;
             }
@@ -1279,20 +1279,44 @@ function aulaInitLogin() {
 
 function aulaEnterApp(user, opts) {
     opts = opts || {};
+    // Cerrar overlays del aula que bloquean el menú (display:!important)
+    try {
+        var pe = document.getElementById('pantallaEstudiante');
+        var pd = document.getElementById('pantallaDocente');
+        if (pe) {
+            pe.classList.remove('av-visible', 'av-root');
+            pe.style.display = 'none';
+            pe.setAttribute('hidden', '');
+        }
+        if (pd) {
+            pd.classList.remove('av-doc-visible', 'av-docente');
+            pd.style.display = 'none';
+            pd.setAttribute('hidden', '');
+        }
+        if (window.GeoMetricsAulaVirtual && typeof GeoMetricsAulaVirtual.hide === 'function') {
+            GeoMetricsAulaVirtual.hide();
+        }
+    } catch (eAv) {}
     try {
         var ini = document.getElementById('pantallaInicio');
-        if (ini) ini.style.display = 'none';
+        if (ini) {
+            ini.style.display = 'none';
+            ini.setAttribute('hidden', '');
+        }
     } catch (e) {}
     if (!opts.skipMenu) {
         if (typeof mostrarPantalla === 'function') {
             mostrarPantalla('menu');
         } else {
             var menu = document.getElementById('pantallaMenu');
-            if (menu) menu.style.display = 'block';
+            if (menu) {
+                menu.removeAttribute('hidden');
+                menu.style.display = 'block';
+            }
         }
     }
     // si skipMenu: no tocar pantallas; el restore posterior hace mostrarPantalla(last)
-    aulaUpdateMenuUser(user);
+    try { aulaUpdateMenuUser(user); } catch (eU) { console.warn('aulaUpdateMenuUser', eU); }
     try {
         if (typeof civixSyncFromCloud === 'function') {
             civixSyncFromCloud().then(function () {
@@ -1379,11 +1403,27 @@ function aulaOpenPanel() {
             return null;
         }
         el.removeAttribute('hidden');
-        el.style.display = 'block';
+        if (id === 'pantallaEstudiante' && el.querySelector && el.querySelector('.av-top')) {
+            el.classList.add('av-root', 'av-visible');
+            el.style.display = 'grid';
+            el.style.position = 'fixed';
+            el.style.inset = '0';
+            el.style.zIndex = '9999';
+            try { if (window.GeoMetricsAulaVirtual && GeoMetricsAulaVirtual.show) setTimeout(function(){ GeoMetricsAulaVirtual.show(); }, 0); } catch (eS) {}
+        } else if (id === 'pantallaDocente') {
+            el.classList.add('av-docente', 'av-doc-visible');
+            el.style.display = 'block';
+            el.style.position = 'fixed';
+            el.style.inset = '0';
+            el.style.zIndex = '9998';
+            try { if (window.GeoMetricsAulaVirtual && GeoMetricsAulaVirtual.showDocente) setTimeout(function(){ GeoMetricsAulaVirtual.showDocente(); }, 0); } catch (eD) {}
+        } else {
+            el.style.display = 'block';
+            el.style.zIndex = '5';
+        }
         el.style.visibility = 'visible';
         el.style.opacity = '1';
         el.style.pointerEvents = 'auto';
-        el.style.zIndex = '5';
         return el;
     }
     function _activateAulaTab(rootId, preferredTab) {
@@ -1418,6 +1458,7 @@ function aulaOpenPanel() {
             try { mostrarPantalla('docente'); } catch (e) {}
         }
         _showMain('pantallaDocente');
+        try { if (window.GeoMetricsAulaVirtual && typeof GeoMetricsAulaVirtual.showDocente === 'function') GeoMetricsAulaVirtual.showDocente(); } catch (eAVD) {}
         var sub = document.getElementById('docenteSubtitulo');
         if (sub) sub.textContent = 'Hola, ' + user.nombre + '. Publica tareas y revisa entregas.';
         aulaSetAvatarEl(document.getElementById('docIconoAula'), user, '👩‍🏫');
@@ -1428,6 +1469,7 @@ function aulaOpenPanel() {
             try { mostrarPantalla('estudiante'); } catch (e) {}
         }
         _showMain('pantallaEstudiante');
+        try { if (window.GeoMetricsAulaVirtual && typeof GeoMetricsAulaVirtual.show === 'function') GeoMetricsAulaVirtual.show(); } catch (eAV) {}
         var sub2 = document.getElementById('estudianteSubtitulo');
         if (sub2) {
             var mats = typeof aulaNombresMaterias === 'function' ? aulaNombresMaterias(user) : [];
@@ -1596,7 +1638,7 @@ function aulaCrearTarea() {
     var user = aulaRequireSession();
     if (!user || user.rol !== 'docente') return;
     var err = document.getElementById('tareaError');
-    err.textContent = '';
+    if (err) err.textContent = '';
     var editId = (document.getElementById('tareaEditId') || {}).value || '';
     var titulo = (document.getElementById('tareaTitulo').value || '').trim();
     var desc = (document.getElementById('tareaDesc').value || '').trim();
@@ -1641,6 +1683,7 @@ function aulaCrearTarea() {
     } catch (ePush) {}
     aulaCancelarEditTarea();
     aulaRenderDocente();
+    try { if (window.GeoMetricsAulaVirtual && GeoMetricsAulaVirtual.refresh) GeoMetricsAulaVirtual.refresh(); } catch (eR) {}
 }
 
 function aulaRenderPresDocente() {
@@ -3253,6 +3296,11 @@ function aulaAbrirPerfil() {
     var modal = document.getElementById('modalPerfil');
     if (!modal) return;
     modal.hidden = false;
+    try {
+        modal.removeAttribute('hidden');
+        modal.style.zIndex = '10050';
+        modal.style.display = 'flex';
+    } catch (eM) {}
     aulaPerfilSetTab('datos');
 
     var err = document.getElementById('perfilError');
@@ -4652,18 +4700,55 @@ function aulaChatSend(chatId, fromEmail, text) {
     aulaChatSaveOne(c);
     return true;
 }
+function aulaChatUserPhoto(email) {
+    try {
+        var users = typeof aulaLoad === 'function' ? aulaLoad(AULA_KEYS.users, []) : [];
+        var u = (users || []).find(function (x) {
+            return aulaNormalizarEmail(x.email) === aulaNormalizarEmail(email);
+        });
+        if (u && u.foto) return u.foto;
+    } catch (e) {}
+    return '';
+}
+function aulaChatUserNombre(email) {
+    try {
+        var users = typeof aulaLoad === 'function' ? aulaLoad(AULA_KEYS.users, []) : [];
+        var u = (users || []).find(function (x) {
+            return aulaNormalizarEmail(x.email) === aulaNormalizarEmail(email);
+        });
+        if (u) return u.nombre || (u.nombres || '') || email.split('@')[0];
+    } catch (e) {}
+    return (email || '').split('@')[0];
+}
+function aulaChatInitials(name) {
+    var p = String(name || '?').trim().split(/\s+/);
+    if (p.length >= 2) return (p[0][0] + p[1][0]).toUpperCase();
+    return String(name || '?').slice(0, 2).toUpperCase();
+}
 function aulaChatRenderMsgs(containerId, chat, meEmail) {
     var box = document.getElementById(containerId);
     if (!box) return;
+    meEmail = aulaNormalizarEmail(meEmail || '');
     if (!chat || !chat.messages || !chat.messages.length) {
-        box.innerHTML = '<p class="login-hint" style="text-align:center;margin-top:40px;">Sin mensajes. ¡Escribe el primero!</p>';
+        box.innerHTML = '<div class="chat-empty-state"><div class="chat-empty-ico">💬</div><p>Sin mensajes. ¡Escribe el primero!</p></div>';
         return;
     }
     box.innerHTML = chat.messages.map(function(m) {
-        var propia = m.from === meEmail;
-        return '<div class="chat-burbuja ' + (propia ? 'propia' : 'ajena') + '">' +
-            escHtml(m.text) +
-            '<time>' + aulaChatFmtHora(m.ts) + (propia ? '' : ' · ' + escHtml(m.from.split('@')[0])) + '</time></div>';
+        var from = aulaNormalizarEmail(m.from);
+        var propia = from === meEmail;
+        var nombre = aulaChatUserNombre(from);
+        var foto = aulaChatUserPhoto(from);
+        var av = foto
+            ? ('<img class="chat-msg-av" src="' + foto + '" alt="">')
+            : ('<span class="chat-msg-av chat-msg-av-fallback">' + escHtml(aulaChatInitials(nombre)) + '</span>');
+        return '<div class="chat-msg-row ' + (propia ? 'propia' : 'ajena') + '">' +
+            (propia ? '' : av) +
+            '<div class="chat-burbuja ' + (propia ? 'propia' : 'ajena') + '">' +
+            (propia ? '' : ('<div class="chat-msg-name">' + escHtml(nombre) + '</div>')) +
+            '<div class="chat-msg-text">' + escHtml(m.text) + '</div>' +
+            '<time>' + aulaChatFmtHora(m.ts) + (propia ? ' ✓' : '') + '</time></div>' +
+            (propia ? av : '') +
+            '</div>';
     }).join('');
     box.scrollTop = box.scrollHeight;
 }
@@ -4711,12 +4796,19 @@ function aulaChatRenderListaDocente() {
         var last = c.messages && c.messages.length ? c.messages[c.messages.length - 1].text : 'Sin mensajes';
         var un = aulaChatUnread(c, user.email);
         var act = window.__chatActivoId === c.id ? ' active' : '';
+        var nm = c.studentName || c.studentEmail || 'Estudiante';
+        var foto = typeof aulaChatUserPhoto === 'function' ? aulaChatUserPhoto(c.studentEmail) : '';
+        var av = foto
+            ? ('<img class="chat-list-av" src="' + foto + '" alt="">')
+            : ('<span class="chat-list-av chat-list-av-fb">' + escHtml(aulaChatInitials(nm)) + '</span>');
+        var hora = c.updatedAt ? aulaChatFmtHora(c.updatedAt) : '';
         return '<button type="button" class="chat-aula-item' + act + '" data-chat-id="' + c.id + '">' +
-            '<strong>' + escHtml(c.studentName || c.studentEmail) + '</strong>' +
-            '<span>' + escHtml(c.materia) + (c.grupo ? ' · Grupo ' + escHtml(c.grupo) : '') + '</span>' +
+            av +
+            '<span class="chat-item-body"><strong>' + escHtml(nm) + '</strong>' +
             '<span class="chat-preview">' + escHtml(last) + '</span>' +
-            (un ? '<span class="chat-unread">' + un + ' nuevo' + (un > 1 ? 's' : '') + '</span>' : '') +
-            '</button>';
+            '<span class="chat-item-meta">' + escHtml(c.materia) + (c.grupo ? ' · G.' + escHtml(c.grupo) : '') + '</span></span>' +
+            '<span class="chat-item-right">' + (hora ? '<span class="chat-item-time">' + hora + '</span>' : '') +
+            (un ? '<span class="chat-unread">' + un + '</span>' : '') + '</span></button>';
     }).join('');
     el.querySelectorAll('[data-chat-id]').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -4842,28 +4934,40 @@ function aulaChatRenderListaEstudiante() {
         var last = c && c.messages && c.messages.length ? c.messages[c.messages.length - 1].text : 'Toca para escribir al docente';
         var un = c ? aulaChatUnread(c, user.email) : 0;
         var act = c && window.__chatActivoId === c.id ? ' active' : '';
+        var hora = c && c.updatedAt ? aulaChatFmtHora(c.updatedAt) : '';
         if (it.peer) {
             var lastP = c && c.messages && c.messages.length ? c.messages[c.messages.length - 1].text : 'Toca para chatear';
             var unP = c ? aulaChatUnread(c, user.email) : 0;
             var actP = c && window.__chatActivoId === c.id ? ' active' : '';
+            var fotoP = typeof aulaChatUserPhoto === 'function' ? aulaChatUserPhoto(it.peerEmail) : '';
+            var avP = fotoP
+                ? ('<img class="chat-list-av" src="' + fotoP + '" alt="">')
+                : ('<span class="chat-list-av chat-list-av-fb">' + escHtml(aulaChatInitials(it.materia)) + '</span>');
             var peerBtn = '<button type="button" class="chat-aula-item' + actP + '" data-peer="1" data-peer-email="' +
                 escHtml(it.peerEmail || '') + '" data-chat-mat="' + escHtml((c && c.materia) || it.chatMateria || '') +
                 '" data-chat-grp="' + escHtml(it.grupo) + '"' + (c ? ' data-chat-id="' + c.id + '"' : '') + '>' +
-                '<strong>' + escHtml(it.materia) + '</strong>' +
-                '<span>Compañero · ' + escHtml((c && c.materia) || '') + (it.grupo ? ' · Grupo ' + escHtml(it.grupo) : '') + '</span>' +
+                avP +
+                '<span class="chat-item-body"><strong>' + escHtml(it.materia) + '</strong>' +
                 '<span class="chat-preview">' + escHtml(lastP) + '</span>' +
-                (unP ? '<span class="chat-unread">' + unP + '</span>' : '') +
-                '</button>';
+                '<span class="chat-item-meta">Compañero · ' + escHtml((c && c.materia) || '') + (it.grupo ? ' · G.' + escHtml(it.grupo) : '') + '</span></span>' +
+                '<span class="chat-item-right">' + (hora ? '<span class="chat-item-time">' + hora + '</span>' : '') +
+                (unP ? '<span class="chat-unread">' + unP + '</span>' : '') + '</span></button>';
             var peerDel = c ? '<button type="button" class="chat-item-del" data-del-chat="' + escHtml(c.id) + '" title="Eliminar chat">×</button>' : '';
             return '<div class="chat-aula-item-wrap">' + peerBtn + peerDel + '</div>';
         }
+        var docEmail = (c && c.teacherEmail) || '';
+        var fotoD = docEmail && typeof aulaChatUserPhoto === 'function' ? aulaChatUserPhoto(docEmail) : '';
+        var avD = fotoD
+            ? ('<img class="chat-list-av" src="' + fotoD + '" alt="">')
+            : ('<span class="chat-list-av chat-list-av-fb">' + escHtml(aulaChatInitials(tName || 'D')) + '</span>');
         var docBtn = '<button type="button" class="chat-aula-item' + act + '" data-chat-mat="' + escHtml(it.materia) + '" data-chat-grp="' + escHtml(it.grupo) + '"' +
             (c ? ' data-chat-id="' + c.id + '"' : '') + '>' +
-            '<strong>' + escHtml(it.materia) + '</strong>' +
-            '<span>Docente · Grupo ' + escHtml(it.grupo || '—') + ' · ' + escHtml(tName) + '</span>' +
+            avD +
+            '<span class="chat-item-body"><strong>' + escHtml(it.materia) + '</strong>' +
             '<span class="chat-preview">' + escHtml(last) + '</span>' +
-            (un ? '<span class="chat-unread">' + un + ' nuevo' + (un > 1 ? 's' : '') + '</span>' : '') +
-            '</button>';
+            '<span class="chat-item-meta">' + escHtml(tName) + ' · G.' + escHtml(it.grupo || '—') + '</span></span>' +
+            '<span class="chat-item-right">' + (hora ? '<span class="chat-item-time">' + hora + '</span>' : '') +
+            (un ? '<span class="chat-unread">' + un + '</span>' : '') + '</span></button>';
         var docDel = c ? '<button type="button" class="chat-item-del" data-del-chat="' + escHtml(c.id) + '" title="Eliminar chat">×</button>' : '';
         return '<div class="chat-aula-item-wrap">' + docBtn + docDel + '</div>';
     }).join('');
@@ -6381,10 +6485,13 @@ function aulaCivixAvatarApplyLocal(src) {
         if (typeof civixAplicarAvatar === 'function') civixAplicarAvatar();
     } catch (e0) {}
     try {
-        var img = document.getElementById('civixAvatarImg');
-        if (img) img.src = src;
-        var prev = document.getElementById('adminCivixAvatarPreview');
-        if (prev) prev.src = src;
+        ['civixAvatarImg', 'adminCivixAvatarPreview', 'civixPromoAvatar'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.src = src;
+        });
+        document.querySelectorAll('img.civix-avatar-sync, img.civix-avatar-img').forEach(function (el) {
+            el.src = src;
+        });
     } catch (e1) {}
 }
 
