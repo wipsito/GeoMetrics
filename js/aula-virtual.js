@@ -691,16 +691,295 @@
 
   function updatePerfilHorarioInfo() {
     var info = $('perfilHorarioInfo');
-    if (!info) return;
-    var h = loadHorario();
-    if (h.fileName || (h.slots && h.slots.length)) {
-      info.textContent = (h.fileName ? ('Archivo: ' + h.fileName) : 'Sin PDF') +
-        (h.slots && h.slots.length ? (' · ' + h.slots.length + ' clases') : ' · sin clases aún') +
-        ' · sincronizado por cuenta';
-    } else {
-      info.textContent = 'Sin horario. Usa «Cargar horario», «Ejemplo» o espera la sync de otro PC.';
+    if (info) {
+      var h = loadHorario();
+      if (h.fileName || (h.slots && h.slots.length)) {
+        info.textContent = (h.fileName ? ('Archivo: ' + h.fileName) : 'Sin PDF') +
+          (h.slots && h.slots.length ? (' · ' + h.slots.length + ' clases') : ' · sin clases aún') +
+          ' · solo tu cuenta (nube)';
+      } else {
+        info.textContent = 'Sin horario personal. Sube tu PDF Academusoft o usa el editor manual.';
+      }
     }
+    try { renderPerfilHorarioSlots(); } catch (eR) {}
   }
+
+
+  /** Carga pdf.js (reutiliza aula.js si existe). */
+  function loadPdfJsLib() {
+    if (typeof aulaLoadPdfJs === 'function') return aulaLoadPdfJs();
+    return new Promise(function (resolve, reject) {
+      if (window.pdfjsLib) return resolve(window.pdfjsLib);
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = function () {
+        if (window.pdfjsLib) {
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          resolve(window.pdfjsLib);
+        } else reject(new Error('pdf.js no disponible'));
+      };
+      s.onerror = function () { reject(new Error('No se pudo cargar pdf.js')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function fileToArrayBuffer(file) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () { resolve(r.result); };
+      r.onerror = function () { reject(new Error('No se pudo leer el archivo')); };
+      r.readAsArrayBuffer(file);
+    });
+  }
+
+  /**
+   * Extrae ítems de texto con coordenadas de un PDF Academusoft.
+   */
+  function extractPdfTextItems(arrayBuffer) {
+    return loadPdfJsLib().then(function (pdfjsLib) {
+      return pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    }).then(function (pdf) {
+      var maxPages = Math.min(pdf.numPages || 1, 8);
+      var all = [];
+      var chain = Promise.resolve();
+      for (var p = 1; p <= maxPages; p++) {
+        (function (pageNum) {
+          chain = chain.then(function () {
+            return pdf.getPage(pageNum).then(function (page) {
+              return page.getTextContent().then(function (tc) {
+                (tc.items || []).forEach(function (it) {
+                  var str = String(it.str || '').trim();
+                  if (!str) return;
+                  var tr = it.transform || [1, 0, 0, 1, 0, 0];
+                  all.push({ str: str, x: tr[4] || 0, y: tr[5] || 0, page: pageNum });
+                });
+              });
+            });
+          });
+        })(p);
+      }
+      return chain.then(function () { return all; });
+    });
+  }
+
+  function nearestDiaByX(x, dayCols) {
+    var best = -1, bestD = 1e9;
+    for (var d = 0; d < dayCols.length; d++) {
+      if (dayCols[d] == null) continue;
+      var dist = Math.abs(x - dayCols[d]);
+      if (dist < bestD) { bestD = dist; best = d; }
+    }
+    return best;
+  }
+
+  /**
+   * Parser del reporte "Horario Estudiante" Academusoft.
+   * Usa posición X de columnas Lunes…Domingo y franjas HH:MM-HH:MM.
+   */
+  function parseAcademusoftHorarioItems(items) {
+    if (!items || !items.length) return [];
+    var dayNames = [
+      { re: /^lunes$/i, d: 0 },
+      { re: /^martes$/i, d: 1 },
+      { re: /^mi[eé]rcoles$/i, d: 2 },
+      { re: /^jueves$/i, d: 3 },
+      { re: /^viernes$/i, d: 4 },
+      { re: /^s[aá]bado$/i, d: 5 },
+      { re: /^domingo$/i, d: 6 }
+    ];
+    var dayCols = [null, null, null, null, null, null, null];
+    items.forEach(function (it) {
+      var s = it.str.replace(/\s+/g, ' ').trim();
+      for (var i = 0; i < dayNames.length; i++) {
+        if (dayNames[i].re.test(s)) {
+          // promedio si aparece varias veces
+          var d = dayNames[i].d;
+          dayCols[d] = dayCols[d] == null ? it.x : (dayCols[d] + it.x) / 2;
+        }
+      }
+    });
+    // Si no hay encabezados, estimar columnas típicas del PDF horizontal
+    var hasCols = dayCols.some(function (v) { return v != null; });
+    if (!hasCols) {
+      var xs = items.map(function (it) { return it.x; });
+      var minX = Math.min.apply(null, xs);
+      var maxX = Math.max.apply(null, xs);
+      var span = Math.max(maxX - minX, 1);
+      // materia a la izquierda; días repartidos a la derecha
+      for (var d = 0; d < 7; d++) {
+        dayCols[d] = minX + span * (0.28 + d * 0.1);
+      }
+    }
+
+    var timeRe = /(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})/;
+    var times = [];
+    items.forEach(function (it) {
+      var m = it.str.match(timeRe);
+      if (!m) return;
+      var inicio = (m[1].length === 1 ? '0' : '') + m[1] + ':' + m[2];
+      var fin = (m[3].length === 1 ? '0' : '') + m[3] + ':' + m[4];
+      // normalizar 9:00 -> 09:00
+      inicio = ('0' + inicio).slice(-5);
+      fin = ('0' + fin).slice(-5);
+      if (inicio.charAt(2) !== ':') {
+        inicio = m[1].padStart(2, '0') + ':' + m[2];
+        fin = m[3].padStart(2, '0') + ':' + m[4];
+      }
+      try {
+        inicio = (m[1].length < 2 ? '0' + m[1] : m[1]) + ':' + m[2];
+        fin = (m[3].length < 2 ? '0' + m[3] : m[3]) + ':' + m[4];
+      } catch (e) {}
+      var dia = nearestDiaByX(it.x, dayCols);
+      if (dia < 0) return;
+      times.push({ inicio: inicio, fin: fin, dia: dia, x: it.x, y: it.y, page: it.page });
+    });
+
+    // Materias: líneas en mayúsculas / nombres conocidos a la izquierda
+    var materiaHints = items.filter(function (it) {
+      var s = it.str.replace(/\s+/g, ' ').trim();
+      if (s.length < 4) return false;
+      if (timeRe.test(s)) return false;
+      if (/^grupo/i.test(s)) return false;
+      if (/^\d{5,}$/.test(s)) return false; // códigos / docs
+      if (/^(lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)$/i.test(s)) return false;
+      // prefer text on the left side of page
+      return it.x < (dayCols[0] != null ? dayCols[0] - 20 : 200);
+    });
+
+    function findMateriaNear(t) {
+      var best = null, bestScore = 1e12;
+      materiaHints.forEach(function (it) {
+        if (it.page !== t.page) return;
+        var dy = Math.abs(it.y - t.y);
+        var score = dy + (it.x > t.x ? 80 : 0);
+        if (score < bestScore && dy < 55) {
+          bestScore = score;
+          best = it;
+        }
+      });
+      if (!best) return 'CLASE';
+      // juntar fragmentos cercanos de la misma materia (misma y aprox)
+      var parts = materiaHints.filter(function (it) {
+        return it.page === best.page && Math.abs(it.y - best.y) < 14 && Math.abs(it.x - best.x) < 120;
+      }).sort(function (a, b) { return a.x - b.x; });
+      var name = parts.map(function (p) { return p.str; }).join(' ').replace(/\s+/g, ' ').trim();
+      return name || best.str;
+    }
+
+    function findAulaNear(t) {
+      var aulaRe = /^(LAB|CS|JG|LC|SVR|AULA|SALON|SALÓN)[\w\s\.\-\(\)]*$/i;
+      var best = '';
+      items.forEach(function (it) {
+        if (it.page !== t.page) return;
+        if (Math.abs(it.y - t.y) > 40) return;
+        if (Math.abs(it.x - t.x) > 90) return;
+        if (aulaRe.test(it.str.trim()) || /\d{3}/.test(it.str) && it.str.length < 28) {
+          if (!timeRe.test(it.str) && !/^\d{6,}$/.test(it.str)) {
+            best = it.str.trim();
+          }
+        }
+      });
+      return best;
+    }
+
+    function findGrupoNear(t, materiaY) {
+      var g = '';
+      items.forEach(function (it) {
+        if (it.page !== t.page) return;
+        var m = it.str.match(/Grupo\s*:\s*([A-Z0-9]+)/i);
+        if (m && Math.abs(it.y - (materiaY || t.y)) < 70) g = m[1];
+      });
+      return g;
+    }
+
+    var slots = times.map(function (t) {
+      var mat = findMateriaNear(t);
+      return {
+        materia: mat,
+        grupo: findGrupoNear(t),
+        dia: t.dia,
+        inicio: t.inicio,
+        fin: t.fin,
+        aula: findAulaNear(t),
+        docente: ''
+      };
+    });
+
+    // dedupe
+    var seen = {};
+    return slots.filter(function (s) {
+      var k = [s.dia, s.inicio, s.fin, s.materia].join('|');
+      if (seen[k]) return false;
+      seen[k] = 1;
+      return true;
+    }).sort(function (a, b) {
+      return a.dia - b.dia || String(a.inicio).localeCompare(String(b.inicio));
+    });
+  }
+
+  /** Fallback por texto plano si las coordenadas fallan. */
+  function parseAcademusoftHorarioText(text) {
+    var slots = [];
+    if (!text) return slots;
+    // Si el texto contiene el patrón del ejemplo GeoMetrics, usar demo estructurado
+    // NO: eso mezclaría. Solo extraer tiempos genéricos sin día fiable → vacío
+    var timeRe = /(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})/g;
+    var count = 0;
+    var m;
+    while ((m = timeRe.exec(text)) && count < 40) {
+      count++;
+    }
+    // sin columnas no asignamos días inventados
+    return slots;
+  }
+
+  function renderPerfilHorarioSlots() {
+    var box = $('perfilHorarioSlots');
+    if (!box) return;
+    var h = loadHorario();
+    var slots = h.slots || [];
+    if (!slots.length) {
+      box.innerHTML = '<p class="login-hint" style="margin:0">Aún no hay clases en tu horario.</p>';
+      return;
+    }
+    box.innerHTML = slots.map(function (s, i) {
+      return '<div class="ph-slot" data-i="' + i + '">' +
+        '<div><strong>' + esc(s.materia || 'Clase') + '</strong>' +
+        '<span>' + esc(DIAS[s.dia] || '') + ' · ' + esc(s.inicio) + '–' + esc(s.fin) +
+        (s.grupo ? (' · Grupo ' + esc(s.grupo)) : '') +
+        (s.aula ? (' · ' + esc(s.aula)) : '') + '</span></div>' +
+        '<button type="button" class="ph-del" data-del="' + i + '" title="Quitar">✕</button></div>';
+    }).join('');
+    box.querySelectorAll('[data-del]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var i = +btn.getAttribute('data-del');
+        var cur = loadHorario();
+        cur.slots = (cur.slots || []).slice();
+        cur.slots.splice(i, 1);
+        cur.personal = true;
+        cur.fromDefault = false;
+        applyHorarioPayload(cur, 'Clase eliminada de tu horario.');
+        renderPerfilHorarioSlots();
+      });
+    });
+  }
+
+  function processHorarioPdfFile(file) {
+    toast('Leyendo PDF de Academusoft…');
+    return fileToArrayBuffer(file).then(function (buf) {
+      return extractPdfTextItems(buf).then(function (items) {
+        var slots = parseAcademusoftHorarioItems(items);
+        if (!slots.length) {
+          // texto unido por si acaso
+          var plain = items.map(function (it) { return it.str; }).join(' ');
+          slots = parseAcademusoftHorarioText(plain);
+        }
+        return slots;
+      });
+    });
+  }
+
 
   function applyHorarioPayload(h, msg) {
     h.personal = true;
@@ -731,45 +1010,29 @@
     file.onchange = function () {
       var f = file.files && file.files[0];
       if (!f) return;
-      if (f.type && f.type !== 'application/pdf' && !/\.pdf$/i.test(f.name) && !/\.pdf$/i.test(f.name)) {
-        // accept by extension mainly
-      }
-      if (!/\.pdf$/i.test(f.name) && !(f.type && f.type.indexOf('pdf') >= 0)) {
-        toast('Sube un archivo PDF del horario.');
+      if (!/\.pdf$/i.test(f.name) && !(f.type && String(f.type).indexOf('pdf') >= 0)) {
+        toast('Sube el reporte de horario en PDF (Academusoft).');
         return;
       }
-      try {
+      processHorarioPdfFile(f).then(function (slots) {
         var h = loadHorario();
         h.fileName = f.name;
         h.fileData = '';
         h.personal = true;
         h.fromDefault = false;
-        var isExample = /reportehorario-ejemplo|horario-ejemplo|ejemplo/i.test(f.name || '');
-        if (isExample) {
-          h.slots = cloneDefaultSlots();
-          h.fromDefault = true;
-          applyHorarioPayload(h, 'Ejemplo aplicado y sincronizado (tu cuenta · todos tus PCs).');
-        } else if (h.slots && h.slots.length) {
-          applyHorarioPayload(h, 'PDF «' + f.name + '» registrado. Se mantienen tus ' + h.slots.length + ' clases.');
+        if (slots && slots.length) {
+          h.slots = slots;
+          applyHorarioPayload(h, '¡Listo! Se extrajeron ' + slots.length + ' clases de TU PDF. Solo tú las ves.');
         } else {
-          var useDemo = window.confirm(
-            'Archivo: ' + f.name + '\n\n' +
-            'No se puede leer la tabla del PDF automáticamente.\n' +
-            '¿Aplicar el horario de EJEMPLO en TU cuenta para ver próximas clases?\n\n' +
-            'Se sincroniza a la nube para otros PCs con el mismo correo.'
-          );
-          if (useDemo) {
-            h.slots = cloneDefaultSlots();
-            h.fromDefault = true;
-            applyHorarioPayload(h, 'Ejemplo cargado y sincronizado.');
-          } else {
-            applyHorarioPayload(h, 'Nombre del PDF guardado. Pulsa «Ejemplo» para cargar clases demo.');
-          }
+          // no se pudo parsear: no tocar slots ajenos; ofrecer editor / ejemplo
+          applyHorarioPayload(h, 'PDF recibido, pero no se leyeron clases. Usa el editor manual o «Ejemplo».');
+          toast('Tip: abre «Editor manual» y agrega tus materias, o revisa que el PDF sea el reporte Academusoft.');
         }
-      } catch (err) {
-        console.warn('perfil horario', err);
-        toast('Error al guardar el horario: ' + (err && err.message ? err.message : 'desconocido'));
-      }
+        renderPerfilHorarioSlots();
+      }).catch(function (err) {
+        console.warn('PDF horario', err);
+        toast('No se pudo leer el PDF. Prueba el editor manual.');
+      });
     };
 
     if (btnDel) {
@@ -795,14 +1058,43 @@
       btnEj.onclick = function (e) {
         e.preventDefault();
         e.stopPropagation();
-        var ok = window.confirm('¿Cargar el horario de EJEMPLO de GeoMetrics solo en TU cuenta?\nSe sincronizará a la nube para otros PCs con el mismo usuario.');
+        var ok = window.confirm('¿Cargar el horario de EJEMPLO de GeoMetrics solo en TU cuenta?\nNo modifica el horario de otros estudiantes.');
         if (!ok) return;
         var h = loadHorario();
         h.slots = cloneDefaultSlots();
         h.fileName = h.fileName || 'reporteHorario-ejemplo.pdf';
         h.fromDefault = true;
         h.personal = true;
-        applyHorarioPayload(h, 'Ejemplo cargado y sincronizado (solo tu usuario).');
+        applyHorarioPayload(h, 'Ejemplo cargado solo en tu cuenta.');
+        renderPerfilHorarioSlots();
+      };
+    }
+
+    var btnAdd = $('btnHeAgregar');
+    if (btnAdd) {
+      btnAdd.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var materia = (($('heMateria') || {}).value || '').trim();
+        if (!materia) { toast('Escribe el nombre de la materia.'); return; }
+        var slot = {
+          materia: materia,
+          grupo: (($('heGrupo') || {}).value || '').trim(),
+          dia: normalizeDia(($('heDia') || {}).value),
+          inicio: (($('heInicio') || {}).value || '08:00').slice(0, 5),
+          fin: (($('heFin') || {}).value || '10:00').slice(0, 5),
+          aula: (($('heAula') || {}).value || '').trim(),
+          docente: (($('heDocente') || {}).value || '').trim()
+        };
+        if (slot.dia < 0) slot.dia = 0;
+        var h = loadHorario();
+        h.slots = (h.slots || []).concat([slot]);
+        h.personal = true;
+        h.fromDefault = false;
+        if (!h.fileName) h.fileName = 'manual';
+        applyHorarioPayload(h, 'Clase agregada a TU horario.');
+        renderPerfilHorarioSlots();
+        if ($('heMateria')) $('heMateria').value = '';
       };
     }
   }
@@ -941,14 +1233,30 @@
     qsa('.av-view').forEach(function (v) {
       v.classList.toggle('active', v.getAttribute('data-av-view') === name);
     });
+
+    var isAula = (name === 'aula');
+    var main = document.querySelector('#pantallaEstudiante .av-main') || document.querySelector('.av-main');
+    if (main) {
+      main.classList.toggle('av-has-secondary-view', !isAula);
+    }
+
+    // Fondo del aula SIEMPRE visible (cursos, calendario, tareas, etc.)
     var stage = $('avStage');
-    if (stage) stage.style.display = name === 'aula' ? '' : 'none';
+    if (stage) {
+      stage.style.display = '';
+      stage.removeAttribute('hidden');
+    }
+
+    // Controles solo del modo "Aula" (tablero / anuncios / barra inferior)
     var holo = $('avHologram');
-    if (holo) holo.style.display = name === 'aula' ? '' : 'none';
+    if (holo) holo.style.display = isAula ? '' : 'none';
     var qb = $('avQuickbar');
-    if (qb) qb.style.display = name === 'aula' ? '' : 'none';
+    if (qb) qb.style.display = isAula ? '' : 'none';
     var an = $('avAnnounce');
-    if (an) an.style.display = name === 'aula' ? '' : 'none';
+    if (an) an.style.display = isAula ? '' : 'none';
+    // Próximas clases del centro solo en aula
+    var nextMain = $('avNextClassMain');
+    if (nextMain) nextMain.style.display = isAula ? '' : 'none';
 
     if (name === 'tareas') renderTasksStudent();
     if (name === 'recursos') renderMaterialsStudent();
