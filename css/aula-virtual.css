@@ -259,34 +259,47 @@ main#pantallaEstudiante.av-visible {
 .av-stage-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(2,9,20,0.55) 0%, transparent 18%, transparent 72%, rgba(2,9,20,0.4) 100%),
-              linear-gradient(180deg, rgba(2,9,20,0.2) 0%, transparent 30%, rgba(2,9,20,0.55) 100%);
+  /* Laterales y suelo oscuros; centro-superior (tablero) más libre */
+  background:
+    linear-gradient(90deg, rgba(2,9,20,0.55) 0%, transparent 20%, transparent 70%, rgba(2,9,20,0.42) 100%),
+    linear-gradient(180deg, rgba(2,9,20,0.08) 0%, transparent 22%, transparent 48%, rgba(2,9,20,0.58) 100%);
   pointer-events: none;
 }
+/* Panel del curso anclado al tablero/pantalla de aula-referencia.png */
 .av-hologram {
   position: absolute;
   left: 50%;
-  top: 18%;
+  /* Zona del monitor frontal (logos UniPamplona + Ingeniería Civil) */
+  top: clamp(10%, 12vh, 16%);
   transform: translateX(-50%);
-  width: min(520px, 70%);
-  padding: 16px 18px;
-  border-radius: 18px;
-  border: 1px solid rgba(0,217,255,0.35);
-  background: linear-gradient(160deg, rgba(6,23,43,0.82), rgba(2,12,28,0.88));
-  box-shadow: 0 0 40px rgba(0,217,255,0.15), inset 0 0 30px rgba(0,217,255,0.05);
-  backdrop-filter: blur(8px);
-  z-index: 2;
+  width: min(560px, 46%);
+  max-width: 560px;
+  padding: 14px 16px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,217,255,0.45);
+  background: linear-gradient(165deg, rgba(4,18,36,0.92), rgba(2,10,24,0.94));
+  box-shadow:
+    0 0 0 1px rgba(0,217,255,0.12),
+    0 12px 40px rgba(0,0,0,0.45),
+    0 0 36px rgba(0,217,255,0.18);
+  backdrop-filter: blur(6px);
+  z-index: 3;
+  /* Que se sienta “pegado” al tablero, no flotando sobre pupitres */
+  max-height: min(280px, 38%);
+  overflow: auto;
 }
 .av-hologram h2 {
-  margin: 0 0 4px;
-  font-size: 1.25rem;
+  margin: 0 0 2px;
+  font-size: clamp(1.05rem, 1.6vw, 1.28rem);
   font-weight: 800;
   color: var(--av-text);
+  text-align: center;
 }
 .av-hologram .av-code {
   font-size: 12px;
   color: var(--av-soft);
   margin-bottom: 10px;
+  text-align: center;
 }
 .av-progress-wrap {
   margin: 8px 0 12px;
@@ -694,7 +707,7 @@ main#pantallaEstudiante.av-visible {
       "nav main";
   }
   .av-side { display: none; }
-  .av-hologram { width: min(460px, 82%); }
+  .av-hologram { top: 10%; width: min(480px, 62%); max-height: 36%; }
 }
 @media (max-width: 720px) {
   #pantallaEstudiante.av-root.av-visible {
@@ -724,7 +737,7 @@ main#pantallaEstudiante.av-visible {
   }
   .av-brand-item small { display: none; }
   .av-user-chip span { display: none; }
-  .av-hologram { top: 10%; width: 90%; }
+  .av-hologram { top: 8%; width: min(92%, 420px); max-height: 34%; }
   .av-announce { display: none; }
   .av-quickbar { bottom: 10px; width: 94%; justify-content: space-around; }
   .av-quickbar button { min-width: 0; flex: 1; }
@@ -1121,4 +1134,24 @@ button.av-user-chip:hover {
     max-width: none;
     margin: 10px 12px 0;
   }
+}
+
+.perfil-horario-slots .ph-slot {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 8px; padding: 8px 10px; margin-bottom: 6px;
+  border-radius: 10px; border: 1px solid rgba(0,217,255,0.2);
+  background: rgba(2,12,24,0.55); font-size: 12px;
+}
+.perfil-horario-slots .ph-slot strong { display: block; color: #e8f6ff; }
+.perfil-horario-slots .ph-slot span { color: #94a3b8; font-size: 11px; }
+.perfil-horario-slots .ph-del {
+  border: none; background: rgba(239,68,68,0.15); color: #fca5a5;
+  border-radius: 8px; cursor: pointer; padding: 4px 8px;
+}
+.perfil-horario-editor summary { color: #7dd3fc; }
+.perfil-horario-editor input,
+.perfil-horario-editor select {
+  padding: 8px 10px; border-radius: 8px;
+  border: 1px solid rgba(0,217,255,0.25);
+  background: rgba(2,9,20,0.75); color: #e2e8f0;
 }
