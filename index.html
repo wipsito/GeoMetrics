@@ -2086,7 +2086,33 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 </section>
 
                 <section class="dp-panel" data-dp-panel="foros">
-                    <div id="faRootDocente" class="fa-root" aria-label="Mensajes docente"></div>
+                    <div class="dp-foros-layout">
+                        <div id="faRootDocente" class="fa-root fa-two-col" aria-label="Mensajes docente"></div>
+                        <aside class="dp-foros-side" id="dpForosSide" aria-label="Calendario y resumen">
+                            <div class="av-card">
+                                <h3>📅 Próximas clases</h3>
+                                <div id="dpForosNextClass" class="av-next-list"><p class="av-muted">Sin eventos próximos</p></div>
+                            </div>
+                            <div class="av-card">
+                                <h3>Tus cursos</h3>
+                                <div id="dpForosCourses" class="av-course-mini"></div>
+                            </div>
+                            <div class="av-card av-cal-card">
+                                <div class="av-cal-head">
+                                    <strong id="dpForosCalTitle">Calendario</strong>
+                                    <div class="av-cal-nav">
+                                        <button type="button" data-dp-foros-cal="-1" aria-label="Mes anterior">‹</button>
+                                        <button type="button" data-dp-foros-cal="1" aria-label="Mes siguiente">›</button>
+                                    </div>
+                                </div>
+                                <div class="av-cal-grid" id="dpForosCalGrid"></div>
+                            </div>
+                            <div class="av-card">
+                                <h3>Recursos rápidos</h3>
+                                <button type="button" class="av-resource-list" data-dp-view="material" style="width:100%;text-align:left">📁 Material del curso</button>
+                            </div>
+                        </aside>
+                    </div>
                 </section>
 
                 <!-- CURSOS (alias dashboard section for top nav) -->
@@ -2267,7 +2293,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 <div id="listaTareasEstudiante" class="av-task-list"></div>
             </div>
             <div class="av-view" data-av-view="foros">
-                <div id="faRootEstudiante" class="fa-root" aria-label="Mensajes"></div>
+                <div id="faRootEstudiante" class="fa-root fa-two-col" aria-label="Mensajes"></div>
             </div>
             <div class="av-view" data-av-view="recursos">
                 <h2>Recursos</h2>
