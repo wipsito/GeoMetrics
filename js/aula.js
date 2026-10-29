@@ -5432,24 +5432,51 @@ function aulaChatStartCloudListen() {
             if (!Array.isArray(arr)) return;
             var local = [];
             try { local = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]') || []; } catch (e) { local = []; }
+            if (!Array.isArray(local)) local = [];
             var byId = {};
-            (local || []).forEach(function (c) { if (c && c.id) byId[c.id] = c; });
-            (arr || []).forEach(function (c) {
-                if (!c || !c.id) return;
-                var prev = byId[c.id];
-                // Gana el que tenga más mensajes o updatedAt mayor
-                if (!prev) byId[c.id] = c;
-                else {
-                    var nR = (c.messages && c.messages.length) || 0;
-                    var nL = (prev.messages && prev.messages.length) || 0;
-                    if ((c.updatedAt || 0) >= (prev.updatedAt || 0) || nR >= nL) byId[c.id] = c;
-                }
+
+            // Primero conserva los chats locales para no perder conversaciones aún no sincronizadas.
+            local.forEach(function (c) {
+                if (c && c.id) byId[c.id] = c;
             });
+
+            // Combina cada chat de la nube con el local, fusionando mensajes por ID.
+            // Esto evita que un reloj desajustado entre dispositivos haga desaparecer mensajes.
+            arr.forEach(function (cloudChat) {
+                if (!cloudChat || !cloudChat.id) return;
+                var localChat = byId[cloudChat.id];
+                if (!localChat) {
+                    byId[cloudChat.id] = cloudChat;
+                    return;
+                }
+                var msgById = {};
+                (localChat.messages || []).forEach(function (m) {
+                    if (m && m.id) msgById[m.id] = m;
+                });
+                (cloudChat.messages || []).forEach(function (m) {
+                    if (!m) return;
+                    var key = m.id || [m.from || '', m.ts || '', m.text || ''].join('|');
+                    var old = msgById[key];
+                    if (!old || (m.ts || 0) >= (old.ts || 0)) msgById[key] = m;
+                });
+                var mergedMessages = Object.keys(msgById).map(function (k) { return msgById[k]; });
+                mergedMessages.sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
+
+                // La nube aporta los campos compartidos, y se conservan los datos locales que falten.
+                var mergedChat = Object.assign({}, localChat, cloudChat);
+                ['studentEmail', 'studentName', 'teacherEmail', 'teacherName', 'materia', 'grupo', 'type', 'peerEmail', 'peerName', 'members'].forEach(function (key) {
+                    if ((mergedChat[key] === undefined || mergedChat[key] === null || mergedChat[key] === '') &&
+                        localChat[key] !== undefined) mergedChat[key] = localChat[key];
+                });
+                mergedChat.messages = mergedMessages;
+                mergedChat.updatedAt = Math.max(localChat.updatedAt || 0, cloudChat.updatedAt || 0);
+                byId[cloudChat.id] = mergedChat;
+            });
+
             var merged = Object.keys(byId).map(function (k) { return byId[k]; });
             localStorage.setItem(CHAT_KEY, JSON.stringify(merged));
-            // Actualizar siempre la lista del perfil activo, incluso si no hay
-            // una conversación abierta. Antes la actualización dependía de
-            // __chatActivoId y el panel estudiante podía quedarse desactualizado.
+
+            // Repintar el chat abierto en cada evento de Firebase, sin salir ni reabrir la conversación.
             var me = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
             if (me) {
                 var rol = String(me.rol || '').toLowerCase();
@@ -5458,19 +5485,24 @@ function aulaChatStartCloudListen() {
                 } else {
                     if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
                 }
-                if (window.__chatActivoId) {
-                    var active = merged.find(function (x) { return x.id === window.__chatActivoId; });
-                    if (active && typeof aulaChatRenderMsgs === 'function') {
-                        if (rol === 'docente') aulaChatRenderMsgs('docChatMsgs', active, me.email);
-                        else aulaChatRenderMsgs('estChatMsgs', active, me.email);
+                var activeId = window.__chatActivoId;
+                if (activeId && typeof aulaChatRenderMsgs === 'function') {
+                    var active = merged.find(function (x) { return x.id === activeId; });
+                    if (active) {
+                        var containerId = rol === 'docente' ? 'docChatMsgs' : 'estChatMsgs';
+                        aulaChatRenderMsgs(containerId, active, me.email);
+                        // Mantener el chat al final para mostrar el mensaje recién recibido.
+                        var box = document.getElementById(containerId);
+                        if (box) box.scrollTop = box.scrollHeight;
                     }
                 }
             }
             if (typeof aulaChatUpdateBadges === 'function') aulaChatUpdateBadges();
-        } catch (eL) { console.warn('chat cloud listen', eL); }
+        } catch (eL) {
+            console.warn('[GeoMetrics chat] Error actualizando mensajes en tiempo real:', eL);
+        }
     });
 }
-
 
 function aulaChatBindSearchFilters() {
     function bindSearch(inputId, listId) {
