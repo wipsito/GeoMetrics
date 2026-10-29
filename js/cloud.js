@@ -531,6 +531,50 @@ function syncUpUsers() {
         return Object.keys(map).map(function (k) { return map[k]; });
     }
 
+
+    function arrFromNode(val) {
+        var arr = [];
+        if (!val) return arr;
+        if (Array.isArray(val)) return val.filter(Boolean);
+        if (typeof val === 'object') {
+            Object.keys(val).forEach(function (k) {
+                var x = val[k];
+                if (x && typeof x === 'object') {
+                    if (!x.id) x.id = k;
+                    arr.push(x);
+                }
+            });
+        }
+        return arr;
+    }
+    function pushForos(list) {
+        if (!isOn()) return Promise.resolve(false);
+        var obj = {};
+        (list || []).forEach(function (x) { if (x && x.id) obj[x.id] = x; });
+        return cloudSet('foros', obj);
+    }
+    function pushForosReplies(list) {
+        if (!isOn()) return Promise.resolve(false);
+        var obj = {};
+        (list || []).forEach(function (x) { if (x && x.id) obj[x.id] = x; });
+        return cloudSet('foros_replies', obj);
+    }
+    function pushAvisos(list) {
+        if (!isOn()) return Promise.resolve(false);
+        var obj = {};
+        (list || []).forEach(function (x) { if (x && x.id) obj[x.id] = x; });
+        return cloudSet('avisos', obj);
+    }
+    function pullForos() {
+        return cloudGet('foros').then(arrFromNode);
+    }
+    function pullForosReplies() {
+        return cloudGet('foros_replies').then(arrFromNode);
+    }
+    function pullAvisos() {
+        return cloudGet('avisos').then(arrFromNode);
+    }
+
     global.GeoCloud = {
         cloudGet: cloudGet,
         cloudSet: cloudSet,
@@ -557,6 +601,12 @@ function syncUpUsers() {
         listenChats: listenChats,
         listenTareas: listenTareas,
         pullChats: pullChats,
-        pullUsersAndApply: pullUsersAndApply
+        pullUsersAndApply: pullUsersAndApply,
+        pushForos: pushForos,
+        pushForosReplies: pushForosReplies,
+        pushAvisos: pushAvisos,
+        pullForos: pullForos,
+        pullForosReplies: pullForosReplies,
+        pullAvisos: pullAvisos
     };
 })(window);

@@ -18,6 +18,10 @@
   }
 
   function setView(name) {
+    if (name === 'foros' && window.ForosAvisos && typeof ForosAvisos.mount === 'function') {
+      try { ForosAvisos.mount('faRootDocente'); } catch (eFa) {}
+    }
+
     if (name === 'cursos') {
       /* vista cursos dedicada */
     } else if (name === 'mensajes') {

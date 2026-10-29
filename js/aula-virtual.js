@@ -260,27 +260,20 @@
   }
 
   function renderForum() {
-    var sel = $('avForumMateria');
-    var list = $('avForumList');
-    if (!list) return;
-    var courses = loadCourses();
-    if (sel && !sel._filled) {
-      sel.innerHTML = courses.map(function (c) {
-        return '<option value="' + esc(c.name) + '">' + esc(c.name) + '</option>';
-      }).join('') || '<option value="">General</option>';
-      sel._filled = true;
+    try {
+      var el = document.getElementById('faRootEstudiante');
+      if (el && window.ForosAvisos && typeof ForosAvisos.mount === 'function') {
+        ForosAvisos.mount(el);
+      } else if (el) {
+        el.innerHTML = '<div style="padding:24px;color:#8DA7C2">Módulo de mensajes no cargado. Recarga con Ctrl+F5.</div>';
+      }
+      var elD = document.getElementById('faRootDocente');
+      if (elD && window.ForosAvisos && typeof ForosAvisos.mount === 'function') {
+        ForosAvisos.mount(elD);
+      }
+    } catch (e) {
+      console.error('renderForum', e);
     }
-    var materia = (sel && sel.value) || (courses[0] && courses[0].name) || '';
-    var posts = loadForum().filter(function (p) { return !materia || p.materia === materia; });
-    if (!posts.length) {
-      list.innerHTML = '<div class="av-empty">Sé el primero en publicar en este mural.</div>';
-      return;
-    }
-    list.innerHTML = posts.slice().reverse().map(function (p) {
-      return '<div class="aula-item"><strong>' + esc(p.autor || 'Usuario') + '</strong>' +
-        '<p>' + esc(p.texto) + '</p>' +
-        '<div class="aula-item-meta"><span>' + esc(p.materia || '') + '</span><span>' + esc((p.fecha || '').slice(0, 16).replace('T', ' ')) + '</span></div></div>';
-    }).join('');
   }
 
   function postForum() {
@@ -1198,6 +1191,12 @@
     var nextMain = $('avNextClassMain');
     if (nextMain) nextMain.style.display = isAula ? '' : 'none';
 
+    // Mensajes: conservar el panel derecho del aula (calendario, cursos, etc.)
+    var side = $('avSide');
+    var stage = $('avStage');
+    if (side) side.style.display = '';
+    if (stage) stage.style.gridColumn = '';
+
     if (name === 'tareas') renderTasksStudent();
     if (name === 'recursos') renderMaterialsStudent();
     if (name === 'cursos') renderCoursesView();
@@ -1742,7 +1741,7 @@
     var forumSend = $('avForumSend');
     if (forumSend && !forumSend._avBound) {
       forumSend._avBound = true;
-      forumSend.addEventListener('click', postForum);
+      /* forum → ForosAvisos */;
     }
     var forumMat = $('avForumMateria');
     if (forumMat && !forumMat._avBound) {
