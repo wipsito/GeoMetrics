@@ -35,11 +35,15 @@
 
   /** Root del chat activo. Docente intacto; estudiante siempre su root si su pantalla está abierta. */
   function resolveHost(preferred) {
-    if (preferred && preferred.querySelector) {
-      // Si nos pasan el root estudiante o docente, usarlo
-      return preferred;
-    }
     try {
+      // Mantener el root solicitado si sigue conectado y visible. Evita que el
+      // envío cambie de panel cuando estudiante y docente están montados a la vez.
+      if (preferred && preferred.querySelector && document.documentElement.contains(preferred)) {
+        var preferredScreen = preferred.id === 'faRootEstudiante'
+          ? document.getElementById('pantallaEstudiante')
+          : (preferred.id === 'faRootDocente' ? document.getElementById('pantallaDocente') : null);
+        if (!preferredScreen || (preferredScreen.style.display !== 'none' && preferredScreen.offsetParent !== null)) return preferred;
+      }
       var pe = document.getElementById('pantallaEstudiante');
       var pd = document.getElementById('pantallaDocente');
       var estRoot = document.getElementById('faRootEstudiante');
@@ -864,7 +868,7 @@
         '</div></div>';
     }).join('');
 
-    if (!rows) {
+    if (!items.length) {
       var msg = 'No hay conversaciones.<br>Pulsa ✎ para escribir a un docente o compañero.';
       if (state.filter === 'docentes') msg = 'No hay chats con docentes en este filtro.<br>Pulsa ✎ y elige un docente.';
       else if (state.filter === 'estudiantes') msg = 'No hay chats con estudiantes en este filtro.';
@@ -940,7 +944,7 @@
         '</div></div>';
     }).join('');
 
-    if (!msgs) {
+    if (!(c.messages || []).length) {
       msgs = '<div class="fa-empty-center">Aún no hay mensajes. Escribe el primero.</div>';
     }
 
@@ -1034,11 +1038,20 @@
         host.innerHTML = '<div class="fa-status err" style="padding:24px">Inicia sesión para usar Mensajes.</div>';
         return;
       }
+      var oldScroll = host.querySelector('[data-ch-scroll]');
+      var oldScrollTop = oldScroll ? oldScroll.scrollTop : 0;
+      var wasNearBottom = oldScroll ? (oldScroll.scrollHeight - oldScroll.scrollTop - oldScroll.clientHeight < 90) : true;
+      var oldActiveId = state._paintedActiveId || '';
       host.className = 'fa-root fa-two-col';
       host.innerHTML = listCol(u) + mainCol(u);
-      var sc = host.querySelector('[data-ch-scroll]');
-      if (sc) sc.scrollTop = sc.scrollHeight;
       var ac = activeChat();
+      var sc = host.querySelector('[data-ch-scroll]');
+      if (sc) {
+        if (oldActiveId !== (ac && ac.id || '') || wasNearBottom) {
+          requestAnimationFrame(function () { if (sc.isConnected) sc.scrollTop = sc.scrollHeight; });
+        } else sc.scrollTop = oldScrollTop;
+      }
+      state._paintedActiveId = ac && ac.id || '';
       state._lastSig = (ac && ac.id ? ac.id : '') + ':' + ((ac && ac.messages) ? ac.messages.length : 0) + ':' + ((ac && ac.updatedAt) || 0);
       state._dataSig = chatsSignature(loadChats());
       bind(host);
@@ -1095,8 +1108,8 @@
       var pd = document.getElementById('pantallaDocente');
 
       // Elegir root: si el estudiante está visible, usar SOLO su root
-      var estudianteActivo = pe && pe.style.display !== 'none';
-      var docenteActivo = pd && pd.style.display !== 'none';
+      var estudianteActivo = !!(pe && pe.style.display !== 'none' && (pe.offsetParent !== null || pe.style.display === 'block' || pe.style.display === 'grid'));
+      var docenteActivo = !!(pd && pd.style.display !== 'none' && (pd.offsetParent !== null || pd.style.display === 'block' || pd.style.display === 'grid'));
       if (estudianteActivo && estRoot) host = estRoot;
       else if (docenteActivo && docRoot) host = docRoot;
       else if (host && host.querySelector) { /* keep */ }
