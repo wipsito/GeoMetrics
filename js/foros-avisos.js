@@ -85,39 +85,50 @@
   }
 
   function loadChats() {
+    var local = [];
+    try {
+      local = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]') || [];
+      if (!Array.isArray(local)) local = [];
+    } catch (e) { local = []; }
     try {
       if (typeof aulaChatLoad === 'function') {
         var a = aulaChatLoad() || [];
-        if (a.length) return a;
+        if (a.length) {
+          // merge local (más reciente) con API
+          var map = {};
+          a.forEach(function (c) { if (c && c.id) map[c.id] = c; });
+          local.forEach(function (c) {
+            if (!c || !c.id) return;
+            if (!map[c.id]) map[c.id] = c;
+            else {
+              var cur = map[c.id];
+              if ((c.updatedAt || 0) >= (cur.updatedAt || 0)) map[c.id] = c;
+              else if ((c.messages || []).length > (cur.messages || []).length) map[c.id] = c;
+            }
+          });
+          return Object.keys(map).map(function (k) { return map[k]; });
+        }
       }
-    } catch (e) {}
-    try {
-      var b = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]') || [];
-      if (Array.isArray(b) && b.length) return b;
     } catch (e2) {}
-    return [];
+    return local;
   }
 
   function saveChat(chat) {
     if (!chat || !chat.id) return;
+    // Siempre local primero (fuente de verdad inmediata)
     try {
-      if (typeof aulaChatSaveOne === 'function') {
-        aulaChatSaveOne(chat);
-      } else {
-        var list = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]') || [];
-        var ix = list.findIndex(function (x) { return x && x.id === chat.id; });
-        if (ix >= 0) list[ix] = chat; else list.push(chat);
-        localStorage.setItem('gm_chats_v1', JSON.stringify(list));
-      }
+      var list = [];
+      try { list = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]') || []; } catch (e0) { list = []; }
+      if (!Array.isArray(list)) list = [];
+      var ix = list.findIndex(function (x) { return x && x.id === chat.id; });
+      if (ix >= 0) list[ix] = chat; else list.push(chat);
+      localStorage.setItem('gm_chats_v1', JSON.stringify(list));
     } catch (e) {
-      try {
-        var list2 = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]') || [];
-        var ix2 = list2.findIndex(function (x) { return x && x.id === chat.id; });
-        if (ix2 >= 0) list2[ix2] = chat; else list2.push(chat);
-        localStorage.setItem('gm_chats_v1', JSON.stringify(list2));
-      } catch (e2) {}
+      console.warn('saveChat local', e);
     }
-    // Siempre subir a Firebase (otros dispositivos)
+    try {
+      if (typeof aulaChatSaveOne === 'function') aulaChatSaveOne(chat);
+    } catch (e2) {}
     pushChatCloud(chat);
   }
 
@@ -732,10 +743,10 @@
       '<div class="fa-thread-head-info"><strong>' + esc(title) + '</strong>' +
       '<span>' + esc(sub) + '</span></div></div>' +
       '<div class="fa-thread-body" data-ch-scroll>' + msgs + '</div>' +
-      '<form class="fa-composer" data-ch-send>' +
-      '<input type="text" name="text" placeholder="Escribe un mensaje…" maxlength="2000" autocomplete="off" required>' +
-      '<button type="submit" class="fa-send" title="Enviar">➤</button>' +
-      '</form></div>';
+      '<div class="fa-composer" data-ch-send data-chat-id="' + esc(c.id) + '">' +
+      '<input type="text" name="text" id="faChatInput" placeholder="Escribe un mensaje…" maxlength="2000" autocomplete="off">' +
+      '<button type="button" class="fa-send" data-ch-send-btn title="Enviar">➤</button>' +
+      '</div></div>';
   }
 
   function isTypingInChat() {
@@ -777,13 +788,56 @@
     }
   }
 
+  function doSend(host) {
+    var u = session();
+    if (!u) {
+      try { alert('Sesión no disponible. Vuelve a iniciar sesión.'); } catch (e0) {}
+      return;
+    }
+    var box = host.querySelector('[data-ch-send]');
+    if (!box) return;
+    var chatId = box.getAttribute('data-chat-id') || state.activeId;
+    if (!chatId) {
+      try { alert('Selecciona una conversación primero.'); } catch (e1) {}
+      return;
+    }
+    state.activeId = chatId;
+    var input = box.querySelector('[name="text"]') || host.querySelector('#faChatInput');
+    var text = input ? String(input.value || '') : '';
+    if (!text.trim()) {
+      if (input) input.focus();
+      return;
+    }
+    var ok = sendMessage(chatId, text, u);
+    if (ok) {
+      if (input) input.value = '';
+      paint(host, true);
+      setTimeout(function () {
+        try {
+          var inp = host.querySelector('#faChatInput, [data-ch-send] [name="text"]');
+          if (inp) inp.focus();
+        } catch (eF) {}
+      }, 40);
+    } else {
+      try { alert('No se pudo enviar. Intenta de nuevo.'); } catch (e2) {}
+    }
+  }
+
   function bind(host) {
     if (!host) return;
     if (host._chClick) host.removeEventListener('click', host._chClick);
-    if (host._chSubmit) host.removeEventListener('submit', host._chSubmit);
+    if (host._chKey) host.removeEventListener('keydown', host._chKey);
     if (host._chInput) host.removeEventListener('input', host._chInput);
 
     host._chClick = function (e) {
+      var sendBtn = e.target.closest('[data-ch-send-btn], .fa-send');
+      if (sendBtn && host.contains(sendBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        doSend(host);
+        return;
+      }
+
       var t = e.target.closest('[data-ch-open],[data-ch-filter],[data-ch-new],[data-ch-cancel-new],[data-ch-start]');
       if (!t || !host.contains(t)) return;
       e.preventDefault();
@@ -825,24 +879,14 @@
       }
     };
 
-    host._chSubmit = function (e) {
-      var form = e.target.closest('[data-ch-send]');
-      if (!form || !host.contains(form)) return;
+    host._chKey = function (e) {
+      if (e.key !== 'Enter') return;
+      var input = e.target;
+      if (!input || !host.contains(input)) return;
+      if (input.name !== 'text' && input.id !== 'faChatInput') return;
       e.preventDefault();
-      var u = session();
-      if (!u || !state.activeId) return;
-      var input = form.querySelector('[name="text"]');
-      var text = input ? input.value : '';
-      if (sendMessage(state.activeId, text, u)) {
-        if (input) input.value = '';
-        paint(host, true);
-        setTimeout(function () {
-          try {
-            var inp = host.querySelector('[data-ch-send] [name="text"]');
-            if (inp) inp.focus();
-          } catch (eF) {}
-        }, 30);
-      }
+      e.stopPropagation();
+      doSend(host);
     };
 
     host._chInput = function (e) {
@@ -850,14 +894,24 @@
         clearTimeout(host._chQt);
         host._chQt = setTimeout(function () {
           state.q = e.target.value || '';
-          paint(host);
-        }, 200);
+          if (!isTypingInChat()) paint(host);
+        }, 250);
       }
     };
 
-    host.addEventListener('click', host._chClick);
-    host.addEventListener('submit', host._chSubmit);
+    host.addEventListener('click', host._chClick, true); // capture: gana a otros handlers
+    host.addEventListener('keydown', host._chKey, true);
     host.addEventListener('input', host._chInput);
+
+    // Enlace directo al botón por si acaso
+    var btn = host.querySelector('[data-ch-send-btn], .fa-send');
+    if (btn) {
+      btn.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        doSend(host);
+      };
+    }
   }
 
   function mount(hostId) {
