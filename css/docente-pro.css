@@ -497,3 +497,63 @@
 .dp-panel[data-dp-panel="foros"] .fa-search input,
 .dp-panel[data-dp-panel="foros"] .fa-chat-input,
 .dp-panel[data-dp-panel="foros"] .fa-send { pointer-events: auto !important; }
+
+
+/* Ajuste final: conservar la columna lateral del chat docente en pantallas amplias. */
+@media (min-width: 761px) {
+  #pantallaDocente .dp-panel[data-dp-panel="foros"].active .dp-foros-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 280px !important;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+  }
+  #pantallaDocente .dp-panel[data-dp-panel="foros"].active .dp-foros-side {
+    display: flex !important;
+    min-width: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  #pantallaDocente .dp-panel[data-dp-panel="foros"].active #faRootDocente {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}
+@media (max-width: 760px) {
+  #pantallaDocente .dp-panel[data-dp-panel="foros"].active .dp-foros-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  #pantallaDocente .dp-panel[data-dp-panel="foros"].active .dp-foros-side {
+    display: flex !important;
+    max-height: 38vh;
+    border-left: 0;
+    border-top: 1px solid rgba(0,217,255,0.15);
+  }
+}
+#pantallaDocente .dp-foros-resources button {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Calendario funcional del panel docente: mismo acabado visual que el panel estudiante. */
+.dp-foros-calendar-heading{display:flex;flex-direction:column;gap:4px;min-width:0}
+#dpForosTodayLabel{display:block;color:#7f9bb8;font-size:10px;line-height:1.35;font-weight:500}
+#pantallaDocente .dp-foros-side .av-cal-card{padding:14px 12px 12px;background:linear-gradient(160deg,rgba(8,28,48,.94),rgba(4,16,32,.98));border:1px solid rgba(0,217,255,.22);border-radius:16px}
+#pantallaDocente .dp-foros-side .av-cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;color:#f2f7ff;font-size:13px;font-weight:800}
+#pantallaDocente .dp-foros-side .av-cal-nav{display:flex;gap:6px;flex-shrink:0}
+#pantallaDocente .dp-foros-side .av-cal-nav button{width:34px;height:34px;min-width:34px;padding:0;border-radius:11px;border:1px solid rgba(0,217,255,.2);background:rgba(7,30,49,.85);color:#d8f4ff;font-size:18px;line-height:1;box-shadow:none;appearance:none;-webkit-appearance:none}
+#pantallaDocente .dp-foros-side .av-cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center;font-size:12px;color:#eaf4ff}
+#dpForosCalGrid .dow{color:#86a9c9;font-weight:700;padding:5px 0}
+#dpForosCalGrid .av-cal-day{appearance:none;-webkit-appearance:none;width:100%;aspect-ratio:1;min-height:28px;margin:0;padding:0;border:1px solid transparent;border-radius:9px;background:transparent;color:#eaf4ff;font:inherit;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:none}
+#dpForosCalGrid .av-cal-day:hover{border-color:rgba(0,217,255,.35);background:rgba(0,217,255,.07)}
+#dpForosCalGrid .av-cal-day.muted{color:#35516c}
+#dpForosCalGrid .av-cal-day.today{border-color:#00d9ff;color:#00e5ff;font-weight:800;box-shadow:0 0 12px rgba(0,217,255,.2);background:rgba(0,217,255,.04)}
+#dpForosCalGrid .av-cal-day.selected{background:rgba(0,217,255,.12);border-color:rgba(0,217,255,.65)}
+#dpForosCalGrid .av-cal-day:focus-visible{outline:2px solid #00D9FF;outline-offset:2px}
+#pantallaDocente .dp-foros-resources button{border-radius:12px;padding:10px 12px;font-size:12px;background:rgba(2,9,20,.4);border:1px solid rgba(0,217,255,.15);color:#eaf4ff}
+#pantallaDocente .dp-foros-resources button:hover{border-color:#00d9ff;color:#00d9ff}
