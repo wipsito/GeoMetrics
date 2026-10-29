@@ -2099,7 +2099,10 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                             </div>
                             <div class="av-card av-cal-card">
                                 <div class="av-cal-head">
-                                    <strong id="dpForosCalTitle">Calendario</strong>
+                                    <div class="dp-foros-calendar-heading">
+                                        <strong id="dpForosCalTitle">Calendario</strong>
+                                        <small id="dpForosTodayLabel" aria-live="polite"></small>
+                                    </div>
                                     <div class="av-cal-nav">
                                         <button type="button" data-dp-foros-cal="-1" aria-label="Mes anterior">‹</button>
                                         <button type="button" data-dp-foros-cal="1" aria-label="Mes siguiente">›</button>
@@ -2109,7 +2112,11 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                             </div>
                             <div class="av-card">
                                 <h3>Recursos rápidos</h3>
-                                <button type="button" class="av-resource-list" data-dp-view="material" style="width:100%;text-align:left">📁 Material del curso</button>
+                                <div class="av-resource-list dp-foros-resources">
+                                    <button type="button" data-dp-view="material">📚 Biblioteca digital <span>→</span></button>
+                                    <button type="button" data-dp-view="material">📖 Guías de estudio <span>→</span></button>
+                                    <button type="button" data-dp-view="material">🔗 Portal Ingeniería Civil <span>→</span></button>
+                                </div>
                             </div>
                         </aside>
                     </div>
