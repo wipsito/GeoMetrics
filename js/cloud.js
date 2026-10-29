@@ -144,17 +144,81 @@
         });
     }
 
-    /** Sube UN chat (no borra los demás en la nube) */
+    /**
+     * Guarda un chat sin pisar mensajes escritos desde otro dispositivo.
+     * Firebase transaction serializa escrituras concurrentes en chats/{id};
+     * se fusionan mensajes por ID y se conservan los campos existentes si el
+     * dispositivo que escribe tiene una copia local antigua.
+     */
     function pushChat(chat) {
         if (!chat || !chat.id) return Promise.resolve(false);
-        return cloudSet('chats/' + chat.id, chat);
+        return init().then(function (d) {
+            if (!d) return false;
+            var ref = d.ref('chats/' + chat.id);
+            return ref.transaction(function (current) {
+                if (!current || typeof current !== 'object') {
+                    var first = Object.assign({}, chat);
+                    first.messages = Array.isArray(chat.messages) ? chat.messages.slice() : [];
+                    return first;
+                }
+
+                var merged = Object.assign({}, current, chat);
+                // Los datos de identificación ya existentes no deben borrarse
+                // porque un cliente tenga campos vacíos en su caché local.
+                [
+                    'studentEmail', 'studentName', 'teacherEmail', 'teacherName',
+                    'materia', 'grupo', 'type', 'peerEmail', 'peerName', 'members'
+                ].forEach(function (key) {
+                    if ((chat[key] === undefined || chat[key] === null || chat[key] === '') &&
+                        current[key] !== undefined && current[key] !== null && current[key] !== '') {
+                        merged[key] = current[key];
+                    }
+                });
+
+                var byId = {};
+                function addMessage(m, fallbackIndex) {
+                    if (!m || typeof m !== 'object') return;
+                    var key = m.id ? String(m.id) :
+                        [m.from || '', m.ts || '', m.text || '', fallbackIndex].join('|');
+                    var prev = byId[key];
+                    // Preferir el que tenga más datos; no sustituir un mensaje
+                    // existente por una versión incompleta de la caché.
+                    if (!prev) {
+                        byId[key] = m;
+                    } else {
+                        byId[key] = Object.assign({}, prev, m);
+                        if (prev.readBy && (!m.readBy || m.readBy.length < prev.readBy.length)) {
+                            byId[key].readBy = prev.readBy;
+                        }
+                    }
+                }
+                (Array.isArray(current.messages) ? current.messages : []).forEach(addMessage);
+                (Array.isArray(chat.messages) ? chat.messages : []).forEach(addMessage);
+                merged.messages = Object.keys(byId).map(function (k) { return byId[k]; });
+                merged.messages.sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
+                merged.updatedAt = Math.max(current.updatedAt || 0, chat.updatedAt || 0, Date.now());
+                return merged;
+            }, undefined, false).then(function (result) {
+                if (!result.committed) return false;
+                return true;
+            }).catch(function (e) {
+                console.error('[GeoCloud] No se pudo fusionar el chat en Firebase:', e);
+                global.dispatchEvent(new CustomEvent('geometrics-cloud-error', {
+                    detail: { operation: 'transaction', path: 'chats/' + chat.id, message: e && e.message ? e.message : String(e) }
+                }));
+                return false;
+            });
+        }).catch(function (e) {
+            console.error('[GeoCloud] Error guardando chat:', e);
+            return false;
+        });
     }
-    /** Sube varios chats uno a uno (merge, no reemplazo total) */
+    /** Sube varios chats uno a uno; cada chat se fusiona transaccionalmente. */
     function pushChats(list) {
         var arr = (list || []).filter(function (c) { return c && c.id; });
         if (!arr.length) return Promise.resolve(true);
         return Promise.all(arr.map(function (c) { return pushChat(c); }))
-            .then(function () { return true; });
+            .then(function (results) { return results.every(function (ok) { return ok; }); });
     }
 
     function listenTareas(cb) {
