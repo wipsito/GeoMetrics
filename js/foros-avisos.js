@@ -1016,6 +1016,15 @@
     if (state._painting) return;
     host = resolveHost(host);
     if (!host) return;
+    // No destruir el input mientras el usuario escribe (evita el trabado)
+    if (!force) {
+      try {
+        var ae = document.activeElement;
+        if (ae && host.contains(ae) && ae.classList && ae.classList.contains('fa-chat-input')) {
+          return;
+        }
+      } catch (eSkip) {}
+    }
     state._painting = true;
     state.host = host;
     try {
@@ -1054,6 +1063,12 @@
   function refreshUI(preferKeepInput) {
     var host = resolveHost(state.host);
     if (!host) return;
+    try {
+      var ae = document.activeElement;
+      if (ae && host.contains(ae) && ae.classList && ae.classList.contains('fa-chat-input')) {
+        return; // no pisar mientras escribe
+      }
+    } catch (e) {}
     state.host = host;
     paint(host, !preferKeepInput);
   }
@@ -1073,21 +1088,19 @@
   }
 
   function doSend(host) {
-    if (state._sending) return false;
-    state._sending = true;
     try {
-      // Estudiante: forzar su root si estamos en esa pantalla
-      try {
-        var pe2 = document.getElementById('pantallaEstudiante');
-        var est2 = document.getElementById('faRootEstudiante');
-        if (pe2 && pe2.style.display !== 'none' && est2 && (!host || host.id === 'faRootEstudiante' || !host.id)) {
-          host = est2;
-        } else {
-          host = resolveHost(host);
-        }
-      } catch (eH) {
-        host = resolveHost(host);
-      }
+      var estRoot = document.getElementById('faRootEstudiante');
+      var docRoot = document.getElementById('faRootDocente');
+      var pe = document.getElementById('pantallaEstudiante');
+      var pd = document.getElementById('pantallaDocente');
+
+      // Elegir root: si el estudiante está visible, usar SOLO su root
+      var estudianteActivo = pe && pe.style.display !== 'none';
+      var docenteActivo = pd && pd.style.display !== 'none';
+      if (estudianteActivo && estRoot) host = estRoot;
+      else if (docenteActivo && docRoot) host = docRoot;
+      else if (host && host.querySelector) { /* keep */ }
+      else host = estRoot || docRoot || state.host;
       if (!host) return false;
 
       var u = session();
@@ -1095,7 +1108,9 @@
 
       var box = host.querySelector('[data-ch-send]');
       var input = host.querySelector('input.fa-chat-input');
-      var chatId = (box && box.getAttribute('data-chat-id')) || state.activeId;
+      if (!input && box) input = box.querySelector('input');
+      var chatId = state.activeId;
+      if (box && box.getAttribute('data-chat-id')) chatId = box.getAttribute('data-chat-id');
       var text = input ? String(input.value || '').trim() : '';
 
       var replyMeta = null;
@@ -1109,9 +1124,8 @@
         };
       }
 
-      if (!chatId) return false;
-      if (!text) {
-        if (input) input.focus();
+      if (!chatId || !text) {
+        if (!text && input) input.focus();
         return false;
       }
 
@@ -1123,24 +1137,17 @@
 
       if (input) input.value = '';
       state.replyTo = null;
-      if (box) {
-        box.removeAttribute('data-reply-id');
-        box.removeAttribute('data-reply-text');
-        box.removeAttribute('data-reply-name');
-      }
-
-      // Evitar que sync/poll repinte en bucle los próximos 1.5s
-      state._quietUntil = Date.now() + 1500;
+      state._quietUntil = Date.now() + 1200;
       state._dataSig = chatsSignature(loadChats());
       paint(host, true);
       return true;
     } catch (err) {
       console.error('doSend', err);
       return false;
-    } finally {
-      state._sending = false;
     }
   }
+
+
 
   function bind(host) {
     if (!host) return;
@@ -1634,6 +1641,93 @@
     }, false);
   }
 
+
+
+  // Handlers globales chat (estudiante prioritario en su root; no bloquean el input)
+  if (!global.__gmEstSendBound) {
+    global.__gmEstSendBound = true;
+
+    document.addEventListener('click', function (e) {
+      try {
+        var t = e.target;
+        if (!t || !t.closest) return;
+        var root = t.closest('#faRootEstudiante, #faRootDocente');
+        if (!root) return;
+
+        // Enviar
+        var btn = t.closest('[data-ch-send-btn], button.fa-send');
+        if (btn && root.contains(btn)) {
+          e.preventDefault();
+          e.stopPropagation();
+          state.host = root;
+          doSend(root);
+          return;
+        }
+
+        // Responder (⋮ del mensaje)
+        var replyBtn = t.closest('[data-ch-reply-msg]');
+        if (replyBtn && root.contains(replyBtn)) {
+          e.preventDefault();
+          e.stopPropagation();
+          var rid = replyBtn.getAttribute('data-ch-reply-msg');
+          var msgEl = root.querySelector('[data-msg-id="' + rid + '"] .fa-msg-text');
+          var bubble = root.querySelector('[data-msg-id="' + rid + '"]');
+          var fromName = 'Mensaje';
+          if (bubble && bubble.classList.contains('mine')) fromName = 'Tú';
+          else {
+            var authorEl = root.querySelector('[data-msg-id="' + rid + '"] .fa-msg-author');
+            if (authorEl) fromName = authorEl.textContent || fromName;
+          }
+          state.replyTo = {
+            id: rid,
+            text: msgEl ? msgEl.textContent : '',
+            fromName: fromName
+          };
+          state.host = root;
+          // cerrar menús
+          root.querySelectorAll('.fa-msg-dropdown, .fa-chat-dropdown').forEach(function (d) {
+            d.classList.remove('is-open');
+          });
+          state._menuOpen = false;
+          paint(root, true);
+          setTimeout(function () {
+            try {
+              var inp = root.querySelector('input.fa-chat-input');
+              if (inp) inp.focus();
+            } catch (e2) {}
+          }, 40);
+          return;
+        }
+
+        // Cancelar respuesta
+        var cancelReply = t.closest('[data-ch-cancel-reply]');
+        if (cancelReply && root.contains(cancelReply)) {
+          e.preventDefault();
+          e.stopPropagation();
+          state.replyTo = null;
+          state.host = root;
+          paint(root, true);
+          return;
+        }
+      } catch (err) { console.error('chat click', err); }
+    }, true);
+
+    document.addEventListener('keydown', function (e) {
+      try {
+        if (e.key !== 'Enter') return;
+        var t = e.target;
+        if (!t || !t.classList || !t.classList.contains('fa-chat-input')) return;
+        var root = t.closest('#faRootEstudiante, #faRootDocente');
+        if (!root) return;
+        var text = String(t.value || '').trim();
+        if (!text) return; // no enviar vacío ni bloquear
+        e.preventDefault();
+        e.stopPropagation();
+        state.host = root;
+        doSend(root);
+      } catch (err) { console.error('chat enter', err); }
+    }, true);
+  }
 
   global.ForosAvisos = { mount: mount, refresh: refresh, paint: paint, syncFromCloud: syncFromCloud, doSend: doSend };
   global.GeoMetricsChat = { mount: mount, refresh: refresh, paint: paint, syncFromCloud: syncFromCloud, doSend: doSend };
