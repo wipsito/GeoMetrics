@@ -447,3 +447,53 @@
   cursor: pointer !important;
 }
 .dp-panel.active { display: block !important; }
+
+/* Mensajes docente: chat + calendario */
+.dp-panel[data-dp-panel="foros"].active {
+  display: block !important;
+  padding: 0 !important;
+  height: calc(100vh - 64px);
+  overflow: hidden;
+}
+.dp-foros-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  height: 100%;
+  min-height: 520px;
+  gap: 0;
+}
+.dp-foros-layout #faRootDocente {
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  border-radius: 0;
+}
+.dp-foros-side {
+  border-left: 1px solid rgba(0,217,255,0.15);
+  background: rgba(4,16,32,0.92);
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dp-foros-side .av-card {
+  background: linear-gradient(160deg, rgba(8,28,48,0.9), rgba(4,16,32,0.95));
+  border: 1px solid rgba(0,217,255,0.25);
+  border-radius: 12px;
+  padding: 12px;
+}
+.dp-foros-side .av-card h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #7dd3fc;
+}
+@media (max-width: 1100px) {
+  .dp-foros-layout { grid-template-columns: 1fr; }
+  .dp-foros-side { display: none; }
+}
+
+/* foros search fix */
+.dp-panel[data-dp-panel="foros"] .fa-search input,
+.dp-panel[data-dp-panel="foros"] .fa-chat-input,
+.dp-panel[data-dp-panel="foros"] .fa-send { pointer-events: auto !important; }
