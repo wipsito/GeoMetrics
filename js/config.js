@@ -68,12 +68,12 @@ var EMAILJS_CONFIG = {
  */
 var FIREBASE_CONFIG = {
     enabled: true,
-    apiKey: 'AIzaSyAATF3qZlUPjvKcxuhu0E9dwFxYq5ASN-8',
-    authDomain: 'geometrics-c9369.firebaseapp.com',
-    databaseURL: 'https://geometrics-c9369-default-rtdb.firebaseio.com',
-    projectId: 'geometrics-c9369',
-    storageBucket: 'geometrics-c9369.firebasestorage.app',
-    messagingSenderId: '166965082939',
-    appId: '1:166965082939:web:3b3febdc07d0c59861551e',
-    measurementId: 'G-Q5BZXJJ7Q1'
+    apiKey: 'AIzaSyD4AYzzltlL46-fseJ-mMzTZpnqo3umnCw',
+    authDomain: 'geometrics-92c13.firebaseapp.com',
+    databaseURL: 'https://geometrics-92c13-default-rtdb.firebaseio.com',
+    projectId: 'geometrics-92c13',
+    storageBucket: 'geometrics-92c13.firebasestorage.app',
+    messagingSenderId: '81262129610',
+    appId: '1:81262129610:web:da8d659eb3dfe9a6ebdf33',
+    measurementId: 'G-KKRF62X613'
 };
