@@ -5447,17 +5447,22 @@ function aulaChatStartCloudListen() {
             });
             var merged = Object.keys(byId).map(function (k) { return byId[k]; });
             localStorage.setItem(CHAT_KEY, JSON.stringify(merged));
-            // Refrescar UI si hay chat abierto
+            // Actualizar siempre la lista del perfil activo, incluso si no hay
+            // una conversación abierta. Antes la actualización dependía de
+            // __chatActivoId y el panel estudiante podía quedarse desactualizado.
             var me = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
-            if (me && window.__chatActivoId) {
-                var active = merged.find(function (x) { return x.id === window.__chatActivoId; });
-                if (active) {
-                    if (me.rol === 'docente') {
-                        if (typeof aulaChatRenderMsgs === 'function') aulaChatRenderMsgs('docChatMsgs', active, me.email);
-                        if (typeof aulaChatRenderListaDocente === 'function') aulaChatRenderListaDocente();
-                    } else {
-                        if (typeof aulaChatRenderMsgs === 'function') aulaChatRenderMsgs('estChatMsgs', active, me.email);
-                        if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+            if (me) {
+                var rol = String(me.rol || '').toLowerCase();
+                if (rol === 'docente') {
+                    if (typeof aulaChatRenderListaDocente === 'function') aulaChatRenderListaDocente();
+                } else {
+                    if (typeof aulaChatRenderListaEstudiante === 'function') aulaChatRenderListaEstudiante();
+                }
+                if (window.__chatActivoId) {
+                    var active = merged.find(function (x) { return x.id === window.__chatActivoId; });
+                    if (active && typeof aulaChatRenderMsgs === 'function') {
+                        if (rol === 'docente') aulaChatRenderMsgs('docChatMsgs', active, me.email);
+                        else aulaChatRenderMsgs('estChatMsgs', active, me.email);
                     }
                 }
             }
