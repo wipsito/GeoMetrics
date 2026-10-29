@@ -576,31 +576,53 @@
     state.activeId = chat.id;
     state.composing = false;
     state.filter = 'todos';
-    paint(state.host);
+    paint(state.host, true);
   }
 
   function sendMessage(chatId, text, u) {
     text = String(text || '').trim();
     if (!text || !chatId || !u) return false;
-    var ok = false;
-    try {
-      if (typeof aulaChatSend === 'function') ok = !!aulaChatSend(chatId, u.email, text);
-    } catch (e) {}
-    if (ok) return true;
 
-    var list = loadChats();
-    var c = list.find(function (x) { return x.id === chatId; });
-    if (!c) return false;
-    if (!c.messages) c.messages = [];
-    c.messages.push({
-      id: 'm_' + Date.now().toString(36) + Math.random().toString(16).slice(2, 5),
+    var msg = {
+      id: 'm_' + Date.now().toString(36) + Math.random().toString(16).slice(2, 6),
       from: normEmail(u.email),
       text: text,
       ts: Date.now(),
       readBy: [normEmail(u.email)]
-    });
+    };
+
+    // 1) Local garantizado
+    var list = loadChats();
+    var c = list.find(function (x) { return x && x.id === chatId; });
+    if (!c) {
+      // crear contenedor mínimo para no perder el mensaje
+      c = {
+        id: chatId,
+        type: 'peer',
+        studentEmail: normEmail(u.email),
+        studentName: fullName(u),
+        members: [normEmail(u.email)],
+        messages: [],
+        updatedAt: Date.now()
+      };
+      list.push(c);
+    }
+    if (!c.messages) c.messages = [];
+    c.messages.push(msg);
     c.updatedAt = Date.now();
     saveChat(c);
+
+    // 2) API legacy (si existe y no duplica)
+    try {
+      if (typeof aulaChatSend === 'function') {
+        // ya guardamos; intentar sync extra sin fallar
+        var again = loadChats().find(function (x) { return x.id === chatId; });
+        if (again && (!again.messages || !again.messages.some(function (m) { return m.id === msg.id; }))) {
+          aulaChatSend(chatId, u.email, text);
+        }
+      }
+    } catch (e) {}
+
     return true;
   }
 
@@ -716,10 +738,23 @@
       '</form></div>';
   }
 
-  function paint(host) {
+  function isTypingInChat() {
+    try {
+      var el = document.activeElement;
+      if (!el || !state.host) return false;
+      if (!state.host.contains(el)) return false;
+      var tag = (el.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return true;
+      return !!el.closest('[data-ch-send], .fa-composer, .fa-search');
+    } catch (e) { return false; }
+  }
+
+  function paint(host, force) {
     host = host || state.host;
     if (!host) return;
     state.host = host;
+    // No destruir el input mientras el usuario escribe
+    if (!force && isTypingInChat()) return;
     var u = session();
     try {
       if (!u) {
@@ -762,23 +797,23 @@
         state.filter = 'todos';
         var can = activeChat();
         if (can && can.id) state.activeId = can.id;
-        paint(host);
+        paint(host, true);
         return;
       }
       if (t.hasAttribute('data-ch-filter')) {
         state.filter = t.getAttribute('data-ch-filter');
-        paint(host);
+        paint(host, true);
         return;
       }
       if (t.hasAttribute('data-ch-new')) {
         state.composing = true;
         state.activeId = null;
-        paint(host);
+        paint(host, true);
         return;
       }
       if (t.hasAttribute('data-ch-cancel-new')) {
         state.composing = false;
-        paint(host);
+        paint(host, true);
         return;
       }
       if (t.hasAttribute('data-ch-start')) {
@@ -800,8 +835,13 @@
       var text = input ? input.value : '';
       if (sendMessage(state.activeId, text, u)) {
         if (input) input.value = '';
-        paint(host);
-        if (input) setTimeout(function () { try { input.focus(); } catch (eF) {} }, 20);
+        paint(host, true);
+        setTimeout(function () {
+          try {
+            var inp = host.querySelector('[data-ch-send] [name="text"]');
+            if (inp) inp.focus();
+          } catch (eF) {}
+        }, 30);
       }
     };
 
