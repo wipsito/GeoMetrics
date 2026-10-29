@@ -901,3 +901,13 @@ button.fa-send,
 #faRootEstudiante .fa-emoji-btn {
   pointer-events: auto !important;
 }
+
+
+/* Corrección focalizada: scroll independiente y estable en conversaciones */
+#faRootEstudiante.fa-root, #faRootDocente.fa-root,
+#faRootEstudiante.fa-two-col, #faRootDocente.fa-two-col,
+.fa-root.fa-two-col, .fa-col-list, .fa-col-main { min-height: 0; }
+.fa-root.fa-two-col { overflow: hidden; }
+.fa-col-list, .fa-col-main { height: 100%; min-height: 0; overflow: hidden; }
+.fa-items { min-height: 0; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.fa-thread-body { min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-gutter: stable; }
