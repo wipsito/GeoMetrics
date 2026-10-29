@@ -1322,3 +1322,15 @@ button.av-user-chip:hover {
   background: rgba(0,217,255,0.22);
   border-color: #00D9FF;
 }
+
+/* Foros: ocupar el escenario completo */
+.av-view[data-av-view="foros"].active {
+  padding: 0 !important;
+  height: 100%;
+  min-height: min(72vh, 720px);
+}
+.av-view[data-av-view="foros"] .fa-root,
+#faRootEstudiante.fa-root {
+  height: min(72vh, 720px);
+  min-height: 520px;
+}
