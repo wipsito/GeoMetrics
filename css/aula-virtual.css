@@ -1362,3 +1362,29 @@ button.av-user-chip:hover {
   z-index: 40 !important;
   position: relative;
 }
+
+/* student send nuke */
+#pantallaEstudiante .av-view[data-av-view="foros"],
+#pantallaEstudiante .av-view[data-av-view="foros"].active {
+  pointer-events: auto !important;
+  z-index: 50 !important;
+  position: absolute !important;
+  inset: 0 !important;
+}
+#pantallaEstudiante #faRootEstudiante {
+  pointer-events: auto !important;
+  z-index: 51 !important;
+  position: relative !important;
+  height: 100% !important;
+}
+#pantallaEstudiante #faRootEstudiante .fa-composer,
+#pantallaEstudiante #faRootEstudiante .fa-send,
+#pantallaEstudiante #faRootEstudiante [data-ch-send-btn],
+#pantallaEstudiante #faRootEstudiante .fa-chat-input {
+  pointer-events: auto !important;
+  z-index: 60 !important;
+}
+#pantallaEstudiante .av-stage,
+#pantallaEstudiante .av-stage-overlay {
+  pointer-events: none !important;
+}
