@@ -36,27 +36,46 @@
         }).join('') || '<p class="av-muted">Sin cursos registrados</p>';
       }
       var title = document.getElementById('dpForosCalTitle');
+      var todayLabel = document.getElementById('dpForosTodayLabel');
       var grid = document.getElementById('dpForosCalGrid');
       if (title && grid) {
         var y = forosCalMonth.getFullYear();
         var m = forosCalMonth.getMonth();
         var months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        var weekdays = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+        var today = new Date();
+        var todayText = weekdays[today.getDay()] + ', ' + today.getDate() + ' de ' + months[today.getMonth()].toLowerCase() + ' de ' + today.getFullYear();
         title.textContent = months[m] + ' ' + y;
+        if (todayLabel) todayLabel.textContent = 'Hoy: ' + todayText;
         var first = new Date(y, m, 1);
         var start = (first.getDay() + 6) % 7; // Lunes=0
         var days = new Date(y, m + 1, 0).getDate();
         var html = '<div class="av-cal-hd">L</div><div class="av-cal-hd">M</div><div class="av-cal-hd">X</div><div class="av-cal-hd">J</div><div class="av-cal-hd">V</div><div class="av-cal-hd">S</div><div class="av-cal-hd">D</div>';
-        for (var i = 0; i < start; i++) html += '<div class="av-cal-day muted"></div>';
-        var today = new Date();
+        for (var i = 0; i < start; i++) html += '<div class="av-cal-day muted" aria-hidden="true"></div>';
         for (var d = 1; d <= days; d++) {
           var isToday = today.getFullYear() === y && today.getMonth() === m && today.getDate() === d;
-          html += '<div class="av-cal-day' + (isToday ? ' today' : '') + '">' + d + '</div>';
+          var dateText = weekdays[new Date(y, m, d).getDay()] + ', ' + d + ' de ' + months[m].toLowerCase() + ' de ' + y;
+          html += '<button type="button" class="av-cal-day' + (isToday ? ' today' : '') + '" data-dp-foros-day="' + d + '" aria-label="' + dateText + (isToday ? ', hoy' : '') + '"' + (isToday ? ' aria-current="date"' : '') + ' title="' + dateText + '">' + d + '</button>';
         }
         grid.innerHTML = html;
       }
       if (!document.body._dpForosCalBound) {
         document.body._dpForosCalBound = true;
         document.addEventListener('click', function (e) {
+          var dayButton = e.target.closest('[data-dp-foros-day]');
+          if (dayButton) {
+            var picked = parseInt(dayButton.getAttribute('data-dp-foros-day'), 10);
+            var pickedDate = new Date(forosCalMonth.getFullYear(), forosCalMonth.getMonth(), picked);
+            var monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+            var weekdayNames = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+            var label = document.getElementById('dpForosTodayLabel');
+            if (label) {
+              var now = new Date();
+              var isToday = pickedDate.getFullYear() === now.getFullYear() && pickedDate.getMonth() === now.getMonth() && pickedDate.getDate() === now.getDate();
+              label.textContent = (isToday ? 'Hoy: ' : 'Fecha seleccionada: ') + weekdayNames[pickedDate.getDay()] + ', ' + picked + ' de ' + monthNames[pickedDate.getMonth()] + ' de ' + pickedDate.getFullYear();
+            }
+            return;
+          }
           var b = e.target.closest('[data-dp-foros-cal]');
           if (!b) return;
           var delta = parseInt(b.getAttribute('data-dp-foros-cal'), 10) || 0;
