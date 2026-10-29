@@ -56,23 +56,45 @@
 
     function cloudSet(path, value) {
         return init().then(function (d) {
-            if (!d) return false;
+            if (!d) {
+                console.error('[GeoCloud] No se puede guardar en la nube: Firebase no está disponible. Ruta:', path);
+                return false;
+            }
             return d.ref(path).set(value).then(function () { return true; })
-                .catch(function (e) { console.warn('cloudSet', path, e); return false; });
+                .catch(function (e) {
+                    console.error('[GeoCloud] No se pudo guardar "' + path + '". Revisa las reglas de Realtime Database y el proyecto configurado:', e);
+                    global.dispatchEvent(new CustomEvent('geometrics-cloud-error', { detail: { operation: 'write', path: path, message: e && e.message ? e.message : String(e) } }));
+                    return false;
+                });
+        }).catch(function (e) {
+            console.error('[GeoCloud] Error de conexión al guardar', path, e);
+            return false;
         });
     }
 
     function cloudListen(path, cb) {
         return init().then(function (d) {
-            if (!d) return;
+            if (!d) {
+                console.error('[GeoCloud] Firebase no está configurado o no pudo inicializarse. Ruta:', path);
+                return false;
+            }
             if (listeners[path]) {
                 try { d.ref(path).off('value', listeners[path]); } catch (e) {}
             }
             var handler = function (snap) {
-                try { cb(snap.exists() ? snap.val() : null); } catch (e) {}
+                try { cb(snap.exists() ? snap.val() : null); }
+                catch (e) { console.error('[GeoCloud] Error procesando datos de', path, e); }
             };
             listeners[path] = handler;
-            d.ref(path).on('value', handler);
+            // El tercer argumento permite detectar reglas de Firebase que deniegan lectura.
+            d.ref(path).on('value', handler, function (error) {
+                console.error('[GeoCloud] No se pudo leer "' + path + '". Revisa las reglas de Realtime Database y el proyecto configurado:', error);
+                global.dispatchEvent(new CustomEvent('geometrics-cloud-error', { detail: { operation: 'read', path: path, message: error && error.message ? error.message : String(error) } }));
+            });
+            return true;
+        }).catch(function (e) {
+            console.error('[GeoCloud] Error iniciando escucha de', path, e);
+            return false;
         });
     }
 
