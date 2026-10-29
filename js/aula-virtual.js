@@ -261,7 +261,6 @@
 
   function renderForum() {
     try {
-      // Solo el panel del perfil activo (estudiante). Docente monta en su dashboard.
       var el = document.getElementById('faRootEstudiante');
       if (el && window.ForosAvisos && typeof ForosAvisos.mount === 'function') {
         ForosAvisos.mount(el);
@@ -1557,6 +1556,11 @@
       est.addEventListener('click', function (e) {
         var t = e.target;
         if (!t || !t.closest) return;
+
+        // No interferir con el módulo de Mensajes (enviar, emojis, menús)
+        if (t.closest('#faRootEstudiante, .fa-root, [data-ch-send], .fa-send, .fa-chat-input, .fa-emoji-btn, .fa-emoji-panel, .fa-composer')) {
+          return;
+        }
 
         // Navegación principal / quickbar
         var navBtn = t.closest('button[data-av-view], [data-av-view]');

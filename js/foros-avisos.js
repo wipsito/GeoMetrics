@@ -33,23 +33,35 @@
     } catch (e) { return null; }
   }
 
-  /** El root visible: estudiante o docente (misma lógica en ambos perfiles) */
+  /** Root del chat activo. Docente intacto; estudiante siempre su root si su pantalla está abierta. */
   function resolveHost(preferred) {
-    if (preferred && preferred.querySelector) return preferred;
+    if (preferred && preferred.querySelector) {
+      // Si nos pasan el root estudiante o docente, usarlo
+      return preferred;
+    }
     try {
-      var pd = document.getElementById('pantallaDocente');
       var pe = document.getElementById('pantallaEstudiante');
-      var docRoot = document.getElementById('faRootDocente');
+      var pd = document.getElementById('pantallaDocente');
       var estRoot = document.getElementById('faRootEstudiante');
-      // Preferir la pantalla visible
-      var docVisible = pd && pd.style.display !== 'none' && pd.offsetParent !== null;
-      var estVisible = pe && pe.style.display !== 'none' && pe.offsetParent !== null;
-      if (docVisible && docRoot) return docRoot;
-      if (estVisible && estRoot) return estRoot;
-      // Fallback: el que tenga contenido de chat abierto
-      if (docRoot && docRoot.querySelector('[data-ch-send]')) return docRoot;
-      if (estRoot && estRoot.querySelector('[data-ch-send]')) return estRoot;
-      return state.host || docRoot || estRoot || null;
+      var docRoot = document.getElementById('faRootDocente');
+
+      var estOpen = pe && (pe.style.display === '' || pe.style.display === 'block' || pe.style.display === 'grid') && pe.style.display !== 'none';
+      var docOpen = pd && (pd.style.display === '' || pd.style.display === 'block' || pd.style.display === 'grid') && pd.style.display !== 'none';
+
+      // Heurística extra: clase / visibility
+      if (pe && pe.offsetParent !== null) estOpen = true;
+      if (pd && pd.offsetParent !== null) docOpen = true;
+      if (pe && pe.style.display === 'none') estOpen = false;
+      if (pd && pd.style.display === 'none') docOpen = false;
+
+      // Prioridad: quien está visible
+      if (estOpen && !docOpen && estRoot) return estRoot;
+      if (docOpen && !estOpen && docRoot) return docRoot;
+      if (estOpen && estRoot) return estRoot;
+      if (docOpen && docRoot) return docRoot;
+
+      if (state.host) return state.host;
+      return estRoot || docRoot || null;
     } catch (e) {
       return state.host || null;
     }
@@ -1064,7 +1076,18 @@
     if (state._sending) return false;
     state._sending = true;
     try {
-      host = resolveHost(host);
+      // Estudiante: forzar su root si estamos en esa pantalla
+      try {
+        var pe2 = document.getElementById('pantallaEstudiante');
+        var est2 = document.getElementById('faRootEstudiante');
+        if (pe2 && pe2.style.display !== 'none' && est2 && (!host || host.id === 'faRootEstudiante' || !host.id)) {
+          host = est2;
+        } else {
+          host = resolveHost(host);
+        }
+      } catch (eH) {
+        host = resolveHost(host);
+      }
       if (!host) return false;
 
       var u = session();
@@ -1149,13 +1172,8 @@
     host._chClick = function (e) {
       if (!host.contains(e.target)) return;
 
-      // Enviar
-      var sendBtn = e.target.closest('[data-ch-send-btn], .fa-send');
-      if (sendBtn && host.contains(sendBtn)) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeAllMenus();
-        doSend(host);
+      // Enviar: lo maneja wireSend (onclick). No duplicar aquí.
+      if (e.target.closest('[data-ch-send-btn], .fa-send')) {
         return;
       }
 
@@ -1417,13 +1435,8 @@
     };
 
     host._chKey = function (e) {
-      if (e.key !== 'Enter') return;
-      var input = e.target;
-      if (!input || !host.contains(input)) return;
-      if (input.name !== 'text' && !(input.classList && input.classList.contains('fa-chat-input'))) return;
-      e.preventDefault();
-      e.stopPropagation();
-      doSend(host);
+      // Enter en composer lo maneja input.onkeydown de wireSend
+      return;
     };
 
     // Búsqueda respaldo
@@ -1450,28 +1463,25 @@
     host.addEventListener('input', host._chInput, true);
     host.addEventListener('keydown', host._chSearchKey, true);
 
-    // Envío directo (prioridad máxima)
+    // Envío: un solo handler (onclick/onkeydown) — no apilar listeners
     function wireSend() {
       var btn = host.querySelector('[data-ch-send-btn], button.fa-send');
       if (btn) {
-        btn.onclick = null;
-        btn.onmousedown = null;
-        btn.addEventListener('click', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          e.stopImmediatePropagation();
+        btn.onclick = function (e) {
+          if (e) { e.preventDefault(); e.stopPropagation(); }
           doSend(host);
-        }, true);
+          return false;
+        };
       }
       var input = host.querySelector('input.fa-chat-input');
       if (input) {
-        input.addEventListener('keydown', function (e) {
-          if (e.key !== 'Enter') return;
+        input.onkeydown = function (e) {
+          if (!e || e.key !== 'Enter') return;
           e.preventDefault();
           e.stopPropagation();
-          e.stopImmediatePropagation();
           doSend(host);
-        }, true);
+          return false;
+        };
       }
     }
     wireSend();
@@ -1524,6 +1534,7 @@
     var host = typeof hostId === 'string' ? document.getElementById(hostId) : hostId;
     if (!host) return;
     state.host = host;
+    state._rootId = host.id || '';
     try { purgeBlockedUsers(); } catch (ePurge) {}
     paint(host, true);
 
