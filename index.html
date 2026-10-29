@@ -705,6 +705,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     body.gm-booting #pantallaInicio { display: none !important; }
   </style>
 
+    <link rel="stylesheet" href="css/foros-avisos.css">
 </head>
 <body>
 
@@ -1871,6 +1872,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 <button type="button" data-dp-view="tareas"><span class="dp-ico">✅</span><span class="label">Tareas</span></button>
                 <button type="button" data-dp-view="entregas"><span class="dp-ico">📥</span><span class="label">Entregas</span></button>
                 <button type="button" data-dp-view="estudiantes"><span class="dp-ico">👥</span><span class="label">Estudiantes</span></button>
+                <button type="button" data-dp-view="foros"><span class="dp-ico">💬</span><span class="label">Mensajes</span></button>
                 <button type="button" data-dp-view="material"><span class="dp-ico">📄</span><span class="label">Material</span></button>
                 <button type="button" data-dp-view="analisis"><span class="dp-ico">📈</span><span class="label">Análisis</span></button>
                 <div class="dp-side-foot">
@@ -2083,6 +2085,10 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                     </div>
                 </section>
 
+                <section class="dp-panel" data-dp-panel="foros">
+                    <div id="faRootDocente" class="fa-root" aria-label="Mensajes docente"></div>
+                </section>
+
                 <!-- CURSOS (alias dashboard section for top nav) -->
                 <section class="dp-panel" data-dp-panel="cursos">
                     <div class="dp-head">
@@ -2156,7 +2162,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
             <button type="button" data-av-view="cursos" title="Mis Cursos"><span class="av-ico">📚</span>Cursos</button>
             <button type="button" data-av-view="calendario" title="Calendario"><span class="av-ico">📅</span>Calend.</button>
             <button type="button" data-av-view="tareas" title="Tareas"><span class="av-ico">📋</span>Tareas</button>
-            <button type="button" data-av-view="foros" title="Foros"><span class="av-ico">💬</span>Foros</button>
+            <button type="button" data-av-view="foros" title="Mensajes"><span class="av-ico">💬</span>Mensajes</button>
             <button type="button" data-av-view="recursos" title="Recursos"><span class="av-ico">📁</span>Recursos</button>
             <button type="button" data-av-view="calificaciones" title="Calificaciones"><span class="av-ico">📊</span>Notas</button>
         </nav>
@@ -2180,7 +2186,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                     <button type="button" data-av-action="temas">Temas</button>
                     <button type="button" data-av-action="actividades">Actividades</button>
                     <button type="button" data-av-action="evaluaciones">Evaluaciones</button>
-                    <button type="button" data-av-action="foros">Foros</button>
+                    <button type="button" data-av-action="foros">Mensajes</button>
                 </div>
             </div>
 
@@ -2261,16 +2267,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 <div id="listaTareasEstudiante" class="av-task-list"></div>
             </div>
             <div class="av-view" data-av-view="foros">
-                <h2>Foros y avisos</h2>
-                <p class="av-view-hint">Mural del curso activo. Los mensajes se guardan en este navegador (y en la nube si GeoCloud está activo).</p>
-                <div class="av-forum">
-                    <div class="av-forum-toolbar">
-                        <select id="avForumMateria" aria-label="Materia del foro"></select>
-                        <input type="text" id="avForumInput" placeholder="Escribe un aviso o pregunta…" maxlength="500">
-                        <button type="button" class="av-btn-primary" id="avForumSend">Publicar</button>
-                    </div>
-                    <div id="avForumList" class="av-task-list"></div>
-                </div>
+                <div id="faRootEstudiante" class="fa-root" aria-label="Mensajes"></div>
             </div>
             <div class="av-view" data-av-view="recursos">
                 <h2>Recursos</h2>
@@ -3057,6 +3054,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/mezclas-sim.js"></script>
     <script src="js/aula.js"></script>
     <script src="js/docente-dashboard.js"></script>
+    <script src="js/foros-avisos.js"></script>
     <script src="js/aula-virtual.js"></script>
     <script src="js/app.js"></script>
     <!-- 2D primero (defs que usa el 3D) -->
