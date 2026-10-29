@@ -1345,3 +1345,20 @@ button.av-user-chip:hover {
 .av-view[data-av-view="foros"].active button {
   pointer-events: auto !important;
 }
+
+/* student chat send fix */
+#pantallaEstudiante .av-view[data-av-view="foros"].active {
+  pointer-events: auto !important;
+  z-index: 30 !important;
+}
+#pantallaEstudiante #faRootEstudiante,
+#pantallaEstudiante #faRootEstudiante * {
+  pointer-events: auto !important;
+}
+#pantallaEstudiante #faRootEstudiante .fa-send,
+#pantallaEstudiante #faRootEstudiante .fa-chat-input,
+#pantallaEstudiante #faRootEstudiante [data-ch-send-btn] {
+  pointer-events: auto !important;
+  z-index: 40 !important;
+  position: relative;
+}
