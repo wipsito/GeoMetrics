@@ -1777,6 +1777,24 @@ function civixInstruccionModo(modo) {
         + 'Si hay un ejemplo de documento (carta, informe), preséntalo de forma legible sin envolverlo innecesariamente en bloques de código, salvo que sea código real.';
 }
 
+function civixFechaColombia() {
+    try {
+        return new Date().toLocaleString('es-CO', {
+            timeZone: 'America/Bogota',
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+    } catch (e) {
+        return new Date().toISOString();
+    }
+}
+
 function civixBuildContextSystem() {
     var nombre = civixNombrePreferido();
     var partes = [];
@@ -1785,6 +1803,11 @@ function civixBuildContextSystem() {
         'Involúcralo de forma natural y estética en tus respuestas (no de forma forzada ni mecánica). ' +
         'Puedes empezar frases con el nombre ("' + nombre + ', la porosidad se define…") o usarlo en saludos y cierres ("¡Hola, ' + nombre + '!", "¿Te queda claro, ' + nombre + '?"). ' +
         'No insertes el nombre en medio de fechas, números ni títulos. Usa el nombre 1 vez al inicio o cuando aporte cercanía; no lo repitas en cada oración.'
+    );
+    partes.push(
+        'Fecha y hora actuales en Colombia (zona America/Bogota): ' + civixFechaColombia() + '. ' +
+        'Si el usuario pregunta qué día es, la fecha de hoy o la hora, responde SOLO con esta información. ' +
+        'No inventes ni cambies el día de la semana ni el número de día.'
     );
     partes.push(civixInstruccionModo(window.__civixModo));
     try {

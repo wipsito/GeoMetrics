@@ -244,13 +244,41 @@
     function pullAdmins() {
         return cloudGet('admins').then(function (val) {
             if (!val) return null;
-            if (Array.isArray(val)) return val;
-            return Object.keys(val).map(function (k) { return val[k]; });
+            var out = [];
+            if (Array.isArray(val)) {
+                out = val.filter(Boolean).map(function (x) {
+                    return typeof x === 'string' ? x : (x && x.email ? x.email : '');
+                });
+            } else if (typeof val === 'object') {
+                Object.keys(val).forEach(function (k) {
+                    var x = val[k];
+                    if (typeof x === 'string' && x.indexOf('@') >= 0) out.push(x);
+                    else if (x && typeof x === 'object' && x.email) out.push(x.email);
+                });
+            }
+            var seen = {}, clean = [];
+            out.forEach(function (e) {
+                e = String(e || '').trim().toLowerCase();
+                if (!e || e.indexOf('@') < 0) return;
+                if (!seen[e]) { seen[e] = true; clean.push(e); }
+            });
+            return clean;
         });
     }
 
     function pushAdmins(list) {
-        return cloudSet('admins', list || []);
+        if (!isOn()) return Promise.resolve(false);
+        // Guardar como mapa emailKey -> email (más fiable en RTDB que un array)
+        var obj = {};
+        (list || []).forEach(function (e) {
+            e = String(e || '').trim().toLowerCase();
+            if (!e || e.indexOf('@') < 0) return;
+            obj[emailKey(e)] = e;
+        });
+        return cloudSet('admins', obj).then(function () { return true; }).catch(function (err) {
+            console.warn('[GeoCloud] pushAdmins falló', err);
+            return false;
+        });
     }
 
     /** Mezcla local + nube (nube gana si hay datos) */
@@ -661,9 +689,60 @@ function syncUpUsers() {
         return cloudGet('avisos').then(arrFromNode);
     }
 
+
+    // Elimina únicamente el usuario demo Luke Saint y sus conversaciones asociadas.
+    function purgeLukeSaintDemo() {
+        return init().then(function (d) {
+            if (!d) return false;
+            function isLuke(value) {
+                if (!value || typeof value !== 'object') return false;
+                var names = [value.name, value.nombre, value.fullName, value.displayName,
+                    value.studentName, value.teacherName, value.peerName].join(' ').toLowerCase();
+                var emails = [value.email, value.studentEmail, value.teacherEmail,
+                    value.peerEmail, value.emailA, value.emailB].join(' ').toLowerCase();
+                return (names.indexOf('luke') >= 0 && names.indexOf('saint') >= 0) ||
+                    (emails.indexOf('luke') >= 0 && emails.indexOf('saint') >= 0) ||
+                    emails.indexOf('luke.saint') >= 0;
+            }
+            return Promise.all([
+                d.ref('users').once('value').then(function (snap) {
+                    var val = snap.val() || {}, jobs = [];
+                    Object.keys(val).forEach(function (key) {
+                        if (isLuke(val[key]) ||
+                            (key.toLowerCase().indexOf('luke') >= 0 && key.toLowerCase().indexOf('saint') >= 0)) {
+                            jobs.push(d.ref('users/' + key).remove());
+                        }
+                    });
+                    return Promise.all(jobs);
+                }),
+                d.ref('chats').once('value').then(function (snap) {
+                    var val = snap.val() || {}, jobs = [];
+                    Object.keys(val).forEach(function (key) {
+                        if (isLuke(val[key])) {
+                            jobs.push(d.ref('chats/' + key).remove());
+                            return;
+                        }
+                        var msgs = val[key] && Array.isArray(val[key].messages) ? val[key].messages : [];
+                        var linked = [val[key] && val[key].studentEmail, val[key] && val[key].teacherEmail,
+                            val[key] && val[key].peerEmail].some(function (e) {
+                                e = String(e || '').toLowerCase();
+                                return e.indexOf('luke.saint') >= 0 || (e.indexOf('luke') >= 0 && e.indexOf('saint') >= 0);
+                            });
+                        if (linked || msgs.some(isLuke)) jobs.push(d.ref('chats/' + key).remove());
+                    });
+                    return Promise.all(jobs);
+                })
+            ]).then(function () { return true; }).catch(function (e) {
+                console.warn('[GeoCloud] No se pudo limpiar Luke Saint:', e);
+                return false;
+            });
+        });
+    }
+
     global.GeoCloud = {
         cloudGet: cloudGet,
         cloudSet: cloudSet,
+        purgeLukeSaintDemo: purgeLukeSaintDemo,
         emailKey: emailKey,
         isOn: isOn,
         init: init,

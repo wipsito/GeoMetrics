@@ -447,6 +447,19 @@ function aulaAdminsSave(list) {
     var seen = {}, out = [];
     list.forEach(function(e) { if (!seen[e]) { seen[e] = true; out.push(e); } });
     aulaSave(AULA_KEYS.admins, out);
+    // Forzar sincronización inmediata a Firebase (además del hook de aulaSave)
+    try {
+        if (window.GeoCloud && GeoCloud.isOn && GeoCloud.isOn() && typeof GeoCloud.pushAdmins === 'function') {
+            GeoCloud.pushAdmins(out).then(function (ok) {
+                if (ok) console.info('[GeoMetrics] Admins sincronizados en Firebase:', out.length);
+                else console.warn('[GeoMetrics] No se pudo confirmar push de admins');
+            }).catch(function (err) {
+                console.warn('[GeoMetrics] Error subiendo admins a Firebase', err);
+            });
+        }
+    } catch (ePush) {
+        console.warn('[GeoMetrics] pushAdmins', ePush);
+    }
 }
 function aulaEsAdminEmail(email) {
     try {
@@ -5924,15 +5937,12 @@ function aulaAdminQuitarDocente(email) {
 
 function aulaAdminPromoverAdmin() {
     var err = document.getElementById('adminPromoError');
+    var okEl = document.getElementById('adminPromoOk');
     if (err) err.textContent = '';
+    if (okEl) okEl.textContent = '';
     var email = aulaNormalizarEmail((document.getElementById('adminPromoEmail') || {}).value);
     if (!email || !email.endsWith('@' + aulaDominio())) {
-        if (err) err.textContent = 'Correo institucional inválido.';
-        return;
-    }
-    // Cualquier correo institucional (estudiante o docente) puede ser administrador de la página
-    if (!email.endsWith('@' + aulaDominio())) {
-        if (err) err.textContent = 'Usa un correo @' + aulaDominio() + '.';
+        if (err) err.textContent = 'Correo institucional inválido. Usa un correo @' + aulaDominio() + '.';
         return;
     }
     var ads = aulaAdminsLoad();
@@ -5940,6 +5950,18 @@ function aulaAdminPromoverAdmin() {
     aulaAdminsSave(ads);
     var inp = document.getElementById('adminPromoEmail'); if (inp) inp.value = '';
     aulaRenderAdmin();
+    if (okEl) {
+        okEl.textContent = (window.GeoCloud && GeoCloud.isOn && GeoCloud.isOn())
+            ? 'Administrador agregado y sincronizado en la base de datos.'
+            : 'Administrador agregado en este dispositivo (Firebase no activo).';
+    } else if (err) {
+        // reutilizar error como info breve si no hay ok
+    }
+    try {
+        if (window.GeoCloud && GeoCloud.isOn && GeoCloud.isOn() && GeoCloud.pushAdmins) {
+            GeoCloud.pushAdmins(aulaAdminsLoad());
+        }
+    } catch (e2) {}
 }
 
 function aulaAdminQuitarAdmin(email) {

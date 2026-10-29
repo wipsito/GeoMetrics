@@ -1556,6 +1556,13 @@
     state.host = host;
     state._rootId = host.id || '';
     try { purgeBlockedUsers(); } catch (ePurge) {}
+    // Limpieza de la cuenta demo en Firebase, sin tocar admins ni otros usuarios.
+    try {
+      if (typeof GeoCloud !== 'undefined' && GeoCloud.isOn && GeoCloud.isOn() &&
+          typeof GeoCloud.purgeLukeSaintDemo === 'function') {
+        GeoCloud.purgeLukeSaintDemo();
+      }
+    } catch (eCloudPurge) {}
     paint(host, true);
 
     // Firebase: pull + listen en tiempo real
