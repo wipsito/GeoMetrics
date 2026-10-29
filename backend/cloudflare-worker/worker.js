@@ -412,6 +412,15 @@ export default {
       const rest = messages.filter((m) => m && m.role !== 'system');
       const uname = (body.userName || '').toString().trim();
       let sys = SYSTEM_CIVIX;
+      try {
+        const fechaCO = new Date().toLocaleString('es-CO', {
+          timeZone: 'America/Bogota',
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: false
+        });
+        sys += '\n\nFecha y hora actuales en Colombia (America/Bogota): ' + fechaCO + '. '
+          + 'Si el usuario pregunta qué día es o la fecha de hoy, responde con esta información exacta. No inventes el día de la semana.';
+      } catch (eFecha) {}
       if (uname) {
         sys += '\n\nEl usuario prefiere que lo llames "' + uname + '". Dirigete a esa persona por su nombre de forma natural.';
       }
