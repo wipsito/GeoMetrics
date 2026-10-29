@@ -557,3 +557,17 @@
 #dpForosCalGrid .av-cal-day:focus-visible{outline:2px solid #00D9FF;outline-offset:2px}
 #pantallaDocente .dp-foros-resources button{border-radius:12px;padding:10px 12px;font-size:12px;background:rgba(2,9,20,.4);border:1px solid rgba(0,217,255,.15);color:#eaf4ff}
 #pantallaDocente .dp-foros-resources button:hover{border-color:#00d9ff;color:#00d9ff}
+
+
+/* Navegación configurable: iconos solos o iconos con etiquetas */
+.nav-display-toggle{display:flex;gap:4px;padding:5px;margin:0 0 8px;border:1px solid rgba(0,217,255,.18);border-radius:10px;background:rgba(4,17,31,.7);}
+.nav-display-toggle button{flex:1;min-width:0;padding:6px 8px;border:1px solid transparent;border-radius:7px;background:transparent;color:#9bbbd7;cursor:pointer;font-size:14px;}
+.nav-display-toggle button.active{color:#eafaff;background:rgba(0,190,255,.16);border-color:rgba(0,217,255,.35);}
+#pantallaDocente.nav-icons-only .dp-side button{justify-content:center;padding-left:8px;padding-right:8px;gap:0;}
+#pantallaDocente.nav-icons-only .dp-side button .label{display:none;}
+#pantallaDocente.nav-icons-only .dp-side-label{display:none;}
+#pantallaDocente.nav-icons-only .dp-side .nav-display-toggle{flex-direction:column;}
+#pantallaEstudiante .av-nav .nav-display-toggle{align-self:stretch;min-width:76px;margin:4px 6px;}
+#pantallaEstudiante.nav-icons-only .av-nav>button{font-size:0;justify-content:center;gap:0;min-width:48px;padding-left:10px;padding-right:10px;}
+#pantallaEstudiante.nav-icons-only .av-nav>button .av-ico{font-size:20px;}
+#pantallaEstudiante.nav-icons-only .av-nav .nav-display-toggle{flex-direction:column;min-width:44px;}
