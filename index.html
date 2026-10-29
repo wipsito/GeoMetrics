@@ -1867,6 +1867,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         <div class="dp-body">
             <!-- Sidebar -->
             <aside class="dp-side" aria-label="Menú del panel">
+                <div class="nav-display-toggle" data-nav-toggle="docente"><button type="button" data-nav-mode="icons" aria-label="Mostrar solo iconos" title="Solo iconos">◧</button><button type="button" data-nav-mode="labels" aria-label="Mostrar iconos y nombres" title="Iconos y nombres">☷</button></div>
                 <div class="dp-side-label">Principal</div>
                 <button type="button" class="active" data-dp-view="dashboard"><span class="dp-ico">📊</span><span class="label">Dashboard</span></button>
                 <button type="button" data-dp-view="tareas"><span class="dp-ico">✅</span><span class="label">Tareas</span></button>
@@ -2190,6 +2191,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         </header>
 
         <nav class="av-nav" aria-label="Navegación aula virtual">
+            <div class="nav-display-toggle" data-nav-toggle="estudiante"><button type="button" data-nav-mode="icons" aria-label="Mostrar solo iconos" title="Solo iconos">◧</button><button type="button" data-nav-mode="labels" aria-label="Mostrar iconos y nombres" title="Iconos y nombres">☷</button></div>
             <button type="button" class="active" data-av-view="aula" title="Aula Virtual"><span class="av-ico">🏠</span>Aula</button>
             <button type="button" data-av-view="inicio" title="Inicio"><span class="av-ico">⌁</span>Inicio</button>
             <button type="button" data-av-view="cursos" title="Mis Cursos"><span class="av-ico">📚</span>Cursos</button>
@@ -3182,6 +3184,33 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 .gm-confirm-ok:hover { filter: brightness(1.08); }
 </style>
 
+
+<script>
+/* Preferencia visual de navegación: no altera la lógica de los módulos. */
+(function(){
+  function applyMode(profile, mode){
+    var root = profile === 'docente' ? document.getElementById('pantallaDocente') : document.getElementById('pantallaEstudiante');
+    if(!root) return;
+    root.classList.toggle('nav-icons-only', mode === 'icons');
+    root.classList.toggle('nav-icons-labels', mode !== 'icons');
+    try { localStorage.setItem('geometrics-nav-mode-' + profile, mode); } catch(e) {}
+    root.querySelectorAll('[data-nav-toggle] button').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-nav-mode') === mode);
+      b.setAttribute('aria-pressed', b.getAttribute('data-nav-mode') === mode ? 'true' : 'false');
+    });
+  }
+  document.querySelectorAll('[data-nav-toggle]').forEach(function(group){
+    group.addEventListener('click', function(e){
+      var b=e.target.closest('button[data-nav-mode]'); if(!b) return;
+      applyMode(group.getAttribute('data-nav-toggle'), b.getAttribute('data-nav-mode'));
+    });
+  });
+  ['docente','estudiante'].forEach(function(profile){
+    var mode='labels'; try { mode=localStorage.getItem('geometrics-nav-mode-'+profile)||'labels'; } catch(e){}
+    applyMode(profile, mode);
+  });
+})();
+</script>
 </body>
 
 </html>
