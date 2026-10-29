@@ -261,15 +261,12 @@
 
   function renderForum() {
     try {
+      // Solo el panel del perfil activo (estudiante). Docente monta en su dashboard.
       var el = document.getElementById('faRootEstudiante');
       if (el && window.ForosAvisos && typeof ForosAvisos.mount === 'function') {
         ForosAvisos.mount(el);
       } else if (el) {
         el.innerHTML = '<div style="padding:24px;color:#8DA7C2">Módulo de mensajes no cargado. Recarga con Ctrl+F5.</div>';
-      }
-      var elD = document.getElementById('faRootDocente');
-      if (elD && window.ForosAvisos && typeof ForosAvisos.mount === 'function') {
-        ForosAvisos.mount(elD);
       }
     } catch (e) {
       console.error('renderForum', e);

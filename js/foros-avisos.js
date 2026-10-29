@@ -11,8 +11,13 @@
     q: '',
     activeId: null,
     composing: false,
+    replyTo: null,
     _poll: null,
-    _lastSig: ''
+    _lastSig: '',
+    _menuOpen: false,
+    _painting: false,
+    _sending: false,
+    _quietUntil: 0
   };
 
   function esc(s) {
@@ -26,6 +31,28 @@
     try {
       return typeof aulaGetSession === 'function' ? aulaGetSession() : null;
     } catch (e) { return null; }
+  }
+
+  /** El root visible: estudiante o docente (misma lógica en ambos perfiles) */
+  function resolveHost(preferred) {
+    if (preferred && preferred.querySelector) return preferred;
+    try {
+      var pd = document.getElementById('pantallaDocente');
+      var pe = document.getElementById('pantallaEstudiante');
+      var docRoot = document.getElementById('faRootDocente');
+      var estRoot = document.getElementById('faRootEstudiante');
+      // Preferir la pantalla visible
+      var docVisible = pd && pd.style.display !== 'none' && pd.offsetParent !== null;
+      var estVisible = pe && pe.style.display !== 'none' && pe.offsetParent !== null;
+      if (docVisible && docRoot) return docRoot;
+      if (estVisible && estRoot) return estRoot;
+      // Fallback: el que tenga contenido de chat abierto
+      if (docRoot && docRoot.querySelector('[data-ch-send]')) return docRoot;
+      if (estRoot && estRoot.querySelector('[data-ch-send]')) return estRoot;
+      return state.host || docRoot || estRoot || null;
+    } catch (e) {
+      return state.host || null;
+    }
   }
 
   function normEmail(e) {
@@ -58,13 +85,57 @@
     return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
   }
 
+  function isBlockedContact(u) {
+    if (!u) return true;
+    var name = fullName(u).toLowerCase();
+    var email = normEmail(u.email);
+    if (name.indexOf('luke') >= 0 && name.indexOf('saint') >= 0) return true;
+    if (email.indexOf('luke') >= 0 && email.indexOf('saint') >= 0) return true;
+    if (email === 'luke.saint@' || email.indexOf('luke.saint') >= 0) return true;
+    return false;
+  }
+
   function listUsers() {
+    var arr = [];
     try {
       if (typeof aulaLoad === 'function' && typeof AULA_KEYS !== 'undefined') {
-        return aulaLoad(AULA_KEYS.users, []) || [];
+        arr = aulaLoad(AULA_KEYS.users, []) || [];
+      } else {
+        arr = JSON.parse(localStorage.getItem('geometrics_users') || '[]') || [];
       }
-      return JSON.parse(localStorage.getItem('geometrics_users') || '[]') || [];
-    } catch (e) { return []; }
+    } catch (e) { arr = []; }
+    return (arr || []).filter(function (u) { return !isBlockedContact(u); });
+  }
+
+  /** Limpia de storage a Luke Saint (una vez) */
+  function purgeBlockedUsers() {
+    try {
+      var key = (typeof AULA_KEYS !== 'undefined' && AULA_KEYS.users) ? AULA_KEYS.users : 'geometrics_users';
+      var arr = [];
+      try {
+        if (typeof aulaLoad === 'function' && typeof AULA_KEYS !== 'undefined') arr = aulaLoad(AULA_KEYS.users, []) || [];
+        else arr = JSON.parse(localStorage.getItem(key) || '[]') || [];
+      } catch (e0) { return; }
+      var next = (arr || []).filter(function (u) { return !isBlockedContact(u); });
+      if (next.length !== (arr || []).length) {
+        if (typeof aulaSave === 'function' && typeof AULA_KEYS !== 'undefined') aulaSave(AULA_KEYS.users, next);
+        else localStorage.setItem(key, JSON.stringify(next));
+      }
+      // Quitar chats con ese contacto
+      var chats = [];
+      try { chats = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]') || []; } catch (e1) {}
+      var filtered = (chats || []).filter(function (c) {
+        if (!c) return false;
+        var emails = [c.studentEmail, c.teacherEmail, c.peerEmail, c.emailA, c.emailB].map(normEmail);
+        var names = [c.studentName, c.teacherName, c.peerName].join(' ').toLowerCase();
+        if (names.indexOf('luke') >= 0 && names.indexOf('saint') >= 0) return false;
+        if (emails.some(function (e) { return e && e.indexOf('luke') >= 0 && e.indexOf('saint') >= 0; })) return false;
+        return true;
+      });
+      if (filtered.length !== chats.length) {
+        localStorage.setItem('gm_chats_v1', JSON.stringify(filtered));
+      }
+    } catch (e) {}
   }
 
   function materiasOf(u) {
@@ -85,32 +156,12 @@
   }
 
   function loadChats() {
-    var local = [];
     try {
-      local = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]') || [];
-      if (!Array.isArray(local)) local = [];
-    } catch (e) { local = []; }
-    try {
-      if (typeof aulaChatLoad === 'function') {
-        var a = aulaChatLoad() || [];
-        if (a.length) {
-          // merge local (más reciente) con API
-          var map = {};
-          a.forEach(function (c) { if (c && c.id) map[c.id] = c; });
-          local.forEach(function (c) {
-            if (!c || !c.id) return;
-            if (!map[c.id]) map[c.id] = c;
-            else {
-              var cur = map[c.id];
-              if ((c.updatedAt || 0) >= (cur.updatedAt || 0)) map[c.id] = c;
-              else if ((c.messages || []).length > (cur.messages || []).length) map[c.id] = c;
-            }
-          });
-          return Object.keys(map).map(function (k) { return map[k]; });
-        }
-      }
-    } catch (e2) {}
-    return local;
+      var local = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]') || [];
+      return Array.isArray(local) ? local.filter(function (c) { return c && c.id; }) : [];
+    } catch (e) {
+      return [];
+    }
   }
 
   function saveChat(chat) {
@@ -130,21 +181,20 @@
       if (typeof aulaChatSaveOne === 'function') aulaChatSaveOne(chat);
     } catch (e2) {}
     pushChatCloud(chat);
+    notifyLocalPeers();
   }
 
   function pushChatCloud(chat) {
     if (!chat || !chat.id) return;
     try {
-      if (typeof GeoCloud !== 'undefined' && GeoCloud.isOn && GeoCloud.isOn()) {
-        if (typeof GeoCloud.pushChat === 'function') {
-          GeoCloud.pushChat(chat).catch(function (err) {
-            console.warn('pushChat cloud', err);
-          });
-        }
+      if (typeof GeoCloud !== 'undefined' && GeoCloud.isOn && GeoCloud.isOn() && typeof GeoCloud.pushChat === 'function') {
+        setTimeout(function () {
+          try {
+            GeoCloud.pushChat(chat).catch(function () {});
+          } catch (e0) {}
+        }, 0);
       }
-    } catch (e) {
-      console.warn('pushChatCloud', e);
-    }
+    } catch (e) {}
   }
 
   function mergeChatLists(localList, remoteList) {
@@ -204,14 +254,55 @@
     return Object.keys(map).map(function (k) { return map[k]; });
   }
 
-  function applyRemoteChats(remoteArr) {
-    if (!remoteArr || !remoteArr.length) return;
-    var local = loadChats();
+  function chatsSignature(list) {
+    list = list || [];
+    var totalMsg = 0;
+    var maxTs = 0;
+    list.forEach(function (c) {
+      if (!c) return;
+      totalMsg += (c.messages && c.messages.length) || 0;
+      if ((c.updatedAt || 0) > maxTs) maxTs = c.updatedAt || 0;
+    });
+    return list.length + ':' + totalMsg + ':' + maxTs;
+  }
+
+  function applyRemoteChats(remoteArr, fromListen) {
+    if (!remoteArr) remoteArr = [];
+    // Firebase a veces manda objeto; normalizar
+    if (!Array.isArray(remoteArr)) {
+      var tmp = [];
+      Object.keys(remoteArr).forEach(function (k) {
+        if (remoteArr[k] && typeof remoteArr[k] === 'object') tmp.push(remoteArr[k]);
+      });
+      remoteArr = tmp;
+    }
+    var local = [];
+    try {
+      local = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]') || [];
+    } catch (e) { local = []; }
+    var before = chatsSignature(local);
     var merged = mergeChatLists(local, remoteArr);
+    var after = chatsSignature(merged);
     try {
       localStorage.setItem('gm_chats_v1', JSON.stringify(merged));
+    } catch (e2) {}
+    if (after !== before) {
+      state._dataSig = after;
+      if (!state._menuOpen && Date.now() > (state._quietUntil || 0) && !state._sending) {
+        refreshUI(true);
+      }
+    } else if (fromListen) {
+      state.cloudStatus = 'online';
+    }
+  }
+
+  function notifyLocalPeers() {
+    try {
+      if (state._bc) state._bc.postMessage({ type: 'chats-updated', t: Date.now() });
     } catch (e) {}
-    if (state.host) paint(state.host);
+    try {
+      localStorage.setItem('gm_chats_ping', String(Date.now()));
+    } catch (e2) {}
   }
 
   function syncFromCloud() {
@@ -222,11 +313,11 @@
       }
       state.cloudStatus = 'syncing';
       return GeoCloud.pullChats().then(function (arr) {
-        if (arr && arr.length) applyRemoteChats(arr);
+        applyRemoteChats(arr || [], false);
         state.cloudStatus = 'online';
-        if (state.host) paint(state.host);
         return true;
-      }).catch(function () {
+      }).catch(function (err) {
+        console.warn('pullChats', err);
         state.cloudStatus = 'error';
         return false;
       });
@@ -240,11 +331,12 @@
     try {
       if (typeof GeoCloud === 'undefined' || !GeoCloud.isOn || !GeoCloud.isOn()) return;
       if (typeof GeoCloud.listenChats !== 'function') return;
-      if (state._cloudUnsub) return; // ya escuchando
-      state._cloudUnsub = GeoCloud.listenChats(function (arr) {
-        applyRemoteChats(arr || []);
+      // Re-suscribir siempre al montar (Firebase on value es seguro)
+      GeoCloud.listenChats(function (arr) {
         state.cloudStatus = 'online';
+        applyRemoteChats(arr || [], true);
       });
+      state._cloudListening = true;
     } catch (e) {
       console.warn('listenChats', e);
     }
@@ -300,7 +392,12 @@
     if (!u) return [];
     var me = normEmail(u.email);
     var raw = loadChats().filter(function (c) {
-      return c && c.id && chatEmails(c).indexOf(me) >= 0;
+      if (!c || !c.id || chatEmails(c).indexOf(me) < 0) return false;
+      var names = [c.studentName, c.teacherName, c.peerName].join(' ').toLowerCase();
+      if (names.indexOf('luke') >= 0 && names.indexOf('saint') >= 0) return false;
+      var em = chatEmails(c).join(' ');
+      if (em.indexOf('luke') >= 0 && em.indexOf('saint') >= 0) return false;
+      return true;
     });
     var byKey = {};
     raw.forEach(function (c) {
@@ -590,9 +687,9 @@
     paint(state.host, true);
   }
 
-  function sendMessage(chatId, text, u) {
+  function sendMessage(chatId, text, u, replyMeta) {
     text = String(text || '').trim();
-    if (!text || !chatId || !u) return false;
+    if (!text || !chatId || !u || !u.email) return false;
 
     var msg = {
       id: 'm_' + Date.now().toString(36) + Math.random().toString(16).slice(2, 6),
@@ -601,39 +698,110 @@
       ts: Date.now(),
       readBy: [normEmail(u.email)]
     };
+    var rt = replyMeta || state.replyTo;
+    if (rt && rt.text) {
+      msg.replyTo = {
+        id: rt.id || '',
+        text: String(rt.text),
+        from: rt.from || '',
+        fromName: rt.fromName || ''
+      };
+    }
+    state.replyTo = null;
 
-    // 1) Local garantizado
-    var list = loadChats();
-    var c = list.find(function (x) { return x && x.id === chatId; });
+    // Leer storage crudo (sin filtros de aulaChatLoad)
+    var list = [];
+    try {
+      list = JSON.parse(localStorage.getItem('gm_chats_v1') || '[]') || [];
+      if (!Array.isArray(list)) list = [];
+    } catch (e0) { list = []; }
+
+    var c = null;
+    var ix = -1;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && list[i].id === chatId) { c = list[i]; ix = i; break; }
+    }
     if (!c) {
-      // crear contenedor mínimo para no perder el mensaje
       c = {
         id: chatId,
         type: 'peer',
         studentEmail: normEmail(u.email),
         studentName: fullName(u),
+        teacherEmail: String(u.rol || '').toLowerCase().indexOf('docente') >= 0 ? normEmail(u.email) : '',
+        teacherName: String(u.rol || '').toLowerCase().indexOf('docente') >= 0 ? fullName(u) : '',
         members: [normEmail(u.email)],
         messages: [],
         updatedAt: Date.now()
       };
       list.push(c);
+      ix = list.length - 1;
     }
     if (!c.messages) c.messages = [];
     c.messages.push(msg);
     c.updatedAt = Date.now();
-    saveChat(c);
+    list[ix] = c;
 
-    // 2) API legacy (si existe y no duplica)
     try {
-      if (typeof aulaChatSend === 'function') {
-        // ya guardamos; intentar sync extra sin fallar
-        var again = loadChats().find(function (x) { return x.id === chatId; });
-        if (again && (!again.messages || !again.messages.some(function (m) { return m.id === msg.id; }))) {
-          aulaChatSend(chatId, u.email, text);
+      localStorage.setItem('gm_chats_v1', JSON.stringify(list));
+    } catch (e1) {
+      console.error('send localStorage', e1);
+      return false;
+    }
+
+    try {
+      if (typeof aulaChatSaveOne === 'function') aulaChatSaveOne(c);
+    } catch (e2) {}
+    try { pushChatCloud(c); } catch (e3) {}
+    try { notifyLocalPeers(); } catch (e4) {}
+
+    return true;
+  }
+
+
+  function deleteMessage(chatId, msgId) {
+    if (!chatId || !msgId) return false;
+    var list = loadChats();
+    var c = list.find(function (x) { return x && x.id === chatId; });
+    if (!c || !c.messages) return false;
+    var before = c.messages.length;
+    c.messages = c.messages.filter(function (m) { return m && m.id !== msgId; });
+    if (c.messages.length === before) return false;
+    c.updatedAt = Date.now();
+    saveChat(c);
+    return true;
+  }
+
+  function clearChat(chatId) {
+    if (!chatId) return false;
+    var list = loadChats();
+    var c = list.find(function (x) { return x && x.id === chatId; });
+    if (!c) return false;
+    c.messages = [];
+    c.updatedAt = Date.now();
+    saveChat(c);
+    return true;
+  }
+
+  function deleteConversation(chatId) {
+    if (!chatId) return false;
+    var list = loadChats().filter(function (x) { return !x || x.id !== chatId; });
+    try {
+      localStorage.setItem('gm_chats_v1', JSON.stringify(list));
+    } catch (e) {}
+    try {
+      if (typeof aulaChatEliminar === 'function') aulaChatEliminar(chatId);
+      else if (typeof aulaChatSave === 'function') aulaChatSave(list);
+    } catch (e2) {}
+    try {
+      if (typeof GeoCloud !== 'undefined' && GeoCloud.isOn && GeoCloud.isOn()) {
+        if (typeof GeoCloud.pushChats === 'function') GeoCloud.pushChats(list);
+        // borrar nodo del chat si hay API
+        if (GeoCloud.db && typeof GeoCloud.db.ref === 'function') {
+          /* skip low-level */
         }
       }
-    } catch (e) {}
-
+    } catch (e3) {}
+    if (state.activeId === chatId) state.activeId = null;
     return true;
   }
 
@@ -644,6 +812,19 @@
   }
 
   /* ---------- UI ---------- */
+  function emojiPanelHtml() {
+    var emojis = [
+      '😀','😁','😂','🤣','😊','😍','😘','😜','🤗','🤔',
+      '👍','👎','👏','🙌','🙏','💪','🔥','⭐','✨','🎉',
+      '❤️','🧡','💛','💚','💙','💜','🖤','💯','✅','❌',
+      '📚','📝','🧠','💡','⏰','📌','📎','🗂️','🏫','👩‍🏫',
+      '😮','😢','😭','😡','😴','🤝','👀','🙌','😎','🤩'
+    ];
+    return emojis.map(function (em) {
+      return '<button type="button" class="fa-emoji-item" data-ch-emoji-pick="' + em + '">' + em + '</button>';
+    }).join('');
+  }
+
   function chip(id, label, count) {
     var extra = (typeof count === 'number') ? ' (' + count + ')' : '';
     return '<button type="button" class="fa-chip' + (state.filter === id ? ' active' : '') +
@@ -688,7 +869,7 @@
     return '<div class="fa-col-list">' +
       '<div class="fa-list-head"><h2>Mensajes ' + cloudHint + '</h2>' +
       '<button type="button" class="fa-icon-btn" data-ch-new title="Nuevo mensaje">✎</button></div>' +
-      '<div class="fa-search"><input type="search" data-ch-q placeholder="Buscar conversaciones…" value="' + esc(state.q) + '"></div>' +
+      '<div class="fa-search"><input type="text" data-ch-q placeholder="Buscar conversaciones…" value="' + esc(state.q) + '" autocomplete="off" spellcheck="false"></div>' +
       '<div class="fa-filters">' +
       chip('todos', 'Todos', nTodos) + chip('docentes', 'Docentes', nDoc) +
       chip('estudiantes', 'Estudiantes', nEst) + chip('grupos', 'Grupos', nGrp) +
@@ -725,12 +906,26 @@
     var me = normEmail(u.email);
     var msgs = (c.messages || []).map(function (m) {
       var mine = normEmail(m.from) === me;
-      return '<div class="fa-msg' + (mine ? ' mine' : '') + '">' +
+      var mid = m.id || ('ts_' + (m.ts || ''));
+      var replyHtml = '';
+      if (m.replyTo && m.replyTo.text) {
+        replyHtml = '<div class="fa-reply-quote"><span>' + esc(m.replyTo.fromName || 'Mensaje') + '</span>' +
+          esc(String(m.replyTo.text).slice(0, 120)) + '</div>';
+      }
+      return '<div class="fa-msg' + (mine ? ' mine' : '') + '" data-msg-id="' + esc(mid) + '">' +
         (mine ? '' : '<div class="fa-avatar">' + esc(initials(title)) + '</div>') +
         '<div class="fa-bubble">' +
+        '<button type="button" class="fa-msg-menu-btn" data-ch-msg-menu="' + esc(mid) + '" title="Opciones">⋮</button>' +
         (mine ? '' : '<div class="fa-msg-author">' + esc(title) + '</div>') +
+        replyHtml +
         '<div class="fa-msg-text">' + esc(m.text || '') + '</div>' +
-        '<div class="fa-msg-time">' + esc(fmtTime(m.ts)) + '</div></div></div>';
+        '<div class="fa-msg-time">' + esc(fmtTime(m.ts)) + '</div>' +
+        '<div class="fa-msg-dropdown" data-msg-dd="' + esc(mid) + '">' +
+          '<button type="button" data-ch-reply-msg="' + esc(mid) + '">Responder</button>' +
+          '<button type="button" data-ch-copy-msg="' + esc(mid) + '">Copiar mensaje</button>' +
+          '<button type="button" data-ch-del-msg="' + esc(mid) + '" class="fa-danger">Eliminar mensaje</button>' +
+        '</div>' +
+        '</div></div>';
     }).join('');
 
     if (!msgs) {
@@ -741,11 +936,31 @@
       '<div class="fa-thread-head">' +
       '<div class="fa-avatar">' + esc(initials(title)) + '</div>' +
       '<div class="fa-thread-head-info"><strong>' + esc(title) + '</strong>' +
-      '<span>' + esc(sub) + '</span></div></div>' +
+      '<span>' + esc(sub) + '</span></div>' +
+      '<div class="fa-head-actions">' +
+        '<button type="button" class="fa-icon-btn fa-head-more" data-ch-chat-menu title="Opciones del chat">⋮</button>' +
+        '<div class="fa-chat-dropdown" data-ch-chat-dd>' +
+          '<button type="button" data-ch-search-chat>Buscar en el chat</button>' +
+          '<button type="button" data-ch-mute-chat>Silenciar notificaciones</button>' +
+          '<div class="fa-dd-sep"></div>' +
+          '<button type="button" data-ch-clear-chat>Vaciar chat</button>' +
+          '<button type="button" data-ch-delete-chat class="fa-danger">Eliminar conversación</button>' +
+        '</div>' +
+      '</div></div>' +
       '<div class="fa-thread-body" data-ch-scroll>' + msgs + '</div>' +
-      '<div class="fa-composer" data-ch-send data-chat-id="' + esc(c.id) + '">' +
-      '<input type="text" name="text" id="faChatInput" placeholder="Escribe un mensaje…" maxlength="2000" autocomplete="off">' +
+      (state.replyTo ? ('<div class="fa-reply-bar">' +
+        '<div class="fa-reply-bar-body"><strong>Respondiendo</strong><span>' + esc(String(state.replyTo.text || '').slice(0, 80)) + '</span></div>' +
+        '<button type="button" class="fa-reply-cancel" data-ch-cancel-reply title="Cancelar">✕</button></div>') : '') +
+      '<div class="fa-composer" data-ch-send data-chat-id="' + esc(c.id) + '"' +
+        (state.replyTo ? (
+          ' data-reply-id="' + esc(state.replyTo.id || '') + '"' +
+          ' data-reply-text="' + esc(String(state.replyTo.text || '').slice(0, 200)) + '"' +
+          ' data-reply-name="' + esc(state.replyTo.fromName || '') + '"'
+        ) : '') + '>' +
+      '<button type="button" class="fa-emoji-btn" data-ch-emoji title="Emojis">😊</button>' +
+      '<input type="text" name="text" class="fa-chat-input" placeholder="Escribe un mensaje…" maxlength="2000" autocomplete="off">' +
       '<button type="button" class="fa-send" data-ch-send-btn title="Enviar">➤</button>' +
+      '<div class="fa-emoji-panel" data-ch-emoji-panel hidden>' + emojiPanelHtml() + '</div>' +
       '</div></div>';
   }
 
@@ -754,20 +969,45 @@
       var el = document.activeElement;
       if (!el || !state.host) return false;
       if (!state.host.contains(el)) return false;
-      var tag = (el.tagName || '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea') return true;
-      return !!el.closest('[data-ch-send], .fa-composer, .fa-search');
+      if (el.classList && el.classList.contains('fa-chat-input')) return true;
+      if (el.name === 'text' && el.closest('[data-ch-send]')) return true;
+      return false;
     } catch (e) { return false; }
   }
 
+  function preserveComposer(host) {
+    var input = host.querySelector('.fa-chat-input, [data-ch-send] [name="text"]');
+    return {
+      value: input ? input.value : '',
+      focused: !!(input && document.activeElement === input),
+      selStart: input && input.selectionStart,
+      selEnd: input && input.selectionEnd
+    };
+  }
+
+  function restoreComposer(host, snap) {
+    if (!snap) return;
+    var input = host.querySelector('.fa-chat-input, [data-ch-send] [name="text"]');
+    if (!input) return;
+    input.value = snap.value || '';
+    if (snap.focused) {
+      try {
+        input.focus();
+        if (typeof snap.selStart === 'number') {
+          input.setSelectionRange(snap.selStart, snap.selEnd || snap.selStart);
+        }
+      } catch (e) {}
+    }
+  }
+
   function paint(host, force) {
-    host = host || state.host;
+    if (state._painting) return;
+    host = resolveHost(host);
     if (!host) return;
+    state._painting = true;
     state.host = host;
-    // No destruir el input mientras el usuario escribe
-    if (!force && isTypingInChat()) return;
-    var u = session();
     try {
+      var u = session();
       if (!u) {
         host.className = 'fa-root fa-two-col';
         host.innerHTML = '<div class="fa-status err" style="padding:24px">Inicia sesión para usar Mensajes.</div>';
@@ -779,69 +1019,366 @@
       if (sc) sc.scrollTop = sc.scrollHeight;
       var ac = activeChat();
       state._lastSig = (ac && ac.id ? ac.id : '') + ':' + ((ac && ac.messages) ? ac.messages.length : 0) + ':' + ((ac && ac.updatedAt) || 0);
+      state._dataSig = chatsSignature(loadChats());
       bind(host);
+      if (force) {
+        try {
+          var inp = host.querySelector('input.fa-chat-input');
+          if (inp) inp.focus();
+        } catch (eF) {}
+      }
     } catch (err) {
       console.error('GeoMetricsChat paint', err);
-      host.className = 'fa-root fa-two-col';
-      host.innerHTML = '<div class="fa-status err" style="padding:24px">Error al cargar mensajes. Recarga la página (Ctrl+F5).<br><small>' +
-        esc(String(err && err.message || err)) + '</small></div>';
+      try {
+        host.innerHTML = '<div class="fa-status err" style="padding:24px">Error al cargar mensajes.<br><small>' +
+          esc(String(err && err.message || err)) + '</small></div>';
+      } catch (e2) {}
+    } finally {
+      state._painting = false;
     }
   }
 
+  /** Actualiza UI sin perder el texto en el composer */
+  function refreshUI(preferKeepInput) {
+    var host = resolveHost(state.host);
+    if (!host) return;
+    state.host = host;
+    paint(host, !preferKeepInput);
+  }
+
+
+  function placeDropdown(dd, anchor) {
+    if (!dd || !anchor) return;
+    dd.classList.add('is-open');
+    var r = anchor.getBoundingClientRect();
+    var w = 220;
+    var left = Math.min(window.innerWidth - w - 8, Math.max(8, r.right - w));
+    var top = r.bottom + 6;
+    if (top + 200 > window.innerHeight) top = Math.max(8, r.top - 8 - 160);
+    dd.style.left = left + 'px';
+    dd.style.top = top + 'px';
+    dd.style.right = 'auto';
+  }
+
   function doSend(host) {
-    var u = session();
-    if (!u) {
-      try { alert('Sesión no disponible. Vuelve a iniciar sesión.'); } catch (e0) {}
-      return;
-    }
-    var box = host.querySelector('[data-ch-send]');
-    if (!box) return;
-    var chatId = box.getAttribute('data-chat-id') || state.activeId;
-    if (!chatId) {
-      try { alert('Selecciona una conversación primero.'); } catch (e1) {}
-      return;
-    }
-    state.activeId = chatId;
-    var input = box.querySelector('[name="text"]') || host.querySelector('#faChatInput');
-    var text = input ? String(input.value || '') : '';
-    if (!text.trim()) {
-      if (input) input.focus();
-      return;
-    }
-    var ok = sendMessage(chatId, text, u);
-    if (ok) {
+    if (state._sending) return false;
+    state._sending = true;
+    try {
+      host = resolveHost(host);
+      if (!host) return false;
+
+      var u = session();
+      if (!u || !u.email) return false;
+
+      var box = host.querySelector('[data-ch-send]');
+      var input = host.querySelector('input.fa-chat-input');
+      var chatId = (box && box.getAttribute('data-chat-id')) || state.activeId;
+      var text = input ? String(input.value || '').trim() : '';
+
+      var replyMeta = null;
+      if (state.replyTo && state.replyTo.text) {
+        replyMeta = { id: state.replyTo.id || '', text: state.replyTo.text, fromName: state.replyTo.fromName || '' };
+      } else if (box && box.getAttribute('data-reply-text')) {
+        replyMeta = {
+          id: box.getAttribute('data-reply-id') || '',
+          text: box.getAttribute('data-reply-text') || '',
+          fromName: box.getAttribute('data-reply-name') || ''
+        };
+      }
+
+      if (!chatId) return false;
+      if (!text) {
+        if (input) input.focus();
+        return false;
+      }
+
+      state.activeId = chatId;
+      state.host = host;
+
+      var ok = sendMessage(chatId, text, u, replyMeta);
+      if (!ok) return false;
+
       if (input) input.value = '';
+      state.replyTo = null;
+      if (box) {
+        box.removeAttribute('data-reply-id');
+        box.removeAttribute('data-reply-text');
+        box.removeAttribute('data-reply-name');
+      }
+
+      // Evitar que sync/poll repinte en bucle los próximos 1.5s
+      state._quietUntil = Date.now() + 1500;
+      state._dataSig = chatsSignature(loadChats());
       paint(host, true);
-      setTimeout(function () {
-        try {
-          var inp = host.querySelector('#faChatInput, [data-ch-send] [name="text"]');
-          if (inp) inp.focus();
-        } catch (eF) {}
-      }, 40);
-    } else {
-      try { alert('No se pudo enviar. Intenta de nuevo.'); } catch (e2) {}
+      return true;
+    } catch (err) {
+      console.error('doSend', err);
+      return false;
+    } finally {
+      state._sending = false;
     }
   }
 
   function bind(host) {
     if (!host) return;
-    if (host._chClick) host.removeEventListener('click', host._chClick);
-    if (host._chKey) host.removeEventListener('keydown', host._chKey);
-    if (host._chInput) host.removeEventListener('input', host._chInput);
+
+    // Quitar listeners previos
+    if (host._chClick) host.removeEventListener('click', host._chClick, true);
+    if (host._chKey) host.removeEventListener('keydown', host._chKey, true);
+    if (host._chInput) host.removeEventListener('input', host._chInput, true);
+    if (host._chSearchKey) host.removeEventListener('keydown', host._chSearchKey, true);
+
+    function closeAllMenus() {
+      state._menuOpen = false;
+      try {
+        host.querySelectorAll('.fa-msg-dropdown, .fa-chat-dropdown').forEach(function (d) {
+          d.classList.remove('is-open');
+        });
+        host.querySelectorAll('.fa-msg-menu-btn').forEach(function (b) {
+          b.classList.remove('is-open');
+        });
+      } catch (e) {}
+    }
+
+    function activeChatId() {
+      var box = host.querySelector('[data-ch-send]');
+      if (box && box.getAttribute('data-chat-id')) return box.getAttribute('data-chat-id');
+      return state.activeId;
+    }
 
     host._chClick = function (e) {
+      if (!host.contains(e.target)) return;
+
+      // Enviar
       var sendBtn = e.target.closest('[data-ch-send-btn], .fa-send');
       if (sendBtn && host.contains(sendBtn)) {
         e.preventDefault();
         e.stopPropagation();
+        closeAllMenus();
         doSend(host);
         return;
       }
 
+      // Panel emojis toggle
+      var emojiBtn = e.target.closest('[data-ch-emoji]');
+      if (emojiBtn && host.contains(emojiBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        var panel = host.querySelector('[data-ch-emoji-panel]');
+        if (panel) {
+          var open = !panel.hidden;
+          panel.hidden = open;
+        }
+        return;
+      }
+
+      // Elegir emoji
+      var emojiPick = e.target.closest('[data-ch-emoji-pick]');
+      if (emojiPick && host.contains(emojiPick)) {
+        e.preventDefault();
+        e.stopPropagation();
+        var em = emojiPick.getAttribute('data-ch-emoji-pick') || emojiPick.textContent || '';
+        var inp = host.querySelector('.fa-chat-input');
+        if (inp && em) {
+          var start = inp.selectionStart != null ? inp.selectionStart : inp.value.length;
+          var end = inp.selectionEnd != null ? inp.selectionEnd : inp.value.length;
+          var v = inp.value || '';
+          inp.value = v.slice(0, start) + em + v.slice(end);
+          try {
+            var pos = start + em.length;
+            inp.setSelectionRange(pos, pos);
+          } catch (ePos) {}
+          inp.focus();
+        }
+        return;
+      }
+
+      var inMenu = e.target.closest('[data-ch-msg-menu], .fa-msg-dropdown, [data-ch-chat-menu], .fa-chat-dropdown');
+      if (!inMenu) closeAllMenus();
+
+      // ⋮ mensaje
+      var msgMenuBtn = e.target.closest('[data-ch-msg-menu]');
+      if (msgMenuBtn && host.contains(msgMenuBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        var mid = msgMenuBtn.getAttribute('data-ch-msg-menu');
+        var dd = host.querySelector('[data-msg-dd="' + mid + '"]');
+        var wasOpen = dd && dd.classList.contains('is-open');
+        closeAllMenus();
+        if (dd && !wasOpen) {
+          placeDropdown(dd, msgMenuBtn);
+          msgMenuBtn.classList.add('is-open');
+          state._menuOpen = true;
+        }
+        return;
+      }
+
+      // Responder
+      var replyBtn = e.target.closest('[data-ch-reply-msg]');
+      if (replyBtn && host.contains(replyBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        var rid = replyBtn.getAttribute('data-ch-reply-msg');
+        var msgEl = host.querySelector('[data-msg-id="' + rid + '"] .fa-msg-text');
+        var authorEl = host.querySelector('[data-msg-id="' + rid + '"] .fa-msg-author');
+        var c = activeChat();
+        var u0 = session();
+        var me = u0 ? normEmail(u0.email) : '';
+        var fromName = authorEl ? authorEl.textContent : (c ? chatTitle(c, u0) : 'Mensaje');
+        // Si es mío, el author no se muestra
+        var bubble = host.querySelector('[data-msg-id="' + rid + '"]');
+        if (bubble && bubble.classList.contains('mine')) fromName = 'Tú';
+        state.replyTo = {
+          id: rid,
+          text: msgEl ? msgEl.textContent : '',
+          fromName: fromName
+        };
+        closeAllMenus();
+        paint(host, true);
+        setTimeout(function () {
+          try {
+            var inp = host.querySelector('.fa-chat-input');
+            if (inp) inp.focus();
+          } catch (eR) {}
+        }, 30);
+        return;
+      }
+
+      // Cancelar respuesta
+      var cancelReply = e.target.closest('[data-ch-cancel-reply]');
+      if (cancelReply && host.contains(cancelReply)) {
+        e.preventDefault();
+        e.stopPropagation();
+        state.replyTo = null;
+        paint(host, true);
+        return;
+      }
+
+      // Copiar
+      var copyMsg = e.target.closest('[data-ch-copy-msg]');
+      if (copyMsg && host.contains(copyMsg)) {
+        e.preventDefault();
+        e.stopPropagation();
+        var midC = copyMsg.getAttribute('data-ch-copy-msg');
+        var bubble = host.querySelector('[data-msg-id="' + midC + '"] .fa-msg-text');
+        var txt = bubble ? bubble.textContent : '';
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt);
+          else {
+            var ta = document.createElement('textarea');
+            ta.value = txt;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+        } catch (eC) {}
+        closeAllMenus();
+        return;
+      }
+
+      // Eliminar mensaje
+      var delMsg = e.target.closest('[data-ch-del-msg]');
+      if (delMsg && host.contains(delMsg)) {
+        e.preventDefault();
+        e.stopPropagation();
+        var msgId = delMsg.getAttribute('data-ch-del-msg');
+        var chatId = activeChatId();
+        closeAllMenus();
+        if (!confirm('¿Eliminar este mensaje?')) return;
+        if (deleteMessage(chatId, msgId)) paint(host, true);
+        return;
+      }
+
+      // ⋮ chat cabecera
+      var chatMenuBtn = e.target.closest('[data-ch-chat-menu]');
+      if (chatMenuBtn && host.contains(chatMenuBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        var cdd = host.querySelector('[data-ch-chat-dd]');
+        var open = cdd && cdd.classList.contains('is-open');
+        closeAllMenus();
+        if (cdd && !open) {
+          placeDropdown(cdd, chatMenuBtn);
+          state._menuOpen = true;
+        }
+        return;
+      }
+
+      // Buscar en el chat (menú)
+      var searchChat = e.target.closest('[data-ch-search-chat]');
+      if (searchChat && host.contains(searchChat)) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeAllMenus();
+        var q = prompt('Buscar en este chat:');
+        if (q == null || !String(q).trim()) return;
+        var body = host.querySelector('[data-ch-scroll]');
+        if (!body) return;
+        var term = String(q).trim().toLowerCase();
+        var found = null;
+        body.querySelectorAll('.fa-msg-text').forEach(function (el) {
+          if (found) return;
+          if ((el.textContent || '').toLowerCase().indexOf(term) >= 0) found = el;
+        });
+        if (found) {
+          found.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          found.style.outline = '2px solid #00C8E8';
+          setTimeout(function () { found.style.outline = ''; }, 2000);
+        } else {
+          try { alert('No se encontraron mensajes.'); } catch (eA) {}
+        }
+        return;
+      }
+
+      // Silenciar
+      var muteChat = e.target.closest('[data-ch-mute-chat]');
+      if (muteChat && host.contains(muteChat)) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeAllMenus();
+        var midChat = activeChatId();
+        try {
+          var key = 'gm_chat_muted_' + (midChat || '');
+          var muted = localStorage.getItem(key) === '1';
+          localStorage.setItem(key, muted ? '0' : '1');
+          alert(muted ? 'Notificaciones reactivadas.' : 'Chat silenciado en este dispositivo.');
+        } catch (eM) {}
+        return;
+      }
+
+      // Vaciar
+      var clearBtn = e.target.closest('[data-ch-clear-chat]');
+      if (clearBtn && host.contains(clearBtn)) {
+        e.preventDefault();
+        e.stopPropagation();
+        var cid = activeChatId();
+        closeAllMenus();
+        if (!cid) return;
+        if (!confirm('¿Vaciar todos los mensajes de este chat?')) return;
+        if (clearChat(cid)) paint(host, true);
+        return;
+      }
+
+      // Eliminar conversación
+      var delChat = e.target.closest('[data-ch-delete-chat]');
+      if (delChat && host.contains(delChat)) {
+        e.preventDefault();
+        e.stopPropagation();
+        var cid2 = activeChatId();
+        closeAllMenus();
+        if (!cid2) return;
+        if (!confirm('¿Eliminar esta conversación por completo?')) return;
+        if (deleteConversation(cid2)) paint(host, true);
+        return;
+      }
+
+      // Lista / filtros / nuevo
       var t = e.target.closest('[data-ch-open],[data-ch-filter],[data-ch-new],[data-ch-cancel-new],[data-ch-start]');
       if (!t || !host.contains(t)) return;
       e.preventDefault();
       e.stopPropagation();
+      closeAllMenus();
       var u = session();
       if (!u) return;
 
@@ -883,85 +1420,210 @@
       if (e.key !== 'Enter') return;
       var input = e.target;
       if (!input || !host.contains(input)) return;
-      if (input.name !== 'text' && input.id !== 'faChatInput') return;
+      if (input.name !== 'text' && !(input.classList && input.classList.contains('fa-chat-input'))) return;
       e.preventDefault();
       e.stopPropagation();
       doSend(host);
     };
 
+    // Búsqueda respaldo
     host._chInput = function (e) {
-      if (e.target && e.target.matches('[data-ch-q]')) {
-        clearTimeout(host._chQt);
-        host._chQt = setTimeout(function () {
-          state.q = e.target.value || '';
-          if (!isTypingInChat()) paint(host);
-        }, 250);
-      }
+      var el = e.target;
+      if (!el || !host.contains(el)) return;
+      if (!el.hasAttribute || el.getAttribute('data-ch-q') === null) return;
+      e.stopPropagation();
+      state.q = el.value || '';
+      clearTimeout(host._chQt);
+      host._chQt = setTimeout(function () { updateSearchList(host); }, 80);
+    };
+    host._chSearchKey = function (e) {
+      var el = e.target;
+      if (!el || !host.contains(el)) return;
+      if (!el.hasAttribute || el.getAttribute('data-ch-q') === null) return;
+      e.stopPropagation();
+      if (e.key === 'Enter') e.preventDefault();
     };
 
-    host.addEventListener('click', host._chClick, true); // capture: gana a otros handlers
-    host.addEventListener('keydown', host._chKey, true);
-    host.addEventListener('input', host._chInput);
 
-    // Enlace directo al botón por si acaso
-    var btn = host.querySelector('[data-ch-send-btn], .fa-send');
-    if (btn) {
-      btn.onclick = function (e) {
-        e.preventDefault();
+    host.addEventListener('click', host._chClick, true);
+    host.addEventListener('keydown', host._chKey, true);
+    host.addEventListener('input', host._chInput, true);
+    host.addEventListener('keydown', host._chSearchKey, true);
+
+    // Envío directo (prioridad máxima)
+    function wireSend() {
+      var btn = host.querySelector('[data-ch-send-btn], button.fa-send');
+      if (btn) {
+        btn.onclick = null;
+        btn.onmousedown = null;
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          doSend(host);
+        }, true);
+      }
+      var input = host.querySelector('input.fa-chat-input');
+      if (input) {
+        input.addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          doSend(host);
+        }, true);
+      }
+    }
+    wireSend();
+
+    // Buscador directo
+    var searchInp = host.querySelector('[data-ch-q]');
+    if (searchInp) {
+      searchInp.oninput = function () {
+        state.q = searchInp.value || '';
+        clearTimeout(host._chQt);
+        host._chQt = setTimeout(function () { updateSearchList(host); }, 80);
+      };
+      searchInp.onkeydown = function (e) {
         e.stopPropagation();
-        doSend(host);
+        if (e.key === 'Enter') e.preventDefault();
       };
     }
+  }
+
+  function updateSearchList(host) {
+    host = host || state.host;
+    if (!host) return;
+    var u = session();
+    if (!u) return;
+    var itemsBox = host.querySelector('.fa-col-list .fa-items');
+    if (!itemsBox) itemsBox = host.querySelector('.fa-items');
+    if (!itemsBox) return;
+    var items = filteredChats(u);
+    var rows = items.map(function (c) {
+      var active = c.id === state.activeId ? ' active' : '';
+      var un = unreadCount(c, u);
+      var title = chatTitle(c, u);
+      return '<div class="fa-item' + active + '" data-ch-open="' + esc(c.id) + '" role="button" tabindex="0">' +
+        '<div class="fa-avatar">' + esc(initials(title)) + '</div>' +
+        '<div class="fa-item-body"><strong>' + esc(title) + '</strong>' +
+        '<p>' + esc(lastPreview(c)) + '</p></div>' +
+        '<div class="fa-item-meta"><span>' + esc(fmtTime(c.updatedAt)) + '</span>' +
+        (un ? '<span class="fa-badge">' + un + '</span>' : '') +
+        '</div></div>';
+    }).join('');
+    if (!rows) {
+      rows = '<div class="fa-status">' + (state.q
+        ? ('Sin resultados para «' + esc(state.q) + '»')
+        : 'No hay conversaciones.') + '</div>';
+    }
+    itemsBox.innerHTML = rows;
   }
 
   function mount(hostId) {
     var host = typeof hostId === 'string' ? document.getElementById(hostId) : hostId;
     if (!host) return;
     state.host = host;
-    paint(host);
+    try { purgeBlockedUsers(); } catch (ePurge) {}
+    paint(host, true);
 
-    // 1) Bajar chats de Firebase y fusionar
+    // Firebase: pull + listen en tiempo real
     syncFromCloud().then(function () {
-      // 2) Escucha en tiempo real
       startCloudListen();
     });
+
+    // Otras pestañas del mismo navegador
+    try {
+      if (!state._bc && typeof BroadcastChannel !== 'undefined') {
+        state._bc = new BroadcastChannel('gm_chats_channel');
+        state._bc.onmessage = function () {
+          if (Date.now() < (state._quietUntil || 0) || state._sending) return;
+          refreshUI(true);
+        };
+      }
+    } catch (eBc) {}
 
     try {
       if (!global.__gmChatStorageBound) {
         global.__gmChatStorageBound = true;
         window.addEventListener('storage', function (ev) {
-          if (ev.key && (ev.key === 'gm_chats_v1' || String(ev.key).indexOf('chat') >= 0) && state.host) {
-            paint(state.host);
+          if (!ev.key) return;
+          if (ev.key === 'gm_chats_v1' || ev.key === 'gm_chats_ping' || String(ev.key).indexOf('chat') >= 0) {
+            refreshUI(true);
           }
         });
       }
     } catch (e) {}
 
-    // Poll local + pull periódico (por si el listen falla)
+    // Poll agresivo: detectar cambios locales y bajar de la nube cada 2s
     try {
       if (state._poll) clearInterval(state._poll);
       state._poll = setInterval(function () {
         if (!state.host || !document.body.contains(state.host)) return;
-        if (state.composing) return;
-        var ac = activeChat();
-        var sig = (ac && ac.id ? ac.id : '') + ':' + ((ac && ac.messages) ? ac.messages.length : 0) + ':' + ((ac && ac.updatedAt) || 0);
-        if (sig !== state._lastSig) {
-          state._lastSig = sig;
-          paint(state.host);
+        if (state._menuOpen || state._sending || state._painting) return;
+        if (Date.now() < (state._quietUntil || 0)) return;
+        var sig = chatsSignature(loadChats());
+        if (sig !== state._dataSig) {
+          state._dataSig = sig;
+          refreshUI(true);
         }
-      }, 2000);
+      }, 1500);
       if (state._pullPoll) clearInterval(state._pullPoll);
       state._pullPoll = setInterval(function () {
         if (!state.host || !document.body.contains(state.host)) return;
+        if (state._menuOpen || state._sending || state._painting) return;
+        if (Date.now() < (state._quietUntil || 0)) return;
+        try {
+          var ae = document.activeElement;
+          if (ae && state.host && state.host.contains(ae) && (ae.hasAttribute('data-ch-q') || (ae.classList && ae.classList.contains('fa-chat-input')))) return;
+        } catch (eA) {}
         syncFromCloud();
-      }, 12000);
+      }, 4000);
     } catch (eP) {}
   }
 
   function refresh() {
-    if (state.host) paint(state.host);
+    refreshUI(true);
+    syncFromCloud();
   }
 
-  global.ForosAvisos = { mount: mount, refresh: refresh, paint: paint, syncFromCloud: syncFromCloud };
-  global.GeoMetricsChat = { mount: mount, refresh: refresh, paint: paint, syncFromCloud: syncFromCloud };
+  // Emojis globales (el envío se cablea en bind/wireSend)
+  if (!global.__gmChatEmojiBound) {
+    global.__gmChatEmojiBound = true;
+    document.addEventListener('click', function (e) {
+      var pick = e.target && e.target.closest && e.target.closest('[data-ch-emoji-pick]');
+      if (pick) {
+        var root2 = pick.closest('#faRootDocente, #faRootEstudiante, .fa-root');
+        if (!root2) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var em = pick.getAttribute('data-ch-emoji-pick') || pick.textContent || '';
+        var inp = root2.querySelector('input.fa-chat-input');
+        if (inp && em) {
+          var start = inp.selectionStart != null ? inp.selectionStart : inp.value.length;
+          var end = inp.selectionEnd != null ? inp.selectionEnd : inp.value.length;
+          var v = inp.value || '';
+          inp.value = v.slice(0, start) + em + v.slice(end);
+          try { inp.setSelectionRange(start + em.length, start + em.length); } catch (eP) {}
+          inp.focus();
+        }
+        return;
+      }
+      var tog = e.target && e.target.closest && e.target.closest('[data-ch-emoji]');
+      if (tog) {
+        var root3 = tog.closest('#faRootDocente, #faRootEstudiante, .fa-root');
+        if (!root3) return;
+        // no bloquear si el target es otro control
+        if (tog.closest('[data-ch-send-btn], .fa-send, .fa-chat-input')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var panel = root3.querySelector('[data-ch-emoji-panel]');
+        if (panel) panel.hidden = !panel.hidden;
+      }
+    }, false);
+  }
+
+
+  global.ForosAvisos = { mount: mount, refresh: refresh, paint: paint, syncFromCloud: syncFromCloud, doSend: doSend };
+  global.GeoMetricsChat = { mount: mount, refresh: refresh, paint: paint, syncFromCloud: syncFromCloud, doSend: doSend };
 })(window);

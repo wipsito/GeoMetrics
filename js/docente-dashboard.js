@@ -17,9 +17,67 @@
     return null;
   }
 
+
+  var forosCalMonth = new Date();
+
+  function renderForosSide() {
+    try {
+      var u = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+      var coursesEl = document.getElementById('dpForosCourses');
+      if (coursesEl) {
+        var mats = [];
+        try {
+          if (u && typeof aulaMateriasUsuario === 'function') mats = aulaMateriasUsuario(u) || [];
+        } catch (e0) {}
+        if (!mats.length && u && u.materias) mats = u.materias;
+        coursesEl.innerHTML = (mats || []).slice(0, 8).map(function (m) {
+          var name = typeof m === 'string' ? m : (m.nombre || m.name || '');
+          return '<div class="av-course-line"><i></i>' + (name || 'Curso') + '</div>';
+        }).join('') || '<p class="av-muted">Sin cursos registrados</p>';
+      }
+      var title = document.getElementById('dpForosCalTitle');
+      var grid = document.getElementById('dpForosCalGrid');
+      if (title && grid) {
+        var y = forosCalMonth.getFullYear();
+        var m = forosCalMonth.getMonth();
+        var months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        title.textContent = months[m] + ' ' + y;
+        var first = new Date(y, m, 1);
+        var start = (first.getDay() + 6) % 7; // Lunes=0
+        var days = new Date(y, m + 1, 0).getDate();
+        var html = '<div class="av-cal-hd">L</div><div class="av-cal-hd">M</div><div class="av-cal-hd">X</div><div class="av-cal-hd">J</div><div class="av-cal-hd">V</div><div class="av-cal-hd">S</div><div class="av-cal-hd">D</div>';
+        for (var i = 0; i < start; i++) html += '<div class="av-cal-day muted"></div>';
+        var today = new Date();
+        for (var d = 1; d <= days; d++) {
+          var isToday = today.getFullYear() === y && today.getMonth() === m && today.getDate() === d;
+          html += '<div class="av-cal-day' + (isToday ? ' today' : '') + '">' + d + '</div>';
+        }
+        grid.innerHTML = html;
+      }
+      if (!document.body._dpForosCalBound) {
+        document.body._dpForosCalBound = true;
+        document.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-dp-foros-cal]');
+          if (!b) return;
+          var delta = parseInt(b.getAttribute('data-dp-foros-cal'), 10) || 0;
+          forosCalMonth.setMonth(forosCalMonth.getMonth() + delta);
+          renderForosSide();
+        });
+      }
+    } catch (e) { console.warn('renderForosSide', e); }
+  }
+
   function setView(name) {
-    if (name === 'foros' && window.ForosAvisos && typeof ForosAvisos.mount === 'function') {
-      try { ForosAvisos.mount('faRootDocente'); } catch (eFa) {}
+    if (name === 'foros') {
+      try {
+        var elD = document.getElementById('faRootDocente');
+        if (elD && window.ForosAvisos && typeof ForosAvisos.mount === 'function') {
+          ForosAvisos.mount(elD);
+        } else if (window.ForosAvisos && typeof ForosAvisos.mount === 'function') {
+          ForosAvisos.mount('faRootDocente');
+        }
+      } catch (eFa) { console.warn('mount docente chat', eFa); }
+      try { renderForosSide(); } catch (eFs) {}
     }
 
     if (name === 'cursos') {
