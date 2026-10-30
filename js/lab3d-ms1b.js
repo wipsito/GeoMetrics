@@ -67,7 +67,7 @@
                 bscr.lcd(S.weighing ? fmt(S.gh, 2) : '0.00', 'γh kN/m³');
                 return { hud: hud4({ k: 'Molde', v: S.pt + '/5', u: '' }, { k: 'w', v: fmt(S.w, 1), u: '%' }, { k: 'Golpes', v: String(S.bl), u: '/' + S.total }, { k: 'γd', v: fmt(S.gd, 2), u: 'kN/m³' }), phase: S.i };
             }
-            return { root: root, pins: pins, set: set };
+            return { root: root, pins: pins, set: set, h: { cups: cups, layers: layers, MY: MY, MH: MH, R: R, collar: collar, bscr: bscr, ham: ham } };
         }
     });
 
@@ -133,7 +133,7 @@
                 bscr.lcd(fmt(S.ph === 3 ? Mx.Mtot : (S.ph === 0 ? Mx.Msoil * S.dig : Mx.Msoil), 0) + ' g', S.ph === 3 ? 'ARENA' : 'SUELO');
                 return { hud: hud4({ k: 'Arena', v: fmt(S.out, 0), u: 'g' }, { k: 'En hueco', v: fmt(S.inHole, 0), u: 'g' }, { k: 'V hueco', v: fmt(S.Vc, 0), u: 'cm³' }, { k: 'ρd', v: S.rd ? fmt(S.rd, 3) : '—', u: S.rd ? 'g/cm³' : '' }), phase: S.ph };
             }
-            return { root: root, pins: pins, set: set };
+            return { root: root, pins: pins, set: set, h: { app: app, cover: cover, bscr: bscr, bowl: bowl, heap: heap, HX: HX, BX: BX } };
         }
     });
 
@@ -250,7 +250,7 @@
             box(root, 1.5, 0.16, 1.5, CX, 0.14, 0, mt.steelD);
             var cell = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, CH, 40, 1, true), glassM(0.25)); cell.position.set(CX, CY + CH / 2, 0); root.add(cell);
             var soil = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.58, 1.12, 36), L.speckle('#b78a5c', 2400, 60, 200, 3, 2, 1)); soil.position.set(CX, CY + CH / 2, 0); root.add(soil);
-            cyl(root, 0.58, 0.58, 0.1, CX, CY + CH / 2 - 0.61, 0, M(0xd3dbe8, 0.1, 0.9), 30); cyl(root, 0.58, 0.58, 0.1, CX, CY + CH / 2 + 0.61, 0, M(0xd3dbe8, 0.1, 0.9), 30);
+            var stoneB = cyl(root, 0.58, 0.58, 0.1, CX, CY + CH / 2 - 0.61, 0, M(0xd3dbe8, 0.1, 0.9), 30); var stoneT = cyl(root, 0.58, 0.58, 0.1, CX, CY + CH / 2 + 0.61, 0, M(0xd3dbe8, 0.1, 0.9), 30);
             cyl(root, 0.66, 0.66, 0.08, CX, CY + CH + 0.04, 0, mt.steelM, 36); cyl(root, 0.66, 0.66, 0.08, CX, CY - 0.04, 0, mt.steelM, 36);
             var inlet = tube(root, [[-0.2, 3.5, -0.1], [-0.2, 3.1, 0.2], [CX, 3.0, 0.3], [CX, CY + CH + 0.08, 0.1]], 0.05, M(0x3b9eff, 0.2, 0.3));
             tube(root, [[CX, CY - 0.06, 0], [CX, 0.5, 0.2], [2.7, 0.5, 0.4], [2.7, 0.95, 0.4]], 0.05, mt.rubber);
@@ -271,7 +271,7 @@
                 var i = prm.P.h / prm.P.L;
                 return { hud: hud4({ k: 't', v: S.t < 90 ? fmt(S.t, 0) : S.t < 5400 ? fmt(S.t / 60, 1) : fmt(S.t / 3600, 1), u: S.t < 90 ? 's' : S.t < 5400 ? 'min' : 'h' }, { k: 'V', v: fmt(S.V, 1), u: 'mL' }, { k: 'i', v: fmt(i, 2), u: '' }, { k: 'k', v: Math.pow(10, prm.P.lk).toExponential(1), u: 'cm/s' }), phase: p < 0.08 ? 0 : p < 0.92 ? 1 : 2 };
             }
-            return { root: root, pins: pins, set: set };
+            return { root: root, pins: pins, set: set, h: { soil: soil, tw: tw, stoneB: stoneB, stoneT: stoneT, CX: CX, CY: CY, CH: CH } };
         }
     });
 })(window);

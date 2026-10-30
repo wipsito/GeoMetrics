@@ -164,7 +164,7 @@
                 });
                 return { hud: hud4({ k: 't', v: fmt(S.tH, 1), u: 'h' }, { k: 'T', v: fmt(S.T, 0), u: '°C' }, { k: 'Masa', v: fmt(S.m, 2), u: 'g' }, { k: 'w', v: fmt(S.wNow, 2), u: '%' }), phase: S.ph };
             }
-            return { root: root, pins: pins, set: set };
+            return { root: root, pins: pins, set: set, h: { dish: dish, mound: mound, bscr: bscr, BX: BX, X0: X0 } };
         }
     });
 
@@ -227,7 +227,7 @@
                 tscr.lcd(fmt(S.tMin, 1) + ' min', 'TIMER');
                 return { hud: hud4({ k: 't', v: fmt(S.tMin, 1), u: 'min' }, { k: 'Fondo', v: fmt(S.pan, 1), u: 'g' }, { k: 'Pasa 200', v: fmt(S.p200, 1), u: '%' }, { k: 'Masa', v: fmt(prm.P.M, 0), u: 'g' }), phase: S.ph };
             }
-            return { root: root, pins: pins, set: set };
+            return { root: root, pins: pins, set: set, h: { stack: stack, n: n } };
         }
     });
 
@@ -290,7 +290,7 @@
                 cscr.lcd(String(Math.floor(N)), 'GOLPES', '#5eead4');
                 return { hud: hud4({ k: 'Golpes', v: fmt(N, 0), u: 'N' }, { k: 'Ranura', v: fmt(S.gap, 1), u: 'mm' }, { k: 'w', v: fmt(S.w, 1), u: '%' }, { k: 'LL', v: fmt(S.LL, 0), u: '%' }), phase: S.ph };
             }
-            return { root: root, pins: pins, set: set };
+            return { root: root, pins: pins, set: set, h: { soil: soil, groove: groove, tool: tool } };
         }
     });
 
@@ -364,7 +364,7 @@
                 bscr.lcd(fmt(S.ph === 0 ? S.Wpw : (S.ph === 4 ? S.Wpws : 0), 2) + ' g', S.ph === 0 ? 'Wpw' : S.ph === 4 ? 'Wpws' : '');
                 return { hud: hud4({ k: 't vacío', v: fmt(S.tV, 0), u: 'min' }, { k: 'Aire', v: fmt(S.air, 0), u: '%' }, { k: 'Wpws', v: S.Wpws ? fmt(S.Wpws, 2) : '—', u: S.Wpws ? 'g' : '' }, { k: 'Gs', v: S.Gs ? fmt(S.Gs, 3) : '—', u: '' }), phase: S.ph };
             }
-            return { root: root, pins: pins, set: set };
+            return { root: root, pins: pins, set: set, h: { pic: pic, wBody: wBody, wCone: wCone, wNeck: wNeck, soilP: soilP, bscr: bscr, BX: BX } };
         }
     });
 })(window);

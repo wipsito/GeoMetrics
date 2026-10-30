@@ -446,7 +446,7 @@
         box(carr, 0.04, 0.3, 1.7, 1.08, 0.60, 0, acrylic);
         box(carr, 0.04, 0.3, 1.7, -1.08, 0.60, 0, acrylic);
         box(carr, 2.1, 0.2, 1.62, 0, 0.55, 0, water);
-        box(carr, 0.9, 0.32, 0.9, 0, 0.61, 0, mt.soilDark);                /* suelo inferior */
+        var soilLow = box(carr, 0.9, 0.32, 0.9, 0, 0.61, 0, mt.soilDark);                /* suelo inferior */
         box(carr, 1.0, 0.32, 0.05, 0, 0.61, 0.475, steel);                 /* caja inferior */
         box(carr, 1.0, 0.32, 0.05, 0, 0.61, -0.475, steel);
         box(carr, 0.05, 0.32, 1.0, 0.475, 0.61, 0, steel);
@@ -457,7 +457,7 @@
         var upper = new THREE.Group();
         root.add(upper);
         box(upper, 0.9, 0.03, 0.9, 0, 0.815, 0, mt.stone);
-        box(upper, 0.9, 0.32, 0.9, 0, 0.99, 0, mt.soil);                   /* suelo superior */
+        var soilUp = box(upper, 0.9, 0.32, 0.9, 0, 0.99, 0, mt.soil);                   /* suelo superior */
         box(upper, 1.0, 0.32, 0.05, 0, 0.99, 0.475, steel);
         box(upper, 1.0, 0.32, 0.05, 0, 0.99, -0.475, steel);
         box(upper, 0.05, 0.32, 1.0, 0.475, 0.99, 0, steel);
@@ -587,7 +587,7 @@
             };
         }
 
-        return { root: root, pins: pins, set: set };
+        return { root: root, pins: pins, set: set, h: { carr: carr, upper: upper, soilLow: soilLow, soilUp: soilUp } };
     }
 
     /* ================================================================== */
@@ -822,7 +822,7 @@
             };
         }
 
-        return { root: root, pins: pins, set: set };
+        return { root: root, pins: pins, set: set, h: { spec: spec, lower: lower, HS: HS, topY: topY } };
     }
 
     /* ================================================================== */
@@ -860,7 +860,7 @@
         var ringWall = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.28, 40, 1, true), brassD);
         ringWall.position.set(0, 0.58, 0);
         m.add(ringWall);
-        cyl(m, 0.44, 0.44, 0.03, 0, 0.705, 0, mt.brass, 40);                /* reborde del anillo */
+        var rimC = cyl(m, 0.44, 0.44, 0.03, 0, 0.705, 0, mt.brass, 40);                /* reborde del anillo */
         var soil = cyl(m, 0.38, 0.38, 0.28, 0, 0.58, 0, mt.soil, 40);
 
         /* ---- vástago y elementos que descienden con el asentamiento ---- */
@@ -962,7 +962,7 @@
             };
         }
 
-        return { root: root, pins: pins, set: set, extra: 'Deformación exagerada para poder apreciarla.' };
+        return { root: root, pins: pins, set: set, extra: 'Deformación exagerada para poder apreciarla.', h: { soil: soil, ringWall: ringWall, rim: rimC, ram: ram, m: m, OFF: OFF } };
     }
 
     /* ================================================================== */
@@ -1004,12 +1004,13 @@
         var tubeC = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 1.8, 48, 1, true), acrylic);
         tubeC.position.set(0, 1.66, 0);
         cellG.add(tubeC);
-        cyl(cellG, 0.95, 0.95, 0.14, 0, 2.63, 0, mt.frameLight, 44);
-        cyl(cellG, 0.14, 0.14, 0.22, 0, 2.81, 0, mt.chromeDark, 20);
+        var topPlate = cyl(cellG, 0.95, 0.95, 0.14, 0, 2.63, 0, mt.frameLight, 44);
+        var topStem = cyl(cellG, 0.14, 0.14, 0.22, 0, 2.81, 0, mt.chromeDark, 20);
+        var rods = [];
         [90, 210, 330].forEach(function (deg) {
             var a = deg * Math.PI / 180;
-            cyl(cellG, 0.035, 0.035, 1.9, Math.cos(a) * 0.88, 1.66, Math.sin(a) * 0.88, mt.chrome, 10);
-            cyl(cellG, 0.07, 0.07, 0.05, Math.cos(a) * 0.88, 2.72, Math.sin(a) * 0.88, mt.chromeDark, 8);
+            rods.push(cyl(cellG, 0.035, 0.035, 1.9, Math.cos(a) * 0.88, 1.66, Math.sin(a) * 0.88, mt.chrome, 10));
+            rods.push(cyl(cellG, 0.07, 0.07, 0.05, Math.cos(a) * 0.88, 2.72, Math.sin(a) * 0.88, mt.chromeDark, 8));
         });
         var waterM = new THREE.Mesh(new THREE.CylinderGeometry(0.73, 0.73, 1.76, 48), water);
         waterM.position.set(0, 0.76, 0);
@@ -1023,12 +1024,15 @@
         var soilM = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2, 40), mt.soil);
         soilM.castShadow = true;
         spec.add(soilM);
-        spec.add(new THREE.Mesh(new THREE.CylinderGeometry(0.315, 0.315, 1.2, 40, 1, true), membrane));
+        var memb = new THREE.Mesh(new THREE.CylinderGeometry(0.315, 0.315, 1.2, 40, 1, true), membrane);
+        spec.add(memb);
+        var orings = [];
         [-0.55, 0.55].forEach(function (y) {
             var o = new THREE.Mesh(new THREE.TorusGeometry(0.318, 0.02, 8, 32), mt.black);
             o.rotation.x = Math.PI / 2;
             o.position.y = y;
             spec.add(o);
+            orings.push(o);
         });
         var cap = cyl(cellG, 0.34, 0.34, 0.1, 0, 2.11, 0, mt.chrome, 28);   /* cabezal superior */
 
@@ -1162,7 +1166,7 @@
             };
         }
 
-        return { root: root, pins: pins, set: set };
+        return { root: root, pins: pins, set: set, h: { cellG: cellG, spec: spec, cap: cap, tubeC: tubeC, topPlate: topPlate, topStem: topStem, rods: rods, memb: memb, orings: orings, waterM: waterM } };
     }
 
     var BUILDERS = {
@@ -1208,7 +1212,7 @@
               '<input type="range" class="lab3d-scrub" min="0" max="1000" value="0" aria-label="Avance del ensayo">' +
               '<span class="lab3d-pct">0 %</span>' +
               '<select class="lab3d-speed" aria-label="Velocidad">' +
-                '<option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option>' +
+                '<option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option>' +
               '</select>' +
               '<label class="lab3d-toggle"><input type="checkbox" class="lab3d-tgl" checked><span>Etiquetas</span></label>' +
             '</div>' +
@@ -1257,9 +1261,10 @@
         var partsList = q('.lab3d-parts');
         var phaseItems = host.querySelectorAll('.lab3d-phases li');
         var noteEl = q('.lab3d-note');
+        if (meta.defaultSpeed) speedSel.value = String(meta.defaultSpeed);
         var inst = {
             tipo: tipo, host: host, disposed: false, playing: false,
-            p: 0, speed: 1, prm: PARAMS[tipo](), lastPhase: -2,
+            p: 0, speed: meta.defaultSpeed || 1, prm: PARAMS[tipo](), lastPhase: -2,
             renderer: null, scene: null, camera: null, machine: null,
             raf: 0, last: 0, hudEls: [], pinEls: [], pinVecs: [],
             cam: null, goal: null, ready: false, dragging: false,
@@ -1313,6 +1318,7 @@
             for (var pi = 0; pi < meta.phases.length; pi++) {
                 if (inst.p >= meta.phases[pi].a) phIdx = pi;
             }
+            if (r.stepIdx != null) phIdx = r.stepIdx;     /* máquinas con pasos propios (cíclicos) */
             r.phase = phIdx;
             for (var i = 0; i < r.hud.length; i++) {
                 var h = inst.hudEls[i];
@@ -1707,7 +1713,10 @@
         META[tipo] = def.meta; PARAMS[tipo] = def.params; BUILDERS[tipo] = def.build;
     }
 
+    function getDef(tipo) { return { meta: META[tipo], params: PARAMS[tipo], build: BUILDERS[tipo] }; }
+
     global.GeoLab3D = {
+        get: getDef,
         mount: mount,
         disposeAll: disposeAll,
         register: register,
