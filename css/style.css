@@ -6901,3 +6901,34 @@ img.tabla-foto {
   width: 44px !important;
   height: 44px !important;
 }
+
+/* Civix adjunto visible */
+#asistenteFileChip.asistente-file-chip:not([hidden]) {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 12px 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 217, 255, 0.35);
+  background: rgba(0, 40, 70, 0.75);
+  color: #EAF7FF;
+  font-size: 13px;
+}
+#asistenteFileChip .adjunto-nombre {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #B8E8F8;
+}
+#asistenteFileChip .btn-quitar-adjunto {
+  border: none;
+  background: rgba(240, 100, 120, 0.2);
+  color: #F06478;
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 14px;
+}
