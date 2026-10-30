@@ -461,21 +461,45 @@
     ========================================================= */
     var SIMS = { rev: REV, comp: COMP, aci211: ACI_SIM, agg: AGG };
     var ORDEN = ['rev', 'comp', 'aci211', 'agg'];
+    var TONE = {
+        rev: { a: '#38BDF8', rgb: '56,189,248' },
+        comp: { a: '#A78BFA', rgb: '167,139,250' },
+        aci211: { a: '#34D399', rgb: '52,211,153' },
+        agg: { a: '#FBBF24', rgb: '251,191,36' }
+    };
     var R = { sim: null, raf: 0, p: 0, running: false, last: 0, P: null };
 
     function simHome() {
-        return '<div class="dm dm-intro"><p>Cada simulador abre en un panel propio: <b>parámetros a la izquierda, animación al centro y gráfica en vivo a la derecha</b>. Cambia los parámetros en cualquier momento y pulsa ▶ para repetir la animación.</p></div>' +
-            '<div class="dm dm-cards dm-cards-sim">' + ORDEN.map(function (id) {
-                var s = SIMS[id];
-                return '<button type="button" class="dm-card" data-sim="' + id + '"><span class="dm-card-ico" aria-hidden="true">' + s.icon + '</span><span class="dm-card-t">' + s.titulo + '</span><span class="dm-card-n">' + s.norma + '</span><span class="dm-card-d">' + s.desc + '</span><span class="dm-card-go">ABRIR SIMULADOR →</span></button>';
-            }).join('') + '</div>';
+        return '<div class="simhub">' +
+            '<header class="simhub-hero"><div class="simhub-hero-text"><em class="simhub-eyebrow">Laboratorio virtual · Diseño de Mezclas</em>' +
+            '<h3>Cuatro simuladores para ver la mezcla antes de vaciarla</h3>' +
+            '<p>Mueve el agua, la relación a/c, el TMN o la combinación de agregados y observa la respuesta en <b>2D</b> y en las curvas en vivo. Parámetros a la izquierda, animación al centro y gráfica a la derecha.</p></div>' +
+            '<ul class="simhub-hero-stats"><li><strong>4</strong><em>Simuladores</em></li><li><strong>2D</strong><em>Animación</em></li><li><strong>4</strong><em>Curvas</em></li></ul></header>' +
+            '<div class="simhub-grid">' + ORDEN.map(function (id, i) {
+                var s = SIMS[id], t = TONE[id] || TONE.rev;
+                return '<article class="simcard est-dm-simcard" style="--a:' + t.a + ';--rgb:' + t.rgb + '"><div class="simcard-glow"></div>' +
+                    '<div class="simcard-head"><em class="simcard-num">' + String(i + 1).padStart(2, '0') + '</em><div class="simcard-glyph" aria-hidden="true">' + s.icon + '</div></div>' +
+                    '<h4>' + s.titulo + '</h4><p>' + s.desc + '</p>' +
+                    '<div class="simcard-chips"><em>' + s.norma + '</em></div>' +
+                    '<div class="simcard-btns"><button type="button" class="simcard-btn is-2d" data-sim="' + id + '"><b>▶</b><span>Abrir simulador</span><i>Animación y curvas en vivo</i></button></div></article>';
+            }).join('') + '</div>' +
+            '<h4 class="simhub-sub">Módulos de cálculo con datos de mezcla</h4>' +
+            '<div id="dmCalcMount"></div>' +
+            '<section class="ms2-guias est-ruta"><div class="ms2-guias-head"><h4>Cómo usar los simuladores</h4><p>Elige un ensayo, ajusta los parámetros y pulsa ▶. La gráfica y las lecturas se actualizan sin recargar.</p></div>' +
+            '<div class="est-ruta-chips"><span><b>1</b>Parametriza</span><span><b>2</b>Anima el ensayo</span><span><b>3</b>Lee la curva</span></div></section></div>';
     }
     function simView(s) {
-        return '<div class="dm dm-view dm-simview"><header class="dm-viewhead"><button type="button" class="btn-limpiar" id="smBack">← Simuladores</button><div class="dm-viewtitle"><h3>' + s.titulo + '</h3><span class="dm-norma">' + s.norma + '</span></div></header>' +
+        var t = TONE[s.id] || TONE.rev;
+        return '<div class="simhub-shell" style="--a:' + t.a + ';--rgb:' + t.rgb + '">' +
+            '<div class="simhub-topbar"><button type="button" class="btn-volver simhub-back" id="smBack">← Simuladores</button>' +
+            '<nav class="simhub-crumbs"><span>Diseño de Mezclas</span><i>/</i><span>Simuladores</span><i>/</i><b>' + s.titulo + '</b></nav></div>' +
+            '<header class="simhub-phero"><div class="simhub-phero-icon" aria-hidden="true">' + s.icon + '</div>' +
+            '<div class="simhub-phero-text"><em class="simhub-phero-eyebrow">Simulador · ' + s.norma + '</em><h2>' + s.titulo + '</h2><p class="simhub-phero-desc">' + s.desc + '</p></div>' +
+            '<ul class="simhub-phero-meta"><li><b>Referencia</b><span>' + s.norma + '</span></li><li><b>Gráfica</b><span>' + s.graphTitle + '</span></li></ul></header>' +
             '<div class="dm-simgrid"><aside class="dm-panel dm-controls"><h4>Parámetros</h4><div id="smControls">' + s.controls() + '</div>' +
             '<label class="dm-field" for="smSpeed"><span class="dm-lab">Velocidad de la animación</span><select id="smSpeed"><option value="0.5">Lenta</option><option value="1" selected>Media</option><option value="2">Rápida</option></select></label>' +
             '<div class="dm-actions"><button type="button" class="btn-calcular" id="smPlay">▶ INICIAR</button><button type="button" class="btn-limpiar" id="smReset">Reiniciar</button></div></aside>' +
-            '<section class="dm-panel dm-stage"><canvas id="smStage" data-ratio="' + s.rs + '" role="img" aria-label="Animación del simulador"></canvas>' + (typeof s.extra === 'string' ? s.extra : '') + '</section>' +
+            '<section class="dm-panel dm-stage"><div class="est-simstagehead"><span>Vista 2D</span><em>Animación del ensayo</em></div><canvas id="smStage" data-ratio="' + s.rs + '" role="img" aria-label="Animación del simulador"></canvas>' + (typeof s.extra === 'string' ? s.extra : '') + '</section>' +
             '<section class="dm-panel dm-graph"><h4>' + s.graphTitle + '</h4><canvas id="smGraph" data-ratio="' + s.rg + '" role="img" aria-label="Gráfica en vivo"></canvas></section></div>' +
             '<div class="dm-tiles dm-livechips" id="smChips"></div>' +
             '<details class="dm-panel dm-proc" open><summary>Qué estás viendo</summary>' + s.learn + '</details></div>';
@@ -521,6 +545,9 @@
         if (!R.sim) {
             rootEl.innerHTML = simHome();
             rootEl.querySelectorAll('[data-sim]').forEach(function (b) { b.addEventListener('click', function () { M.openSim(b.getAttribute('data-sim')); }); });
+            if (window.DMCalc && typeof window.DMCalc.mount === 'function') {
+                window.DMCalc.mount(document.getElementById('dmCalcMount'));
+            }
             return;
         }
         rootEl.innerHTML = simView(R.sim);

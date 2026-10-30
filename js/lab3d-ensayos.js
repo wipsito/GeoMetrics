@@ -16,6 +16,7 @@
     /*  Carga de three.js                                                  */
     /* ------------------------------------------------------------------ */
     var THREE_SRCS = [
+        'js/vendor/three.min.js',
         'https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/three.js/r147/three.min.js',
         'https://unpkg.com/three@0.147.0/build/three.min.js'

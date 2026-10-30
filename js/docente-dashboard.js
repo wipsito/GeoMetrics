@@ -218,7 +218,7 @@
       });
     }
     if (!mats.length) {
-      ['Mecánica de Suelos I', 'Mecánica de Suelos II', 'Resistencia de Materiales', 'Diseño de Mezclas'].forEach(function (n) {
+      ['Mecánica de Suelos I', 'Mecánica de Suelos II', 'Resistencia de Materiales', 'Diseño de Mezclas', 'Estructuras I'].forEach(function (n) {
         mats.push({ nombre: n, grupo: '' });
       });
     }

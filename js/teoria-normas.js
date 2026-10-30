@@ -99,6 +99,11 @@
         if (!scr) return;
         var tab = scr.querySelector('.tab-btn[data-tab="' + mod.tab + '"]');
         if (tab && !tab.classList.contains('active')) tab.click();
+        if (mod.key === 'est' && global.Estru && typeof global.Estru.open === 'function') {
+            global.Estru.open(go);
+            try { scr.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { global.scrollTo(0, 0); }
+            return;
+        }
         var sel = mod.key === 'ms2'
             ? '#ms2-ensayos .ensayo-card[data-ensayo-ms2="' + go + '"]'
             : '#' + mod.tab + ' .ensayo-card[data-ensayo="' + go + '"]';
@@ -335,7 +340,7 @@
 
     /* ---------- arranque ---------- */
     function init() {
-        ['ms1', 'ms2', 'rm', 'dm'].forEach(function (key) {
+        ['ms1', 'ms2', 'rm', 'dm', 'est'].forEach(function (key) {
             var mod = MODULES[key];
             if (!mod) return;
             var host = doc.getElementById(mod.host);

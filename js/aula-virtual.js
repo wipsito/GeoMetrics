@@ -9,7 +9,8 @@
     { id: 'ms', name: 'Mecánica de Suelos I', code: 'IC-MS1', progress: 0, teacher: '—', theme: '—' },
     { id: 'ms2', name: 'Mecánica de Suelos II', code: 'IC-MS2', progress: 0, teacher: '—', theme: '—' },
     { id: 'rm', name: 'Resistencia de Materiales', code: 'IC-RM', progress: 0, teacher: '—', theme: '—' },
-    { id: 'dm', name: 'Diseño de Mezclas', code: 'IC-DM', progress: 0, teacher: '—', theme: '—' }
+    { id: 'dm', name: 'Diseño de Mezclas', code: 'IC-DM', progress: 0, teacher: '—', theme: '—' },
+    { id: 'est', name: 'Estructuras I', code: 'IC-EST1', progress: 0, teacher: '—', theme: '—' }
   ];
 
   var state = {
@@ -163,6 +164,7 @@
       suelos2: 'suelos2',
       resistencia: 'resistencia',
       mezclas: 'disenoMezclas',
+      estructuras: 'estructuras',
       recursos: 'recursos',
       resultados: 'resultados'
     };
@@ -221,6 +223,7 @@
       { id: 'suelos2', title: 'Mecánica de Suelos II', desc: 'Cimentaciones y estabilidad' },
       { id: 'resistencia', title: 'Resistencia de Materiales', desc: 'Esfuerzos y deformaciones' },
       { id: 'mezclas', title: 'Diseño de Mezclas', desc: 'Concreto y dosificaciones' },
+      { id: 'estructuras', title: 'Estructuras I', desc: 'Análisis estructural y métodos aproximados' },
       { id: 'recursos', title: 'Recursos / guías PDF', desc: 'Biblioteca del laboratorio' },
       { id: 'resultados', title: 'Mis resultados', desc: 'Historial de ensayos' }
     ];

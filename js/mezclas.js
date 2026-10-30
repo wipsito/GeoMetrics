@@ -225,6 +225,12 @@
         { n: 3, t: 'Concreto fresco', d: 'Control en obra / laboratorio' },
         { n: 4, t: 'Concreto endurecido', d: 'Verificación de resistencia' }
     ];
+    var DM_TONE = {
+        1: { a: '#38BDF8', rgb: '56,189,248' },
+        2: { a: '#A78BFA', rgb: '167,139,250' },
+        3: { a: '#FBBF24', rgb: '251,191,36' },
+        4: { a: '#34D399', rgb: '52,211,153' }
+    };
     var ENS = {};      // id → definición
     var ORDEN = [];
     function reg(def) { ENS[def.id] = def; ORDEN.push(def.id); }
@@ -670,27 +676,45 @@
        RENDER DEL TAB «ENSAYOS»
     ========================================================= */
     function ensayosHome() {
-        var h = '<div class="dm dm-intro"><p>Sigue la ruta de trabajo de un diseño de mezcla: <b>caracteriza los agregados → diseña → verifica en estado fresco → controla la resistencia</b>. ' +
-            'Los datos que apruebes en un ensayo («Usar en el diseño ACI») se precargan en el diseño.</p></div>';
+        var h = '<header class="ms2-hero">' +
+            '<div class="ms2-hero-text"><em class="ms2-eyebrow">Laboratorio virtual · Diseño de Mezclas</em>' +
+            '<h3>Del agregado al concreto endurecido</h3>' +
+            '<p>Ocho ensayos recorren la ruta real de un diseño: caracteriza los agregados, proporciona la mezcla ACI 211.1, controla el concreto fresco y verifica la resistencia endurecida. Los datos aprobados se reutilizan entre ensayos.</p>' +
+            '<ol class="ms2-flow"><li><b>1</b>Caracterizar</li><li><b>2</b>Diseñar</li><li><b>3</b>Controlar</li><li><b>4</b>Verificar</li></ol></div>' +
+            '<ul class="ms2-hero-stats"><li><strong>' + ORDEN.length + '</strong><em>Ensayos</em></li><li><strong>4</strong><em>Etapas</em></li><li><strong>ACI</strong><em>211.1</em></li></ul></header>';
         GRUPOS.forEach(function (g) {
             var items = ORDEN.filter(function (id) { return ENS[id].grupo === g.n; });
-            h += '<section class="dm dm-group"><header class="dm-grouphead"><span class="dm-num">' + g.n + '</span><div><h4>' + g.t + '</h4><p>' + g.d + '</p></div></header><div class="dm-cards">' +
+            var tone = DM_TONE[g.n] || DM_TONE[1];
+            h += '<section class="dm est-dmgroup"><header class="dm-grouphead est-dmgrouphead"><span class="dm-num" style="background:' + tone.a + '">' + g.n + '</span>' +
+                '<div><h4>' + g.t + '</h4><p>' + g.d + '</p></div></header><div class="ms2-grid est-dmcards">' +
                 items.map(function (id) {
                     var e = ENS[id];
-                    return '<button type="button" class="dm-card" data-ens="' + id + '"><span class="dm-card-ico" aria-hidden="true">' + e.icon + '</span><span class="dm-card-t">' + e.titulo + '</span><span class="dm-card-n">' + e.norma + '</span>' +
-                        '<span class="dm-card-d">' + e.desc + '</span><span class="dm-card-o">' + e.obtiene + '</span><span class="dm-card-go">ABRIR ENSAYO →</span></button>';
+                    var chips = String(e.obtiene || '').split('·').map(function (x) { return x.trim(); }).filter(Boolean);
+                    return '<button type="button" class="ensayo-card ms2-card" data-ens="' + id + '" style="--ms2-accent:' + tone.a + ';--ms2-rgb:' + tone.rgb + '">' +
+                        '<div class="ms2-card-head"><em class="ms2-card-num">' + String(ORDEN.indexOf(id) + 1).padStart(2, '0') + '</em><em class="ms2-card-tag">Etapa ' + g.n + '</em></div>' +
+                        '<div class="ms2-card-body"><div class="ms2-glyph" aria-hidden="true">' + e.icon + '</div><div class="ms2-card-text"><h3>' + e.titulo + '</h3><p>' + e.desc + '</p>' +
+                        '<span class="est-dm-norma">' + e.norma + '</span></div></div>' +
+                        '<div class="ms2-chips">' + chips.map(function (c) { return '<em>' + c + '</em>'; }).join('') + '</div>' +
+                        '<span class="ms2-card-cta">ABRIR ENSAYO <i>→</i></span></button>';
                 }).join('') + '</div></section>';
         });
         return h;
     }
     function ensayoView(id) {
         var e = ENS[id];
-        return '<div class="dm dm-view"><header class="dm-viewhead"><button type="button" class="btn-limpiar" id="dmBackEns">← Ensayos</button>' +
-            '<div class="dm-viewtitle"><h3>' + e.titulo + '</h3><span class="dm-norma">' + e.norma + '</span></div></header>' +
-            '<div class="dm-cols"><div class="dm-col"><div class="dm-panel"><h4>Datos del ensayo</h4>' + e.render() + '</div>' + (e.after || '') +
-            '</div><div class="dm-col"><div class="dm-panel dm-resultpanel"><h4>Resultados</h4><div id="dmRes" class="dm-res"><p class="dm-empty">Ingresa los datos y pulsa CALCULAR.</p></div>' +
-            '<div class="dm-actions dm-savebar"><button type="button" class="btn-calcular" id="dmSave">Guardar en Mis resultados</button><button type="button" class="btn-limpiar" id="dmPrint">Informe (imprimir / PDF)</button></div></div>' +
-            '<details class="dm-panel dm-proc" open><summary>Procedimiento y fórmulas</summary>' + e.proc + '</details></div></div></div>';
+        var tone = DM_TONE[e.grupo] || DM_TONE[1];
+        var chips = String(e.obtiene || '').split('·').map(function (x) { return x.trim(); }).filter(Boolean);
+        return '<div class="ms2-shell est-shell" style="--ms2-accent:' + tone.a + ';--ms2-rgb:' + tone.rgb + '">' +
+            '<div class="ms2-topbar"><button type="button" class="btn-limpiar ms2-back" id="dmBackEns">← Ensayos</button>' +
+            '<div class="ms2-crumbs"><span>Diseño de Mezclas</span><i>/</i><span>Ensayos</span><i>/</i><b>' + e.titulo + '</b></div></div>' +
+            '<header class="ms2-phero"><div class="ms2-phero-icon" aria-hidden="true">' + e.icon + '</div>' +
+            '<div class="ms2-phero-text"><em>Etapa ' + e.grupo + ' · ' + e.norma + '</em><h2>' + e.titulo + '</h2>' +
+            '<p class="ms2-fund"><b>Objetivo</b> ' + e.desc + '</p></div>' +
+            '<ul class="ms2-phero-meta"><li><b>Qué se obtiene</b><span>' + chips.join(' · ') + '</span></li><li><b>Referencia</b><span>' + e.norma + '</span></li></ul></header>' +
+            '<div class="est-work"><div class="est-work-main"><section class="dm-panel est-panel"><h4>Datos del ensayo</h4>' + e.render() + '</section>' + (e.after || '') +
+            '</div><aside class="est-work-side"><section class="dm-panel est-panel est-respanel"><h4>Resultados</h4><div id="dmRes" class="dm-res"><p class="dm-empty">Ingresa los datos y pulsa CALCULAR.</p></div>' +
+            '<div class="dm-actions dm-savebar"><button type="button" class="btn-calcular" id="dmSave">Guardar en Mis resultados</button><button type="button" class="btn-limpiar" id="dmPrint">Informe (imprimir / PDF)</button></div></section>' +
+            '<details class="dm-panel est-panel est-proc dm-proc" open><summary>Procedimiento y fórmulas</summary>' + e.proc + '</details></aside></div></div>';
     }
     M.renderEnsayos = function () {
         var rootEl = $('dmEnsayosRoot'); if (!rootEl) return;

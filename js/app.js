@@ -138,6 +138,7 @@ function inicializarApp() {
     on('btnVolverSuelos2', 'click', function() { mostrarPantalla('menu'); });
     on('btnVolverResistencia', 'click', function() { mostrarPantalla('menu'); });
     on('btnVolverDisenoMezclas', 'click', function() { mostrarPantalla('menu'); });
+    on('btnVolverEstructuras', 'click', function() { mostrarPantalla('menu'); });
     on('btnVolverSimuladores', 'click', function(e) { e.preventDefault(); if (typeof aulaVolverDesdeSimulador === 'function') { aulaVolverDesdeSimulador(); } });
     on('btnVolverRecursos', 'click', function() { mostrarPantalla('menu'); });
     on('btnVolverResultados', 'click', function() { mostrarPantalla('menu'); });
@@ -2097,7 +2098,7 @@ function mostrarPantalla(pantalla) {
         }
     } catch (e) {}
 
-    var pantallas = ['pantallaInicio', 'pantallaMenu', 'pantallaSuelos', 'pantallaSuelos2', 'pantallaResistencia', 'pantallaDisenoMezclas', 'pantallaSimuladores', 'pantallaRecursos', 'pantallaResultados', 'pantallaDocente', 'pantallaEstudiante', 'pantallaAdmin'];
+    var pantallas = ['pantallaInicio', 'pantallaMenu', 'pantallaSuelos', 'pantallaSuelos2', 'pantallaResistencia', 'pantallaEstructuras', 'pantallaDisenoMezclas', 'pantallaSimuladores', 'pantallaRecursos', 'pantallaResultados', 'pantallaDocente', 'pantallaEstudiante', 'pantallaAdmin'];
     
     pantallas.forEach(function(id) {
         var el = document.getElementById(id);
@@ -2189,6 +2190,11 @@ function abrirSeccion(seccion) {
         case 'diseno-mezclas':
             mostrarPantalla('disenoMezclas');
             activarTabsSeccion('pantallaDisenoMezclas');
+            break;
+        case 'estructuras-1':
+            mostrarPantalla('estructuras');
+            activarTabsSeccion('pantallaEstructuras');
+            setTimeout(function(){ activarTabsSeccion('pantallaEstructuras'); }, 40);
             break;
         case 'simuladores':
             mostrarPantalla('simuladores');
@@ -5534,6 +5540,18 @@ function descargarInformeDesdeHistorial(id) {
         return;
     }
     var det = item.detalle || {};
+    // Informes de módulos que ya guardan el documento completo (p. ej. Estructuras I)
+    if (det.reporteHTML && String(det.reporteHTML).indexOf('<html') >= 0) {
+        var win = window.open('', '_blank');
+        if (!win) {
+            alert('Permite ventanas emergentes para generar el informe.');
+            return;
+        }
+        win.document.open();
+        win.document.write(det.reporteHTML);
+        win.document.close();
+        return;
+    }
     var tipo = det.tipo || '';
     // Inferir tipo por nombre si falta
     if (!tipo && item.nombre) {
