@@ -82,6 +82,120 @@
     return (n.slice(0, 2) || 'ES').toUpperCase();
   }
 
+
+  /** Nombres canónicos y reparación de lecturas PDF (orden de palabras invertido). */
+  function normalizeMateriaName(raw) {
+    var s = String(raw || '').replace(/\s+/g, ' ').trim();
+    if (!s) return 'Clase';
+    s = s.replace(/\bGrupo\s*:?\s*[A-Z0-9]+\b/gi, '').replace(/\s+/g, ' ').trim();
+    s = s.replace(/^[-\u2013\u2014\s]+|[-\u2013\u2014\s]+$/g, '').trim();
+    // Quitar códigos numéricos largos sueltos
+    s = s.replace(/\b\d{5,}\b/g, '').replace(/\s+/g, ' ').trim();
+
+    var u = s.toUpperCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+    // Patrones típicos mal leídos por el PDF (fragmentos en desorden)
+    var rules = [
+      { re: /(MEC[AÁ]?NICA).*(SUELOS?)\s*II\b|(SUELOS?).*(MEC[AÁ]?NICA).*\bII\b|^DE\s+SUELOS\s+MEC.*II/i, name: 'Mecánica de Suelos II' },
+      { re: /(MEC[AÁ]?NICA).*(SUELOS?)\s*I\b|(SUELOS?).*(MEC[AÁ]?NICA)|(^|\s)DE\s+SUELOS\s+MEC|(^|\s)SUELOS\s+MEC[AÁ]?NICA/i, name: 'Mecánica de Suelos I' },
+      { re: /RESISTENCIA.*MATERIALES|MATERIALES.*RESISTENCIA/i, name: 'Resistencia de Materiales' },
+      { re: /DISE[NÑ]O\s+DE\s+MEZCLAS|MEZCLAS.*CONCRETO|DISE[NÑ]O.*MEZCLAS/i, name: 'Diseño de Mezclas' },
+      { re: /MEC[AÁ]?NICA\s+DE\s+FLUIDOS|FLUIDOS/i, name: 'Mecánica de Fluidos' },
+      { re: /[AÁ]LGEBRA\s+LINEAL/i, name: 'Álgebra Lineal' },
+      { re: /ECUACIONES\s+DIFERENCIALES/i, name: 'Ecuaciones Diferenciales' },
+      { re: /C[AÁ]LCULO\s+(INTEGRAL|DIFERENCIAL|VECTORIAL)/i, name: null }, // keep as title case below
+      { re: /SOCIOHUMAN|ELECTIVA/i, name: null }
+    ];
+    for (var i = 0; i < rules.length; i++) {
+      if (rules[i].re.test(s) || rules[i].re.test(u)) {
+        if (rules[i].name) return rules[i].name;
+        break;
+      }
+    }
+
+    // "DE SUELOS MECÁNICA" → "MECÁNICA DE SUELOS"
+    if (/^(DE|DEL|LA|EL|LOS|LAS)\s+/i.test(s) && /MEC[AÁ]NICA|RESISTENCIA|DISE[NÑ]O|C[AÁ]LCULO/i.test(s)) {
+      var words = s.split(/\s+/);
+      // mover preposiciones iniciales al final del bloque principal
+      var prep = [];
+      while (words.length && /^(DE|DEL|LA|EL|LOS|LAS|Y|E)$/i.test(words[0])) {
+        prep.push(words.shift());
+      }
+      if (words.length) s = words.concat(prep).join(' ');
+    }
+
+    // Title Case español ligero
+    s = s.toLowerCase().replace(/(^|[\s\-\/])([\wáéíóúñü])/gi, function (_, a, b) {
+      return a + b.toUpperCase();
+    });
+    // Restaurar preposiciones en minúscula
+    s = s.replace(/\s(De|Del|La|Las|Los|Y|E|En|Con|Para|Por)\s/g, function (m) {
+      return m.toLowerCase();
+    });
+    // Primera letra mayúscula
+    if (s) s = s.charAt(0).toUpperCase() + s.slice(1);
+    return s;
+  }
+
+  function courseIndex() {
+    var list = loadCourses();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === state.courseId) return i;
+    }
+    return 0;
+  }
+
+  function cycleCourse(delta) {
+    var list = loadCourses();
+    if (!list.length) return;
+    var i = courseIndex();
+    i = (i + delta + list.length) % list.length;
+    state.courseId = list[i].id;
+    renderHologram();
+  }
+
+  /** Enlaza flechas del holograma (delegación: funciona aunque el DOM se re-pinte). */
+  function bindHoloNav() {
+    var root = document.getElementById('pantallaEstudiante') || document.body || document;
+    if (root._holoNavBound) return;
+    root._holoNavBound = true;
+    root.addEventListener('click', function (e) {
+      var el = e.target;
+      if (!el) return;
+      // subir hasta el botón (por si el clic cae en el texto ‹ ›)
+      var node = el;
+      while (node && node !== root && node !== document.body) {
+        var id = node.id || '';
+        if (id === 'avHoloPrev' || (node.classList && node.classList.contains('av-holo-arrow') && node.getAttribute('aria-label') === 'Materia anterior')) {
+          e.preventDefault();
+          e.stopPropagation();
+          cycleCourse(-1);
+          return;
+        }
+        if (id === 'avHoloNext' || (node.classList && node.classList.contains('av-holo-arrow') && node.getAttribute('aria-label') === 'Materia siguiente')) {
+          e.preventDefault();
+          e.stopPropagation();
+          cycleCourse(1);
+          return;
+        }
+        if (node.getAttribute && node.getAttribute('data-hi') != null && node.parentElement && node.parentElement.id === 'avHoloDots') {
+          e.preventDefault();
+          e.stopPropagation();
+          var list = loadCourses();
+          var idx = parseInt(node.getAttribute('data-hi'), 10);
+          if (list[idx]) {
+            state.courseId = list[idx].id;
+            renderHologram();
+          }
+          return;
+        }
+        node = node.parentElement;
+      }
+    }, true); // capture: gana a otros handlers que hagan stopPropagation
+  }
+
+
   /** Cursos desde materias reales del usuario; si no hay, fallback. */
   function loadCourses() {
     var u = currentUser();
@@ -91,15 +205,19 @@
     } catch (e) {}
     if (mats.length) {
       return mats.map(function (m, i) {
-        var name = m.nombre || m.name || ('Materia ' + (i + 1));
+        var name = normalizeMateriaName(m.nombre || m.name || ('Materia ' + (i + 1)));
+        var grupo = m.grupo || (m.grupos && m.grupos[0]) || '';
+        if (Array.isArray(m.grupos) && m.grupos.length > 1) {
+          grupo = m.grupos.join(', ');
+        }
         return {
           id: 'm' + i,
           name: name,
-          code: name.replace(/\s+/g, '-').slice(0, 12).toUpperCase(),
+          code: grupo ? ('Grupo ' + grupo) : 'Curso registrado',
           progress: computeProgressForMateria(name),
           teacher: '—',
-          theme: 'Grupo ' + (m.grupo || (m.grupos && m.grupos[0]) || '—'),
-          grupo: m.grupo || ''
+          theme: '',
+          grupo: m.grupo || (m.grupos && m.grupos[0]) || ''
         };
       });
     }
@@ -862,19 +980,39 @@
       materiaHints.forEach(function (it) {
         if (it.page !== t.page) return;
         var dy = Math.abs(it.y - t.y);
-        var score = dy + (it.x > t.x ? 80 : 0);
-        if (score < bestScore && dy < 55) {
+        // Preferir texto a la izquierda del bloque horario
+        var score = dy * 2 + (it.x > t.x ? 120 : Math.abs(it.x - t.x) * 0.05);
+        if (score < bestScore && dy < 70) {
           bestScore = score;
           best = it;
         }
       });
-      if (!best) return 'CLASE';
-      // juntar fragmentos cercanos de la misma materia (misma y aprox)
+      if (!best) return 'Clase';
+      // Misma línea (y) y líneas inmediatamente debajo (título multilínea)
       var parts = materiaHints.filter(function (it) {
-        return it.page === best.page && Math.abs(it.y - best.y) < 14 && Math.abs(it.x - best.x) < 120;
-      }).sort(function (a, b) { return a.x - b.x; });
-      var name = parts.map(function (p) { return p.str; }).join(' ').replace(/\s+/g, ' ').trim();
-      return name || best.str;
+        if (it.page !== best.page) return false;
+        var dy = it.y - best.y;
+        // pdf.js: y suele crecer hacia arriba o abajo según viewport; aceptar cercanía vertical
+        if (Math.abs(dy) > 28) return false;
+        // misma columna izquierda
+        if (Math.abs(it.x - best.x) > 160 && it.x > best.x + 40) return false;
+        return true;
+      }).sort(function (a, b) {
+        // orden de lectura: primero arriba, luego x
+        var dy = b.y - a.y;
+        if (Math.abs(dy) > 6) return dy;
+        return a.x - b.x;
+      });
+      // dedupe strings consecutivos
+      var seen = {}, words = [];
+      parts.forEach(function (p) {
+        var s = String(p.str || '').replace(/\s+/g, ' ').trim();
+        if (!s || seen[s]) return;
+        seen[s] = 1;
+        words.push(s);
+      });
+      var name = words.join(' ').replace(/\s+/g, ' ').trim();
+      return normalizeMateriaName(name || best.str);
     }
 
     function findAulaNear(t) {
@@ -904,7 +1042,7 @@
     }
 
     var slots = times.map(function (t) {
-      var mat = findMateriaNear(t);
+      var mat = normalizeMateriaName(findMateriaNear(t));
       return {
         materia: mat,
         grupo: findGrupoNear(t),
@@ -955,7 +1093,7 @@
     }
     box.innerHTML = slots.map(function (s, i) {
       return '<div class="ph-slot" data-i="' + i + '">' +
-        '<div><strong>' + esc(s.materia || 'Clase') + '</strong>' +
+        '<div><strong>' + esc(normalizeMateriaName(s.materia || 'Clase')) + '</strong>' +
         '<span>' + esc(DIAS[s.dia] || '') + ' · ' + esc(s.inicio) + '–' + esc(s.fin) +
         (s.grupo ? (' · Grupo ' + esc(s.grupo)) : '') +
         (s.aula ? (' · ' + esc(s.aula)) : '') + '</span></div>' +
@@ -1207,16 +1345,35 @@
   }
 
   function renderHologram() {
+    var list = loadCourses();
+    if (!list.length) return;
+    if (!state.courseId || !courseById(state.courseId)) state.courseId = list[0].id;
     var c = courseById(state.courseId);
     if (!c) return;
     var title = $('avHoloTitle');
     var code = $('avHoloCode');
     var pct = $('avHoloPct');
     var bar = $('avHoloBar');
+    var dots = $('avHoloDots');
+    var prev = $('avHoloPrev');
+    var next = $('avHoloNext');
     if (title) title.textContent = c.name;
-    if (code) code.textContent = c.code + (c.theme ? ' · ' + c.theme : '');
-    if (pct) pct.textContent = c.progress + '% completado';
-    if (bar) bar.style.width = c.progress + '%';
+    // Subtítulo limpio: solo grupo, sin código truncado raro
+    var sub = [];
+    if (c.grupo) sub.push('Grupo ' + c.grupo);
+    else if (c.code && c.code.indexOf('Grupo') === 0) sub.push(c.code);
+    if (c.theme && c.theme.indexOf('Grupo') !== 0) sub.push(c.theme);
+    if (code) code.textContent = sub.length ? sub.join(' · ') : (c.code || '');
+    if (pct) pct.textContent = (c.progress || 0) + '% completado';
+    if (bar) bar.style.width = (c.progress || 0) + '%';
+    if (dots) {
+      dots.innerHTML = list.map(function (x, i) {
+        return '<span class="' + (x.id === c.id ? 'on' : '') + '" data-hi="' + i + '"></span>';
+      }).join('');
+    }
+    var multi = list.length > 1;
+    if (prev) prev.disabled = !multi;
+    if (next) next.disabled = !multi;
   }
 
   function parseHm(str) {
@@ -1343,7 +1500,7 @@
         return (
           '<div class="av-next-item' + (enCurso ? ' is-live' : '') + '">' +
             '<div class="av-next-item-top">' +
-              '<strong>' + esc(s.materia || 'Clase') + '</strong>' +
+              '<strong>' + esc(normalizeMateriaName(s.materia || 'Clase')) + '</strong>' +
               (enCurso ? '<span class="av-next-live">En curso</span>' : '') +
             '</div>' +
             '<div class="av-next-item-time">' + esc(fmtHmPretty(s.inicio)) + ' – ' + esc(fmtHmPretty(s.fin)) + '</div>' +
@@ -1359,7 +1516,7 @@
       var name = $('avNextName');
       var theme = $('avNextTheme');
       var time = $('avNextTime');
-      if (name) name.textContent = first.materia || '';
+      if (name) name.textContent = normalizeMateriaName(first.materia || '');
       if (theme) theme.textContent = 'Aula ' + (first.aula || '—');
       if (time) time.textContent = fmtHmPretty(first.inicio) + ' – ' + fmtHmPretty(first.fin);
     } catch (err) {
@@ -1794,6 +1951,8 @@
   }
 
   function showAulaVirtual() {
+    try { bindHoloNav(); } catch (eH) {}
+
     var root = $('pantallaEstudiante');
     if (!root) return;
     if (!root.querySelector('.av-top')) {
