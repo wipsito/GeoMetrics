@@ -265,28 +265,88 @@ main#pantallaEstudiante.av-visible {
     linear-gradient(180deg, rgba(2,9,20,0.08) 0%, transparent 22%, transparent 48%, rgba(2,9,20,0.58) 100%);
   pointer-events: none;
 }
-/* Panel del curso anclado al tablero/pantalla de aula-referencia.png */
+/* Panel del curso anclado al borde inferior del tablero frontal */
 .av-hologram {
   position: absolute;
   left: 50%;
-  /* Zona del monitor frontal (logos UniPamplona + Ingeniería Civil) */
-  top: clamp(10%, 12vh, 16%);
+  /* Borde del tablero/pantalla del fondo (aula-referencia.png) */
+  top: clamp(18%, 22vh, 28%);
   transform: translateX(-50%);
-  width: min(560px, 46%);
-  max-width: 560px;
-  padding: 14px 16px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(0,217,255,0.45);
-  background: linear-gradient(165deg, rgba(4,18,36,0.92), rgba(2,10,24,0.94));
+  width: min(540px, 48%);
+  max-width: 540px;
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,217,255,0.5);
+  background: linear-gradient(165deg, rgba(4,18,36,0.94), rgba(2,10,24,0.96));
   box-shadow:
-    0 0 0 1px rgba(0,217,255,0.12),
-    0 12px 40px rgba(0,0,0,0.45),
-    0 0 36px rgba(0,217,255,0.18);
+    0 0 0 1px rgba(0,217,255,0.14),
+    0 10px 32px rgba(0,0,0,0.5),
+    0 0 28px rgba(0,217,255,0.16);
   backdrop-filter: blur(6px);
-  z-index: 3;
-  /* Que se sienta “pegado” al tablero, no flotando sobre pupitres */
-  max-height: min(280px, 38%);
-  overflow: auto;
+  z-index: 20;
+  max-height: min(260px, 36%);
+  overflow: visible;
+  pointer-events: auto !important;
+}
+.av-holo-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.av-holo-center {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+.av-holo-arrow {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,217,255,0.4);
+  background: rgba(10,34,58,0.9);
+  color: var(--av-cyan, #00D9FF);
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+  pointer-events: auto;
+}
+.av-holo-arrow:hover {
+  background: rgba(0,217,255,0.15);
+  border-color: rgba(0,217,255,0.7);
+  transform: scale(1.05);
+}
+.av-holo-arrow:focus-visible {
+  outline: 2px solid var(--av-cyan, #00D9FF);
+  outline-offset: 2px;
+}
+.av-holo-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+  transform: none;
+}
+.av-holo-dots {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 4px;
+  min-height: 8px;
+}
+.av-holo-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(123,163,196,0.45);
+}
+.av-holo-dots span.on {
+  background: var(--av-cyan, #00D9FF);
+  box-shadow: 0 0 8px rgba(0,217,255,0.55);
 }
 .av-hologram h2 {
   margin: 0 0 2px;
@@ -732,7 +792,7 @@ main#pantallaEstudiante.av-visible {
       "nav main";
   }
   .av-side { display: none; }
-  .av-hologram { top: 10%; width: min(480px, 62%); max-height: 36%; }
+  .av-hologram { top: 16%; width: min(500px, 70%); max-height: 40%; }
 }
 @media (max-width: 720px) {
   #pantallaEstudiante.av-root.av-visible {
@@ -762,7 +822,7 @@ main#pantallaEstudiante.av-visible {
   }
   .av-brand-item small { display: none; }
   .av-user-chip span { display: none; }
-  .av-hologram { top: 8%; width: min(92%, 420px); max-height: 34%; }
+  .av-hologram { top: 12%; width: min(94%, 440px); max-height: 42%; }
   .av-announce { display: none; }
   .av-quickbar { bottom: 10px; width: 94%; justify-content: space-around; }
   .av-quickbar button { min-width: 0; flex: 1; }
@@ -1279,6 +1339,7 @@ button.av-user-chip:hover {
 /* Clics siempre activos en aulas */
 .av-stage { pointer-events: none !important; }
 .av-stage-overlay { pointer-events: none !important; }
+.av-hologram { pointer-events: auto; }
 .av-hologram,
 .av-holo-actions,
 .av-holo-actions button,
@@ -1387,4 +1448,23 @@ button.av-user-chip:hover {
 #pantallaEstudiante .av-stage,
 #pantallaEstudiante .av-stage-overlay {
   pointer-events: none !important;
+}
+
+
+/* Flechas del holograma — siempre clicables */
+#avHologram,
+#avHologram * {
+  pointer-events: auto !important;
+}
+#avHoloPrev,
+#avHoloNext,
+.av-holo-arrow {
+  position: relative;
+  z-index: 25;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+}
+#avHoloDots span {
+  cursor: pointer;
+  pointer-events: auto !important;
 }
