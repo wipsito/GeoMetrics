@@ -5029,13 +5029,20 @@ function aulaChatUnread(chat, forEmail) {
 function aulaChatMarkRead(chatId, readerEmail) {
     var list = aulaChatLoad();
     var c = list.find(function(x) { return x.id === chatId; });
-    if (!c) return;
+    if (!c || !c.messages) return;
+    readerEmail = aulaNormalizarEmail(readerEmail);
+    var changed = false;
     c.messages.forEach(function(m) {
-        if (m.from === readerEmail) return;
-        if (!m.readBy) m.readBy = [readerEmail];
-        else if (m.readBy.indexOf(readerEmail) < 0) m.readBy.push(readerEmail);
+        if (!m) return;
+        if (aulaNormalizarEmail(m.from) === readerEmail) return;
+        if (!m.readBy) { m.readBy = [readerEmail]; changed = true; }
+        else {
+            var has = m.readBy.some(function (e) { return aulaNormalizarEmail(e) === readerEmail; });
+            if (!has) { m.readBy.push(readerEmail); changed = true; }
+        }
     });
-    aulaChatSave(list);
+    // No tocar updatedAt: evita que la lista de chats "salte" al abrir una conversación
+    if (changed) aulaChatSave(list);
 }
 function aulaChatSend(chatId, fromEmail, text) {
     text = (text || '').trim();

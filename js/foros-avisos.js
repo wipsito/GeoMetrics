@@ -82,6 +82,35 @@
     return n || u.nombre || (u.email ? String(u.email).split('@')[0] : 'Usuario');
   }
 
+  /** Nombre legible siempre desde el directorio de usuarios (por correo). */
+  function nameFromEmail(email) {
+    email = normEmail(email);
+    if (!email) return 'Usuario';
+    try {
+      var peer = listUsers().find(function (x) { return normEmail(x.email) === email; });
+      if (peer) {
+        var n = fullName(peer);
+        if (n && n !== 'Usuario' && n.indexOf('@') < 0) return n;
+      }
+    } catch (e0) {}
+    try {
+      if (typeof aulaLoad === 'function' && typeof AULA_KEYS !== 'undefined') {
+        var arr = aulaLoad(AULA_KEYS.users, []) || [];
+        var p2 = arr.find(function (x) { return normEmail(x && x.email) === email; });
+        if (p2) {
+          var n2 = fullName(p2);
+          if (n2 && n2 !== 'Usuario') return n2;
+        }
+      }
+    } catch (e1) {}
+    // local-part → nombre legible (marlon.perezort → Marlon Perezort)
+    var local = email.split('@')[0] || 'Usuario';
+    local = local.replace(/[._+\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    // Separar pegados tipo "perezort" no siempre es posible; capitalizar palabras
+    local = local.replace(/(^|\s)\S/g, function (ch) { return ch.toUpperCase(); });
+    return local || 'Usuario';
+  }
+
   function initials(name) {
     var n = String(name || '?').trim().split(/\s+/).filter(Boolean);
     if (n.length >= 2) return (n[0][0] + n[1][0]).toUpperCase();
@@ -381,9 +410,22 @@
   function peerOtherEmail(c, me) {
     me = normEmail(me);
     if (!c) return '';
+    // 1) members explícitos
+    if (Array.isArray(c.members) && c.members.length) {
+      for (var i = 0; i < c.members.length; i++) {
+        var em = normEmail(c.members[i]);
+        if (em && em !== me) return em;
+      }
+    }
+    // 2) peerEmail dedicado
+    if (c.peerEmail && normEmail(c.peerEmail) !== me) return normEmail(c.peerEmail);
+    // 3) si yo soy estudiante, el otro es docente (y viceversa)
+    if (normEmail(c.studentEmail) === me && c.teacherEmail) return normEmail(c.teacherEmail);
+    if (normEmail(c.teacherEmail) === me && c.studentEmail) return normEmail(c.studentEmail);
+    // 4) resto de emails del chat
     var emails = chatEmails(c);
-    for (var i = 0; i < emails.length; i++) {
-      if (emails[i] !== me) return emails[i];
+    for (var j = 0; j < emails.length; j++) {
+      if (emails[j] && emails[j] !== me) return emails[j];
     }
     return '';
   }
@@ -430,23 +472,36 @@
       }
     });
     return Object.keys(byKey).map(function (k) { return byKey[k]; })
-      .sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+      .sort(function (a, b) {
+        function lastTs(c) {
+          if (!c) return 0;
+          var msgs = c.messages || [];
+          if (msgs.length) return Number(msgs[msgs.length - 1].ts) || Number(c.updatedAt) || 0;
+          return Number(c.updatedAt) || 0;
+        }
+        return lastTs(b) - lastTs(a);
+      });
   }
 
   function chatTitle(c, u) {
     if (!c) return 'Chat';
     var me = normEmail(u && u.email);
-    var other = peerOtherEmail(c, me);
-    if (c.tipo === 'grupo' || c.type === 'grupo') return c.titulo || ('Grupo · ' + (c.materia || ''));
-    if (other) {
-      if (normEmail(c.teacherEmail) === other) return c.teacherName || other;
-      if (normEmail(c.peerEmail) === other) return c.peerName || other;
-      if (normEmail(c.studentEmail) === other) return c.studentName || other;
-      var peer = listUsers().find(function (x) { return normEmail(x.email) === other; });
-      if (peer) return fullName(peer);
-      return other.split('@')[0];
+    if (c.tipo === 'grupo' || c.type === 'grupo') {
+      return c.titulo || ('Grupo · ' + (c.materia || 'curso'));
     }
-    return c.teacherName || c.studentName || c.peerName || 'Chat';
+    // Siempre el interlocutor (nunca mi propio nombre)
+    var other = peerOtherEmail(c, me);
+    if (other) {
+      var live = nameFromEmail(other);
+      if (live && live !== 'Usuario') return live;
+      // fallback a campos guardados SOLO si coinciden con el correo other
+      if (normEmail(c.teacherEmail) === other && c.teacherName) return c.teacherName;
+      if (normEmail(c.peerEmail) === other && c.peerName) return c.peerName;
+      if (normEmail(c.studentEmail) === other && c.studentName) return c.studentName;
+      return live;
+    }
+    // Sin "other": no inventar con studentName (podría ser yo)
+    return 'Chat';
   }
 
   function chatSubtitle(c) {
@@ -472,18 +527,37 @@
 
   function activeChat() {
     if (!state.activeId) return null;
+    var want = String(state.activeId);
     var u = session();
-    var list = u ? myChats(u) : loadChats();
-    var found = list.find(function (c) { return c.id === state.activeId; });
+    // 1) storage crudo (fuente de verdad)
+    var all = loadChats() || [];
+    var raw = all.find(function (c) { return c && String(c.id) === want; });
+    // 2) lista filtrada del usuario
+    var list = u ? (myChats(u) || []) : all;
+    var found = list.find(function (c) { return c && String(c.id) === want; });
     if (found) return found;
-    var raw = loadChats().find(function (c) { return c.id === state.activeId; });
-    if (!raw) return null;
-    if (u) {
-      var key = conversationKey(raw, u.email);
-      var alt = list.find(function (c) { return conversationKey(c, u.email) === key; });
-      if (alt) return alt;
+    if (raw) {
+      // si el chat existe pero no pasó el filtro de myChats, igual mostrarlo
+      // (evita pantalla vacía al hacer clic)
+      if (u) {
+        var me = normEmail(u.email);
+        var emails = chatEmails(raw);
+        if (emails.indexOf(me) >= 0) return raw;
+        // intentar por conversationKey
+        var key = conversationKey(raw, me);
+        var alt = list.find(function (c) { return conversationKey(c, me) === key; });
+        if (alt) return alt;
+      }
+      return raw;
     }
-    return raw;
+    // 3) match por conversationKey si el id cambió tras merge
+    if (u) {
+      var me2 = normEmail(u.email);
+      for (var i = 0; i < list.length; i++) {
+        if (String(list[i].id) === want) return list[i];
+      }
+    }
+    return null;
   }
 
   function isDocenteEmail(email) {
@@ -651,6 +725,10 @@
     var isTeacherPeer = peerRol === 'docente' || peerRol === 'profesor';
     var isMeTeacher = myRol === 'docente' || myRol === 'profesor';
 
+    // Nombres siempre desde directorio vivo (evita intercambios / apellidos pegados)
+    var myLiveName = nameFromEmail(me) || fullName(u);
+    var peerLiveName = nameFromEmail(other) || fullName(peer);
+
     if (!chat) {
       chat = {
         id: stableId,
@@ -658,11 +736,11 @@
         materia: mat,
         grupo: grp || '',
         studentEmail: isMeTeacher ? other : me,
-        studentName: isMeTeacher ? fullName(peer) : fullName(u),
+        studentName: isMeTeacher ? peerLiveName : myLiveName,
         teacherEmail: isTeacherPeer ? other : (isMeTeacher ? me : ''),
-        teacherName: isTeacherPeer ? fullName(peer) : (isMeTeacher ? fullName(u) : ''),
+        teacherName: isTeacherPeer ? peerLiveName : (isMeTeacher ? myLiveName : ''),
         peerEmail: other,
-        peerName: fullName(peer),
+        peerName: peerLiveName,
         members: [me, other],
         messages: [],
         updatedAt: Date.now()
@@ -673,23 +751,41 @@
       if (!chat.members) { chat.members = [me, other]; changed = true; }
       if (chat.members.indexOf(me) < 0) { chat.members.push(me); changed = true; }
       if (chat.members.indexOf(other) < 0) { chat.members.push(other); changed = true; }
-      if (isTeacherPeer) {
-        if (normEmail(chat.teacherEmail) !== other) {
-          chat.teacherEmail = other;
-          chat.teacherName = fullName(peer);
-          changed = true;
-        }
+      // Reasignar roles y nombres con la verdad actual
+      // Siempre mantener members y peer
+      if (normEmail(chat.peerEmail) !== other || chat.peerName !== peerLiveName) {
+        chat.peerEmail = other;
+        chat.peerName = peerLiveName;
+        changed = true;
       }
-      if (isMeTeacher && normEmail(chat.teacherEmail) !== me) {
+      if (isMeTeacher && isTeacherPeer) {
+        // raro: dos docentes
         chat.teacherEmail = me;
-        chat.teacherName = fullName(u);
+        chat.teacherName = myLiveName;
+        chat.studentEmail = other;
+        chat.studentName = peerLiveName;
         changed = true;
-      }
-      if (!chat.peerEmail) { chat.peerEmail = other; chat.peerName = fullName(peer); changed = true; }
-      if (!chat.studentEmail) {
-        chat.studentEmail = isMeTeacher ? other : me;
-        chat.studentName = isMeTeacher ? fullName(peer) : fullName(u);
-        changed = true;
+      } else if (isMeTeacher) {
+        // yo docente, peer estudiante
+        if (normEmail(chat.teacherEmail) !== me || chat.teacherName !== myLiveName) {
+          chat.teacherEmail = me; chat.teacherName = myLiveName; changed = true;
+        }
+        if (normEmail(chat.studentEmail) !== other || chat.studentName !== peerLiveName) {
+          chat.studentEmail = other; chat.studentName = peerLiveName; changed = true;
+        }
+      } else if (isTeacherPeer) {
+        // yo estudiante, peer docente
+        if (normEmail(chat.studentEmail) !== me || chat.studentName !== myLiveName) {
+          chat.studentEmail = me; chat.studentName = myLiveName; changed = true;
+        }
+        if (normEmail(chat.teacherEmail) !== other || chat.teacherName !== peerLiveName) {
+          chat.teacherEmail = other; chat.teacherName = peerLiveName; changed = true;
+        }
+      } else {
+        // estudiante–estudiante
+        if (normEmail(chat.peerEmail) !== other || chat.peerName !== peerLiveName) {
+          chat.peerEmail = other; chat.peerName = peerLiveName; changed = true;
+        }
       }
       if (changed) {
         chat.updatedAt = Date.now();
@@ -823,8 +919,26 @@
 
   function markRead(chatId, u) {
     try {
-      if (typeof aulaChatMarkRead === 'function') aulaChatMarkRead(chatId, normEmail(u.email));
+      if (typeof aulaChatMarkRead === 'function') {
+        aulaChatMarkRead(chatId, normEmail(u && u.email));
+        return;
+      }
     } catch (e) {}
+    // fallback local sin tocar updatedAt
+    try {
+      var list = loadChats();
+      var c = list.find(function (x) { return x && x.id === chatId; });
+      if (!c || !c.messages) return;
+      var me = normEmail(u && u.email);
+      var changed = false;
+      c.messages.forEach(function (m) {
+        if (!m) return;
+        if (normEmail(m.from) === me) return;
+        if (!m.readBy) { m.readBy = [me]; changed = true; }
+        else if (m.readBy.map(normEmail).indexOf(me) < 0) { m.readBy.push(me); changed = true; }
+      });
+      if (changed) saveChat(c);
+    } catch (e2) {}
   }
 
   /* ---------- UI ---------- */
@@ -916,23 +1030,33 @@
         '</div></div>';
     }
 
-    markRead(c.id, u);
+    // Lectura diferida: no bloquear ni reordenar la lista durante paint
+    try {
+      var _cid = c.id;
+      var _u = u;
+      setTimeout(function () { try { markRead(_cid, _u); } catch (eR) {} }, 0);
+    } catch (eMR) {}
     var title = chatTitle(c, u);
     var sub = chatSubtitle(c);
     var me = normEmail(u.email);
     var msgs = (c.messages || []).map(function (m) {
-      var mine = normEmail(m.from) === me;
+      try {
+      var fromEmail = normEmail(m && m.from);
+      var mine = fromEmail === me;
+      var authorName = mine ? 'Tú' : (typeof nameFromEmail === 'function' ? nameFromEmail(fromEmail) : fromEmail);
+      if (!mine && fromEmail === peerOtherEmail(c, me)) authorName = title;
       var mid = m.id || ('ts_' + (m.ts || ''));
       var replyHtml = '';
       if (m.replyTo && m.replyTo.text) {
-        replyHtml = '<div class="fa-reply-quote"><span>' + esc(m.replyTo.fromName || 'Mensaje') + '</span>' +
+        var replyAuthor = m.replyTo.fromName || nameFromEmail(m.replyTo.from) || 'Mensaje';
+        replyHtml = '<div class="fa-reply-quote"><span>' + esc(replyAuthor) + '</span>' +
           esc(String(m.replyTo.text).slice(0, 120)) + '</div>';
       }
       return '<div class="fa-msg' + (mine ? ' mine' : '') + '" data-msg-id="' + esc(mid) + '">' +
-        (mine ? '' : '<div class="fa-avatar">' + esc(initials(title)) + '</div>') +
+        (mine ? '' : '<div class="fa-avatar">' + esc(initials(authorName)) + '</div>') +
         '<div class="fa-bubble">' +
         '<button type="button" class="fa-msg-menu-btn" data-ch-msg-menu="' + esc(mid) + '" title="Opciones">⋮</button>' +
-        (mine ? '' : '<div class="fa-msg-author">' + esc(title) + '</div>') +
+        (mine ? '' : '<div class="fa-msg-author">' + esc(authorName) + '</div>') +
         replyHtml +
         '<div class="fa-msg-text">' + esc(m.text || '') + '</div>' +
         '<div class="fa-msg-time">' + esc(fmtTime(m.ts)) + '</div>' +
@@ -942,6 +1066,9 @@
           '<button type="button" data-ch-del-msg="' + esc(mid) + '" class="fa-danger">Eliminar mensaje</button>' +
         '</div>' +
         '</div></div>';
+      } catch (eMsg) {
+        return '';
+      }
     }).join('');
 
     if (!(c.messages || []).length) {
@@ -1423,9 +1550,7 @@
       if (t.hasAttribute('data-ch-open')) {
         state.activeId = t.getAttribute('data-ch-open');
         state.composing = false;
-        state.filter = 'todos';
-        var can = activeChat();
-        if (can && can.id) state.activeId = can.id;
+        // no forzar filter=todos: respeta el chip actual
         paint(host, true);
         return;
       }
@@ -1748,6 +1873,41 @@
       } catch (err) { console.error('chat enter', err); }
     }, true);
   }
+
+
+  // Fallback global: abrir chat / enviar si el bind del host falló
+  try {
+    if (!global.__gmChatOpenFallback) {
+      global.__gmChatOpenFallback = true;
+      document.addEventListener('click', function (e) {
+        try {
+          var t = e.target;
+          if (!t || !t.closest) return;
+          // Abrir conversación
+          var openEl = t.closest('[data-ch-open]');
+          if (openEl) {
+            var id = openEl.getAttribute('data-ch-open');
+            if (id) {
+              state.activeId = id;
+              state.composing = false;
+              var host = resolveHost(state.host) || document.getElementById('faRootEstudiante') || document.getElementById('faRootDocente');
+              if (host) paint(host, true);
+            }
+            return;
+          }
+          // Enviar
+          var sendEl = t.closest('[data-ch-send-btn], button.fa-send');
+          if (sendEl) {
+            var host2 = sendEl.closest('.fa-root') || state.host || document.getElementById('faRootEstudiante') || document.getElementById('faRootDocente');
+            if (host2 && typeof doSend === 'function') {
+              e.preventDefault();
+              doSend(host2);
+            }
+          }
+        } catch (errFb) { console.warn('chat fallback', errFb); }
+      }, false);
+    }
+  } catch (eFb) {}
 
   global.ForosAvisos = { mount: mount, refresh: refresh, paint: paint, syncFromCloud: syncFromCloud, doSend: doSend };
   global.GeoMetricsChat = { mount: mount, refresh: refresh, paint: paint, syncFromCloud: syncFromCloud, doSend: doSend };
