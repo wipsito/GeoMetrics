@@ -5779,6 +5779,7 @@ function aulaAbrirAdmin() {
     if (dd) dd.hidden = true;
     aulaRenderAdmin();
     try { aulaAdminCivixAvatarInit(); } catch (eAv) {}
+    try { aulaAdminEquipoVisibility(); } catch (eEq) {}
 }
 
 function aulaRenderAdmin() {
@@ -7036,6 +7037,29 @@ function aulaCivixAvatarSet(dataUrl) {
             aulaCivixAvatarPushCloud(null);
         }
     }
+}
+
+
+/** Muestra bloque «Administrar equipo creador» solo al Superadministrador */
+function aulaAdminEquipoVisibility() {
+    try {
+        var card = document.getElementById('adminEquipoCard');
+        var gallery = document.getElementById('adminEquipoGalleryCard');
+        if (!card && !gallery) return;
+        var email = '';
+        try {
+            var s = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
+            email = s && s.email ? String(s.email).toLowerCase() : '';
+        } catch (e0) {}
+        var superE = String(typeof AULA_SUPER_ADMIN !== 'undefined' ? AULA_SUPER_ADMIN : 'andres.enriquezval@unipamplona.edu.co').toLowerCase();
+        var show = email === superE;
+        if (card) card.hidden = !show;
+        if (gallery) gallery.hidden = !show;
+        if (!card.hidden && window.GeoMetricsEquipo) {
+            if (typeof GeoMetricsEquipo.sync === 'function') GeoMetricsEquipo.sync();
+            if (typeof GeoMetricsEquipo.refreshAdmin === 'function') GeoMetricsEquipo.refreshAdmin();
+        }
+    } catch (e) {}
 }
 
 function aulaAdminCivixAvatarInit() {

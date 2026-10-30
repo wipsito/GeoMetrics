@@ -739,6 +739,79 @@ function syncUpUsers() {
         });
     }
 
+
+    // —— Equipo creador (teamCreators/{emailKey}) ——
+    function pullTeamCreators() {
+        return cloudGet('teamCreators').then(function (val) {
+            if (!val || typeof val !== 'object') return [];
+            var out = [];
+            Object.keys(val).forEach(function (k) {
+                var row = val[k];
+                if (!row || row.active === false) return;
+                out.push({
+                    userId: k,
+                    userEmail: row.userEmail || emailKeyToEmail(k),
+                    role: row.role || '',
+                    photoURL: row.photoURL || '',
+                    order: typeof row.order === 'number' ? row.order : 999,
+                    active: row.active !== false,
+                    createdAt: row.createdAt || 0,
+                    updatedAt: row.updatedAt || 0
+                });
+            });
+            out.sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+            return out;
+        });
+    }
+
+    function pushTeamCreator(entry) {
+        if (!entry || !entry.userId) return Promise.resolve(false);
+        var payload = {
+            userEmail: entry.userEmail || emailKeyToEmail(entry.userId),
+            role: entry.role || '',
+            photoURL: entry.photoURL || '',
+            order: typeof entry.order === 'number' ? entry.order : 0,
+            active: entry.active !== false,
+            createdAt: entry.createdAt || Date.now(),
+            updatedAt: Date.now()
+        };
+        return cloudSet('teamCreators/' + entry.userId, payload);
+    }
+
+    function removeTeamCreator(userId) {
+        if (!userId) return Promise.resolve(false);
+        return cloudSet('teamCreators/' + userId, null);
+    }
+
+    function pushTeamCreatorsMap(map) {
+        // Reemplaza el nodo completo (solo superadmin)
+        return cloudSet('teamCreators', map || {});
+    }
+
+    function listenTeamCreators(cb) {
+        return cloudListen('teamCreators', function (val) {
+            var out = [];
+            if (val && typeof val === 'object') {
+                Object.keys(val).forEach(function (k) {
+                    var row = val[k];
+                    if (!row || row.active === false) return;
+                    out.push({
+                        userId: k,
+                        userEmail: row.userEmail || emailKeyToEmail(k),
+                        role: row.role || '',
+                        photoURL: row.photoURL || '',
+                        order: typeof row.order === 'number' ? row.order : 999,
+                        active: row.active !== false,
+                        createdAt: row.createdAt || 0,
+                        updatedAt: row.updatedAt || 0
+                    });
+                });
+                out.sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+            }
+            try { cb(out); } catch (e) { console.error(e); }
+        });
+    }
+
     global.GeoCloud = {
         cloudGet: cloudGet,
         cloudSet: cloudSet,
@@ -772,6 +845,11 @@ function syncUpUsers() {
         pushAvisos: pushAvisos,
         pullForos: pullForos,
         pullForosReplies: pullForosReplies,
-        pullAvisos: pullAvisos
+        pullAvisos: pullAvisos,
+        pullTeamCreators: pullTeamCreators,
+        pushTeamCreator: pushTeamCreator,
+        removeTeamCreator: removeTeamCreator,
+        pushTeamCreatorsMap: pushTeamCreatorsMap,
+        listenTeamCreators: listenTeamCreators
     };
 })(window);

@@ -458,7 +458,25 @@ function civixLeerArchivoParaIA(file) {
         });
     }
 
-    // --- Texto / código / DXF / IFC / etc. ---
+    // --- CAD / BIM nativos (binarios): no se parsean, se orienta a DXF/PDF ---
+    var cadBin = ['dwg', 'dwt', 'dwf', 'rvt', 'rfa', 'nwd', 'nwc', 'skp', '3ds', 'max'];
+    if (cadBin.indexOf(ext) >= 0) {
+        var mb = (file.size / (1024 * 1024)).toFixed(1);
+        return Promise.resolve({
+            name: name,
+            binary: true,
+            size: file.size,
+            text: '[Archivo CAD/BIM adjunto: ' + name + ' · ' + mb + ' MB · formato .' + ext + ']\n' +
+                  'Este formato es binario propietario. Civix no puede abrir el modelo nativo, pero puede:\n' +
+                  '1) Guiar la exportación a DXF / PDF / LandXML.\n' +
+                  '2) Generar un plano DXF simple (líneas, cotas, capas) descargable.\n' +
+                  '3) Entregar una guía paso a paso en PDF para dibujarlo en AutoCAD o Civil 3D.\n' +
+                  'Pide al usuario el tipo de plano, unidades (m/mm), escala y elementos a incluir.',
+            note: mb + ' MB · CAD/BIM binario — exporta DXF o pide plano generado'
+        });
+    }
+
+    // --- Texto / código / DXF / IFC / LandXML / CSV / etc. ---
     return new Promise(function(resolve, reject) {
         var r = new FileReader();
         r.onload = function() {
@@ -466,11 +484,21 @@ function civixLeerArchivoParaIA(file) {
             var sample = text.slice(0, 2000);
             var nulls = (sample.match(/\u0000/g) || []).length;
             if (nulls > 5) {
-                resolve({ name: name, binary: true, size: file.size, text: '', note: 'binario' });
+                resolve({
+                    name: name,
+                    binary: true,
+                    size: file.size,
+                    text: '',
+                    note: 'binario (' + Math.round(file.size / 1024) + ' KB) — exporta a DXF/PDF/TXT si es un plano'
+                });
                 return;
             }
-            if (text.length > 220000) text = text.slice(0, 220000) + '\n\n...[truncado]';
-            resolve({ name: name, binary: false, size: file.size, text: text, note: Math.round(file.size / 1024) + ' KB' });
+            // DXF y textos grandes: hasta ~1.5 MB de caracteres al modelo
+            var maxChars = (ext === 'dxf' || ext === 'ifc' || ext === 'xml' || ext === 'landxml') ? 800000 : 400000;
+            if (text.length > maxChars) text = text.slice(0, maxChars) + '\n\n...[truncado por tamaño; el archivo original pesa ' + Math.round(file.size / 1024) + ' KB]';
+            var note = Math.round(file.size / 1024) + ' KB';
+            if (ext === 'dxf') note += ' · DXF legible para AutoCAD/Civil 3D';
+            resolve({ name: name, binary: false, size: file.size, text: text, note: note });
         };
         r.onerror = function() { reject(new Error('lectura fallida')); };
         r.readAsText(file);
@@ -923,12 +951,21 @@ function inicializarAsistenteAI() {
     var btnCerrar = document.getElementById('btnCerrarAsistente');
     var input = document.getElementById('inputAsistente');
     var btnEnviar = document.getElementById('btnEnviarMensaje');
-    var fileInput = document.getElementById('civixFileInput');
+    var fileInput = document.getElementById('inputAsistenteFile') || document.getElementById('civixFileInput');
     var fileNameEl = document.getElementById('civixFileName');
     var btnQuitar = document.getElementById('btnQuitarAdjunto');
+    var btnAdjuntar = document.getElementById('btnAdjuntarArchivo');
+    var fileChip = document.getElementById('asistenteFileChip') || document.getElementById('civixFileChip');
 
     // API solo desde config.js (no editable por usuarios)
     window.__civixAdjunto = null;
+
+    if (btnAdjuntar && fileInput) {
+        btnAdjuntar.addEventListener('click', function (e) {
+            e.preventDefault();
+            try { fileInput.click(); } catch (eClick) {}
+        });
+    }
 
     if (btnAsistente) {
         btnAsistente.addEventListener('click', function() {
@@ -981,7 +1018,7 @@ function inicializarAsistenteAI() {
         if (fileInput) fileInput.value = '';
         if (fileNameEl) fileNameEl.textContent = '';
         if (btnQuitar) btnQuitar.hidden = true;
-        var chip = document.getElementById('civixFileChip');
+        var chip = document.getElementById('asistenteFileChip') || document.getElementById('civixFileChip');
         if (chip) {
             chip.hidden = true;
             chip.style.display = 'none';
@@ -993,13 +1030,13 @@ function inicializarAsistenteAI() {
         fileInput.addEventListener('change', function() {
             var f = fileInput.files && fileInput.files[0];
             if (!f) { limpiarAdjunto(); return; }
-            var maxBytes = 150 * 1024 * 1024; // 150 MB (libros hasta ~900 pág.)
+            var maxBytes = 250 * 1024 * 1024; // 250 MB (PDF grandes, DXF, exports CAD)
             if (f.size > maxBytes) {
-                agregarMensaje('El archivo supera 150 MB. Comprime el PDF o divídelo por tomos/capítulos.', 'bot');
+                agregarMensaje('El archivo supera 250 MB. Comprime el PDF, exporta a DXF/PDF más liviano, o divide el proyecto.', 'bot');
                 limpiarAdjunto();
                 return;
             }
-            var chip = document.getElementById('civixFileChip');
+            var chip = document.getElementById('asistenteFileChip') || document.getElementById('civixFileChip');
             function mostrarChip(txt) {
                 if (fileNameEl) fileNameEl.textContent = txt;
                 if (btnQuitar) btnQuitar.hidden = false;
@@ -1010,14 +1047,21 @@ function inicializarAsistenteAI() {
             }
             mostrarChip('⏳ Leyendo ' + f.name + '…');
 
-            var leyendo = agregarMensaje('📄 Indexando PDF… Si tiene cientos de páginas puede tardar 1–3 min. No cierres Civix.', 'bot', true);
+            var ext0 = (f.name.split('.').pop() || '').toLowerCase();
+            var msgLoad = (ext0 === 'pdf')
+                ? '📄 Indexando PDF… Si tiene muchas páginas puede tardar 1–3 min. No cierres Civix.'
+                : (['dwg','dwt','rvt','rfa','nwd','nwc','skp'].indexOf(ext0) >= 0
+                    ? '📐 Leyendo archivo CAD/BIM… Los nativos binarios no se editan aquí; se orientará a DXF/PDF o plano generado.'
+                    : '📎 Leyendo archivo para Civix…');
+            var leyendo = agregarMensaje(msgLoad, 'bot', true);
             civixLeerArchivoParaIA(f).then(function(info) {
                 if (leyendo && leyendo.remove) leyendo.remove();
                 window.__civixAdjunto = info;
                 if (info && !info.binary) {
-                    agregarMensaje('✅ Documento listo: ' + info.name + (info.note ? ' · ' + info.note : '') + '. Escribe tu pregunta y Enviar (estilo ChatGPT sobre ese texto).', 'bot');
+                    agregarMensaje('✅ Archivo listo: <strong>' + info.name + '</strong>' + (info.note ? ' · ' + info.note : '') + '. Escribe tu pregunta y pulsa Enviar.', 'bot');
                 } else if (info && info.binary) {
-                    agregarMensaje('⚠️ No pude extraer texto de ' + info.name + '. ' + (info.note || ''), 'bot');
+                    agregarMensaje('⚠️ <strong>' + info.name + '</strong> es binario. ' + (info.note || '') +
+                        '<br><br>💡 En AutoCAD/Civil 3D: <code>EXPORTAR → DXF</code> o PDF. Civix puede generarte un <strong>DXF</strong> o una <strong>guía PDF</strong> del plano que necesites.', 'bot');
                 }
                 mostrarChip('📎 ' + info.name + (info.note ? ' · ' + info.note : ''));
             }).catch(function(err) {
@@ -1057,6 +1101,15 @@ function inicializarAsistenteAI() {
                     '--- INICIO FRAGMENTOS DEL DOCUMENTO ---\n' + body + '\n--- FIN FRAGMENTOS ---';
             }
         }
+        
+        // Pistas para planos / CAD
+        try {
+            var lowQ = String(texto || '').toLowerCase();
+            if (/plano|dwg|dxf|autocad|civil\s*3d|layout|croquis|detall[eo]\s+constructiv/.test(lowQ)) {
+                payload += '\n\n[PEDIDO DE PLANO] Si generas geometria, responde con bloque ```dxf y/o ```guia descargable. No prometas un .dwg binario.';
+            }
+        } catch (ePlano) {}
+
         if (!String(payload).trim()) return;
 
         limpiarAdjunto();
@@ -1576,17 +1629,50 @@ function agregarMensajeBotConDescargas(texto) {
             var btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn-descarga-civix';
-            btn.textContent = '⬇ Descargar';
-            btn.addEventListener('click', function() {
-                var ext = civixExtDesdeLang(part.lang);
-                var blob = new Blob([part.content], { type: 'text/plain;charset=utf-8' });
-                var a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = 'civix_correccion_' + (i + 1) + ext;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-            });
+            (function (partRef, idxRef) {
+                var ext0 = civixExtDesdeLang(partRef.lang);
+                var lang0 = String(partRef.lang || '').toLowerCase();
+                var isDxf = lang0 === 'dxf' || lang0 === 'cad' || lang0 === 'autocad' ||
+                    (String(partRef.content || '').indexOf('0\nSECTION') >= 0) ||
+                    (String(partRef.content || '').indexOf('0\r\nSECTION') >= 0);
+                var isGuia = lang0 === 'guia' || lang0 === 'guide' || lang0 === 'md' || lang0 === 'markdown';
+                if (isDxf) {
+                    ext0 = '.dxf';
+                    btn.textContent = '⬇ Descargar plano DXF (AutoCAD / Civil 3D)';
+                } else if (isGuia) {
+                    ext0 = '.txt';
+                    btn.textContent = '⬇ Descargar guía de dibujo';
+                } else {
+                    btn.textContent = '⬇ Descargar' + (ext0 !== '.txt' ? ' (' + ext0 + ')' : '');
+                }
+                btn.addEventListener('click', function() {
+                    var ext = isDxf ? '.dxf' : (isGuia ? '.txt' : civixExtDesdeLang(partRef.lang));
+                    var body = partRef.content || '';
+                    if (isGuia) {
+                        // Abrir guía lista para imprimir como PDF desde el navegador
+                        try {
+                            var w = window.open('', '_blank');
+                            if (w) {
+                                w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Guía Civix</title>');
+                                w.document.write('<style>body{font-family:system-ui,Segoe UI,sans-serif;max-width:800px;margin:24px auto;padding:16px;line-height:1.5;color:#111} h1{font-size:1.3rem} pre{white-space:pre-wrap;background:#f4f6f8;padding:12px;border-radius:8px}</style></head><body>');
+                                w.document.write('<h1>GeoMetrics · Civix — Guía de plano / dibujo</h1>');
+                                w.document.write('<pre></pre><p style="color:#666;font-size:13px">Usa Ctrl+P → Guardar como PDF si necesitas el archivo PDF.</p></body></html>');
+                                w.document.close();
+                                w.document.querySelector('pre').textContent = body;
+                                setTimeout(function(){ try { w.print(); } catch(eP){} }, 400);
+                            }
+                        } catch (eW) {}
+                    }
+                    var blob = new Blob([body], { type: 'text/plain;charset=utf-8' });
+                    var a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    var base = isDxf ? 'Civix_plano_' : (isGuia ? 'Civix_guia_plano_' : 'civix_archivo_');
+                    a.download = base + (idxRef + 1) + ext;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+                });
+            })(part, i);
             bar.appendChild(btn);
             wrap.appendChild(bar);
             div.appendChild(wrap);
@@ -1836,6 +1922,7 @@ function civixBuildContextSystem() {
         }
     } catch (e) {}
     partes.push('Prioriza textos guía adjuntos. No inventes datos numéricos de laboratorio. Si faltan datos, pídelos.');
+    partes.push('PLANOS Y CAD: Si el estudiante pide un plano, dibujo, detalle estructural, perfil de vía, planta de cimentación o similar, responde así: (1) explicación breve; (2) un bloque de código con lenguaje dxf que contenga un DXF R12/ASCII válido y simple (capas, LINE, CIRCLE, TEXT, DIMENSION si aplica, unidades en metros); (3) si el plano es demasiado complejo para DXF, entrega además un bloque con lenguaje guia o markdown con pasos claros para dibujarlo en AutoCAD/Civil 3D. El frontend ofrecerá botones de descarga DXF y guía PDF. Nunca digas que adjuntas un .dwg nativo: entrega DXF o guía.');
     partes.push('Estilo de respuesta: natural, fluido y humano. Evita esquemas rígidos con Identificación del tema / Fundamento teórico / Fórmulas / Ejemplo práctico / Ejercicio de refuerzo / Fuentes, a menos que el usuario pida una clase formal del tema.');
     partes.push('Responde siempre en español. Cuando uses el documento, cita páginas si aparecen como "--- Página N ---".');
     return partes.join(' ');
