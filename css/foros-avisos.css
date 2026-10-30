@@ -240,26 +240,45 @@
   font-size: 14px;
   padding: 24px;
 }
+.fa-thread-body {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  align-items: stretch !important;
+}
 .fa-msg {
-  display: grid;
-  grid-template-columns: 36px 1fr;
-  gap: 10px;
-  max-width: 92%;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  gap: 8px !important;
+  max-width: 75% !important;
+  width: auto !important;
+  align-self: flex-start !important;
+  margin: 0 !important;
 }
 .fa-msg.mine {
-  margin-left: auto;
-  grid-template-columns: 1fr;
+  align-self: flex-end !important;
+  flex-direction: row-reverse !important;
+  max-width: 70% !important;
 }
-.fa-msg .fa-avatar { width: 34px; height: 34px; font-size: 11px; }
+.fa-msg .fa-avatar {
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 11px !important;
+  flex-shrink: 0 !important;
+}
 .fa-bubble {
   background: var(--fa-card);
   border: 1px solid var(--fa-border);
-  border-radius: 12px;
+  border-radius: 12px 12px 12px 4px;
   padding: 10px 12px;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .fa-msg.mine .fa-bubble {
   background: #0c3355;
   border-color: rgba(8,120,201,0.45);
+  border-radius: 12px 12px 4px 12px;
 }
 .fa-bubble .fa-msg-author {
   font-size: 12px;
