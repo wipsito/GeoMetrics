@@ -1,0 +1,119 @@
+/* =========================================================
+   GeoMetrics · Estructuras I — laboratorio 3D
+   Extiende el visor .lab3d de Suelos con parámetros y lecturas.
+   ========================================================= */
+
+.est3d-lab {
+    --lab-h: clamp(470px, 66vh, 660px);
+    margin-top: 10px;
+}
+.est3d-lab .lab3d-info { max-height: calc(var(--lab-h) + 80px); }
+.est3d-lab .lab3d-info-head code { line-height: 1.35; }
+
+.est3d-lab .lab3d-params {
+    display: grid;
+    gap: 2px;
+    margin: 0 0 12px;
+    padding: 12px 12px 4px;
+    border: 1px solid #2B3A50;
+    border-radius: 12px;
+    background: rgba(11, 18, 32, .42);
+}
+.est3d-lab .lab3d-params .est-range { margin-bottom: 10px; }
+.est3d-lab .lab3d-params .est-range > span { font-size: 12px; color: #DCE4EC; }
+.est3d-lab .lab3d-params .est-range output { color: #fff; }
+.est3d-lab .lab3d-params .est-range small { color: #718096; }
+.est3d-lab .lab3d-params .est-range input[type="range"] { accent-color: var(--lab-accent); }
+.est3d-lab .lab3d-params .est-range select {
+    width: 100%;
+    margin-top: 6px;
+    padding: 8px 9px;
+    font: inherit;
+    font-size: 12px;
+    color: #F1F5F9;
+    background: #0B1220;
+    border: 1px solid #2B3A50;
+    border-radius: 8px;
+}
+.est3d-lab .lab3d-params .est-range select:focus {
+    outline: 2px solid var(--lab-accent);
+    outline-offset: 1px;
+}
+
+.est3d-lab .lab3d-param-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+.est3d-lab .lab3d-param-actions button {
+    flex: 1 1 auto;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #D6DEEA;
+    background: #1E293B;
+    border: 1px solid #2B3A50;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: border-color .18s, background .18s, color .18s;
+}
+.est3d-lab .lab3d-param-actions button:hover {
+    border-color: var(--lab-accent);
+    color: #fff;
+}
+.est3d-lab .lab3d-param-actions .lab3d-save {
+    color: var(--lab-accent);
+    border-color: rgba(148, 163, 184, .55);
+    background: rgba(148, 163, 184, .1);
+}
+.est3d-lab .lab3d-param-actions .lab3d-save:hover {
+    background: rgba(148, 163, 184, .18);
+}
+
+.est3d-lab .lab3d-pin > em { width: max-content; max-width: 240px; }
+.est3d-lab .lab3d-stage { box-shadow: 0 20px 60px rgba(0, 0, 0, .45); }
+.est3d-lab .lab3d-canvas { background: #0B1220; }
+
+.est3d-lab .lab3d-paso {
+    border-color: rgba(148, 163, 184, .35);
+}
+.est3d-lab .lab3d-paso.is-pulse {
+    border-color: var(--lab-accent);
+    box-shadow: 0 0 0 2px rgba(148, 163, 184, .22), 0 10px 28px rgba(0,0,0,.28);
+}
+.est3d-lab .lab3d-paso-n { color: var(--lab-accent); }
+.est3d-lab .lab3d-resultados h5 { color: var(--lab-accent); }
+.est3d-lab .lab3d-res-tile span { color: var(--lab-accent); }
+.est3d-lab .lab3d-res-tile strong { overflow-wrap: anywhere; }
+.est3d-lab .lab3d-res-tile.is-ok { border-color: rgba(34, 197, 94, .35); }
+.est3d-lab .lab3d-res-tile.is-warn { border-color: rgba(251, 191, 36, .4); }
+.est3d-lab .lab3d-res-tile.is-bad { border-color: rgba(248, 113, 113, .45); }
+
+.est3d-lab .lab3d-info h5 { color: var(--lab-accent); }
+.est3d-lab .lab3d-parts li:hover { background: #1E293B; border-color: rgba(148, 163, 184, .45); }
+.est3d-lab .lab3d-phases li { cursor: pointer; }
+.est3d-lab .lab3d-phases li:hover { background: #1E293B; }
+.est3d-lab .lab3d-note { margin-top: 14px; }
+
+.est3d-lab .lab3d-views button.on { background: var(--lab-accent); color: #0B1220; }
+.est3d-lab .lab3d-state.is-done i { background: var(--lab-accent); }
+
+.est3d-lab .lab3d-loading, .est3d-lab .lab3d-fail { z-index: 8; }
+.est3d-lab .lab3d-pins { z-index: 4; }
+.est3d-lab .lab3d-tag, .est3d-lab .lab3d-state, .est3d-lab .lab3d-views { z-index: 5; }
+
+.simhub-3d-host { min-width: 0; margin-top: 6px; }
+
+@media (max-width: 1060px) {
+    .est3d-lab .lab3d-info { max-height: none; }
+}
+@media (max-width: 640px) {
+    .est3d-lab { --lab-h: 420px; }
+    .est3d-lab .lab3d-tag { max-width: 54%; }
+    .est3d-lab .lab3d-state { top: 82px; }
+    .est3d-lab .lab3d-views button[data-view="frontal"],
+    .est3d-lab .lab3d-views button[data-view="lateral"] { display: none; }
+    .est3d-lab .lab3d-res-tile strong { font-size: 17px; }
+}
