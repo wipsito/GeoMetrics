@@ -2250,14 +2250,21 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
             </div>
 
             <div class="av-hologram" id="avHologram">
-                <h2 id="avHoloTitle">Mecánica de Suelos</h2>
-                <div class="av-code" id="avHoloCode">IC-2025-1</div>
+                <div class="av-holo-nav">
+                    <button type="button" class="av-holo-arrow" id="avHoloPrev" aria-label="Materia anterior" title="Materia anterior">‹</button>
+                    <div class="av-holo-center">
+                        <h2 id="avHoloTitle">Mecánica de Suelos</h2>
+                        <div class="av-code" id="avHoloCode">IC-2025-1</div>
+                        <div class="av-holo-dots" id="avHoloDots" aria-hidden="true"></div>
+                    </div>
+                    <button type="button" class="av-holo-arrow" id="avHoloNext" aria-label="Materia siguiente" title="Materia siguiente">›</button>
+                </div>
                 <div class="av-progress-wrap">
                     <div class="av-progress-label">
                         <span>Progreso del curso</span>
-                        <span id="avHoloPct">68% completado</span>
+                        <span id="avHoloPct">0% completado</span>
                     </div>
-                    <div class="av-progress-bar"><span id="avHoloBar" style="width:68%"></span></div>
+                    <div class="av-progress-bar"><span id="avHoloBar" style="width:0%"></span></div>
                 </div>
                 <div class="av-holo-actions">
                     <button type="button" data-av-action="temas">Temas</button>
