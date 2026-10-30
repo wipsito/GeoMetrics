@@ -687,6 +687,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/config.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
     <script src="js/cloud.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
@@ -708,6 +709,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
   </style>
 
     <link rel="stylesheet" href="css/foros-avisos.css">
+    <link rel="stylesheet" href="css/equipo-creador.css">
 </head>
 <body>
 
@@ -984,7 +986,50 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 <p>Diseño estructural, suelos, materiales y corrección de archivos / errores de modelado.</p>
             </button>
         </section>
+
+        <!-- Banner institucional: Equipo creador — réplica visual de referencia -->
+        <section class="gm-equipo-banner" id="gmEquipoBanner" aria-label="Equipo creador de GeoMetrics">
+            <div class="gm-equipo-banner-row">
+                <span class="gm-equipo-line gm-equipo-line-l" aria-hidden="true"></span>
+                <div class="gm-equipo-card-box">
+                    <p class="gm-equipo-lead">
+                        <span class="gm-equipo-code-ico" aria-hidden="true">&lt;/&gt;</span>
+                        Desarrollado con dedicación por estudiantes de <span class="gm-equipo-accent">Ingeniería Civil</span>
+                    </p>
+                    <button type="button" class="gm-equipo-btn" id="btnEquipoCreador" aria-haspopup="dialog" aria-controls="gmEquipoModal">
+                        <span class="gm-equipo-btn-ico" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <circle cx="9" cy="8" r="3.2" stroke="currentColor" stroke-width="1.7"/>
+                                <circle cx="16.5" cy="9" r="2.6" stroke="currentColor" stroke-width="1.7"/>
+                                <path d="M3.5 18.5c.6-3.2 2.9-5 5.5-5s4.9 1.8 5.5 5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                <path d="M13.2 15.2c1.1-1 2.5-1.5 4-1.4 2.1.1 3.7 1.4 4.3 3.7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                            </svg>
+                        </span>
+                        <span class="gm-equipo-btn-txt">Conoce al equipo creador</span>
+                        <span class="gm-equipo-btn-arrow" aria-hidden="true">↗</span>
+                    </button>
+                </div>
+                <span class="gm-equipo-line gm-equipo-line-r" aria-hidden="true"></span>
+            </div>
+            <p class="gm-equipo-foot">GeoMetrics · Universidad de Pamplona</p>
+        </section>
     </main>
+
+    <!-- Modal Equipo creador -->
+    <div class="gm-equipo-modal" id="gmEquipoModal" hidden role="dialog" aria-modal="true" aria-labelledby="gmEquipoModalTitle">
+        <div class="gm-equipo-modal-backdrop" data-equipo-close></div>
+        <div class="gm-equipo-modal-panel" role="document">
+            <button type="button" class="gm-equipo-modal-close" id="btnEquipoCerrar" aria-label="Cerrar">&times;</button>
+            <header class="gm-equipo-modal-head">
+                <h2 id="gmEquipoModalTitle">Conoce al equipo detrás de GeoMetrics</h2>
+                <p class="gm-equipo-modal-sub">Innovación, conocimiento y tecnología al servicio de la Ingeniería Civil</p>
+            </header>
+            <div class="gm-equipo-grid" id="gmEquipoGrid">
+                <!-- Rellenado por js/equipo-creador.js -->
+            </div>
+            <p class="gm-equipo-modal-note">Los datos marcados como <strong>[EDITABLE]</strong> deben completarse con la información real del equipo.</p>
+        </div>
+    </div>
 
         <!-- Ventana del Asistente AI — diseño pro (fuera del menú) -->
         <div class="asistente-modal civix-fx civix-pro" id="asistenteModal">
@@ -1135,11 +1180,11 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
 
                     <div class="civix-footer-zone">
                         <div class="civix-chips" id="civixChips" aria-label="Sugerencias" hidden></div>
-                        <div class="asistente-file-chip" id="asistenteFileChip" hidden></div>
+                        <div class="asistente-file-chip" id="asistenteFileChip" hidden><span class="adjunto-nombre" id="civixFileName"></span><button type="button" class="btn-quitar-adjunto" id="btnQuitarAdjunto" title="Quitar archivo" hidden>✕</button></div>
                         <div class="asistente-input-wrap">
                             <div class="asistente-input civix-input-pro">
                                 <button type="button" class="btn-adjuntar-icon" id="btnAdjuntarArchivo" title="Adjuntar">📎</button>
-                                <input type="file" id="inputAsistenteFile" hidden accept=".py,.txt,.csv,.dxf,.ifc,.json,.log,.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg">
+                                <input type="file" id="inputAsistenteFile" hidden accept=".py,.txt,.csv,.dxf,.dwg,.dwt,.dwf,.ifc,.rvt,.rfa,.nwd,.nwc,.skp,.stl,.obj,.step,.stp,.iges,.igs,.landxml,.xml,.json,.log,.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip,.rar,.7z,.bin,.dat,.out,.md,.html,.css,.js,.m,.sql,.yaml,.yml,application/pdf,application/acad,image/*,*/*">
                                 <textarea id="inputAsistente" rows="1" placeholder="Escribe tu mensaje..."></textarea>
                                 <button type="button" class="btn-mejorar-prompt" id="btnMejorarPrompt" title="Mejorar prompt">✨</button>
                                 <button type="button" id="btnEnviarMensaje" class="civix-send-btn" title="Enviar">➤</button>
@@ -2753,7 +2798,62 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 <p class="mensaje-error" id="adminPromoError"></p>
                 <div id="adminListaAdmins" class="aula-lista" style="margin-top:14px;"></div>
             </div>
-        </section>
+        
+                                    <div class="aula-card" id="adminEquipoCard" hidden>
+                <h3>Administrar equipo creador</h3>
+                <p class="login-hint">Solo el Superadministrador puede agregar integrantes. Usa el correo institucional registrado. Retirar a alguien del equipo <strong>no elimina</strong> su cuenta.</p>
+
+                <div class="gm-team-add-box">
+                    <label class="gm-team-field-label" for="adminTeamEmail">Correo institucional
+                        <input type="email" id="adminTeamEmail" placeholder="nombre.apellido@unipamplona.edu.co" autocomplete="off" spellcheck="false">
+                    </label>
+                    <div id="adminTeamLookup" class="gm-team-lookup" hidden>
+                        <div class="gm-team-lookup-card">
+                            <div class="gm-team-lookup-avatar" id="adminTeamLookupAvatar">?</div>
+                            <div class="gm-team-lookup-info">
+                                <strong id="adminTeamLookupName">—</strong>
+                                <span id="adminTeamLookupEmail">—</span>
+                                <span id="adminTeamLookupRol" class="gm-team-lookup-rol"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="adminTeamLookupError" class="gm-team-lookup-error" hidden></p>
+
+                    <label class="gm-team-field-label" for="adminTeamRoleSelect">Cargo en el equipo
+                        <select id="adminTeamRoleSelect">
+                            <option value="">Selecciona un cargo…</option>
+                            <option value="Coordinación del proyecto">Coordinación del proyecto</option>
+                            <option value="Desarrollo frontend">Desarrollo frontend</option>
+                            <option value="Desarrollo backend">Desarrollo backend</option>
+                            <option value="Diseño UX/UI">Diseño UX/UI</option>
+                            <option value="Contenido académico">Contenido académico</option>
+                            <option value="Investigación y documentación">Investigación y documentación</option>
+                            <option value="Simuladores y ensayos">Simuladores y ensayos</option>
+                            <option value="Pruebas y calidad">Pruebas y calidad</option>
+                            <option value="__custom">Otro (escribir…)</option>
+                        </select>
+                    </label>
+                    <label class="gm-team-field-label" id="adminTeamRoleCustomWrap" for="adminTeamRoleCustom" hidden>Cargo personalizado
+                        <input type="text" id="adminTeamRoleCustom" placeholder="Escribe el cargo completo" maxlength="160" autocomplete="off">
+                    </label>
+
+                    <div class="gm-team-add-actions">
+                        <button type="button" class="btn-calcular" id="btnAdminTeamAdd">AGREGAR AL EQUIPO</button>
+                        <button type="button" class="btn-limpiar" id="btnAdminTeamRefresh">Actualizar</button>
+                    </div>
+                    <p id="adminTeamAddMsg" class="gm-team-add-msg" hidden></p>
+                </div>
+            </div>
+
+            <div class="aula-card" id="adminEquipoGalleryCard" hidden>
+                <div class="gm-team-gallery-head">
+                    <h3>Integrantes del equipo creador <span id="adminTeamCount" class="gm-team-count-badge">0</span></h3>
+                    <p class="login-hint">Misma presentación que «Conoce al equipo creador». Aquí puedes editar cargo, foto u orden, o retirar a alguien.</p>
+                </div>
+                <div id="adminTeamList" class="gm-equipo-grid gm-team-admin-gallery"></div>
+            </div>
+
+</section>
     </main>
 
     <main class="pantalla-curso" id="pantallaSimuladores">
@@ -3144,6 +3244,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/aula.js"></script>
     <script src="js/docente-dashboard.js"></script>
     <script src="js/foros-avisos.js"></script>
+    <script src="js/equipo-creador.js"></script>
     <script src="js/aula-virtual.js"></script>
     <script src="js/app.js"></script>
     <!-- 2D primero (defs que usa el 3D) -->
