@@ -19,6 +19,8 @@
     <link rel="stylesheet" href="css/suelos1.css">
     <link rel="stylesheet" href="css/aula-virtual.css">
     <link rel="stylesheet" href="css/docente-pro.css">
+    <link rel="stylesheet" href="css/estructuras.css">
+    <link rel="stylesheet" href="css/est-lab3d.css">
 
 <!-- ═══════════════ GeoMetrics · Pantalla de carga (retroexcavadora) ═══════════════
      Va ANTES de los scripts que bloquean la carga (EmailJS, Firebase, SheetJS, Plotly) para que se pinte al instante.
@@ -827,6 +829,9 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                             <label class="reg-mat-item"><input type="checkbox" name="regMat" value="Diseño de Mezclas"> Diseño de Mezclas
                                 <input type="text" class="reg-grupo-input" data-mat="Diseño de Mezclas" placeholder="Grupo" disabled>
                             </label>
+                            <label class="reg-mat-item"><input type="checkbox" name="regMat" value="Estructuras I"> Estructuras I
+                                <input type="text" class="reg-grupo-input" data-mat="Estructuras I" placeholder="Grupo" disabled>
+                            </label>
                         </div>
                         <p class="login-hint">Marca una o varias materias e indica el grupo de cada una.</p>
 
@@ -872,6 +877,9 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                             </label>
                             <label class="reg-mat-item"><input type="checkbox" name="docMat" value="Diseño de Mezclas"> Diseño de Mezclas
                                 <input type="text" class="doc-grupo-input" data-mat="Diseño de Mezclas" placeholder="Grupos: A, B" disabled>
+                            </label>
+                            <label class="reg-mat-item"><input type="checkbox" name="docMat" value="Estructuras I"> Estructuras I
+                                <input type="text" class="doc-grupo-input" data-mat="Estructuras I" placeholder="Grupos: A, B" disabled>
                             </label>
                         </div>
                         <p class="login-hint">Marca las materias e indica los grupos separados por comas (ej. A, B, C).</p>
@@ -953,6 +961,12 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                 <p>Concreto: ACI 211.1, ensayos de control y simuladores de laboratorio.</p>
             </button>
 
+            <button class="menu-card" data-seccion="estructuras-1" data-materia="Estructuras I">
+                <div class="card-icono">🌉</div>
+                <h3>Estructuras I</h3>
+                <p>Análisis estructural: equilibrio, energía, rigidez y métodos aproximados.</p>
+            </button>
+
             <button class="menu-card" data-seccion="recursos">
                 <div class="card-icono">📚</div>
                 <h3>Recursos</h3>
@@ -977,7 +991,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
             <div class="asistente-contenido civix-shell civix-shell-pro">
                 <aside class="civix-side-left" aria-label="Navegación Civix">
                     <div class="civix-brand">
-                        <img src="docs/Geometrics.PNG" alt="GeoMetrics" class="civix-brand-logo" width="48" height="48" onerror="this.onerror=null;this.src='docs/GeoMetrics.png'">
+                        <img src="docs/GeoMetrics.png" alt="GeoMetrics" class="civix-brand-logo" width="48" height="48" onerror="this.onerror=null;this.src='docs/GeoMetrics.png'">
                         <div>
                             <div class="civix-brand-name">GeoMetrics</div>
                             <div class="civix-brand-sub">Ingeniería Civil · UniPamplona</div>
@@ -1635,6 +1649,34 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     ============================================= -->
 
     <!-- ============================================
+         PANTALLA ESTRUCTURAS I
+    ============================================= -->
+    <main class="pantalla-curso estui" id="pantallaEstructuras" style="display:none">
+        <header class="seccion-encabezado seccion-encabezado-doc">
+            <div class="seccion-titulo">
+                <div class="seccion-icono">🌉</div>
+                <div>
+                    <h2>Estructuras I</h2>
+                    <p>Código 165013 · Análisis estructural, energía, rigidez y métodos aproximados</p>
+                </div>
+            </div>
+            <button class="btn-volver" id="btnVolverEstructuras">← VOLVER AL MENÚ</button>
+        </header>
+
+        <section class="submenu-tabs">
+            <button class="tab-btn active" data-tab="est-teoria">Teoría</button>
+            <button class="tab-btn" data-tab="est-ensayos">Ensayos</button>
+            <button class="tab-btn" data-tab="est-simuladores">Simuladores</button>
+        </section>
+
+        <section class="tab-content active" id="est-teoria">
+            <div id="estTeoriaRoot"></div>
+        </section>
+        <section class="tab-content" id="est-ensayos"></section>
+        <section class="tab-content simhub-tab" id="est-simuladores"></section>
+    </main>
+
+    <!-- ============================================
          PANTALLA DISEÑO DE MEZCLAS
     ============================================= -->
     <main class="pantalla-curso" id="pantallaDisenoMezclas" style="display:none">
@@ -1656,8 +1698,8 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         </section>
 
         <section class="tab-content active" id="dm-teoria"><div id="dmTeoriaRoot"></div></section>
-        <section class="tab-content" id="dm-ensayos"><div id="dmEnsayosRoot"></div></section>
-        <section class="tab-content" id="dm-simuladores"><div id="dmSimRoot"></div></section>
+        <section class="tab-content" id="dm-ensayos"><div id="dmEnsayosRoot" class="estui"></div></section>
+        <section class="tab-content simhub-tab" id="dm-simuladores"><div id="dmSimRoot" class="estui"></div></section>
     </main>
 
     <main class="pantalla-curso" id="pantallaRecursos">
@@ -1825,7 +1867,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
         <!-- Top bar -->
         <header class="dp-top">
             <div class="dp-brand">
-                <img src="docs/Geometrics.PNG" alt="GeoMetrics" onerror="this.style.display='none'">
+                <img src="docs/GeoMetrics.png" alt="GeoMetrics" onerror="this.style.display='none'">
                 <div>
                     <strong>GeoMetrics</strong>
                     <span>Panel docente</span>
@@ -3087,6 +3129,11 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/mezclas-calc.js"></script>
     <script src="js/mezclas.js"></script>
     <script src="js/mezclas-sim.js"></script>
+    <script src="js/dm-extras.js"></script>
+    <script src="js/est-calc.js"></script>
+    <script src="js/est.js"></script>
+    <script src="js/est-sim.js"></script>
+    <script src="js/lab3d-est.js"></script>
     <script src="js/aula.js"></script>
     <script src="js/docente-dashboard.js"></script>
     <script src="js/foros-avisos.js"></script>
@@ -3113,6 +3160,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/teoria-ms2.js"></script>
     <script src="js/teoria-rm.js"></script>
     <script src="js/teoria-dm.js"></script>
+    <script src="js/teoria-est.js"></script>
     <script src="js/teoria-normas.js"></script>
     <script src="js/chart-theme.js"></script>
 
