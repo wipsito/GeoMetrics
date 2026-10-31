@@ -407,6 +407,19 @@ function aulaGuardarArchivoGrande(fileObj) {
     });
 }
 
+/* Guarda en IndexedDB con tiempo límite; si el navegador lo bloquea (p. ej. abriendo index.html como archivo local)
+   usa localStorage para archivos pequeños y, si no cabe, avisa con un mensaje claro. */
+function aulaGuardarArchivoSeguro(fileObj) {
+    var limite = new Promise(function (_, reject) { setTimeout(function () { reject(new Error('timeout-idb')); }, 6000); });
+    return Promise.race([aulaGuardarArchivoGrande(fileObj), limite]).catch(function (e) {
+        console.warn('IndexedDB no disponible, se usa localStorage', e);
+        if (fileObj.data && fileObj.data.length <= 3500000) {
+            return { name: fileObj.name, type: fileObj.type, size: fileObj.size, data: fileObj.data };
+        }
+        throw new Error('Tu navegador bloqueó el almacenamiento de archivos grandes. Abre la página con iniciar.bat (servidor local) o sube un archivo de menos de 2 MB.');
+    });
+}
+
 function aulaResolverUrlArchivo(entregaOFile) {
     return new Promise(function(resolve) {
         if (!entregaOFile) return resolve(null);
@@ -1674,7 +1687,7 @@ function aulaRenderTareasDocente() {
     box.innerHTML = tareas.slice().reverse().map(function(t) {
         return '<div class="aula-item">' +
             '<strong>' + aulaEsc(t.titulo) + '</strong>' +
-            '<p>' + aulaEsc(t.descripcion || '') + '</p>' +
+            '<p>' + aulaEsc(t.descripcion || '') + '</p>' + aulaAdjuntoTareaHtml(t) +
             '<small>' + aulaEsc(t.materia) + ' · Grupo ' + aulaEsc(t.grupo || 'Todos') +
             ' · Límite: ' + aulaEsc(t.fechaLimite || '—') + (t.horaLimite ? (' ' + aulaEsc(t.horaLimite)) : '') + '</small>' +
             '<div class="aula-item-acciones">' +
@@ -1688,6 +1701,11 @@ function aulaRenderTareasDocente() {
             var id = btn.getAttribute('data-del-tarea');
             gmConfirm('¿Eliminar esta tarea? También se ocultará para los estudiantes.', { titulo: 'Eliminar tarea' }).then(function(ok) {
                 if (!ok) return;
+                var viejo = aulaLoad(AULA_KEYS.tareas, []).find(function(t) { return t.id === id; });
+                if (viejo && viejo.adjunto) {
+                    if (viejo.adjunto.dataRef) { try { aulaIdbDelete(viejo.adjunto.dataRef); } catch (eD) {} }
+                    if (window.GeoCloud && GeoCloud.isOn && GeoCloud.isOn() && GeoCloud.cloudSet) GeoCloud.cloudSet('tareaArchivos/' + id, null);
+                }
                 var list = aulaLoad(AULA_KEYS.tareas, []).filter(function(t) { return t.id !== id; });
                 aulaSave(AULA_KEYS.tareas, list);
                 aulaRenderDocente();
@@ -1706,6 +1724,8 @@ function aulaRenderTareasDocente() {
             document.getElementById('tareaGrupo').value = t.grupo || '';
             document.getElementById('tareaFecha').value = t.fechaLimite || '';
             var th = document.getElementById('tareaHora'); if (th) th.value = t.horaLimite || '';
+            var tac2 = document.getElementById('tareaArchivoActual');
+            if (tac2) { if (t.adjunto && t.adjunto.name) { tac2.hidden = false; tac2.textContent = 'Adjunto actual: ' + t.adjunto.name + ' (elige otro archivo para reemplazarlo)'; } else { tac2.hidden = true; } }
             document.getElementById('formTareaTitulo').textContent = 'Editar tarea';
             document.getElementById('btnCrearTarea').textContent = 'GUARDAR CAMBIOS';
             var cancel = document.getElementById('btnCancelarEditTarea');
@@ -1728,7 +1748,41 @@ function aulaCancelarEditTarea() {
     if (cancel) cancel.hidden = true;
     var err = document.getElementById('tareaError');
     if (err) err.textContent = '';
+    var ta = document.getElementById('tareaArchivo'); if (ta) { try { ta.value = ''; } catch (e) {} }
+    var tac = document.getElementById('tareaArchivoActual'); if (tac) { tac.hidden = true; tac.textContent = ''; }
 }
+
+/* ---------- Adjuntos de tareas ---------- */
+function aulaAdjuntoTareaHtml(t) {
+    if (!t || !t.adjunto || !t.adjunto.name) return '';
+    var kb = t.adjunto.size ? (' · ' + (t.adjunto.size > 1048576 ? (t.adjunto.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(t.adjunto.size / 1024)) + ' KB')) : '';
+    return '<p class="aula-adjunto">📎 <a href="#" class="btn-descarga" data-adj-tarea="' + aulaEsc(t.id) + '">' + aulaEsc(t.adjunto.name) + '</a><small>' + kb + '</small></p>';
+}
+function aulaDescargarAdjuntoTarea(id) {
+    var t = (aulaLoad(AULA_KEYS.tareas, []) || []).find(function (x) { return x && x.id === id; });
+    if (!t || !t.adjunto) return;
+    var a = t.adjunto;
+    function descargar(dataUrl) {
+        if (!dataUrl) { aulaAvisoNube('El archivo adjunto no está disponible. Pide al docente que lo vuelva a cargar.'); return; }
+        var link = document.createElement('a');
+        link.href = dataUrl; link.download = a.name || 'adjunto';
+        document.body.appendChild(link); link.click(); link.remove();
+    }
+    var local = a.dataRef ? aulaIdbGet(a.dataRef).then(function (rec) { return rec && rec.data ? rec.data : null; }).catch(function () { return null; }) : Promise.resolve(null);
+    local.then(function (d) {
+        if (d) return descargar(d);
+        if (window.GeoCloud && GeoCloud.isOn && GeoCloud.isOn() && a.cloud) {
+            return GeoCloud.cloudGet('tareaArchivos/' + id).then(function (rec) { descargar(rec && rec.data); });
+        }
+        descargar(null);
+    });
+}
+document.addEventListener('click', function (e) {
+    var el = e.target && e.target.closest ? e.target.closest('[data-adj-tarea]') : null;
+    if (!el) return;
+    e.preventDefault();
+    aulaDescargarAdjuntoTarea(el.getAttribute('data-adj-tarea'));
+});
 
 
 /* ========== Notificaciones (panel desplegable) ========== */
@@ -2001,6 +2055,35 @@ function aulaCrearTarea() {
     var hora = (document.getElementById('tareaHora') || {}).value || '';
     if (!titulo) { err.textContent = 'Escribe un título.'; return; }
 
+    var adjIn = document.getElementById('tareaArchivo');
+    var adjFile = adjIn && adjIn.files && adjIn.files[0];
+    if (adjFile && !aulaCrearTarea._adj) {
+        if (adjFile.size > 100 * 1024 * 1024) { err.textContent = 'El archivo adjunto supera 100 MB.'; return; }
+        var btnC = document.getElementById('btnCrearTarea');
+        if (btnC) btnC.disabled = true;
+        err.textContent = 'Subiendo archivo adjunto…';
+        aulaReadFileAsDataURL(adjFile, 100 * 1024 * 1024).then(function (fd) {
+            return aulaGuardarArchivoGrande(fd).then(function (meta) {
+                aulaCrearTarea._adj = { name: fd.name, type: fd.type, size: fd.size, dataRef: meta.dataRef, _data: fd.data };
+            });
+        }).then(function () {
+            if (btnC) btnC.disabled = false;
+            aulaCrearTarea();
+        }).catch(function (e) {
+            if (btnC) btnC.disabled = false;
+            err.textContent = (e && e.message) ? e.message : 'No se pudo leer el archivo adjunto.';
+        });
+        return;
+    }
+    var adjMeta = aulaCrearTarea._adj || null;
+    aulaCrearTarea._adj = null;
+    if (adjMeta) {
+        /* base64 compartido en la nube (hasta ~6 MB); la tarea guarda solo los metadatos */
+        var adjData = adjMeta._data; delete adjMeta._data;
+        adjMeta.cloud = false;
+        adjMeta._pending = adjData;
+    }
+
     var tareas = aulaLoad(AULA_KEYS.tareas, []);
     if (editId) {
         var idx = tareas.findIndex(function(t) { return t.id === editId; });
@@ -2011,6 +2094,7 @@ function aulaCrearTarea() {
             tareas[idx].grupo = grupo;
             tareas[idx].fechaLimite = fecha;
             tareas[idx].horaLimite = hora;
+            if (adjMeta) tareas[idx].adjunto = adjMeta;
         }
     } else {
         tareas.push({
@@ -2025,7 +2109,22 @@ function aulaCrearTarea() {
             docenteNombre: (typeof aulaNombreVisible === 'function' ? aulaNombreVisible(user) : (user.nombre || user.nombres || 'Docente')),
             creada: new Date().toISOString()
         });
+        if (adjMeta) tareas[tareas.length - 1].adjunto = adjMeta;
     }
+    /* subir el adjunto a la nube y quitar el base64 temporal de los metadatos */
+    (function () {
+        var tt = editId ? tareas.find(function (t) { return t.id === editId; }) : tareas[tareas.length - 1];
+        if (!tt || !tt.adjunto || !tt.adjunto._pending) return;
+        var data = tt.adjunto._pending; delete tt.adjunto._pending;
+        if (window.GeoCloud && GeoCloud.isOn && GeoCloud.isOn() && data.length <= 8 * 1024 * 1024) {
+            tt.adjunto.cloud = true;
+            GeoCloud.cloudSet('tareaArchivos/' + tt.id, { name: tt.adjunto.name, type: tt.adjunto.type, size: tt.adjunto.size, data: data }).then(function (ok) {
+                if (!ok) aulaAvisoNube('La tarea se publicó, pero el archivo adjunto no se pudo subir a la nube: solo lo verás tú en este equipo.');
+            });
+        } else if (window.GeoCloud && GeoCloud.isOn && GeoCloud.isOn()) {
+            aulaAvisoNube('El adjunto supera 8 MB: la tarea se publicó, pero los estudiantes no podrán descargarlo desde otros equipos.');
+        }
+    })();
     aulaSave(AULA_KEYS.tareas, tareas);
     try {
         if (window.GeoCloud && GeoCloud.isOn() && GeoCloud.pushTareas) {
@@ -3147,7 +3246,7 @@ function aulaRenderEstudiante() {
                     '<div class="aula-item-top">' +
                     '<strong>' + aulaEsc(t.titulo) + '</strong>' +
                     '<span class="' + badgeCls + '">' + badgeTxt + '</span></div>' +
-                    '<p>' + aulaEsc(t.descripcion || '') + '</p>' +
+                    '<p>' + aulaEsc(t.descripcion || '') + '</p>' + aulaAdjuntoTareaHtml(t) +
                     '<div class="aula-item-meta">' +
                     '<span>' + aulaEsc(t.materia) + '</span>' +
                     '<span>Grupo ' + aulaEsc(t.grupo || 'Todos') + '</span>' +
@@ -3313,6 +3412,14 @@ function aulaRenderEstudiante() {
     }
 }
 
+document.addEventListener('change', function (e) {
+    var t = e.target;
+    if (!t || t.id !== 'entregaArchivo') return;
+    var err = document.getElementById('entregaError');
+    var f = t.files && t.files[0];
+    if (err) err.textContent = f ? ('Archivo seleccionado: ' + f.name + ' (' + (f.size > 1048576 ? (f.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(f.size / 1024)) + ' KB') + ')') : '';
+});
+
 function aulaEntregar() {
     var user = aulaRequireSession();
     if (!user || user.rol !== 'estudiante') return;
@@ -3368,7 +3475,7 @@ function aulaEntregar() {
             } catch (e2) {
                 // Si aún falla, forzar IDB
                 if (!row.dataRef) {
-                    return aulaGuardarArchivoGrande(file).then(function(meta) {
+                    return aulaGuardarArchivoSeguro(file).then(function(meta) {
                         row.storage = 'idb';
                         row.dataRef = meta.dataRef;
                         delete row.data;
@@ -3405,15 +3512,18 @@ function aulaEntregar() {
         };
 
         if (usarIdb) {
-            return aulaGuardarArchivoGrande(file).then(guardarMeta);
+            return aulaGuardarArchivoSeguro(file).then(guardarMeta);
         }
         try {
             guardarMeta({ name: file.name, type: file.type, size: file.size, data: file.data });
         } catch (e4) {
-            return aulaGuardarArchivoGrande(file).then(guardarMeta);
+            return aulaGuardarArchivoSeguro(file).then(guardarMeta);
         }
     }).catch(function(e) {
-        if (err) err.textContent = (e && e.message) ? e.message : 'Error al entregar. Prueba un PDF más liviano o exporta a PDF comprimido.';
+        var msg = (e && e.name === 'QuotaExceededError') ? 'No hay espacio en el navegador para este archivo. Prueba con uno más liviano.' :
+            ((e && e.message) ? e.message : 'Error al entregar. Prueba un PDF más liviano o exporta a PDF comprimido.');
+        if (err) err.textContent = msg;
+        aulaAvisoNube('No se pudo entregar: ' + msg);
     });
 }
 

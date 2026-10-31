@@ -1723,7 +1723,9 @@
         }
 
         // Navegación principal / quickbar
-        var navBtn = t.closest('button[data-av-view], [data-av-view]');
+        // OJO: los contenedores de vista (<div class="av-view" data-av-view="...">) también llevan el atributo;
+        // si se tratan como botón, se cancela el clic de TODO lo que hay dentro (p. ej. el selector de archivos).
+        var navBtn = t.closest('[data-av-view]:not(.av-view)');
         if (navBtn && est.contains(navBtn)) {
           var v = navBtn.getAttribute('data-av-view');
           if (v) {
