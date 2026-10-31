@@ -155,6 +155,52 @@ function aulaSave(key, value) {
     } catch (e) {}
 }
 
+/* ---------- Usuarios compartidos en la nube ---------- */
+function aulaAvisoNube(msg) {
+    try {
+        var n = document.getElementById('aulaAvisoNube');
+        if (!n) {
+            n = document.createElement('div'); n.id = 'aulaAvisoNube';
+            n.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:100000;max-width:90vw;padding:12px 18px;border-radius:12px;background:#7f1d1d;color:#fff;font:600 14px/1.4 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.45)';
+            document.body.appendChild(n);
+        }
+        n.textContent = msg; n.style.display = 'block';
+        clearTimeout(n._t); n._t = setTimeout(function () { n.style.display = 'none'; }, 9000);
+    } catch (e) {}
+}
+/* Sube el usuario y avisa si la base de datos lo rechazó (reglas, conexión…) */
+function aulaConfirmarNube(user) {
+    if (!(window.GeoCloud && GeoCloud.isOn && GeoCloud.isOn() && user)) return;
+    GeoCloud.pushUser(user).then(function (ok) {
+        if (!ok) aulaAvisoNube('Tu cuenta se creó en este equipo, pero no se pudo guardar en la base de datos. Revisa la conexión o las reglas de Firebase.');
+    });
+}
+/* Antes de validar correo/contraseña o duplicados, trae los usuarios de la nube */
+function aulaSubmitConNube(fn) {
+    return function (e) {
+        if (e && e.preventDefault) e.preventDefault();
+        var self = this, run = function () { fn.call(self, e); };
+        if (window.GeoCloud && GeoCloud.isOn && GeoCloud.isOn() && GeoCloud.pullUsersAndApply) GeoCloud.pullUsersAndApply().then(run, run);
+        else run();
+    };
+}
+/* Cuando llega un usuario nuevo desde otro equipo, se refrescan los paneles docente/estudiante */
+(function () {
+    var t = null;
+    window.addEventListener('geometrics-users-updated', function () {
+        clearTimeout(t);
+        t = setTimeout(function () {
+            try {
+                var vis = function (id) { var n = document.getElementById(id); return n && n.offsetParent !== null; };
+                if (vis('listaEstudiantes') && typeof aulaRenderEstudiantes === 'function') aulaRenderEstudiantes();
+                if (vis('listaIntegrantes') && typeof aulaRenderIntegrantes === 'function') aulaRenderIntegrantes();
+                if (typeof aulaActualizarResumenDocente === 'function' && aulaGetSession && aulaGetSession()) aulaActualizarResumenDocente();
+                if (window.DocenteDashboard && DocenteDashboard.refresh) DocenteDashboard.refresh();
+            } catch (e) { console.warn('refresco de usuarios', e); }
+        }, 350);
+    });
+})();
+
 function aulaUid() {
     return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
 }
@@ -999,7 +1045,7 @@ function aulaInitLogin() {
 
     var formLogin = document.getElementById('formLogin');
     if (formLogin) {
-        formLogin.addEventListener('submit', function(e) {
+        formLogin.addEventListener('submit', aulaSubmitConNube(function(e) {
             e.preventDefault();
             var email = aulaNormalizarEmail(document.getElementById('loginEmail').value);
             var pass = document.getElementById('loginPass').value || '';
@@ -1030,12 +1076,12 @@ function aulaInitLogin() {
             user = aulaUsuarioCompleto(user) || user;
             aulaSetSession(user);
             aulaEnterApp(user);
-        });
+        }));
     }
 
     var formReg = document.getElementById('formRegistro');
     if (formReg) {
-        formReg.addEventListener('submit', function(e) {
+        formReg.addEventListener('submit', aulaSubmitConNube(function(e) {
             e.preventDefault();
             var err = document.getElementById('regError');
             err.textContent = '';
@@ -1118,16 +1164,31 @@ function aulaInitLogin() {
                 grupo: materias[0].grupo,
                 foto: ''
             };
-            users.push(user);
-            aulaSave(AULA_KEYS.users, users);
-            aulaSetSession(user);
-            aulaEnterApp(user);
-        });
+            var terminarRegistro = function () {
+                users.push(user);
+                aulaSave(AULA_KEYS.users, users);
+                aulaSetSession(user);
+                aulaEnterApp(user);
+            };
+            if (window.GeoCloud && GeoCloud.isOn && GeoCloud.isOn() && GeoCloud.registerUser) {
+                GeoCloud.registerUser(user).then(function (r) {
+                    if (r && r.exists) {
+                        err.textContent = 'Ese correo ya está registrado. Usa Iniciar sesión.';
+                        GeoCloud.pullUsersAndApply();
+                        return;
+                    }
+                    if (!r || !r.ok) aulaAvisoNube('No se pudo guardar tu cuenta en la base de datos (' + ((r && r.error) || 'sin respuesta') + '). Se creó solo en este equipo.');
+                    terminarRegistro();
+                });
+            } else {
+                terminarRegistro();
+            }
+        }));
     }
 
     var formDoc = document.getElementById('formDocente');
     if (formDoc) {
-        formDoc.addEventListener('submit', function(e) {
+        formDoc.addEventListener('submit', aulaSubmitConNube(function(e) {
             e.preventDefault();
             var err = document.getElementById('docError');
             err.textContent = '';
@@ -1245,9 +1306,10 @@ function aulaInitLogin() {
                 aulaDocentesExtraSave(extra);
             } catch (e) {}
             aulaSave(AULA_KEYS.users, users);
+            aulaConfirmarNube(user);
             aulaSetSession(user);
             aulaEnterApp(user);
-        });
+        }));
     }
 
     // Restaurar sesión si existe (F5 no cierra sesión ni saca del panel)

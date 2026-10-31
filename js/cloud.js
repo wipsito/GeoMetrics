@@ -299,28 +299,7 @@
                 var users = res[0], docs = res[1], chats = res[2], admins = res[3];
                 var tareas = res[4], presentaciones = res[5], entregas = res[6], civix = res[7], quices = res[8];
                 try {
-                    if (users && users.length) {
-                        var localU = [];
-                        try { localU = JSON.parse(localStorage.getItem('geometrics_users') || '[]') || []; } catch (e2) { localU = []; }
-                        if (!Array.isArray(localU)) localU = [];
-                        var byE = {};
-                        localU.forEach(function (u) {
-                            if (u && u.email) byE[String(u.email).toLowerCase()] = u;
-                        });
-                        users.forEach(function (u) {
-                            if (!u || !u.email) return;
-                            var k = String(u.email).toLowerCase();
-                            var prev = byE[k];
-                            if (!prev) { byE[k] = u; return; }
-                            // Fusionar: conservar foto si uno la tiene
-                            var merged = Object.assign({}, prev, u);
-                            if (!merged.foto && prev.foto) merged.foto = prev.foto;
-                            if (!merged.foto && u.foto) merged.foto = u.foto;
-                            if (!merged.photo && prev.photo) merged.photo = prev.photo;
-                            byE[k] = merged;
-                        });
-                        localStorage.setItem('geometrics_users', JSON.stringify(Object.keys(byE).map(function (k) { return byE[k]; })));
-                    }
+                    if (users && users.length) mergeUsersIntoLocal(users);
                     if (docs) localStorage.setItem('geometrics_docentes_extra', JSON.stringify(docs));
                     if (chats && Array.isArray(chats)) {
                         var localC = [];
@@ -416,33 +395,81 @@ function syncUpUsers() {
         } catch (e) { return Promise.resolve(false); }
     }
 
-        function pullUsersAndApply() {
+    /** Mezcla usuarios de la nube en localStorage. Devuelve la lista final y avisa a los paneles si algo cambió. */
+    function mergeUsersIntoLocal(users) {
+        if (!users || !users.length) return null;
+        var localU = [], before;
+        try { before = localStorage.getItem('geometrics_users') || '[]'; localU = JSON.parse(before) || []; } catch (e) { before = '[]'; localU = []; }
+        if (!Array.isArray(localU)) localU = [];
+        var byE = {};
+        localU.forEach(function (u) {
+            if (u && u.email) byE[String(u.email).toLowerCase()] = u;
+        });
+        users.forEach(function (u) {
+            if (!u || !u.email) return;
+            var k = String(u.email).toLowerCase();
+            var prev = byE[k];
+            if (!prev) { byE[k] = u; return; }
+            var m = Object.assign({}, prev, u);
+            if (!m.foto && prev.foto) m.foto = prev.foto;
+            if (!m.foto && u.foto) m.foto = u.foto;
+            byE[k] = m;
+        });
+        var merged = Object.keys(byE).map(function (k) { return byE[k]; });
+        var after = JSON.stringify(merged);
+        if (after !== before) {
+            try { localStorage.setItem('geometrics_users', after); } catch (e2) {}
+            try { global.dispatchEvent(new CustomEvent('geometrics-users-updated', { detail: { total: merged.length } })); } catch (e3) {}
+        }
+        return merged;
+    }
+
+    function pullUsersAndApply() {
         return pullUsers().then(function (users) {
             if (!users || !users.length) return [];
-            var localU = [];
-            try { localU = JSON.parse(localStorage.getItem('geometrics_users') || '[]') || []; } catch (e) { localU = []; }
-            if (!Array.isArray(localU)) localU = [];
-            var byE = {};
-            localU.forEach(function (u) {
-                if (u && u.email) byE[String(u.email).toLowerCase()] = u;
-            });
-            users.forEach(function (u) {
-                if (!u || !u.email) return;
-                var k = String(u.email).toLowerCase();
-                var prev = byE[k];
-                if (!prev) { byE[k] = u; return; }
-                var m = Object.assign({}, prev, u);
-                if (!m.foto && prev.foto) m.foto = prev.foto;
-                if (!m.foto && u.foto) m.foto = u.foto;
-                byE[k] = m;
-            });
-            var merged = Object.keys(byE).map(function (k) { return byE[k]; });
-            localStorage.setItem('geometrics_users', JSON.stringify(merged));
-            return merged;
+            return mergeUsersIntoLocal(users) || [];
         });
     }
 
+    /** Escucha en tiempo real la colección users/: cada alta o cambio en cualquier PC llega aquí. */
+    var usersListening = false;
+    function listenUsers(cb) {
+        return cloudListen('users', function (val) {
+            var arr = [];
+            if (val && typeof val === 'object') {
+                Object.keys(val).forEach(function (k) { if (val[k] && val[k].email) arr.push(val[k]); });
+            }
+            var merged = mergeUsersIntoLocal(arr);
+            if (cb) { try { cb(merged || []); } catch (e) { console.error(e); } }
+        });
+    }
+    function startUsersSync() {
+        if (usersListening || !isOn()) return;
+        usersListening = true;
+        listenUsers();
+    }
 
+    /**
+     * Alta atómica de un usuario nuevo: si el correo ya existe en la nube NO lo pisa.
+     * Resuelve { ok, exists, error }.
+     */
+    function registerUser(user) {
+        if (!user || !user.email) return Promise.resolve({ ok: false, error: 'sin correo' });
+        return init().then(function (d) {
+            if (!d) return { ok: false, error: 'Firebase no disponible' };
+            var ref = d.ref('users/' + emailKey(user.email)), existed = false;
+            return ref.transaction(function (cur) {
+                if (cur && cur.email) { existed = true; return; }   // abortar: ya existe
+                return user;
+            }).then(function (res) {
+                if (existed || (res && !res.committed && res.snapshot && res.snapshot.exists())) return { ok: false, exists: true };
+                return { ok: !!(res && res.committed) };
+            });
+        }).catch(function (e) {
+            console.error('[GeoCloud] registerUser', e);
+            return { ok: false, error: e && e.message ? e.message : String(e) };
+        });
+    }
 
     function pushTareas(list) {
         return cloudSet('tareas', list || []);
@@ -840,6 +867,9 @@ function syncUpUsers() {
         listenTareas: listenTareas,
         pullChats: pullChats,
         pullUsersAndApply: pullUsersAndApply,
+        listenUsers: listenUsers,
+        startUsersSync: startUsersSync,
+        registerUser: registerUser,
         pushForos: pushForos,
         pushForosReplies: pushForosReplies,
         pushAvisos: pushAvisos,
@@ -852,4 +882,9 @@ function syncUpUsers() {
         pushTeamCreatorsMap: pushTeamCreatorsMap,
         listenTeamCreators: listenTeamCreators
     };
+
+    /* Arranque: escuchar usuarios en cuanto Firebase esté disponible */
+    function bootUsersSync() { try { startUsersSync(); } catch (e) {} }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(bootUsersSync, 300); });
+    else setTimeout(bootUsersSync, 300);
 })(window);
