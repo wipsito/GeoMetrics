@@ -88,6 +88,26 @@
         }
     };
 
+    var FC = "f′c (MPa)", FCS = 'sel:17,21,24,28,35,42', FYS = 'sel:240,420,500';
+    STRUCT.vigaCont = { nombre: 'Viga continua (2–3 tramos)', ico: '〰️', fields: [['n', 'N.º de tramos', 2, 2, 3, 'sel:2=2 tramos,3=3 tramos'], ['L1', 'Luz tramo 1 (m)', 5, 2, 12, 0.1], ['L2', 'Luz tramo 2 (m)', 5, 2, 12, 0.1], ['L3', 'Luz tramo 3 (m) (si hay 3)', 5, 2, 12, 0.1], ['b', 'Ancho b (mm)', 300, 200, 800, 10], ['h', 'Altura h (mm)', 500, 250, 1200, 10], ['cap', 'Ancho de apoyos (mm)', 300, 200, 600, 10], ['wD', 'Carga muerta (kN/m)', 15, 0, 150, 0.5], ['wL', 'Carga viva (kN/m)', 10, 0, 150, 0.5], ['fc', FC, 21, 17, 50, FCS], ['fy', 'fy (MPa)', 420, 240, 520, FYS], ['rec', 'Recubrimiento (mm)', 40, 25, 75, 5]] };
+    STRUCT.vigaT = { nombre: 'Viga T / viga L', ico: '⊤', fields: [['tipo', 'Tipo de ala', 1, 1, 2, 'sel:1=Viga T (ala a ambos lados),2=Viga L (ala a un lado)'], ['L', 'Luz L (m)', 6, 2, 15, 0.1], ['bw', 'Ancho del alma bw (mm)', 300, 200, 600, 10], ['h', 'Altura total h (mm)', 550, 300, 1200, 10], ['hf', 'Espesor del ala hf (mm)', 100, 50, 250, 5], ['sn', 'Distancia libre a alma vecina (m)', 2, 0.5, 8, 0.1], ['wD', 'Carga muerta (kN/m)', 20, 0, 200, 0.5], ['wL', 'Carga viva (kN/m)', 12, 0, 200, 0.5], ['fc', FC, 21, 17, 50, FCS], ['fy', 'fy (MPa)', 420, 240, 520, FYS], ['rec', 'Recubrimiento (mm)', 40, 25, 75, 5]] };
+    STRUCT.losa2d = { nombre: 'Losa maciza en 2 direcciones', ico: '▦', fields: [['Lx', 'Luz Lx (m)', 4, 2, 8, 0.1], ['Ly', 'Luz Ly (m)', 5, 2, 10, 0.1], ['cx', 'Bordes continuos en dir. x (luz corta)', 0, 0, 2, 'sel:0=Ninguno,1=Uno,2=Ambos'], ['cy', 'Bordes continuos en dir. y (luz larga)', 0, 0, 2, 'sel:0=Ninguno,1=Uno,2=Ambos'], ['apoyo', 'Ancho de apoyos (mm)', 300, 150, 600, 10], ['wL', 'Carga viva (kN/m²)', 2, 0.5, 15, 0.5], ['wDextra', 'Acabados / muros (kN/m²)', 1.5, 0, 10, 0.25], ['fc', FC, 21, 17, 50, FCS], ['fy', 'fy (MPa)', 420, 240, 520, FYS], ['rec', 'Recubrimiento (mm)', 20, 15, 50, 5]] };
+    STRUCT.losaNerv = { nombre: 'Losa nervada / aligerada', ico: '▤', fields: [['L', 'Luz de los nervios L (m)', 6, 3, 10, 0.1], ['Ly', 'Ancho del paño Ly (m)', 5, 2, 12, 0.1], ['apoyo', 'Continuidad de los nervios', 0, 0, 2, 'sel:0=Ambos extremos simples,1=Un extremo continuo,2=Ambos continuos'], ['bw', 'Ancho del nervio bw (mm)', 120, 80, 250, 5], ['s', 'Separación entre ejes s (mm)', 800, 500, 1200, 10], ['hf', 'Loseta superior hf (mm)', 50, 40, 120, 5], ['wL', 'Carga viva (kN/m²)', 2, 0.5, 10, 0.5], ['acab', 'Acabados (kN/m²)', 1.5, 0, 6, 0.25], ['fc', FC, 21, 17, 50, FCS], ['fy', 'fy (MPa)', 420, 240, 520, FYS]] };
+    STRUCT.columnaFlex = { nombre: 'Columna: flexocompresión', ico: '◭', fields: [['Pu', 'Carga axial Pu (kN)', 1200, 50, 9000, 10], ['Mu', 'Momento Mu (kN·m)', 150, 0, 2000, 5], ['b', 'Ancho b (mm)', 400, 250, 1000, 10], ['h', 'Alto h en flexión (mm)', 500, 250, 1200, 10], ['nBars', 'N.º de barras (pares, mín. 4)', 8, 4, 24, 2], ['bar', 'Barra #', 6, 5, 8, 'sel:5=#5,6=#6,7=#7,8=#8'], ['rec', 'Recubrimiento (mm)', 40, 25, 75, 5], ['fc', FC, 28, 17, 50, FCS], ['fy', 'fy (MPa)', 420, 240, 520, FYS]] };
+    STRUCT.zapataComb = { nombre: 'Zapata combinada (2 columnas)', ico: '⬛⬛', fields: [['P1', 'Carga P1 de servicio (kN)', 600, 50, 5000, 10], ['P2', 'Carga P2 de servicio (kN)', 900, 50, 5000, 10], ['c1', 'Columna 1, lado (mm)', 400, 250, 900, 10], ['c2', 'Columna 2, lado (mm)', 400, 250, 900, 10], ['S', 'Separación entre ejes S (m)', 4, 1.5, 9, 0.1], ['a', 'Voladizo izq. deseado a (m)', 0.5, 0.2, 2, 0.05], ['qadm', 'qadm (kPa)', 150, 50, 600, 5], ['fc', FC, 21, 17, 50, FCS], ['fy', 'fy (MPa)', 420, 240, 520, FYS], ['Df', 'Profundidad Df (m)', 1.5, 0.5, 5, 0.1]] };
+    STRUCT.zapataCorr = { nombre: 'Zapata corrida (bajo muro)', ico: '▬', fields: [['P', 'Carga del muro P (kN/m)', 150, 20, 1000, 5], ['t', 'Espesor del muro t (mm)', 250, 100, 600, 10], ['qadm', 'qadm (kPa)', 150, 50, 600, 5], ['fc', FC, 21, 17, 50, FCS], ['fy', 'fy (MPa)', 420, 240, 520, FYS], ['Df', 'Profundidad Df (m)', 1.2, 0.5, 5, 0.1]] };
+    STRUCT.muroC = { nombre: 'Muro de contención completo', ico: '🧱', fields: [['H', 'Altura del vástago H (m)', 3, 1.5, 7, 0.1], ['q', 'Sobrecarga q (kPa)', 10, 0, 50, 1], ['gamma', 'γ del relleno (kN/m³)', 18, 14, 22, 0.5], ['phi', 'Fricción φ (°)', 30, 20, 42, 1], ['qadm', 'qadm (kPa)', 150, 50, 600, 5], ['mu', 'μ base-suelo (0 = auto tan 2φ/3)', 0, 0, 0.8, 0.05], ['Df', 'Profundidad de empotre Df (m)', 0.5, 0, 3, 0.1], ['fc', FC, 21, 17, 50, FCS], ['fy', 'fy (MPa)', 420, 240, 520, FYS]] };
+    STRUCT.portico = { nombre: 'Pórtico plano (1–2 pisos)', ico: '🏢', fields: [['pisos', 'N.º de pisos', 2, 1, 2, 'sel:1=1 piso,2=2 pisos'], ['vanos', 'N.º de vanos', 2, 1, 2, 'sel:1=1 vano,2=2 vanos'], ['Lv', 'Luz del vano (m)', 5, 2.5, 9, 0.1], ['Hp', 'Altura de piso (m)', 3, 2.4, 5, 0.1], ['bc', 'Columnas b (mm)', 400, 250, 800, 10], ['hc', 'Columnas h (mm)', 400, 250, 800, 10], ['bv', 'Vigas b (mm)', 300, 200, 600, 10], ['hv', 'Vigas h (mm)', 500, 300, 900, 10], ['wD', 'Carga muerta en vigas (kN/m)', 20, 0, 150, 0.5], ['wL', 'Carga viva en vigas (kN/m)', 8, 0, 100, 0.5], ['Fh', 'Fuerza lateral E por nivel (kN)', 30, 0, 500, 1], ['fc', FC, 28, 17, 50, FCS], ['base', 'Apoyo en la base', 1, 1, 2, 'sel:1=Empotrada,2=Articulada'], ['caso', 'Diagrama a mostrar', 1, 1, 2, 'sel:1=Caso 1 (1.2D+1.6L),2=Caso 2 (1.2D+1.0L+E)']] };
+    STRUCT.despieceViga = { nombre: 'Despiece de viga', ico: '📑', fields: STRUCT.viga.fields.slice() };
+    STRUCT.despieceColumna = { nombre: 'Despiece de columna', ico: '🧾', fields: STRUCT.columna.fields.slice() };
+    STRUCT.pilote = { nombre: 'Pilotes + dado (2 ó 4)', ico: '🏗️', fields: [['P', 'Carga de servicio P (kN)', 1200, 200, 6000, 10], ['c', 'Columna c (mm)', 400, 250, 800, 10], ['D', 'Diámetro pilote (mm)', 400, 250, 1000, 10], ['L', 'Longitud pilote (m)', 12, 4, 40, 0.5], ['suelo', 'Tipo de suelo', 1, 1, 2, 'sel:1=Cohesivo (arcilla),2=Granular (arena)'], ['cu', 'cu (kPa) — cohesivo', 50, 10, 200, 1], ['phi', 'φ (°) — granular', 32, 25, 42, 1], ['gamma', 'γ′ efectivo (kN/m³)', 10, 7, 12, 0.5], ['n', 'N.º de pilotes', 4, 2, 4, 'sel:2=2 pilotes,4=4 pilotes'], ['sD', 'Separación s (× D)', 3, 2.5, 5, 0.1], ['fc', FC, 21, 17, 50, FCS], ['fy', 'fy (MPa)', 420, 240, 520, 10]] };
+    STRUCT.muroCorte = { nombre: 'Muro estructural / de corte', ico: '🧱', fields: [['Lw', 'Longitud Lw (m)', 4, 1.5, 10, 0.1], ['hw', 'Altura hw (m)', 9, 3, 40, 0.5], ['tw', 'Espesor tw (mm)', 200, 100, 500, 10], ['Vu', 'Cortante Vu (kN)', 600, 10, 5000, 10], ['Mu', 'Momento Mu (kN·m)', 3500, 10, 50000, 50], ['Pu', 'Axial Pu (kN)', 1500, 0, 20000, 50], ['fc', FC, 28, 17, 50, FCS], ['fy', 'fy (MPa)', 420, 240, 520, 10]] };
+    STRUCT.cerchaPH = { nombre: 'Cercha Pratt / Howe', ico: '📐', fields: [['tipo', 'Tipología', 1, 1, 2, 'sel:1=Pratt,2=Howe'], ['L', 'Luz L (m)', 12, 4, 40, 0.5], ['h', 'Altura h (m)', 2.5, 0.8, 8, 0.1], ['n', 'N.º de paneles (par)', 6, 2, 12, 'sel:2=2,4=4,6=6,8=8,10=10,12=12'], ['P', 'Carga P por nudo (kN)', 12, 1, 200, 0.5], ['fy', 'fy acero (MPa)', 250, 235, 420, 5]] };
+    STRUCT.aceroViga = { nombre: 'Viga de acero (perfil W)', ico: '🔩', fields: [['L', 'Luz L (m)', 6, 2, 15, 0.1], ['wD', 'Carga muerta wD (kN/m)', 12, 0, 100, 0.5], ['wL', 'Carga viva wL (kN/m)', 15, 0, 100, 0.5], ['fy', 'Fy (MPa)', 250, 235, 420, 5], ['defl', 'Límite deflexión viva L/…', 360, 240, 480, 'sel:240=L/240,360=L/360,480=L/480']] };
+    STRUCT.aceroColumna = { nombre: 'Columna de acero (perfil W)', ico: '🔩', fields: [['Pu', 'Carga axial Pu (kN)', 800, 50, 5000, 10], ['KL', 'Longitud efectiva KL (m)', 3.5, 1, 12, 0.1], ['fy', 'Fy (MPa)', 250, 235, 420, 5]] };
+    STRUCT.combinaciones = { nombre: 'Combinaciones de carga LRFD', ico: '➕', fields: [['D', 'Muerta D', 100, 0, 100000, 1], ['L', 'Viva L', 50, 0, 100000, 1], ['Lr', 'Cubierta Lr', 10, 0, 100000, 1], ['W', 'Viento W (con signo)', 20, -100000, 100000, 1], ['E', 'Sismo E (con signo)', 30, -100000, 100000, 1]] };
+    var SCATS = [['Vigas', ['viga', 'vigaCont', 'vigaT']], ['Losas', ['losa', 'losa2d', 'losaNerv', 'escalera']], ['Columnas', ['columna', 'columnaC', 'columnaFlex']], ['Cimentaciones', ['zapata', 'zapataComb', 'zapataCorr', 'pilote']], ['Contención', ['muro', 'muroC', 'muroCorte']], ['Pórticos', ['portico', 'cercha', 'cerchaPH']], ['Acero', ['aceroViga', 'aceroColumna']], ['Combinaciones', ['combinaciones']], ['Despieces', ['despieceViga', 'despieceColumna']]];
+
     function build() {
         if ($('civixViewCad')) return;
         var her = $('civixViewHerramientas'), nav = $('civixNavTools'); if (!her || !nav) return;
@@ -108,7 +128,7 @@
 
     function field(id, label, val, min, max, step, cls) {
         var w = el('label', 'cxp-f' + (cls ? ' ' + cls : '')), inp;
-        if (typeof step === 'string' && step.indexOf('sel:') === 0) { inp = el('select'); step.slice(4).split(',').forEach(function (v) { var o = el('option', null, v); o.value = v; if (+v === +val) o.selected = true; inp.appendChild(o); }); }
+        if (typeof step === 'string' && step.indexOf('sel:') === 0) { inp = el('select'); step.slice(4).split(',').forEach(function (v) { var kv = v.split('='), o = el('option', null, esc(kv[1] != null ? kv[1] : kv[0])); o.value = kv[0]; if (+kv[0] === +val) o.selected = true; inp.appendChild(o); }); }
         else { inp = el('input'); inp.type = 'number'; inp.min = min; inp.max = max; inp.step = step; inp.value = val; }
         inp.name = id; w.appendChild(el('span', null, esc(label))); w.appendChild(inp); return w;
     }
@@ -157,24 +177,39 @@
     function textField(id, label, val) { var w = el('label', 'cxp-f'), i = el('input'); i.type = 'text'; i.name = id; i.value = val || ''; i.maxLength = 60; i.setAttribute('data-txt', '1'); w.appendChild(el('span', null, esc(label))); w.appendChild(i); return w; }
 
     /* ---------- Diseño estructural ---------- */
+    function validar(cur, v) {
+        var errs = []; STRUCT[cur].fields.forEach(function (f) { var x = v[f[0]], isSel = typeof f[5] === 'string'; if (x == null || isNaN(x)) errs.push(f[1] + ': valor vacío o no numérico'); else if (!isSel && (x < f[3] || x > f[4])) errs.push(f[1] + ' debe estar entre ' + f[3] + ' y ' + f[4]); }); return errs;
+    }
+    function resumen(cur, r) {
+        var m = r.memo.filter(function (l) { return !/^AVISO/.test(l); }), t = 'Revisa este predimensionamiento académico de «' + STRUCT[cur].nombre + '» (calculado en GeoMetrics, NO es un diseño definitivo) y dime qué verificaciones faltan según NSR-10 / ACI 318 y si ves errores:\n' + m.slice(0, 14).map(function (l) { return '- ' + l; }).join('\n');
+        if (r.warns.length) t += '\nAdvertencias: ' + r.warns.join(' | '); return t.length > 3200 ? t.slice(0, 3200) + '…' : t;
+    }
     function buildStruct(sec) {
-        var sel = el('div', 'cxp-els'); var form = el('div', 'cxp-form'), out = el('div', 'cx-box cxp-out'), cur = 'viga';
-        Object.keys(STRUCT).forEach(function (k) { var b = el('button', 'cxp-el' + (k === cur ? ' on' : ''), '<span>' + STRUCT[k].ico + '</span>' + STRUCT[k].nombre); b.type = 'button'; b.addEventListener('click', function () { cur = k; sel.querySelectorAll('.cxp-el').forEach(function (x) { x.classList.toggle('on', x === b); }); renderForm(); out.innerHTML = ''; }); sel.appendChild(b); });
-        var gridBox = el('div', 'cxp-grid'), go = el('button', 'cx-btn cxp-go', '▶ Calcular y dibujar'); go.type = 'button';
-        var note = el('p', 'cxp-note', '⚠ Predimensionamiento <b>educativo</b> (principios de ACI 318 / NSR-10). No reemplaza el diseño completo ni la revisión de un ingeniero: cada resultado indica qué <b>no</b> verifica.');
+        var cats = el('div', 'cxp-presets', '<span>Categoría:</span>'), sel = el('div', 'cxp-els'), form = el('div', 'cxp-form'), out = el('div', 'cx-box cxp-out'), cur = 'viga', curCat = 0, last = null;
+        function paintEls() { sel.innerHTML = ''; SCATS[curCat][1].forEach(function (k) { var b = el('button', 'cxp-el' + (k === cur ? ' on' : ''), '<span>' + STRUCT[k].ico + '</span>' + STRUCT[k].nombre); b.type = 'button'; b.addEventListener('click', function () { cur = k; paintEls(); renderForm(); out.innerHTML = ''; last = null; }); sel.appendChild(b); }); }
+        SCATS.forEach(function (c, i) { var b = el('button', 'cxp-chip' + (i === 0 ? ' on' : ''), esc(c[0])); b.type = 'button'; b.addEventListener('click', function () { curCat = i; cur = SCATS[i][1][0]; cats.querySelectorAll('.cxp-chip').forEach(function (x) { x.classList.toggle('on', x === b); }); paintEls(); renderForm(); out.innerHTML = ''; last = null; }); cats.appendChild(b); });
+        var gridBox = el('div', 'cxp-grid'), go = el('button', 'cx-btn cxp-go', '▶ Calcular'); go.type = 'button';
+        var note = el('p', 'cxp-note', '⚠ Predimensionamiento <b>académico</b> (principios de ACI 318 / NSR-10). <b>No sustituye</b> el diseño completo firmado por un ingeniero estructural: cada resultado indica qué <b>no</b> verifica.');
         function renderForm() { gridBox.innerHTML = ''; STRUCT[cur].fields.forEach(function (f) { gridBox.appendChild(field(f[0], f[1], f[2], f[3], f[4], f[5])); }); }
-        renderForm(); form.appendChild(gridBox); form.appendChild(go); sec.appendChild(sel); sec.appendChild(form); sec.appendChild(note); sec.appendChild(out);
+        paintEls(); renderForm(); form.appendChild(gridBox); form.appendChild(go); sec.appendChild(cats); sec.appendChild(sel); sec.appendChild(form); sec.appendChild(note); sec.appendChild(out);
+        function btn(label, fn, cls) { var b = el('button', 'cx-btn' + (cls ? ' ' + cls : ''), label); b.type = 'button'; b.style.marginRight = '6px'; b.addEventListener('click', function () { try { fn(b); } catch (e) { b.textContent = '⚠ ' + (e.message || 'error'); } }); return b; }
         go.addEventListener('click', function () {
-            out.innerHTML = ''; var v = readForm(form), r = CAD.struct[cur](v), card = el('div', 'cx-card');
+            out.innerHTML = ''; var v = readForm(form), errs = validar(cur, v); if (errs.length) { out.appendChild(el('p', 'cx-err', '⚠ Revisa los datos:<br>• ' + errs.map(esc).join('<br>• '))); return; }
+            var r; try { r = CAD.struct[cur](v); } catch (e) { out.appendChild(el('p', 'cx-err', '⚠ Error de cálculo: ' + esc(e.message))); return; }
             if (!r.ok) { out.appendChild(el('p', 'cx-err', '⚠ ' + esc(r.warns.join(' ')))); return; }
+            last = r; var nm = cur + '_civix';
             r.warns.forEach(function (w) { out.appendChild(el('p', 'cxp-warn', '⚠ ' + esc(w))); });
-            var host = el('div', 'cx-box'); out.appendChild(host);
-            CAD.viewer(host, r.model, { name: cur + '_civix', extra: 'Dibujo en mm. El botón <b>⬇ DXF</b> descarga el plano para AutoCAD / Civil 3D.' });
+            var bar = el('div', 'cxs-row'); out.appendChild(bar); var host = el('div', 'cx-box'); out.appendChild(host);
+            CAD.viewer(host, r.model, { name: nm, extra: 'Dibujo en mm · capas EJES, CONTORNO, ARMADURA, COTAS, TEXTO, MARCO. El botón <b>⬇ DXF</b> descarga el plano para AutoCAD / Civil 3D.' });
+            bar.appendChild(btn('👁 Ver plano', function (b) { host.hidden = !host.hidden; b.textContent = host.hidden ? '👁 Mostrar plano' : '👁 Ocultar plano'; }));
+            bar.appendChild(btn('⬇ Descargar DXF', function () { CAD.download(nm + '.dxf', new Blob([CAD.writeDXF(r.model)], { type: 'application/dxf' })); }));
+            bar.appendChild(btn('⬇ Memoria .txt', function () { CAD.download(cur + '_memoria.txt', new Blob(['﻿' + r.memo.join('\r\n\r\n')], { type: 'text/plain;charset=utf-8' })); }));
+            bar.appendChild(btn('⬇ Memoria .pdf', function () { CAD.download(cur + '_memoria.pdf', CAD.struct.memoPDF(r.memo, 'MEMORIA DE CALCULO — ' + STRUCT[cur].nombre.toUpperCase())); }));
+            bar.appendChild(btn('📄 Lámina PDF', function (b) { var m = CAD.struct.lamina(r, { titulo: STRUCT[cur].nombre.toUpperCase() }); if (!m) throw new Error('sin plano'); CAD.exportRaster(m, 'pdf', cur + '_lamina'); b.textContent = '📄 Lámina PDF ✓'; }));
+            bar.appendChild(btn('📤 Enviar resumen a Civix', function () { sendPrompt(resumen(cur, r)); }, 'cxp-go'));
             var memo = el('details', 'cxp-memo'); memo.open = true; memo.innerHTML = '<summary>Memoria de cálculo</summary><pre>' + esc(r.memo.join('\n')) + '</pre>';
-            var cp = el('button', 'cx-btn', 'Copiar memoria'); cp.type = 'button'; cp.addEventListener('click', function () { try { navigator.clipboard.writeText(r.memo.join('\n')); cp.textContent = '✓ Copiada'; } catch (e) {} }); memo.appendChild(cp);
-            var mb = el('button', 'cx-btn', '⬇ Memoria .txt'); mb.type = 'button'; mb.style.marginLeft = '6px'; mb.addEventListener('click', function () { CAD.download(cur + '_memoria.txt', new Blob([r.memo.join('\r\n')], { type: 'text/plain;charset=utf-8' })); }); memo.appendChild(mb);
-            if (r.bom && r.bom.rows.length) out.appendChild(bomTable(r.bom, cur));
-            out.appendChild(memo); out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            var cp = el('button', 'cx-btn', 'Copiar memoria'); cp.type = 'button'; cp.addEventListener('click', function () { try { navigator.clipboard.writeText(r.memo.join('\n')); cp.textContent = '✓ Copiada'; } catch (e) { } }); memo.appendChild(cp);
+            if (r.bom && r.bom.rows.length) out.appendChild(bomTable(r.bom, cur)); out.appendChild(memo); out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
     }
     function bomTable(bom, name) {
