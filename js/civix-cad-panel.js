@@ -96,12 +96,12 @@
         var panel = el('div', 'civix-view-panel cxp'); panel.id = 'civixViewCad'; panel.hidden = true;
         panel.innerHTML =
             '<div class="civix-view-head"><h3>📐 Planos y CAD</h3><p>Genera curvas de nivel y diseños estructurales con su archivo <b>DXF</b> (AutoCAD / Civil 3D / LibreCAD). Lo calculado aquí corre en tu navegador y <b>no gasta tokens</b> de IA.</p></div>' +
-            '<div class="cxp-tabs" role="tablist"><button class="cxp-tab on" data-t="curvas">🗺️ Curvas de nivel</button><button class="cxp-tab" data-t="struct">🏗️ Diseño estructural</button><button class="cxp-tab" data-t="ia">🤖 Planos con IA</button><button class="cxp-tab" data-t="conv">🔄 Convertidor DWG ⇄ DXF</button></div>' +
-            '<section class="cxp-sec" data-s="curvas"></section><section class="cxp-sec" data-s="struct" hidden></section><section class="cxp-sec" data-s="ia" hidden></section><section class="cxp-sec" data-s="conv" hidden></section>';
+            '<div class="cxp-tabs" role="tablist"><button class="cxp-tab on" data-t="curvas">🗺️ Curvas de nivel</button><button class="cxp-tab" data-t="struct">🏗️ Diseño estructural</button><button class="cxp-tab" data-t="ia">🤖 Planos con IA</button></div>' +
+            '<section class="cxp-sec" data-s="curvas"></section><section class="cxp-sec" data-s="struct" hidden></section><section class="cxp-sec" data-s="ia" hidden></section>';
         her.parentNode.insertBefore(panel, her.nextSibling);
-        panel.querySelectorAll('.cxp-tab').forEach(function (t) { t.addEventListener('click', function () { panel.querySelectorAll('.cxp-tab').forEach(function (x) { x.classList.toggle('on', x === t); }); panel.querySelectorAll('.cxp-sec').forEach(function (s) { s.hidden = s.getAttribute('data-s') !== t.getAttribute('data-t'); }); if (t.getAttribute('data-t') === 'conv' && CAD.__convAct) CAD.__convAct(); }); });
+        panel.querySelectorAll('.cxp-tab').forEach(function (t) { t.addEventListener('click', function () { panel.querySelectorAll('.cxp-tab').forEach(function (x) { x.classList.toggle('on', x === t); }); panel.querySelectorAll('.cxp-sec').forEach(function (s) { s.hidden = s.getAttribute('data-s') !== t.getAttribute('data-t'); }); }); });
         btn.addEventListener('click', function () { if (global.civixShowView) global.civixShowView('cad'); });
-        buildCurvas(panel.querySelector('[data-s=curvas]')); buildStruct(panel.querySelector('[data-s=struct]')); buildIA(panel.querySelector('[data-s=ia]')); buildConv(panel.querySelector('[data-s=conv]')); addToolCard(panel);
+        buildCurvas(panel.querySelector('[data-s=curvas]')); buildStruct(panel.querySelector('[data-s=struct]')); buildIA(panel.querySelector('[data-s=ia]')); addToolCard(panel);
         var orig = global.civixShowView;
         if (typeof orig === 'function' && !orig.__cx) { var w = function (name) { var r = orig.apply(this, arguments); panel.hidden = (name || 'chat') !== 'cad'; btn.classList.toggle('active', name === 'cad'); return r; }; w.__cx = true; global.civixShowView = w; }
     }
@@ -231,9 +231,9 @@
         if (CAD.convertUI) CAD.convertUI(sec); else sec.appendChild(el('p', 'cx-err', 'El módulo de conversión no se cargó (js/civix-cad-convert.js).'));
     }
     function addToolCard(panel) {
-        var grid = doc.querySelector('#civixViewHerramientas .civix-tools-grid'); if (!grid || $('civixToolConv')) return;
+        var grid = doc.querySelector('#civixViewHerramientas .civix-tools-grid'); if (!grid || $('civixToolCurv')) return;
         function card(id, ico, t, d, tab) { var b = el('button', 'civix-tool-card', '<span>' + ico + '</span><strong>' + t + '</strong><em>' + d + '</em>'); b.type = 'button'; b.id = id; b.__boundProSend = true; b.addEventListener('click', function () { if (global.civixShowView) global.civixShowView('cad'); var tb = panel.querySelector('.cxp-tab[data-t=' + tab + ']'); if (tb) tb.click(); }); grid.appendChild(b); }
-        card('civixToolConv', '🔄', 'Convertidor DWG ⇄ DXF', 'Sin páginas externas', 'conv'); card('civixToolCurv', '🗺️', 'Curvas de nivel', 'Perfil, volúmenes, PDF', 'curvas');
+        card('civixToolCurv', '🗺️', 'Curvas de nivel', 'Perfil, volúmenes, PDF', 'curvas');
     }
 
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(build, 300); }); else setTimeout(build, 300);
