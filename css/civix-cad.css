@@ -88,3 +88,4 @@
 .cxp-tab { flex: none; height: auto; }
 .cxv-drop { display: block; }
 .cxp { align-content: start; }
+.cxv-conv { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: #CBD5E1; font-size: 13px; } .cxv-conv select { min-height: 38px; border-radius: 9px; border: 1px solid #2B3A50; background: #0B1220; color: #F1F5F9; padding: 0 10px; }
