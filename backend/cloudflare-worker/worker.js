@@ -249,7 +249,7 @@ function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Filename',
     'Access-Control-Max-Age': '86400',
   };
 }
@@ -358,6 +358,54 @@ function lastUserText(messages) {
 }
 
 
+// ---- Conversion DWG <-> DXF via CloudConvert (opcional: requiere el secreto CLOUDCONVERT_API_KEY) ----
+async function handleConvert(request, env, url, origin) {
+  if (!env.CLOUDCONVERT_API_KEY) {
+    return json(501, { error: 'Conversion en servidor no configurada. Define el secreto CLOUDCONVERT_API_KEY (wrangler secret put CLOUDCONVERT_API_KEY).' }, origin);
+  }
+  const from = (url.searchParams.get('from') || '').toLowerCase();
+  const to = (url.searchParams.get('to') || '').toLowerCase();
+  if (!((from === 'dwg' && to === 'dxf') || (from === 'dxf' && to === 'dwg'))) {
+    return json(400, { error: 'Usa ?from=dwg&to=dxf o ?from=dxf&to=dwg' }, origin);
+  }
+  const buf = await request.arrayBuffer();
+  if (!buf.byteLength) return json(400, { error: 'Archivo vacio' }, origin);
+  if (buf.byteLength > 10 * 1024 * 1024) return json(413, { error: 'Archivo mayor a 10 MB' }, origin);
+  const auth = { Authorization: 'Bearer ' + env.CLOUDCONVERT_API_KEY };
+  try {
+    const jr = await fetch('https://api.cloudconvert.com/v2/jobs', {
+      method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tasks: {
+        imp: { operation: 'import/upload' },
+        conv: { operation: 'convert', input: 'imp', input_format: from, output_format: to },
+        exp: { operation: 'export/url', input: 'conv' },
+      } }),
+    });
+    const job = await jr.json();
+    if (!jr.ok) return json(502, { error: 'CloudConvert: ' + (job.message || jr.status) }, origin);
+    const imp = job.data.tasks.find((t) => t.name === 'imp');
+    const form = imp && imp.result && imp.result.form;
+    if (!form) return json(502, { error: 'CloudConvert no devolvio el formulario de carga' }, origin);
+    const fd = new FormData();
+    Object.keys(form.parameters || {}).forEach((k) => fd.append(k, form.parameters[k]));
+    fd.append('file', new Blob([buf]), 'input.' + from);
+    const up = await fetch(form.url, { method: 'POST', body: fd });
+    if (!up.ok) return json(502, { error: 'Fallo la carga a CloudConvert (' + up.status + ')' }, origin);
+    const wr = await fetch('https://sync.api.cloudconvert.com/v2/jobs/' + job.data.id, { headers: auth });
+    const done = await wr.json();
+    const tasks = (done.data && done.data.tasks) || [];
+    const failed = tasks.find((t) => t.status === 'error');
+    if (failed) return json(502, { error: 'Conversion fallida: ' + (failed.message || failed.code || 'error') }, origin);
+    const exp = tasks.find((t) => t.name === 'exp' && t.status === 'finished');
+    const file = exp && exp.result && exp.result.files && exp.result.files[0];
+    if (!file) return json(504, { error: 'La conversion no termino a tiempo; intenta de nuevo.' }, origin);
+    const out = await fetch(file.url);
+    return new Response(out.body, { status: 200, headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': file.filename || ('plano.' + to), ...corsHeaders(origin), 'Access-Control-Expose-Headers': 'X-Filename' } });
+  } catch (e) {
+    return json(502, { error: 'Error en la conversion: ' + (e && e.message ? e.message : e) }, origin);
+  }
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
@@ -367,6 +415,13 @@ export default {
     }
 
     const url = new URL(request.url);
+
+    if (url.pathname === '/api/convert/status' && request.method === 'GET') {
+      return json(200, { enabled: !!env.CLOUDCONVERT_API_KEY, formats: ['dwg>dxf', 'dxf>dwg'], maxMB: 10 }, origin);
+    }
+    if (url.pathname === '/api/convert' && request.method === 'POST') {
+      return handleConvert(request, env, url, origin);
+    }
 
     if (request.method === 'GET' && (url.pathname === '/api/models' || url.pathname === '/models')) {
       const list = Object.keys(ALLOWED_MODELS).map((id) => ({ id, ...ALLOWED_MODELS[id] }));
