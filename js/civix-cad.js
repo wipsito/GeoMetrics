@@ -358,6 +358,11 @@
         function col(e) { if (e.aci) P(62, e.aci); else if (e.rgb) P(62, nearestAci(e.rgb)); }
         model.ents.forEach(function (e) {
             var ly = lname(e.layer);
+            if (e.t === 'poly' && e.solid && e.pts.length >= 3 && e.pts.length <= 4) {
+                var q = e.pts, q4 = q.length === 3 ? [q[0], q[1], q[2], q[2]] : [q[0], q[1], q[3], q[2]];
+                P(0, 'SOLID'); P(8, ly); if (e.fillRgb) P(62, nearestAci(e.fillRgb)); else col(e);
+                q4.forEach(function (pp, k) { P(10 + k, f(pp[0])); P(20 + k, f(pp[1])); P(30 + k, f(pp[2] || 0)); }); return;
+            }
             if (e.t === 'poly') {
                 var pts = e.pts.filter(function (p) { return isFinite(p[0]) && isFinite(p[1]); }); if (!pts.length) return;
                 if (pts.length === 2 && !e.closed && !e.keepPoly) { P(0, 'LINE'); P(8, ly); col(e); P(10, f(pts[0][0])); P(20, f(pts[0][1])); P(30, f(pts[0][2] || 0)); P(11, f(pts[1][0])); P(21, f(pts[1][1])); P(31, f(pts[1][2] || 0)); return; }
@@ -393,7 +398,7 @@
         model.ents.forEach(function (e) {
             if (model.layers[e.layer] && model.layers[e.layer].off) return;
             var c = entColor(model, e, opts.bg === 'dark'), st = 'stroke="' + c + '" fill="none" stroke-width="1" vector-effect="non-scaling-stroke"';
-            if (e.t === 'poly') out.push('<' + (e.closed ? 'polygon' : 'polyline') + ' points="' + e.pts.map(function (p) { return X(p[0]) + ',' + Y(p[1]); }).join(' ') + '" ' + st.replace('fill="none"', e.fill ? 'fill="' + c + '" fill-opacity="0.18"' : 'fill="none"') + '/>');
+            if (e.t === 'poly') out.push('<' + (e.closed ? 'polygon' : 'polyline') + ' points="' + e.pts.map(function (p) { return X(p[0]) + ',' + Y(p[1]); }).join(' ') + '" ' + st.replace('fill="none"', e.fill ? 'fill="' + (e.fillRgb ? rgbCss(e.fillRgb) : c) + '" fill-opacity="' + (e.alpha != null ? e.alpha : 0.18) + '"' : 'fill="none"') + '/>');
             else if (e.t === 'circle') out.push('<circle cx="' + X(e.c[0]) + '" cy="' + Y(e.c[1]) + '" r="' + (e.r * sc).toFixed(2) + '" ' + st + '/>');
             else if (e.t === 'point') out.push('<circle cx="' + X(e.p[0]) + '" cy="' + Y(e.p[1]) + '" r="1.6" fill="' + c + '"/>');
             else if (e.t === 'text') e.s.forEach(function (ln, k) {
@@ -454,7 +459,7 @@
                     for (k = 0; k < pts.length; k++) { x = SX(pts[k][0]); y = SY(pts[k][1]); if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
                     if (maxx < -5 || minx > W + 5 || maxy < -5 || miny > H + 5) { ctx.beginPath(); continue; }
                     if (e.closed) ctx.closePath();
-                    if (e.fill) { ctx.globalAlpha = 0.18; ctx.fill(); ctx.globalAlpha = 1; }
+                    if (e.fill) { ctx.globalAlpha = e.alpha != null ? e.alpha : 0.18; if (e.fillRgb) ctx.fillStyle = rgbCss(e.fillRgb); ctx.fill(); ctx.globalAlpha = 1; if (e.noStroke) { ctx.beginPath(); continue; } }
                     ctx.stroke();
                 } else if (e.t === 'circle') {
                     var cxs = SX(e.c[0]), cys = SY(e.c[1]), rr = e.r * view.s; if (cxs + rr < 0 || cxs - rr > W || cys + rr < 0 || cys - rr > H) continue;
@@ -510,7 +515,7 @@
         abtn('⬇ DXF', 'Descargar DXF limpio (AutoCAD / Civil 3D / QGIS)', function () { dl((opts.name || 'plano_civix') + '.dxf', new Blob([writeDXF(model)], { type: 'application/dxf' })); });
         abtn('⬇ PNG', 'Descargar imagen', function () { paint(); cv.toBlob(function (b) { dl((opts.name || 'plano_civix') + '.png', b); }); });
         abtn('⬇ SVG', 'Descargar vectorial', function () { dl((opts.name || 'plano_civix') + '.svg', new Blob([toSVG(model, { bg: dark ? 'dark' : 'light' })], { type: 'image/svg+xml' })); });
-        (opts.actions || []).forEach(function (a) { abtn(a.label, a.title || '', function () { a.run(model); }); });
+        var api = null; (opts.actions || []).forEach(function (a) { abtn(a.label, a.title || '', function () { a.run(model, api); }); });
         root.appendChild(bar); root.appendChild(stage); root.appendChild(info);
         host.appendChild(root);
         function setInfo(html) { info.innerHTML = html; }
@@ -523,7 +528,8 @@
         setInfo(ib);
         var ro = global.ResizeObserver ? new ResizeObserver(function () { resize(); }) : null; if (ro) ro.observe(stage); else global.addEventListener('resize', resize);
         setTimeout(function () { resize(); fit(); }, 30);
-        return { root: root, fit: fit, redraw: draw, setInfo: setInfo, layersChanged: function () { buildLayers(); draw(); }, destroy: function () { if (ro) ro.disconnect(); root.remove(); } };
+        api = { root: root, fit: fit, redraw: draw, setInfo: setInfo, layersChanged: function () { model.bbox = bboxOf(model.ents); buildLayers(); draw(); }, destroy: function () { if (ro) ro.disconnect(); root.remove(); } };
+        return api;
     }
     var UNITS = { 0: 'sin unidades', 1: 'pulgadas', 2: 'pies', 4: 'mm', 5: 'cm', 6: 'm', 7: 'km' };
     function esc(s) { return String(s).replace(/[&<>"]/g, function (m) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]; }); }
@@ -573,11 +579,19 @@
         o = o || {}; var seed = o.seed != null ? (o.seed >>> 0) : (Math.floor(Math.random() * 4294967295) >>> 0), r = rng(seed);
         var Wd = o.width || 200, Hd = o.height || 150, n = Math.max(30, Math.min(1500, o.n || 180)), relief = o.relief || 20, base = o.base != null ? o.base : 2300, x0 = o.x0 != null ? o.x0 : 0, y0 = o.y0 != null ? o.y0 : 0;
         var hills = [], nh = 5 + Math.floor(r() * 4), mn = Math.min(Wd, Hd), i;
-        for (i = 0; i < nh; i++) hills.push({ x: r() * Wd, y: r() * Hd, s: mn * (0.10 + r() * 0.2), a: (r() < 0.62 ? 1 : -1) * (0.35 + r() * 0.65) });
-        var slope = (r() - 0.5) * 1.2, dir = r() * TAU, nv = []; for (i = 0; i < 64; i++) nv.push(r());
+        var shape = o.shape || 'mixto', slope = (r() - 0.5) * 1.2, dir = r() * TAU, valley = null;
+        if (shape === 'colina') { hills.push({ x: Wd * (0.4 + r() * 0.2), y: Hd * (0.4 + r() * 0.2), s: mn * (0.22 + r() * 0.08), a: 1 }); hills.push({ x: r() * Wd, y: r() * Hd, s: mn * 0.1, a: 0.12 }); slope = (r() - 0.5) * 0.15; }
+        else if (shape === 'cuenca') { hills.push({ x: Wd * (0.4 + r() * 0.2), y: Hd * (0.4 + r() * 0.2), s: mn * (0.22 + r() * 0.08), a: -1 }); hills.push({ x: r() * Wd, y: r() * Hd, s: mn * 0.1, a: -0.1 }); slope = (r() - 0.5) * 0.15; }
+        else if (shape === 'ladera') { slope = (r() < 0.5 ? -1 : 1) * (1.4 + r() * 0.6); for (i = 0; i < 2; i++) hills.push({ x: r() * Wd, y: r() * Hd, s: mn * 0.12, a: (r() - 0.5) * 0.3 }); }
+        else if (shape === 'valle') { valley = { ang: r() * PI, w: mn * (0.16 + r() * 0.08), cx: Wd / 2, cy: Hd / 2 }; slope = (r() - 0.5) * 0.4; for (i = 0; i < 3; i++) hills.push({ x: r() * Wd, y: r() * Hd, s: mn * 0.1, a: (r() - 0.5) * 0.2 }); }
+        else if (shape === 'ondulado') { nh = 10 + Math.floor(r() * 5); for (i = 0; i < nh; i++) hills.push({ x: r() * Wd, y: r() * Hd, s: mn * (0.06 + r() * 0.08), a: (r() < 0.5 ? 1 : -1) * (0.3 + r() * 0.7) }); slope = (r() - 0.5) * 0.3; }
+        else for (i = 0; i < nh; i++) hills.push({ x: r() * Wd, y: r() * Hd, s: mn * (0.10 + r() * 0.2), a: (r() < 0.62 ? 1 : -1) * (0.35 + r() * 0.65) });
+        var nv = []; for (i = 0; i < 64; i++) nv.push(r());
         function vnoise(x, y) { var xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf); function h(a, b) { return nv[(((a * 7 + b * 13) % 64) + 64) % 64]; } return (h(xi, yi) * (1 - u) + h(xi + 1, yi) * u) * (1 - v) + (h(xi, yi + 1) * (1 - u) + h(xi + 1, yi + 1) * u) * v; }
         function zf(x, y) {
-            var z = slope * (Math.cos(dir) * x + Math.sin(dir) * y) / mn; hills.forEach(function (h) { z += h.a * Math.exp(-((x - h.x) * (x - h.x) + (y - h.y) * (y - h.y)) / (2 * h.s * h.s)); });
+            var z = slope * (Math.cos(dir) * x + Math.sin(dir) * y) / mn;
+            if (valley) { var dd = (x - valley.cx) * Math.sin(valley.ang) - (y - valley.cy) * Math.cos(valley.ang); z += 0.9 * (1 - Math.exp(-dd * dd / (2 * valley.w * valley.w))) - 0.45; }
+            hills.forEach(function (h) { z += h.a * Math.exp(-((x - h.x) * (x - h.x) + (y - h.y) * (y - h.y)) / (2 * h.s * h.s)); });
             z += 0.10 * (vnoise(x / (mn * 0.18), y / (mn * 0.18)) - 0.5) + 0.04 * (vnoise(x / (mn * 0.07) + 9, y / (mn * 0.07) + 3) - 0.5); return z;
         }
         var cols = Math.max(3, Math.round(Math.sqrt(n * Wd / Hd))), rows = Math.max(3, Math.round(n / cols)), cw = Wd / cols, ch = Hd / rows, pts = [], j;
@@ -590,7 +604,7 @@
         var zmin = Infinity, zmax = -Infinity; pts.forEach(function (p) { zmin = Math.min(zmin, p.z); zmax = Math.max(zmax, p.z); });
         var k = relief / Math.max(zmax - zmin, 1e-9);
         pts = pts.map(function (p) { return { x: +(x0 + p.x).toFixed(2), y: +(y0 + p.y).toFixed(2), z: +(base + (p.z - zmin) * k).toFixed(2) }; });
-        return { pts: pts, seed: seed, width: Wd, height: Hd, relief: relief, base: base };
+        return { pts: pts, seed: seed, width: Wd, height: Hd, relief: relief, base: base, shape: shape };
     }
 
     /* ============================ TIN + CURVAS ============================ */
@@ -730,6 +744,7 @@
         if ((m = q.match(/semilla\s*(\d+)/))) o.seed = +m[1];
         if ((m = q.match(/(?:cota|elevacion|altitud)\s*(?:base|inicial)?\s*(?:de)?\s*(\d+(?:[.,]\d+)?)/))) o.base = num(m[1]);
         if (/sin suaviz|poligonal|sin curv/.test(q)) o.smooth = false;
+        if (/colina|cerro|monticulo/.test(q)) o.shape = 'colina'; else if (/cuenca|depresion|hondonada/.test(q)) o.shape = 'cuenca'; else if (/ladera|talud|pendiente/.test(q)) o.shape = 'ladera'; else if (/valle|quebrada|vaguada|rio/.test(q)) o.shape = 'valle'; else if (/ondulad/.test(q)) o.shape = 'ondulado';
         return o;
     }
     function contourCard(card, spec) { // spec: {pts, title, seed, random, params, name}
@@ -810,7 +825,7 @@
     }
 
     CAD.parseDXF = parseDXF; CAD.writeDXF = writeDXF; CAD.toSVG = toSVG; CAD.viewer = viewer; CAD.parsePoints = parsePoints; CAD.pointsFromDXF = pointsFromDXF;
-    CAD.randomTerrain = randomTerrain; CAD.contours = contours; CAD.contourModel = contourModel; CAD.delaunay = delaunay; CAD.onSend = onSend; CAD.enhance = enhanceBlocks; CAD.install = install; CAD.aciRGB = aciRGB; CAD.bboxOf = bboxOf; CAD.contourCard = contourCard; CAD.download = dl; CAD.pointsCSV = pointsCSV;
+    CAD.randomTerrain = randomTerrain; CAD.contours = contours; CAD.contourModel = contourModel; CAD.delaunay = delaunay; CAD.onSend = onSend; CAD.enhance = enhanceBlocks; CAD.install = install; CAD.aciRGB = aciRGB; CAD.nearestAci = nearestAci; CAD.rgbCss = rgbCss; CAD.bboxOf = bboxOf; CAD.contourCard = contourCard; CAD.download = dl; CAD.pointsCSV = pointsCSV;
     global.CivixCAD = CAD;
     if (typeof module !== 'undefined' && module.exports) module.exports = CAD;
     if (global.document) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install(); }
