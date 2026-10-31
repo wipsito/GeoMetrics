@@ -410,3 +410,8 @@
 .est-charthead span { font-size: 12px; font-variant-numeric: tabular-nums; color: #E6EDF5; }
 .est-chartwrap canvas { display: block; width: 100%; border-radius: 12px; background: #0B1220; }
 .est-charthint { display: block; margin-top: 6px; font-size: 10.5px; color: #718096; }
+
+/* Diseño de mezclas: tarjetas con botones 2D + 3D */
+.estui .est-dm-simcard.has3d .simcard-btns { grid-template-columns: 1fr 1fr; }
+.estui .est-dm-simcard.has3d .simcard-btn:only-child { grid-column: 1 / -1; }
+.estui .simhub-3d-host { width: 100%; }

@@ -1,0 +1,25 @@
+/* Civix CAD — visor de planos y curvas de nivel */
+.cx-card { max-width: 100%; }
+.cx-box { margin: 10px 0 4px; }
+.cx-view { border: 1px solid #2B3A50; border-radius: 14px; overflow: hidden; background: #0F1A2D; width: 100%; max-width: 980px; }
+.cx-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; background: #151F32; border-bottom: 1px solid #2B3A50; }
+.cx-btn { min-height: 32px; padding: 4px 10px; border-radius: 9px; border: 1px solid #2B3A50; background: #1E293B; color: #E2E8F0; font: 700 12px/1 inherit; font-family: inherit; cursor: pointer; }
+.cx-btn:hover { border-color: #2DD4BF; }
+.cx-acts { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.cx-dl { background: #0B1220; color: #5EEAD4; }
+.cx-stage { position: relative; height: clamp(300px, 52vh, 560px); background: #0b1220; }
+.cx-canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.cx-canvas:active { cursor: grabbing; }
+.cx-coord { position: absolute; left: 8px; bottom: 6px; font: 600 11px/1 ui-monospace, Menlo, monospace; color: #94A3B8; background: rgba(11, 18, 32, .75); padding: 3px 7px; border-radius: 6px; pointer-events: none; }
+.cx-layers { position: absolute; right: 8px; top: 8px; max-height: 80%; overflow: auto; background: rgba(21, 31, 50, .96); border: 1px solid #2B3A50; border-radius: 10px; padding: 8px 10px; display: grid; gap: 5px; font-size: 12px; color: #E2E8F0; }
+.cx-layers[hidden] { display: none; }
+.cx-lrow { display: flex; gap: 7px; align-items: center; cursor: pointer; white-space: nowrap; }
+.cx-lrow small { color: #94A3B8; }
+.cx-sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid rgba(255, 255, 255, .3); }
+.cx-info { padding: 8px 12px; font-size: 12px; color: #CBD5E1; line-height: 1.5; }
+.cx-info small { color: #94A3B8; }
+.cx-warn { margin: 6px 0 0; padding-left: 16px; color: #FBBF24; }
+.cx-err { color: #FDA4AF; font-size: 13px; margin: 6px 0; }
+.cx-ctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0 0; font-size: 12.5px; color: #CBD5E1; }
+.cx-num { width: 84px; min-height: 32px; border-radius: 9px; border: 1px solid #2B3A50; background: #0B1220; color: #F1F5F9; padding: 4px 8px; font-family: inherit; }
+@media (max-width: 640px) { .cx-acts { margin-left: 0; } .cx-stage { height: 320px; } }
