@@ -2063,6 +2063,10 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                                 <label>Fecha límite<input type="date" id="tareaFecha"></label>
                                 <label>Hora límite<input type="time" id="tareaHora"></label>
                             </div>
+                            <label>Archivo adjunto (opcional)
+                                <input type="file" id="tareaArchivo">
+                            </label>
+                            <p id="tareaArchivoActual" class="plazo-info" hidden></p>
                             <p id="tareaError" class="av-doc-error" role="alert"></p>
                             <div class="av-doc-actions">
                                 <button type="button" class="av-btn-primary" id="btnCrearTarea">Publicar tarea</button>
@@ -2387,7 +2391,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                         <textarea id="entregaComentario" rows="2" placeholder="Notas para el docente"></textarea>
                     </label>
                     <label>Archivo
-                        <input type="file" id="entregaArchivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.png,.jpg,.jpeg,.txt">
+                        <input type="file" id="entregaArchivo">
                     </label>
                     <p id="entregaError" class="av-doc-error" role="alert"></p>
                     <button type="button" class="av-btn-primary" id="btnEntregar">Entregar actividad</button>
