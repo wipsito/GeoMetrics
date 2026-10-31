@@ -115,7 +115,9 @@
     function serverConvert(buf, from, to) {
         var b = backend(); if (!b) return Promise.reject(new Error('No hay backendUrl configurado.'));
         return fetch(b + '/api/convert?from=' + from + '&to=' + to, { method: 'POST', body: buf, headers: { 'Content-Type': 'application/octet-stream' } }).catch(function () { throw new Error('No se pudo contactar el servidor de conversión. Verifica que el Worker esté desplegado con la versión nueva y que tenga el secreto CLOUDCONVERT_API_KEY (ver backend/cloudflare-worker/CONVERTIDOR-DWG.md).'); }).then(function (r) {
-            if (!r.ok) return r.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || ('HTTP ' + r.status)); });
+            if (!r.ok) return r.json().catch(function () { return {}; }).then(function (j) { var m = j.error || ('HTTP ' + r.status);
+                if (/Usa POST \/api\/chat/.test(m) || r.status === 404) m = 'Tu Worker de Cloudflare es la versión ANTERIOR y no incluye el convertidor. Pasos: 1) reemplaza backend/cloudflare-worker/worker.js por el del proyecto nuevo; 2) en esa carpeta ejecuta «wrangler secret put CLOUDCONVERT_API_KEY» (clave gratuita de cloudconvert.com) y luego «wrangler deploy». Mientras tanto: abre el DXF en AutoCAD/LibreCAD y «Guardar como… DWG», o usa el ODA File Converter (gratis).';
+                throw new Error(m); });
             return r.arrayBuffer();
         });
     }
@@ -147,39 +149,38 @@
             serverStatus().then(function (s) { eng.querySelector('#cxvE2').textContent = s.ok ? '✅ listo' : '⚠ no disponible — ' + s.why; log('Servidor: ' + (s.ok ? 'listo' : s.why)); });
         }
         function handle(f) {
-            if (!f) return; view.innerHTML = ''; acts.innerHTML = '';
+            if (!f) return; view.innerHTML = ''; acts.innerHTML = ''; info.innerHTML = '';
             if (f.size > 10 * 1048576) { msg('cxv-bad', '⚠ El archivo pesa ' + mb(f.size) + ' (máximo 10 MB).'); return; }
             var r = new FileReader(); r.onload = function () {
-                var buf = r.result, sn = sniff(buf), name = baseName(f.name); cur = { buf: buf, sn: sn, name: name, file: f }; log('Archivo ' + f.name + ' · ' + mb(f.size) + ' · tipo ' + sn.kind + (sn.name ? ' · ' + sn.name : ''));
+                var buf = r.result, sn = sniff(buf), name = baseName(f.name); cur = { buf: buf, sn: sn, name: name, model: null, srvDxf: null }; log('Archivo ' + f.name + ' · ' + mb(f.size) + ' · tipo ' + sn.kind + (sn.name ? ' · ' + sn.name : ''));
                 if (sn.kind === 'unknown') { msg('cxv-bad', '⚠ No reconozco el formato de <b>' + esc(f.name) + '</b>. Debe ser un DWG o un DXF en texto (los DXF binarios no son compatibles).'); return; }
-                if (sn.kind === 'dxf') {
-                    var text = new TextDecoder('utf-8').decode(new Uint8Array(buf)); var m = CAD.parseDXF(text);
-                    if (!m.ents.length) { msg('cxv-bad', '⚠ El DXF no contiene entidades dibujables que pueda leer (' + esc((m.warn || []).join(' ')) + ').'); return; }
-                    msg('cxv-ok', '✅ <b>' + esc(f.name) + '</b> (DXF) leído: <b>' + m.ents.length + '</b> entidades, <b>' + Object.keys(m.layers).length + '</b> capas. ' + esc((m.warn || []).slice(0, 2).join(' ')));
-                    showModel(m, name + '_limpio');
-                    acts.appendChild(btn('⬇ DXF limpio (R12)', 'Reescribe el DXF en formato R12, el más compatible', function () { CAD.download(name + '_R12.dxf', new Blob([CAD.writeDXF(m)], { type: 'application/dxf' })); log('DXF R12 generado'); }));
-                    acts.appendChild(btn('📦 Convertir a DWG (servidor)', 'Envía el archivo al servicio de conversión', function () { log('DXF→DWG por servidor…'); msg('', '⏳ Convirtiendo en el servidor…'); return serverConvert(buf, 'dxf', 'dwg').then(function (out) { CAD.download(name + '.dwg', new Blob([out], { type: 'application/acad' })); msg('cxv-ok', '✅ DWG generado (' + mb(out.byteLength) + '). Se descargó <b>' + esc(name) + '.dwg</b>.'); log('DWG recibido ' + out.byteLength + ' B'); }); }, true));
-                    acts.appendChild(el('span', 'cxp-tok', 'Sin servidor: abre el DXF en AutoCAD / LibreCAD / DraftSight y usa «Guardar como… DWG».'));
-                } else {
-                    msg('', '📐 <b>' + esc(f.name) + '</b> es un <b>DWG</b> (' + esc(sn.name) + '). Elige cómo convertirlo.');
-                    acts.appendChild(btn('⚙️ DWG → DXF en el navegador', 'Usa LibreDWG (WebAssembly); no sube el archivo', function () {
-                        msg('', '⏳ Cargando motor y leyendo el DWG…'); log('DWG→DXF local…');
-                        return dwgToModel(buf).then(function (m) {
-                            if (!m.ents.length) throw new Error('El DWG se leyó pero no produjo geometría dibujable. Prueba con el servidor.');
-                            msg('cxv-ok', '✅ Convertido en tu navegador: <b>' + m.ents.length + '</b> entidades, <b>' + Object.keys(m.layers).length + '</b> capas. ' + esc((m.warn || []).join(' '))); log('OK: ' + m.ents.length + ' entidades');
-                            showModel(m, name); acts.appendChild(btn('⬇ Descargar DXF', 'DXF R12', function () { CAD.download(name + '.dxf', new Blob([CAD.writeDXF(m)], { type: 'application/dxf' })); }, true));
-                        });
-                    }, true));
-                    acts.appendChild(btn('📦 DWG → DXF (servidor)', 'Conserva todas las entidades (bloques, cotas, hatch)', function () {
-                        msg('', '⏳ Convirtiendo en el servidor…'); log('DWG→DXF por servidor…');
-                        return serverConvert(buf, 'dwg', 'dxf').then(function (out) {
-                            var blob = new Blob([out], { type: 'application/dxf' }); CAD.download(name + '.dxf', blob); var m = CAD.parseDXF(new TextDecoder('utf-8').decode(new Uint8Array(out)));
-                            msg('cxv-ok', '✅ DXF recibido del servidor (' + mb(out.byteLength) + ') y descargado. Vista previa: ' + m.ents.length + ' entidades.'); log('DXF recibido');
-                            if (m.ents.length) showModel(m, name);
-                        });
-                    }));
-                }
+                var isDwg = sn.kind === 'dwg', src = isDwg ? 'DWG (' + esc(sn.name) + ')' : 'DXF';
+                msg('', '📄 <b>' + esc(f.name) + '</b> · ' + src + ' · ' + mb(f.size));
+                var opts = isDwg ? [['dxf', 'DXF'], ['pdf', 'PDF'], ['svg', 'SVG'], ['png', 'PNG']] : [['dwg', 'DWG'], ['dxf', 'DXF (limpio R12)'], ['pdf', 'PDF'], ['svg', 'SVG'], ['png', 'PNG']];
+                var row = el('div', 'cxv-conv'), lab = el('span', null, 'Convertir a:'), sel = el('select'); opts.forEach(function (o) { var op = el('option', null, o[1]); op.value = o[0]; sel.appendChild(op); });
+                var go = el('button', 'cx-btn cxp-go', '▶ Convertir'); go.type = 'button'; row.appendChild(lab); row.appendChild(sel); row.appendChild(go); acts.appendChild(row);
+                go.addEventListener('click', function () {
+                    go.disabled = true; view.innerHTML = ''; msg('', '⏳ Convirtiendo a ' + sel.value.toUpperCase() + '…'); log('Convertir ' + sn.kind + ' → ' + sel.value);
+                    convertTo(sel.value).catch(function (e) { msg('cxv-bad', '⚠ ' + esc(e.message || e)); log('ERROR: ' + (e.message || e)); }).then(function () { go.disabled = false; });
+                });
             }; r.readAsArrayBuffer(f);
+        }
+        function getModel() {
+            if (cur.model) return Promise.resolve(cur.model);
+            if (cur.sn.kind === 'dxf') { var m = CAD.parseDXF(new TextDecoder('utf-8').decode(new Uint8Array(cur.buf))); if (!m.ents.length) return Promise.reject(new Error('El DXF no contiene entidades dibujables que pueda leer.')); cur.model = m; return Promise.resolve(m); }
+            return dwgToModel(cur.buf).then(function (m) { if (!m.ents.length) throw new Error('vacío'); log('DWG leído en el navegador'); return m; }).catch(function (e) {
+                log('Motor local no disponible (' + e.message + '); uso el servidor'); return serverConvert(cur.buf, 'dwg', 'dxf').then(function (out) { cur.srvDxf = out; var m = CAD.parseDXF(new TextDecoder('utf-8').decode(new Uint8Array(out))); if (!m.ents.length) throw new Error('El servidor devolvió un DXF sin geometría legible.'); log('DWG convertido por el servidor'); return m; });
+            }).then(function (m) { cur.model = m; return m; });
+        }
+        function done(html, model) { msg('cxv-ok', html); if (model) showModel(model, cur.name); }
+        function convertTo(fmt) {
+            var name = cur.name;
+            if (fmt === 'dwg') return serverConvert(cur.buf, 'dxf', 'dwg').then(function (out) { CAD.download(name + '.dwg', new Blob([out], { type: 'application/acad' })); done('✅ Listo: se descargó <b>' + esc(name) + '.dwg</b> (' + mb(out.byteLength) + ').'); log('DWG recibido ' + out.byteLength + ' B'); });
+            return getModel().then(function (m) {
+                if (fmt === 'dxf') { var bytes = cur.srvDxf || null; CAD.download(name + '.dxf', bytes ? new Blob([bytes], { type: 'application/dxf' }) : new Blob([CAD.writeDXF(m)], { type: 'application/dxf' })); return done('✅ Listo: se descargó <b>' + esc(name) + '.dxf</b> (' + m.ents.length + ' entidades, ' + Object.keys(m.layers).length + ' capas).' + (cur.srvDxf ? '' : ' ' + esc((m.warn || []).join(' '))), m); }
+                if (fmt === 'svg') { var r = CAD.toSVG(m); CAD.download(name + '.svg', new Blob([typeof r === 'string' ? r : r.svg], { type: 'image/svg+xml' })); return done('✅ Listo: se descargó <b>' + esc(name) + '.svg</b>.', m); }
+                return Promise.resolve(CAD.exportRaster(m, fmt, name)).then(function () { done('✅ Listo: se descargó <b>' + esc(name) + '.' + fmt + '</b>.', m); });
+            });
         }
         inp.addEventListener('change', function () { handle(inp.files && inp.files[0]); inp.value = ''; });
         ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
