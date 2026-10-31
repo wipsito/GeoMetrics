@@ -324,7 +324,8 @@ function glyphOf(k) { var d = G.defs[k]; return GLYPH[k] || (d && d.glyph) || ''
               '</aside>' +
               '<section class="s2d-main">' +
                 '<div class="s2d-stagewrap"><canvas class="s2d-stage" aria-label="Simulación de la máquina"></canvas>' +
-                  '<div class="s2d-led"><i></i><b>Listo</b></div><div class="s2d-tag">' + esc(machineOf(def.key)) + '</div></div>' +
+                  '<div class="s2d-led"><i></i><b>Listo</b></div><div class="s2d-tag">' + esc(machineOf(def.key)) + '</div>' +
+                  '<button type="button" class="s2d-fab" aria-label="Iniciar ensayo"><span>▶</span><em>Iniciar ensayo</em></button></div>' +
                 '<div class="s2d-readouts">' + def.readouts.map(function (r) {
                     return '<div class="s2d-tile" data-k="' + r.k + '"><span>' + r.label + '</span><strong>—</strong><small>' + r.unit + '</small></div>'; }).join('') + '</div>' +
                 '<div class="s2d-charts"><canvas class="s2d-chart"></canvas><canvas class="s2d-chart"></canvas></div>' +
@@ -335,7 +336,7 @@ function glyphOf(k) { var d = G.defs[k]; return GLYPH[k] || (d && d.glyph) || ''
         var q = function (s) { return host.querySelector(s); };
         this.root = q('.s2d');
         this.cv = q('.s2d-stage'); this.charts = Array.prototype.slice.call(host.querySelectorAll('.s2d-chart'));
-        this.led = q('.s2d-led'); this.playBtn = q('.s2d-play'); this.scrub = q('.s2d-scrub');
+        this.led = q('.s2d-led'); this.playBtn = q('.s2d-play'); var fab = q('.s2d-fab'); if (fab) fab.addEventListener('click', function () { self.toggle(); }); this.scrub = q('.s2d-scrub');
         this.tiles = {}; host.querySelectorAll('.s2d-tile').forEach(function (t) { self.tiles[t.getAttribute('data-k')] = t.querySelector('strong'); });
         this.sumBox = q('.s2d-sumtiles');
 
@@ -447,6 +448,8 @@ function fieldHtml(f, v) {
         var d = this.def, S = d.at(this.P, this.M, this.p);
         var ctx = H.prep(this.cv, 800, 460);
         d.stage(ctx, 800, 460, this.P, this.M, S, this.p, this.tick);
+        if (H.stageFx) { try { H.stageFx(ctx, 800, 460, d.accent, this.p, this.running, this.tick); } catch (eFx) {} }
+        this.root.classList.toggle('is-idle', this.p <= 0 && !this.running);
         var P = this.P, M = this.M, p = this.p;
         this.charts.forEach(function (cv, i) {
             var c = d.charts[i]; if (!c) return;

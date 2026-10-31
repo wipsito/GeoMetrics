@@ -467,21 +467,45 @@
         aci211: { a: '#34D399', rgb: '52,211,153' },
         agg: { a: '#FBBF24', rgb: '251,191,36' }
     };
+    /* ---- Laboratorio 3D (js/lab3d-dm.js y lab3d-dm2.js) ---- */
+    var TO3D = { rev: 'dm_rev', comp: 'dm_comp', aci211: 'dm_aci', agg: 'dm_agg' };
+    var FROM3D = { dm_rev: 'rev', dm_comp: 'comp', dm_aci: 'aci211', dm_agg: 'agg' };
+    var META3D = {
+        dm_rev: { icon: '🥣', titulo: 'Revenimiento · cono de Abrams', norma: 'NTC 396 · ASTM C143', desc: 'Llena el cono en 3 capas, levántalo y mira cómo se asienta el concreto con una regla de medición.', a: '#38BDF8', rgb: '56,189,248' },
+        dm_comp: { icon: '🏛️', titulo: 'Compresión de cilindros', norma: 'NTC 673 · ASTM C39', desc: 'Prensa con manómetro y consola: carga, falla, grietas y desprendimiento del cilindro.', a: '#A78BFA', rgb: '167,139,250' },
+        dm_aci: { icon: '📐', titulo: 'Diseño ACI 211.1 · 1 m³', norma: 'ACI 211.1-91', desc: 'Cemento, agua, grava y arena entran al tanque de 1 m³ en el orden del método, con la ecuación de cada paso.', a: '#34D399', rgb: '52,211,153' },
+        dm_agg: { icon: '🪨', titulo: 'Combinación de agregados', norma: 'Fuller · Bolomey', desc: 'Dos tolvas y una artesa mezcladora; la pizarra compara la curva combinada con la ideal.', a: '#FBBF24', rgb: '251,191,36' },
+        dm_gran: { icon: '📊', titulo: 'Granulometría · tamizadora', norma: 'NTC 77 · ASTM C136', desc: 'Pesa la muestra, vibra la columna de tamices y calcula % pasa y módulo de finura.', a: '#F59E0B', rgb: '245,158,11' },
+        dm_punit: { icon: '⚖️', titulo: 'Peso unitario y vacíos', norma: 'NTC 92 · ASTM C29', desc: 'Llena el recipiente en 3 capas, varilla 25 golpes, enrasa, pesa y calcula PUC y % de vacíos.', a: '#38BDF8', rgb: '56,189,248' },
+        dm_hum: { icon: '💧', titulo: 'Humedad del agregado · horno', norma: 'NTC 1776 · ASTM C566', desc: 'Pesa la muestra húmeda, sécala a 110 °C, pésala en seco y obtén w y la humedad libre.', a: '#FB7185', rgb: '251,113,133' },
+        dm_fresco: { icon: '🧪', titulo: 'Concreto fresco · olla de aire', norma: 'NTC 1926 · ASTM C138 / C231', desc: 'Compacta el concreto, pésalo, sella la olla, inyecta agua, bombea y lee el contenido de aire.', a: '#F472B6', rgb: '244,114,182' }
+    };
+    var ORDEN3D_LAB = ['dm_gran', 'dm_punit', 'dm_hum', 'dm_fresco'];
     var R = { sim: null, raf: 0, p: 0, running: false, last: 0, P: null };
+    R.sim3d = null;
 
     function simHome() {
         return '<div class="simhub">' +
             '<header class="simhub-hero"><div class="simhub-hero-text"><em class="simhub-eyebrow">Laboratorio virtual · Diseño de Mezclas</em>' +
             '<h3>Cuatro simuladores para ver la mezcla antes de vaciarla</h3>' +
-            '<p>Mueve el agua, la relación a/c, el TMN o la combinación de agregados y observa la respuesta en <b>2D</b> y en las curvas en vivo. Parámetros a la izquierda, animación al centro y gráfica a la derecha.</p></div>' +
-            '<ul class="simhub-hero-stats"><li><strong>4</strong><em>Simuladores</em></li><li><strong>2D</strong><em>Animación</em></li><li><strong>4</strong><em>Curvas</em></li></ul></header>' +
+            '<p>Mueve el agua, la relación a/c, el TMN o la combinación de agregados y observa la respuesta en <b>2D</b>, en las curvas en vivo y en el <b>laboratorio 3D</b>. Parámetros a la izquierda, animación al centro y gráfica a la derecha.</p></div>' +
+            '<ul class="simhub-hero-stats"><li><strong>4</strong><em>Simuladores 2D</em></li><li><strong>8</strong><em>Máquinas 3D</em></li><li><strong>4</strong><em>Curvas</em></li></ul></header>' +
             '<div class="simhub-grid">' + ORDEN.map(function (id, i) {
                 var s = SIMS[id], t = TONE[id] || TONE.rev;
-                return '<article class="simcard est-dm-simcard" style="--a:' + t.a + ';--rgb:' + t.rgb + '"><div class="simcard-glow"></div>' +
+                return '<article class="simcard est-dm-simcard has3d" style="--a:' + t.a + ';--rgb:' + t.rgb + '"><div class="simcard-glow"></div>' +
                     '<div class="simcard-head"><em class="simcard-num">' + String(i + 1).padStart(2, '0') + '</em><div class="simcard-glyph" aria-hidden="true">' + s.icon + '</div></div>' +
                     '<h4>' + s.titulo + '</h4><p>' + s.desc + '</p>' +
                     '<div class="simcard-chips"><em>' + s.norma + '</em></div>' +
-                    '<div class="simcard-btns"><button type="button" class="simcard-btn is-2d" data-sim="' + id + '"><b>▶</b><span>Abrir simulador</span><i>Animación y curvas en vivo</i></button></div></article>';
+                    '<div class="simcard-btns"><button type="button" class="simcard-btn is-2d" data-sim="' + id + '"><b>2D</b><span>Simulador 2D</span><i>Curvas en vivo</i></button>' +
+                    '<button type="button" class="simcard-btn is-3d" data-sim3d="' + TO3D[id] + '"><b>3D</b><span>Simulador 3D</span><i>Máquina completa</i></button></div></article>';
+            }).join('') + '</div>' +
+            '<h4 class="simhub-sub">Laboratorio 3D · ensayos con la máquina completa</h4>' +
+            '<div class="simhub-grid">' + ORDEN3D_LAB.map(function (k, i) {
+                var s3 = META3D[k];
+                return '<article class="simcard est-dm-simcard has3d" style="--a:' + s3.a + ';--rgb:' + s3.rgb + '"><div class="simcard-glow"></div>' +
+                    '<div class="simcard-head"><em class="simcard-num">' + String(i + 5).padStart(2, '0') + '</em><div class="simcard-glyph" aria-hidden="true">' + s3.icon + '</div></div>' +
+                    '<h4>' + s3.titulo + '</h4><p>' + s3.desc + '</p><div class="simcard-chips"><em>' + s3.norma + '</em></div>' +
+                    '<div class="simcard-btns"><button type="button" class="simcard-btn is-3d" data-sim3d="' + k + '"><b>3D</b><span>Abrir en 3D</span><i>Paso a paso del laboratorio</i></button></div></article>';
             }).join('') + '</div>' +
             '<h4 class="simhub-sub">Módulos de cálculo con datos de mezcla</h4>' +
             '<div id="dmCalcMount"></div>' +
@@ -492,7 +516,8 @@
         var t = TONE[s.id] || TONE.rev;
         return '<div class="simhub-shell" style="--a:' + t.a + ';--rgb:' + t.rgb + '">' +
             '<div class="simhub-topbar"><button type="button" class="btn-volver simhub-back" id="smBack">← Simuladores</button>' +
-            '<nav class="simhub-crumbs"><span>Diseño de Mezclas</span><i>/</i><span>Simuladores</span><i>/</i><b>' + s.titulo + '</b></nav></div>' +
+            '<nav class="simhub-crumbs"><span>Diseño de Mezclas</span><i>/</i><span>Simuladores</span><i>/</i><b>' + s.titulo + '</b></nav>' +
+            '<div class="simhub-mode" role="tablist" aria-label="Tipo de simulador"><button type="button" role="tab" class="on" aria-selected="true" data-dm-mode="2d">2D</button><button type="button" role="tab" aria-selected="false" data-dm-mode="3d">3D</button></div></div>' +
             '<header class="simhub-phero"><div class="simhub-phero-icon" aria-hidden="true">' + s.icon + '</div>' +
             '<div class="simhub-phero-text"><em class="simhub-phero-eyebrow">Simulador · ' + s.norma + '</em><h2>' + s.titulo + '</h2><p class="simhub-phero-desc">' + s.desc + '</p></div>' +
             '<ul class="simhub-phero-meta"><li><b>Referencia</b><span>' + s.norma + '</span></li><li><b>Gráfica</b><span>' + s.graphTitle + '</span></li></ul></header>' +
@@ -507,6 +532,7 @@
     function paint() {
         var s = R.sim; if (!s || !R.P) return;
         var cs = $('smStage'), cg = $('smGraph'); if (!cs) return;
+        M.lastSimP = M.lastSimP || {}; M.lastSimP[s.id] = R.P;   // el 3D reutiliza los últimos valores del 2D
         var st = D.fit(cs, s.rs); if (st) s.draw(st.ctx, st.W, st.H, R.p, R.P);
         if (s.id === 'agg') { s.graph(null, 0, 0, R.p, R.P); } else { var g = D.fit(cg, s.rg); if (g) s.graph(g.ctx, g.W, g.H, R.p, R.P); }
         var items = s.chips(R.p, R.P);
@@ -540,11 +566,40 @@
     M.stopSim = function () { stop(); if (R.sim) setBtn(R.p >= 1 ? '↻ REPETIR' : (R.p > 0 && R.p < 1 ? '▶ CONTINUAR' : '▶ INICIAR')); };
     M.redrawSim = function () { if (R.sim && $('smStage')) paint(); };
 
+    function view3d(k) {
+        var s3 = META3D[k], two = FROM3D[k];
+        return '<div class="simhub-shell" style="--a:' + s3.a + ';--rgb:' + s3.rgb + '">' +
+            '<div class="simhub-topbar"><button type="button" class="btn-volver simhub-back" id="smBack3">← Simuladores</button>' +
+            '<nav class="simhub-crumbs"><span>Diseño de Mezclas</span><i>/</i><span>Laboratorio 3D</span><i>/</i><b>' + s3.titulo + '</b></nav>' +
+            (two ? '<div class="simhub-mode" role="tablist" aria-label="Tipo de simulador"><button type="button" role="tab" aria-selected="false" data-dm-mode="2d">2D</button><button type="button" role="tab" class="on" aria-selected="true" data-dm-mode="3d">3D</button></div>' : '') + '</div>' +
+            '<header class="simhub-phero"><div class="simhub-phero-icon" aria-hidden="true">' + s3.icon + '</div>' +
+            '<div class="simhub-phero-text"><em class="simhub-phero-eyebrow">Simulador 3D · Laboratorio virtual</em><h2>' + s3.titulo + '</h2><p class="simhub-phero-desc">' + s3.desc + ' Gira la vista, usa la rueda para acercar y consulta cada componente.</p></div>' +
+            '<ul class="simhub-phero-meta"><li><b>Normativa</b><span>' + s3.norma + '</span></li></ul></header>' +
+            '<div class="simhub-body"><div class="simhub-3d-host" id="smHost3d"></div></div></div>';
+    }
+    function disposeLab3d() { try { if (window.GeoLab3D) window.GeoLab3D.disposeAll(); } catch (e) {} }
+    M.openSim3d = function (k) {
+        if (!META3D[k]) return; stop(); R.sim = null; R.P = null; R.sim3d = k;
+        var btn = document.querySelector('#pantallaDisenoMezclas .tab-btn[data-tab="dm-simuladores"]');
+        if (btn && !btn.classList.contains('active')) btn.click();
+        M.renderSims();
+        try { var t = $('pantallaDisenoMezclas'); if (t) t.scrollIntoView({ block: 'start' }); } catch (e) {}
+    };
     M.renderSims = function () {
         var rootEl = $('dmSimRoot'); if (!rootEl) return; stop();
+        disposeLab3d();
+        if (R.sim3d) {
+            var k3 = R.sim3d; rootEl.innerHTML = view3d(k3);
+            $('smBack3').addEventListener('click', function () { disposeLab3d(); R.sim3d = null; M.renderSims(); try { var t = $('pantallaDisenoMezclas'); if (t) t.scrollIntoView({ block: 'start' }); } catch (e) {} });
+            rootEl.querySelectorAll('[data-dm-mode="2d"]').forEach(function (b) { b.addEventListener('click', function () { disposeLab3d(); var id = FROM3D[k3]; R.sim3d = null; M.openSim(id); }); });
+            var host = $('smHost3d');
+            if (!window.GeoLab3D) host.innerHTML = '<p class="login-hint">El módulo 3D no está disponible.</p>'; else window.GeoLab3D.mount(host, k3);
+            return;
+        }
         if (!R.sim) {
             rootEl.innerHTML = simHome();
             rootEl.querySelectorAll('[data-sim]').forEach(function (b) { b.addEventListener('click', function () { M.openSim(b.getAttribute('data-sim')); }); });
+            rootEl.querySelectorAll('[data-sim3d]').forEach(function (b) { b.addEventListener('click', function () { M.openSim3d(b.getAttribute('data-sim3d')); }); });
             if (window.DMCalc && typeof window.DMCalc.mount === 'function') {
                 window.DMCalc.mount(document.getElementById('dmCalcMount'));
             }
@@ -553,17 +608,19 @@
         rootEl.innerHTML = simView(R.sim);
         $('smBack').addEventListener('click', function () { stop(); R.sim = null; R.P = null; M.renderSims(); try { var t = $('pantallaDisenoMezclas'); if (t) t.scrollIntoView({ block: 'start' }); } catch (e) {} });
         $('smPlay').addEventListener('click', play); $('smReset').addEventListener('click', reset);
+        rootEl.querySelectorAll('[data-dm-mode="3d"]').forEach(function (b) { b.addEventListener('click', function () { var k = TO3D[R.sim && R.sim.id]; if (k) { M.openSim3d(k); } }); });
         var ctr = $('smControls'); ctr.addEventListener('input', onInput); ctr.addEventListener('change', onInput);
         R.p = R.sim.idle; R.P = R.sim.read(); setBtn('▶ INICIAR');
         requestAnimationFrame(function () { requestAnimationFrame(paint); });
     };
     M.openSim = function (id) {
-        if (!SIMS[id]) return; stop(); R.sim = SIMS[id];
+        if (!SIMS[id]) return; stop(); R.sim3d = null; R.sim = SIMS[id];
         var btn = document.querySelector('#pantallaDisenoMezclas .tab-btn[data-tab="dm-simuladores"]');
         if (btn && !btn.classList.contains('active')) btn.click();
         M.renderSims();
         try { var t = $('pantallaDisenoMezclas'); if (t) t.scrollIntoView({ block: 'start' }); } catch (e) {}
     };
     M.sims = SIMS;
+    M._m = { aggModel: aggModel, aggF: aggF, compState: compState, SIEVES: SIEVES, ARENAS: ARENAS, GRAVAS: GRAVAS };   // lo usa el laboratorio 3D (lab3d-dm.js)
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', M.renderSims); else M.renderSims();
 })(typeof window !== 'undefined' ? window : globalThis);

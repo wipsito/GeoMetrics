@@ -1468,6 +1468,7 @@
             c.radius += (g.radius - c.radius) * 0.12;
             c.tx += (g.tx - c.tx) * 0.12; c.ty += (g.ty - c.ty) * 0.12; c.tz += (g.tz - c.tz) * 0.12;
             camPos();
+            if (inst.look) inst.look.update(now / 1000, dt);
             inst.renderer.render(inst.scene, inst.camera);
 
             /* etiquetas */
@@ -1503,7 +1504,7 @@
                 canvasBox.innerHTML = '';
                 canvasBox.appendChild(renderer.domElement);
 
-                scene.add(new THREE.AmbientLight(0xb0c4de, 0.55));
+                var amb = new THREE.AmbientLight(0xb0c4de, 0.55); scene.add(amb);
                 var key = new THREE.DirectionalLight(0xffffff, 1.1);
                 key.position.set(4, 8, 5);
                 key.castShadow = true;
@@ -1514,7 +1515,7 @@
                 var fill = new THREE.DirectionalLight(new THREE.Color(meta.accent), 0.35);
                 fill.position.set(-4, 3, -2);
                 scene.add(fill);
-                scene.add(new THREE.HemisphereLight(0xA7B4C8, 0x0B1220, 0.45));
+                var hemi = new THREE.HemisphereLight(0xA7B4C8, 0x0B1220, 0.45); scene.add(hemi);
                 var rim = new THREE.DirectionalLight(0x2DD4BF, 0.22);
                 rim.position.set(0, 3, -6);
                 scene.add(rim);
@@ -1530,6 +1531,11 @@
                 var grid = new THREE.GridHelper(18, 36, 0x2B3A50, 0x1A2538);
                 grid.position.y = -0.12;
                 scene.add(grid);
+                /* ambiente: reflejos de estudio, piso con resplandor, foco y partículas */
+                try {
+                    inst.look = applyLook(scene, renderer, meta.accent, floor);
+                    if (scene.environment) { amb.intensity = 0.34; hemi.intensity = 0.28; }   /* el entorno ya aporta luz difusa */
+                } catch (eLook) { console.warn('Lab3D ambiente', eLook); }
 
                 var machine = BUILDERS[tipo](meta.accent);
                 machine.root.traverse(function (o) { if (o.isMesh && o.material && o.material.transparent) o.castShadow = false; });
@@ -1708,6 +1714,93 @@
         instances.length = 0;
     }
 
+
+    /* ================================================================== */
+    /*  AMBIENTE VISUAL: reflejos de estudio, suelo con resplandor, foco   */
+    /*  y partículas. Cada pieza está protegida: si falla, el visor sigue. */
+    /* ================================================================== */
+    function hexToRgb(hex) { var c = new THREE.Color(hex); return [Math.round(c.r * 255), Math.round(c.g * 255), Math.round(c.b * 255)]; }
+
+    function makeStudioEnv(renderer, accent) {
+        if (!THREE.PMREMGenerator || !THREE.EquirectangularReflectionMapping) return null;
+        var rgb = hexToRgb(accent), c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+        var g = c.getContext('2d');
+        var sky = g.createLinearGradient(0, 0, 0, 512);
+        sky.addColorStop(0, '#22344f'); sky.addColorStop(0.46, '#3a5a86'); sky.addColorStop(0.5, '#0f1a2c'); sky.addColorStop(1, '#04070d');
+        g.fillStyle = sky; g.fillRect(0, 0, 1024, 512);
+        /* cajas de luz (dan los destellos alargados del metal) */
+        g.fillStyle = 'rgba(255,255,255,.95)'; g.fillRect(110, 60, 190, 74); g.fillRect(600, 50, 230, 62);
+        g.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',.85)'; g.fillRect(400, 96, 130, 30);
+        g.fillStyle = 'rgba(190,220,255,.55)'; g.fillRect(0, 196, 1024, 7); g.fillRect(850, 120, 60, 160);
+        var tex = new THREE.CanvasTexture(c);
+        tex.mapping = THREE.EquirectangularReflectionMapping;
+        var pm = new THREE.PMREMGenerator(renderer), rt = pm.fromEquirectangular(tex);
+        tex.dispose(); pm.dispose();
+        return rt.texture;
+    }
+
+    function makeFloorTexture(accent) {
+        var rgb = hexToRgb(accent), S = 512, c = document.createElement('canvas'); c.width = c.height = S;
+        var g = c.getContext('2d'), h = S / 2;
+        var rg = g.createRadialGradient(h, h, 10, h, h, h);
+        rg.addColorStop(0, 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',.30)');
+        rg.addColorStop(0.42, '#16213a'); rg.addColorStop(1, '#0b1220');
+        g.fillStyle = rg; g.fillRect(0, 0, S, S);
+        g.lineWidth = 1.5;
+        [0.32, 0.5, 0.72, 0.92].forEach(function (f, i) {
+            g.strokeStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + (0.34 - i * 0.07).toFixed(2) + ')';
+            g.beginPath(); g.arc(h, h, h * f, 0, Math.PI * 2); g.stroke();
+        });
+        g.strokeStyle = 'rgba(167,180,200,.10)';
+        for (var a = 0; a < 12; a++) { g.beginPath(); g.moveTo(h, h); g.lineTo(h + Math.cos(a * Math.PI / 6) * h, h + Math.sin(a * Math.PI / 6) * h); g.stroke(); }
+        var t = new THREE.CanvasTexture(c);
+        return t;
+    }
+
+    /* Devuelve { update(t) } con las animaciones suaves del ambiente */
+    function applyLook(scene, renderer, accent, floor) {
+        var fx = [];
+        try { var env = makeStudioEnv(renderer, accent); if (env) scene.environment = env; } catch (e1) { console.warn('Lab3D env', e1); }
+        try {
+            if (floor && floor.material) {
+                floor.material.map = makeFloorTexture(accent); floor.material.color.set(0xffffff);
+                floor.material.roughness = 0.62; floor.material.metalness = 0.18; floor.material.needsUpdate = true;
+            }
+        } catch (e2) { console.warn('Lab3D piso', e2); }
+        try {
+            var ring = new THREE.Mesh(new THREE.RingGeometry(4.2, 4.34, 120), new THREE.MeshBasicMaterial({ color: new THREE.Color(accent), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+            ring.rotation.x = -Math.PI / 2; ring.position.y = -0.1; scene.add(ring);
+            var ring2 = new THREE.Mesh(new THREE.RingGeometry(5.6, 5.64, 120), new THREE.MeshBasicMaterial({ color: new THREE.Color(accent), transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+            ring2.rotation.x = -Math.PI / 2; ring2.position.y = -0.1; scene.add(ring2);
+            fx.push(function (t) { ring.material.opacity = 0.38 + 0.22 * Math.sin(t * 1.6); ring2.material.opacity = 0.14 + 0.10 * Math.sin(t * 1.6 + 1.3); });
+        } catch (e3) { console.warn('Lab3D anillos', e3); }
+        try {
+            var spot = new THREE.SpotLight(new THREE.Color(accent), 0.85, 26, 0.62, 0.7, 1);
+            spot.position.set(0, 10, 0.5); spot.target.position.set(0, 0, 0); scene.add(spot); scene.add(spot.target);
+        } catch (e4) { console.warn('Lab3D foco', e4); }
+        try {
+            var N = 90, pos = new Float32Array(N * 3), seed = [];
+            for (var i = 0; i < N; i++) {
+                var a = Math.random() * Math.PI * 2, r = 1.2 + Math.random() * 6.2;
+                pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 1] = Math.random() * 6; pos[i * 3 + 2] = Math.sin(a) * r;
+                seed.push({ v: 0.12 + Math.random() * 0.28, p: Math.random() * 6.28 });
+            }
+            var geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            var pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x9fc8ff, size: 0.055, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+            pts.frustumCulled = false; scene.add(pts);
+            fx.push(function (t, dt) {
+                var arr = geo.attributes.position.array;
+                for (var k = 0; k < N; k++) {
+                    var y = arr[k * 3 + 1] + seed[k].v * dt;
+                    if (y > 6) y = 0;
+                    arr[k * 3 + 1] = y; arr[k * 3] += Math.sin(t * 0.6 + seed[k].p) * 0.0012;
+                }
+                geo.attributes.position.needsUpdate = true;
+            });
+        } catch (e5) { console.warn('Lab3D partículas', e5); }
+        return { update: function (t, dt) { for (var q = 0; q < fx.length; q++) { try { fx[q](t, dt); } catch (e) {} } } };
+    }
+
     /* Permite que otros archivos (lab3d-ms1.js, lab3d-rm.js) añadan máquinas al mismo visor */
     function register(tipo, def) {
         META[tipo] = def.meta; PARAMS[tipo] = def.params; BUILDERS[tipo] = def.build;
@@ -1718,6 +1811,7 @@
     global.GeoLab3D = {
         get: getDef,
         mount: mount,
+        _look: function (scene, renderer, accent, floor) { return applyLook(scene, renderer, accent, floor); },
         disposeAll: disposeAll,
         register: register,
         meta: META,

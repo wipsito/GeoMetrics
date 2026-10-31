@@ -1083,6 +1083,9 @@ function inicializarAsistenteAI() {
         agregarMensaje(visible, 'usuario');
         if (input) input.value = '';
 
+        // CAD: curvas de nivel (aleatorias o desde puntos) y vista previa de DXF adjuntos, resueltos en el navegador
+        try { if (window.CivixCAD && CivixCAD.onSend(texto, adj)) { limpiarAdjunto(); return; } } catch (eCad) { console.warn('CivixCAD', eCad); }
+
         var payload = texto || (adj
             ? 'Analiza el documento adjunto (texto guía / libro / apunte). Resume su contenido útil, explica los conceptos clave y responde con claridad. Cita páginas si aparecen marcadas como "--- Página N ---".'
             : '');
@@ -1922,7 +1925,7 @@ function civixBuildContextSystem() {
         }
     } catch (e) {}
     partes.push('Prioriza textos guía adjuntos. No inventes datos numéricos de laboratorio. Si faltan datos, pídelos.');
-    partes.push('PLANOS Y CAD: Si el estudiante pide un plano, dibujo, detalle estructural, perfil de vía, planta de cimentación o similar, responde así: (1) explicación breve; (2) un bloque de código con lenguaje dxf que contenga un DXF R12/ASCII válido y simple (capas, LINE, CIRCLE, TEXT, DIMENSION si aplica, unidades en metros); (3) si el plano es demasiado complejo para DXF, entrega además un bloque con lenguaje guia o markdown con pasos claros para dibujarlo en AutoCAD/Civil 3D. El frontend ofrecerá botones de descarga DXF y guía PDF. Nunca digas que adjuntas un .dwg nativo: entrega DXF o guía.');
+    partes.push('PLANOS Y CAD: Si el estudiante pide un plano, dibujo, detalle estructural, perfil de vía, planta de cimentación o similar, responde así: (1) explicación breve; (2) un bloque de código con lenguaje dxf que contenga un DXF ASCII válido y COMPLETO, en este orden: 0/SECTION 2/HEADER (…$ACADVER AC1009) 0/ENDSEC; 0/SECTION 2/TABLES con tabla LAYER (cada capa con nombre y color 62); 0/SECTION 2/ENTITIES; 0/ENDSEC; 0/EOF. Usa solo LINE, LWPOLYLINE o POLYLINE+VERTEX+SEQEND, CIRCLE, ARC y TEXT (altura de texto ≈ 1/60 del ancho del dibujo), cada código de grupo y su valor en líneas separadas, coordenadas en metros con origen cerca de (0,0) y sin acentos en los TEXT. Dibuja a escala real y comprueba que todas las coordenadas sean coherentes entre sí para que el plano se vea completo. Si piden curvas de nivel, el sistema las calcula solo cuando el usuario las pide con puntos X,Y,Z o «aleatorias»: en ese caso no inventes polilíneas; (3) si el plano es demasiado complejo para DXF, entrega además un bloque con lenguaje guia o markdown con pasos claros para dibujarlo en AutoCAD/Civil 3D. El frontend ofrecerá botones de descarga DXF y guía PDF. Nunca digas que adjuntas un .dwg nativo: entrega DXF o guía.');
     partes.push('Estilo de respuesta: natural, fluido y humano. Evita esquemas rígidos con Identificación del tema / Fundamento teórico / Fórmulas / Ejemplo práctico / Ejercicio de refuerzo / Fuentes, a menos que el usuario pida una clase formal del tema.');
     partes.push('Responde siempre en español. Cuando uses el documento, cita páginas si aparecen como "--- Página N ---".');
     return partes.join(' ');
