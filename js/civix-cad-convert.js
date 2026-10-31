@@ -83,7 +83,10 @@
         var c = cfg(), base = new URL('js/vendor/libredwg/', document.baseURI).href, list = [];
         if (c.module) list.push({ mod: c.module, wasm: c.wasmDir || c.module.replace(/[^/]*$/, '') });
         list.push({ mod: base + 'libredwg-web.js', wasm: base });
-        list.push({ mod: 'https://cdn.jsdelivr.net/npm/@mlightcad/libredwg-web/dist/libredwg-web.js', wasm: 'https://cdn.jsdelivr.net/npm/@mlightcad/libredwg-web/wasm/' });
+        ['@0.4.2', ''].forEach(function (v) {
+            var root = 'https://cdn.jsdelivr.net/npm/@mlightcad/libredwg-web' + v + '/';
+            ['dist/libredwg-web.js', 'dist/index.js', 'dist/libredwg-web.mjs', 'dist/index.mjs', 'dist/libredwg-web.es.js'].forEach(function (f) { list.push({ mod: root + f, wasm: root + 'wasm/' }); });
+        });
         return list;
     }
     function loadEngine() {
@@ -93,7 +96,7 @@
             var cd = list[i++];
             return import(/* @vite-ignore */ cd.mod).then(function (mod) {
                 var LD = mod.LibreDwg || (mod.default && mod.default.LibreDwg) || mod.default; if (!LD || !LD.create) throw new Error('el módulo no expone LibreDwg.create');
-                return LD.create(cd.wasm).then(function (lib) { engine = { lib: lib, T: mod.Dwg_File_Type || (mod.default && mod.default.Dwg_File_Type) || { DWG: 0 }, src: cd.mod }; return engine; });
+                return LD.create(cd.wasm).catch(function () { return LD.create(); }).then(function (lib) { engine = { lib: lib, T: mod.Dwg_File_Type || (mod.default && mod.default.Dwg_File_Type) || { DWG: 0 }, src: cd.mod }; return engine; });
             }).catch(function (e) { engineTried.push(cd.mod.replace(/^https?:\/\//, '').slice(0, 60) + ': ' + (e && e.message || e)); return next(); });
         }
         return next();
