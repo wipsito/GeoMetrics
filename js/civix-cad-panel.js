@@ -234,6 +234,7 @@
         var grid = doc.querySelector('#civixViewHerramientas .civix-tools-grid'); if (!grid || $('civixToolCurv')) return;
         function card(id, ico, t, d, tab) { var b = el('button', 'civix-tool-card', '<span>' + ico + '</span><strong>' + t + '</strong><em>' + d + '</em>'); b.type = 'button'; b.id = id; b.__boundProSend = true; b.addEventListener('click', function () { if (global.civixShowView) global.civixShowView('cad'); var tb = panel.querySelector('.cxp-tab[data-t=' + tab + ']'); if (tb) tb.click(); }); grid.appendChild(b); }
         card('civixToolCurv', '🗺️', 'Curvas de nivel', 'Perfil, volúmenes, PDF', 'curvas');
+        var a = el('a', 'civix-tool-card', '<span>🔄</span><strong>Convertidor DWG ⇄ DXF</strong><em>Abre online-convert.com</em>'); a.id = 'civixToolConv'; a.href = 'https://cad.online-convert.com/es/dwg-conversor'; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.__boundProSend = true; a.style.textDecoration = 'none'; a.style.color = 'inherit'; grid.appendChild(a);
     }
 
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', function () { setTimeout(build, 300); }); else setTimeout(build, 300);
