@@ -810,7 +810,7 @@
     }
 
     CAD.parseDXF = parseDXF; CAD.writeDXF = writeDXF; CAD.toSVG = toSVG; CAD.viewer = viewer; CAD.parsePoints = parsePoints; CAD.pointsFromDXF = pointsFromDXF;
-    CAD.randomTerrain = randomTerrain; CAD.contours = contours; CAD.contourModel = contourModel; CAD.delaunay = delaunay; CAD.onSend = onSend; CAD.enhance = enhanceBlocks; CAD.install = install; CAD.aciRGB = aciRGB;
+    CAD.randomTerrain = randomTerrain; CAD.contours = contours; CAD.contourModel = contourModel; CAD.delaunay = delaunay; CAD.onSend = onSend; CAD.enhance = enhanceBlocks; CAD.install = install; CAD.aciRGB = aciRGB; CAD.bboxOf = bboxOf; CAD.contourCard = contourCard; CAD.download = dl; CAD.pointsCSV = pointsCSV;
     global.CivixCAD = CAD;
     if (typeof module !== 'undefined' && module.exports) module.exports = CAD;
     if (global.document) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install(); }

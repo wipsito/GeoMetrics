@@ -1095,7 +1095,7 @@ function inicializarAsistenteAI() {
                     'No se pudo extraer texto. Si es PDF escaneado, usa un PDF con texto seleccionable u OCR. ' +
                     'Si es DWG/RVT, pide exportación DXF/IFC/TXT o el mensaje de error.';
             } else {
-                var body = civixExtraerFragmentosRelevantes(adj, texto, 100000);
+                var body = civixExtraerFragmentosRelevantes(adj, texto, 14000);
                 payload += '\n\n[DOCUMENTO DE REFERENCIA: ' + adj.name +
                     (adj.note ? ' (' + adj.note + ')' : '') + ']\n' +
                     'Es un libro o guía de estudio. El fragmento incluye páginas relevantes a la pregunta del usuario. ' +
@@ -2091,6 +2091,31 @@ function civixInitUIExtras() {
     }
 }
 
+/** Reduce el historial enviado a la IA: el plan gratuito de Groq admite ~8000 tokens/minuto.
+ *  Los bloques de código (p. ej. DXF) de turnos anteriores se resumen y se limita el total. */
+function civixRecortarHistorial(hist) {
+    var MAX_TOTAL = 18000, MAX_OLD = 2500;
+    var out = hist.map(function (m, i) {
+        var c = String(m.content || '');
+        var last = i === hist.length - 1;
+        if (!last) {
+            c = c.replace(/```([\w.+-]*)\n?([\s\S]*?)```/g, function (all, lang, body) {
+                return body.length > 400 ? '[bloque ' + (lang || 'código') + ' de ' + body.length + ' caracteres omitido del contexto]' : all;
+            });
+            if (c.length > MAX_OLD) c = c.slice(0, MAX_OLD) + '…[recortado]';
+        }
+        return { role: m.role, content: c };
+    });
+    var total = 0, keep = [];
+    for (var j = out.length - 1; j >= 0; j--) {
+        total += out[j].content.length;
+        if (total > MAX_TOTAL && keep.length) break;
+        keep.unshift(out[j]);
+    }
+    if (keep.length && keep[0].role !== 'user' && keep.length > 1) keep.shift();
+    return keep;
+}
+
 async function llamarIA(mensaje) {
     chatHistory.push({ role: 'user', content: mensaje });
 
@@ -2109,7 +2134,7 @@ async function llamarIA(mensaje) {
     var response;
     try {
         var primerNombre = (typeof civixNombrePreferido === 'function') ? civixNombrePreferido() : 'estudiante';
-        var msgs = chatHistory.slice();
+        var msgs = civixRecortarHistorial(chatHistory);
         // Contexto académico + modo de tutoría
         var sysCtx = (typeof civixBuildContextSystem === 'function')
             ? civixBuildContextSystem()
@@ -2147,6 +2172,10 @@ async function llamarIA(mensaje) {
     if (!response.ok) {
         chatHistory.pop();
         var msg = (data && data.error) ? String(data.error) : ('Error HTTP ' + response.status);
+        if (/request too large|tokens per minute|rate limit|TPM/i.test(msg)) {
+            msg = 'La conversación o el archivo adjunto es demasiado grande para el límite del modelo gratuito (8.000 tokens por minuto). '
+                + 'Espera un minuto y vuelve a intentar con un mensaje más corto, un fragmento del archivo o una nueva conversación.';
+        }
         if (/invalid api key/i.test(msg)) {
             msg = 'API Key de Groq inválida o vencida en el Worker. '
                 + 'En tu PC ejecuta: wrangler secret put GROQ_API_KEY '
