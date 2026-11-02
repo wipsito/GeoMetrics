@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="css/sim-ms2.css">
     <link rel="stylesheet" href="css/rediseno.css">
     <link rel="stylesheet" href="css/civix-pro.css">
+    <link rel="stylesheet" href="css/civix-herramientas.css">
     <link rel="stylesheet" href="css/civix-cad.css">
     <link rel="stylesheet" href="css/suelos1.css">
     <link rel="stylesheet" href="css/aula-virtual.css">
@@ -1155,14 +1156,14 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                     <div class="civix-view-panel" id="civixViewHerramientas" hidden>
                         <div class="civix-view-head">
                             <h3>🛠️ Herramientas útiles</h3>
-                            <p>Atajos que envían un prompt listo a Civix para calcular, convertir o revisar.</p>
+                            <p>Calculadora y conversor propios; el resto son atajos que envían un prompt listo a Civix.</p>
                         </div>
                         <div class="civix-tools-grid">
-                            <button type="button" class="civix-tool-card" data-q="Actúa como calculadora de ingeniería civil. Pídeme los datos y calcula paso a paso con unidades SI.">
-                                <span>🧮</span><strong>Calculadora</strong><em>Cálculos con unidades</em>
+                            <button type="button" class="civix-tool-card" data-tool="calc" data-q="Actúa como calculadora de ingeniería civil. Pídeme los datos y calcula paso a paso con unidades SI.">
+                                <span>🧮</span><strong>Calculadora</strong><em>Científica · historial · DEG/RAD</em>
                             </button>
-                            <button type="button" class="civix-tool-card" data-q="Convierte estas unidades de ingeniería (kN, kgf, kPa, MPa, m, cm). Espera mis valores.">
-                                <span>↔️</span><strong>Conversor</strong><em>Unidades SI / laboratorio</em>
+                            <button type="button" class="civix-tool-card" data-tool="conv" data-q="Convierte estas unidades de ingeniería (kN, kgf, kPa, MPa, m, cm). Espera mis valores.">
+                                <span>↔️</span><strong>Conversor</strong><em>13 magnitudes · kgf, tf, psi, kip…</em>
                             </button>
                             <button type="button" class="civix-tool-card" data-q="Muéstrame tablas y fórmulas clave de la materia que estoy cursando, con variables definidas.">
                                 <span>📐</span><strong>Tablas y fórmulas</strong><em>Referencia rápida</em>
@@ -1212,8 +1213,8 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
                     </div>
                     <div class="civix-panel-block">
                         <h4>🛠️ Herramientas útiles</h4>
-                        <button type="button" class="civix-quick" data-q="Actúa como calculadora de ingeniería: ayúdame a calcular">Calculadora</button>
-                        <button type="button" class="civix-quick" data-q="Convierte estas unidades de ingeniería (SI y laboratorios)">Conversor de unidades</button>
+                        <button type="button" class="civix-quick" data-tool="calc" data-q="Actúa como calculadora de ingeniería: ayúdame a calcular">Calculadora</button>
+                        <button type="button" class="civix-quick" data-tool="conv" data-q="Convierte estas unidades de ingeniería (SI y laboratorios)">Conversor de unidades</button>
                         <button type="button" class="civix-quick" data-q="Muéstrame tablas y fórmulas clave de la materia">Tablas y fórmulas</button>
                         <button type="button" class="civix-quick" data-q="Dame enlaces y recursos útiles de Ingeniería Civil">Enlaces de interés</button>
                     </div>
@@ -3295,6 +3296,7 @@ html.gml-lock, html.gml-lock body { overflow: hidden !important; }
     <script src="js/teoria-ampliada-rm.js"></script>
     <script src="js/teoria-ampliada-dm.js"></script>
     <script src="js/teoria-ampliada-est.js"></script>
+    <script src="js/civix-herramientas.js"></script>
     <script src="js/teoria-normas.js"></script>
     <script src="js/chart-theme.js"></script>
 
