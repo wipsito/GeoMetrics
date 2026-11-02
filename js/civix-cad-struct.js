@@ -103,7 +103,7 @@
         D.dim(0, -tri * 1.6, Lmm, -tri * 1.6, -th * 2, f0(Lmm)); D.dim(-tri * 2.5, 0, -tri * 2.5, h, th * 1.0, f0(h));
         D.dim(0, h, 2 * h, h, th * 1.6, '2h = ' + 2 * h); D.dim(2 * h, h, Lmm - 2 * h, h, th * 1.6, 'zona central'); D.dim(Lmm - 2 * h, h, Lmm, h, th * 1.6, '2h = ' + 2 * h);
         D.text(Lmm / 2, yb - th * 2.5, nb + ' Ø#' + pick.no + ' (inferior)', { ha: 1, layer: 'TEXTOS' }); D.text(Lmm / 2, h + th * 4.2, '2 Ø#4 (superior, armado de estribos)', { ha: 1 });
-        D.text(2 * h / 2, h / 2, 'E#3 @' + sEnd, { h: th * 0.8, ha: 1, va: 2, rot: PI / 2 }); D.text(Lmm / 2, h / 2, 'E#3 @' + sMid + ' (centro)', { h: th * 0.9, ha: 1, va: 2 });
+        D.text(2 * h / 2, h / 2, 'E#3 @' + sEnd + '\nL = ' + f0(2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 100, 0) + ' mm c/u', { h: th * 0.8, ha: 1, va: 2, rot: PI / 2 }); D.text(Lmm / 2, h / 2, 'E#3 @' + sMid + ' (centro)\nL = ' + f0(2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 100, 0) + ' mm c/u', { h: th * 0.9, ha: 1, va: 2 });
         /* sección ampliada */
         var ss = Math.max(1, Math.round(Lmm / (3 * h))), sx = Lmm + 2500, sy = 0, sth = th * 0.8;
         function T(px, py) { return [sx + px * ss, sy + py * ss]; }
@@ -149,7 +149,7 @@
         D.line(rec + est + db / 2, 0, rec + est + db / 2, Lmm, 'ACERO-LONG'); D.line(b - rec - est - db / 2, 0, b - rec - est - db / 2, Lmm, 'ACERO-LONG');
         var y = 50, c = 0; while (y < Lmm - 30 && c++ < 400) { D.line(rec, y, b - rec, y, 'ESTRIBOS'); y += (y < lo || y > Lmm - lo) ? sConf : sMid; }
         D.dim(0, 0, 0, Lmm, -th * 2.5, f0(Lmm)); D.dim(b, 0, b, lo, th * 2, 'lo = ' + f0(lo, 0)); D.dim(b, Lmm - lo, b, Lmm, th * 2, 'lo = ' + f0(lo, 0));
-        D.text(b + th * 3, lo / 2, 'E#3 @' + sConf, { h: th * 0.8, va: 2 }); D.text(b + th * 3, Lmm / 2, 'E#3 @' + sMid, { h: th * 0.8, va: 2 }); D.text(b + th * 3, Lmm - lo / 2, 'E#3 @' + sConf, { h: th * 0.8, va: 2 });
+        D.text(b + th * 3, lo / 2, 'E#3 @' + sConf + '\nL = ' + f0(2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 100, 0) + ' mm c/u', { h: th * 0.8, va: 2 }); D.text(b + th * 3, Lmm / 2, 'E#3 @' + sMid + '\nL = ' + f0(2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 100, 0) + ' mm c/u', { h: th * 0.8, va: 2 }); D.text(b + th * 3, Lmm - lo / 2, 'E#3 @' + sConf + '\nL = ' + f0(2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 100, 0) + ' mm c/u', { h: th * 0.8, va: 2 });
         var sx = b + 2500, sy = Lmm / 2 - h * ss / 2; D.text(sx, sy + h * ss + th * 2, 'SECCION (esc. ' + ss + '× la elevación)', { h: th });
         D.rect(sx, sy, b * ss, h * ss, 'CONCRETO'); D.rect(sx + rec * ss, sy + rec * ss, (b - 2 * rec) * ss, (h - 2 * rec) * ss, 'ESTRIBOS');
         barPositions(best.n, b, h, rec + est + db / 2).forEach(function (p) { D.circle(sx + p[0] * ss, sy + p[1] * ss, db / 2 * ss, 'ACERO-LONG'); });

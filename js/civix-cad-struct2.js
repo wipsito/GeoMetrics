@@ -130,7 +130,7 @@
         Dr.text(0, Lmm + th * 4, 'COLUMNA CIRCULAR CC-1 — ELEVACION Y SECCION (mm)', { h: th * 1.5 }); Dr.text(0, Lmm + th * 2, 'Pu = ' + o.Pu + ' kN · f′c ' + fc + ' · fy ' + fy + ' MPa', { h: th * 0.9 });
         Dr.rect(0, 0, Dm, Lmm, 'CONCRETO'); Dr.line(rec + ds + db / 2, 0, rec + ds + db / 2, Lmm, 'ACERO-LONG'); Dr.line(Dm - rec - ds - db / 2, 0, Dm - rec - ds - db / 2, Lmm, 'ACERO-LONG');
         var y = 50, c = 0, pitchD = Math.max(pitch, Lmm / 150); while (y < Lmm - 30 && c++ < 300) { Dr.line(rec, y, Dm - rec, y + pitchD / 2, 'ESTRIBOS'); Dr.line(Dm - rec, y + pitchD / 2, rec, y + pitchD, 'ESTRIBOS'); y += pitchD; }
-        Dr.dim(0, 0, 0, Lmm, -th * 2.5, f0(Lmm)); Dr.text(Dm + th * 2, Lmm / 2, 'Espiral Ø#3 @ ' + pitch, { h: th * 0.9, va: 2 });
+        Dr.dim(0, 0, 0, Lmm, -th * 2.5, f0(Lmm)); Dr.text(Dm + th * 2, Lmm / 2, 'Espiral Ø#3 @ ' + pitch + '\nL = ' + f0(PI * (Dm - 2 * rec), 0) + ' mm por vuelta', { h: th * 0.9, va: 2 });
         Dr.text(cx, cy + R * ss + th * 3, 'SECCION (esc. ' + ss + '× la elevación)', { h: th }); Dr.circle(cx, cy, R * ss, 'CONCRETO'); Dr.circle(cx, cy, (R - rec) * ss, 'ESTRIBOS'); var Rb = R - rec - ds - db / 2;
         for (var i = 0; i < best.n; i++) { var a = 2 * PI * i / best.n; Dr.circle(cx + Rb * ss * Math.cos(a), cy + Rb * ss * Math.sin(a), db / 2 * ss, 'ACERO-LONG'); }
         Dr.dim(cx - R * ss, cy - R * ss - th * 2, cx + R * ss, cy - R * ss - th * 2, -th * 1.6, 'D = ' + Dm); Dr.text(cx, cy - R * ss - th * 8, best.n + ' Ø#' + best.no + ' (ρ = ' + f0(Ast / Ag * 100, 2) + ' %)\nEspiral Ø#3 @ ' + pitch, { ha: 1, h: th * 1.05 });

@@ -7,7 +7,7 @@
 (function (global) {
     'use strict';
     var CAD = global.CivixCAD; if (!CAD || !CAD.struct || !CAD.struct._h || CAD.struct.__v7) return; var S = CAD.struct; S.__v7 = true; var H = S._h;
-    var BARS = H.BARS, F = H.F, Draw = H.Draw, needAs = H.needAs, pickBars = H.pickBars, bomRow = H.bomRow, BOMH = H.BOMH, finish = H.finish, fail = H.fail, AVISO = H.AVISO, stir = H.stir, phiMn = H.phiMn;
+    var PI = Math.PI, BARS = H.BARS, F = H.F, Draw = H.Draw, needAs = H.needAs, pickBars = H.pickBars, bomRow = H.bomRow, BOMH = H.BOMH, finish = H.finish, fail = H.fail, AVISO = H.AVISO, stir = H.stir, phiMn = H.phiMn;
     var NAMES = { pin: 'articulado (pasador)', roller: 'rodillo', fixed: 'empotrado', free: 'libre (voladizo)' };
 
     function support(D, x, y, kind, side, h) {
@@ -48,13 +48,14 @@
         D.text(0, h + th * 8, 'VIGA VA-1 — ' + NAMES[sl].toUpperCase() + ' / ' + NAMES[sr].toUpperCase() + ' (mm)', { h: th * 1.4 });
         D.text(0, h + th * 6, 'L = ' + L + ' m · b×h = ' + b + '×' + h + ' · f′c ' + fc + ' · fy ' + fy + ' MPa · wu = ' + F(wu, 1) + ' kN/m', { h: th * 0.9 });
         D.rect(0, 0, Lmm, h, 'CONTORNO'); support(D, 0, 0, sl, -1, h); support(D, Lmm, 0, sr, 1, h);
-        D.line(rec, yb, Lmm - rec, yb, 'ARMADURA'); D.text(Lmm / 2, yb + th * 0.4, P.bars.n + ' Ø#' + P.bars.no + ' (inf.)', { ha: 1, h: th * 0.85 });
+        D.line(rec, yb, Lmm - rec, yb, 'ARMADURA'); D.text(Lmm / 2, yb + th * 0.4, P.bars.n + ' Ø#' + P.bars.no + ' (inf.)  L = ' + F(Lmm - 2 * rec + 300, 0) + ' mm', { ha: 1, h: th * 0.85 });
         var needL = sl === 'fixed' || sl === 'free' && false, topL = sl === 'fixed', topR = sr === 'fixed', cant = (sl === 'fixed' && sr === 'free') || (sr === 'fixed' && sl === 'free');
         var lt = cant ? Lmm - rec : 0.33 * Lmm;
         if (topL) { D.line(rec, yt - 25, lt, yt - 25, 'ARMADURA', 5); D.text(rec + 60, yt - 25 - th * 1.3, N.bars.n + ' Ø#' + N.bars.no + ' sup.', { h: th * 0.85, aci: 5 }); }
         if (topR) { D.line(Lmm - lt, yt - 25, Lmm - rec, yt - 25, 'ARMADURA', 5); D.text(Lmm - rec - 60, yt - 25 - th * 1.3, N.bars.n + ' Ø#' + N.bars.no + ' sup.', { ha: 2, h: th * 0.85, aci: 5 }); }
-        D.line(rec, yt, Lmm - rec, yt, 'ARMADURA', 4); D.text(Lmm / 2, yt + th * 0.5, '2 Ø#4 porta-estribos', { ha: 1, h: th * 0.8, aci: 4 });
+        D.line(rec, yt, Lmm - rec, yt, 'ARMADURA', 4); D.text(Lmm / 2, yt + th * 0.5, '2 Ø#4 porta-estribos  L = ' + F(Lmm - 2 * rec + 300, 0) + ' mm', { ha: 1, h: th * 0.8, aci: 4 });
         var x = 50, nst = 0; while (x < Lmm - 40 && nst < 800) { D.line(x, rec, x, h - rec, 'ARMADURA', 3); x += (x < 2 * h || x > Lmm - 2 * h) ? st.sEnd : st.sMid; nst++; }
+        var Lst = F(2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 150, 0); D.text(h, h / 2, 'E#3 @' + st.sEnd + '\nL = ' + Lst + ' mm c/u', { h: th * 0.8, ha: 1, va: 2, rot: PI / 2 }); D.text(Lmm / 2, h / 2, 'E#3 @' + st.sMid + ' (centro)\nL = ' + Lst + ' mm c/u', { h: th * 0.9, ha: 1, va: 2 });
         D.dim(0, h, Lmm, h, th * 2.6, 'L = ' + F(Lmm));
         /* diagrama de momentos (tracción hacia abajo: M⁺ se dibuja hacia abajo) */
         var Vabs = Math.max.apply(null, r.vs.map(Math.abs).concat([1])), scV = h * 1.2 / Vabs, yV = -h * 1.1 - th * 6;
