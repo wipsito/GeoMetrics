@@ -211,8 +211,13 @@
             bar.appendChild(btn('📤 Enviar resumen a Civix', function () { sendPrompt(resumen(cur, r)); }, 'cxp-go'));
             var memo = el('details', 'cxp-memo'); memo.open = true; memo.innerHTML = '<summary>Memoria de cálculo</summary><pre>' + esc(r.memo.join('\n')) + '</pre>';
             var cp = el('button', 'cx-btn', 'Copiar memoria'); cp.type = 'button'; cp.addEventListener('click', function () { try { navigator.clipboard.writeText(r.memo.join('\n')); cp.textContent = '✓ Copiada'; } catch (e) { } }); memo.appendChild(cp);
-            if (r.bom && r.bom.rows.length) out.appendChild(bomTable(r.bom, cur)); out.appendChild(memo); out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            if (r.bom && r.bom.rows.length) out.appendChild(bomTable(r.bom, cur)); if (r.qty && r.qty.items && r.qty.items.length) out.appendChild(qtyTable(r.qty)); out.appendChild(memo); out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
+    }
+    function qtyTable(q) {
+        var w = el('div', 'cxp-tblwrap'), h = '<h4 class="cxp-h4">Cantidades de obra</h4><table class="cxp-tbl"><thead><tr><th>Concepto</th><th>Cantidad</th><th>Peso / dato</th></tr></thead><tbody>';
+        q.items.forEach(function (r) { h += '<tr' + (/TOTAL/.test(r[0]) ? ' class="tot"' : '') + '><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td><td>' + esc(r[2]) + '</td></tr>'; });
+        w.innerHTML = h + '</tbody></table><p class="cxp-note">Cantidades aproximadas (sin desperdicio, traslapos ni ganchos adicionales). Concreto y formaleta calculados con las dimensiones adoptadas.</p>'; return w;
     }
     function bomTable(bom, name) {
         var w = el('div', 'cxp-tblwrap'), tot = 0, isF = bom.head[bom.head.length - 1].indexOf('Peso') === 0;

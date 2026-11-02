@@ -57,7 +57,14 @@
         var x = 50, nst = 0; while (x < Lmm - 40 && nst < 800) { D.line(x, rec, x, h - rec, 'ARMADURA', 3); x += (x < 2 * h || x > Lmm - 2 * h) ? st.sEnd : st.sMid; nst++; }
         D.dim(0, h, Lmm, h, th * 2.6, 'L = ' + F(Lmm));
         /* diagrama de momentos (tracción hacia abajo: M⁺ se dibuja hacia abajo) */
-        var Mabs = Math.max(Mp, Mn, 1), sc = h * 1.4 / Mabs, y0 = -h * 1.1 - th * 6;
+        var Vabs = Math.max.apply(null, r.vs.map(Math.abs).concat([1])), scV = h * 1.2 / Vabs, yV = -h * 1.1 - th * 6;
+        D.text(0, yV + h * 1.2 + th * 2, 'DIAGRAMA DE CORTANTE (kN, positivo hacia arriba)', { h: th * 1.0 }); D.line(0, yV, Lmm, yV, 'EJES');
+        var pv = r.xs.map(function (xx, k) { return [xx * 1000, yV + r.vs[k] * scV]; }); pv.push([Lmm, yV]); pv.unshift([0, yV]); D.poly(pv, true, 'SOMBRA');
+        D.text(0, yV + r.vs[0] * scV + (r.vs[0] >= 0 ? th * 0.8 : -th * 1.8), 'V = ' + F(r.vs[0], 1), { h: th * 0.85 });
+        D.text(Lmm, yV + r.vs[r.vs.length - 1] * scV + (r.vs[r.vs.length - 1] >= 0 ? th * 0.8 : -th * 1.8), 'V = ' + F(r.vs[r.vs.length - 1], 1), { ha: 2, h: th * 0.85 });
+        for (i = 1; i < r.vs.length; i++) if (r.vs[i - 1] * r.vs[i] < 0) { var xz = r.xs[i - 1] + (r.xs[i] - r.xs[i - 1]) * r.vs[i - 1] / (r.vs[i - 1] - r.vs[i]); D.circle(xz * 1000, yV, th * 0.35, 'TEXTO'); D.text(xz * 1000, yV - th * 1.8, 'V = 0 en x = ' + F(xz, 2) + ' m', { ha: 1, h: th * 0.8 }); break; }
+        D.line(2 * h, yV - th * 3, 2 * h, yV + h * 1.2, 'COTAS'); D.line(Lmm - 2 * h, yV - th * 3, Lmm - 2 * h, yV + h * 1.2, 'COTAS'); D.text(2 * h, yV - th * 3.8, 'zona 2h', { ha: 1, h: th * 0.7 });
+        var Mabs = Math.max(Mp, Mn, 1), sc = h * 1.4 / Mabs, y0 = yV - h * 1.2 - th * 12;
         D.text(0, y0 + h * 1.5 + th * 2, 'DIAGRAMA DE MOMENTOS (kN·m, tracción hacia abajo)', { h: th * 1.0 }); D.line(0, y0, Lmm, y0, 'EJES');
         var pts = r.xs.map(function (xx, k) { return [xx * 1000, y0 - r.ms[k] * sc]; }); pts.push([Lmm, y0]); pts.unshift([0, y0]);
         D.poly(pts, true, 'SOMBRA');
@@ -67,7 +74,15 @@
         var rows = [], mk = 1; rows.push(bomRow('Inferior', mk++, P.bars.no, P.bars.n, Lmm - 2 * rec + 300));
         if (topL || topR) rows.push(bomRow('Superior (apoyo)', mk++, N.bars.no, N.bars.n * ((topL ? 1 : 0) + (topR ? 1 : 0)), lt));
         rows.push(bomRow('Porta-estribos', mk++, 4, 2, Lmm - 2 * rec + 300)); rows.push(bomRow('Estribos Ø#3', mk++, 3, nst, 2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 150));
+        var totKg = rows.reduce(function (t, q) { return t + q[6]; }, 0), totM = rows.reduce(function (t, q) { return t + q[5]; }, 0), vol = b * h * Lmm / 1e9, form = (b + 2 * h) * Lmm / 1e6;
+        var nEnd = Math.ceil(2 * h / st.sEnd) * 2, nMid = Math.max(0, nst - nEnd);
+        memo.splice(memo.length - 2, 0, 'CANTIDADES DE OBRA:',
+            ' · Estribos Ø#3: ' + nst + ' unidades (≈ ' + nEnd + ' en zonas de 2h @ ' + st.sEnd + ' mm y ' + nMid + ' en el centro @ ' + st.sMid + ' mm), perímetro ' + F(2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 150, 0) + ' mm c/u → ' + F(nst * (2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 150) / 1000, 1) + ' m',
+            ' · Acero longitudinal inferior: ' + P.bars.n + ' Ø#' + P.bars.no + ' × ' + F((Lmm - 2 * rec + 300) / 1000, 2) + ' m' + ((topL || topR) ? ' · superior de apoyo: ' + N.bars.n + ' Ø#' + N.bars.no + ' × ' + F(lt / 1000, 2) + ' m por cada apoyo empotrado' : '') + ' · porta-estribos 2 Ø#4',
+            ' · Acero total ≈ ' + F(totKg, 1) + ' kg (' + F(totM, 1) + ' m de barra) · cuantía ≈ ' + F(totKg / vol, 0) + ' kg/m³',
+            ' · Concreto: ' + F(vol, 3) + ' m³ · Formaleta (fondo + 2 caras): ' + F(form, 2) + ' m²',
+            'CORTANTE: V en el apoyo izq. = ' + F(r.vs[0], 1) + ' kN · en el apoyo der. = ' + F(r.vs[r.vs.length - 1], 1) + ' kN · |Vmáx| = ' + F(Math.abs(r.Vmax), 1) + ' kN (ver diagrama en el plano).');
         var bom = { head: BOMH, rows: rows };
-        return { ok: true, warns: warns, memo: memo, model: finish(D, 'VIGA ' + NAMES[sl] + ' / ' + NAMES[sr], bom), bom: bom, calc: { wu: wu, RA: r.RA, RB: r.RB, Mpos: Mp, Mneg: Mn, clase: r.clase, stir: st } };
+        return { ok: true, warns: warns, memo: memo, model: finish(D, 'VIGA ' + NAMES[sl] + ' / ' + NAMES[sr], bom), bom: bom, calc: { nStir: nst, steelKg: totKg, concreteM3: vol, wu: wu, RA: r.RA, RB: r.RB, Mpos: Mp, Mneg: Mn, clase: r.clase, stir: st } };
     };
 })(typeof window !== 'undefined' ? window : globalThis);
