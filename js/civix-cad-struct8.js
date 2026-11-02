@@ -76,7 +76,7 @@
     function extraModel(model, sp) {
         var stL = ''; model.ents = model.ents.filter(function (e) { if (e.t === 'text' && /c\/u/.test((e.s || []).join(' '))) { var mm = (e.s || []).join(' ').match(/L\s*=\s*[\d.,]+\s*(mm|m)/); if (mm && !stL) stL = mm[0]; return false; } return true; });
         var bb = CAD.bboxOf(model.ents), th = sp.th, D = new Draw(th * 0.85), i, x0 = bb[2] + th * 12, Lmm = sp.L * 1000, ysh = bb[1] + th * 95, ymo = ysh - th * 38, ystr = ymo - th * 40; if (!sp.vs && !sp.ms) ystr = bb[1] + th * 20; if (sp.kind !== 'col' && (sp.vs || sp.ms)) { x0 = 0; ysh = bb[1] - th * 36; ymo = ysh - th * 36; ystr = ymo - th * 28; }
-        if (sp.vs) {
+        if (false && sp.vs) {
             var Vabs = Math.max.apply(null, sp.vs.map(function (p) { return Math.abs(p[1]); }).concat([1])), sc = th * 14 / Vabs;
             D.text(x0, ysh + th * 18, 'DIAGRAMA DE CORTANTE ' + sp.lab + ' (kN)', { h: th * 1.1 }); D.line(x0, ysh, x0 + Lmm, ysh, 'EJES');
             var pts = [[x0, ysh]]; sp.vs.forEach(function (p) { pts.push([x0 + p[0] * 1000, ysh + p[1] * sc]); }); pts.push([x0 + Lmm, ysh]); D.poly(pts, true, 'SOMBRA');
@@ -84,7 +84,7 @@
             for (i = 1; i < sp.vs.length; i++) if (sp.vs[i - 1][1] * sp.vs[i][1] < 0) { var xz = sp.vs[i - 1][0] + (sp.vs[i][0] - sp.vs[i - 1][0]) * sp.vs[i - 1][1] / (sp.vs[i - 1][1] - sp.vs[i][1]); D.circle(x0 + xz * 1000, ysh, th * 0.35, 'TEXTO'); D.text(x0 + xz * 1000, ysh - th * 1.8, 'V = 0 en x = ' + F(xz, 2) + ' m', { ha: 1, h: th * 0.8 }); }
             D.text(x0, ysh - th * 4, '(+) hacia arriba · Vmáx = ' + F(Vabs, 1) + ' kN', { h: th * 0.8 });
         }
-        if (sp.ms) {
+        if (false && sp.ms) {
             var Mmax = Math.max.apply(null, sp.ms.map(function (p) { return Math.abs(p[1]); }).concat([1])), sm = th * 14 / Mmax;
             D.text(x0, ymo + th * 18, 'DIAGRAMA DE MOMENTO FLECTOR ' + sp.lab + ' (kN·m, tracción hacia abajo)', { h: th * 1.1 }); D.line(x0, ymo, x0 + Lmm, ymo, 'EJES');
             var pm = [[x0, ymo]]; sp.ms.forEach(function (p) { pm.push([x0 + p[0] * 1000, ymo - p[1] * sm]); }); pm.push([x0 + Lmm, ymo]); D.poly(pm, true, 'SOMBRA');
@@ -162,7 +162,7 @@
             var r = f0.apply(this, arguments);
             try {
                 if (r && r.ok) {
-                    if (SPACING[k] && r.model && !r.__spc) { var spc = SPACING[k](dflt(k, o), r); if (spc) { spacingDims(r.model, spc); if (!spc.vertical) hDim(r.model, spc.hdim); r.__spc = true; } }
+                    if (SPACING[k] && r.model && !r.__spc) { var spc = SPACING[k](dflt(k, o), r); if (spc) { spacingDims(r.model, spc); if (!spc.vertical && k !== 'viga' && k !== 'despieceViga') hDim(r.model, spc.hdim); r.__spc = true; } }
                     if (EXTRA[k] && r.model && !r.__extra) { var sp = EXTRA[k](dflt(k, o), r); if (sp && !sp.noVM) { extraModel(r.model, sp); r.__extra = true; if (sp.vs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DIAGRAMAS: V(apoyo izq.) = ' + F(sp.vs[0][1], 1) + ' kN · V(apoyo der.) = ' + F(sp.vs[sp.vs.length - 1][1], 1) + ' kN · momento y cortante con carga factorada (ver plano).'); if (sp.segs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DISTRIBUCION DE ESTRIBOS: ' + sp.segs.filter(function (z) { return z[0] > 1; }).map(function (z) { return Math.max(1, Math.round(z[0] / z[1])) + ' @ ' + z[1] + ' mm (zona de ' + Math.round(z[0]) + ' mm)'; }).join(' + ') + '.'); } }
                     addQty(k, o, r);
                 }

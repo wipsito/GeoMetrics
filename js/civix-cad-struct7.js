@@ -58,20 +58,7 @@
         var Lst = F(2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 150, 0); D.text(h, h / 2, 'E#3 @' + st.sEnd + '\nL = ' + Lst + ' mm c/u', { h: th * 0.8, ha: 1, va: 2, rot: PI / 2 }); D.text(Lmm / 2, h / 2, 'E#3 @' + st.sMid + ' (centro)\nL = ' + Lst + ' mm c/u', { h: th * 0.9, ha: 1, va: 2 });
         D.dim(0, h, Lmm, h, th * 2.6, 'L = ' + F(Lmm));
         /* diagrama de momentos (tracción hacia abajo: M⁺ se dibuja hacia abajo) */
-        var Vabs = Math.max.apply(null, r.vs.map(Math.abs).concat([1])), scV = h * 1.2 / Vabs, yV = -h * 1.1 - th * 16;
-        D.text(0, yV + h * 1.2 + th * 2, 'DIAGRAMA DE CORTANTE (kN, positivo hacia arriba)', { h: th * 1.0 }); D.line(0, yV, Lmm, yV, 'EJES');
-        var pv = r.xs.map(function (xx, k) { return [xx * 1000, yV + r.vs[k] * scV]; }); pv.push([Lmm, yV]); pv.unshift([0, yV]); D.poly(pv, true, 'SOMBRA');
-        D.text(0, yV + r.vs[0] * scV + (r.vs[0] >= 0 ? th * 0.8 : -th * 1.8), 'V = ' + F(r.vs[0], 1), { h: th * 0.85 });
-        D.text(Lmm, yV + r.vs[r.vs.length - 1] * scV + (r.vs[r.vs.length - 1] >= 0 ? th * 0.8 : -th * 1.8), 'V = ' + F(r.vs[r.vs.length - 1], 1), { ha: 2, h: th * 0.85 });
-        for (i = 1; i < r.vs.length; i++) if (r.vs[i - 1] * r.vs[i] < 0) { var xz = r.xs[i - 1] + (r.xs[i] - r.xs[i - 1]) * r.vs[i - 1] / (r.vs[i - 1] - r.vs[i]); D.circle(xz * 1000, yV, th * 0.35, 'TEXTO'); D.text(xz * 1000, yV - th * 1.8, 'V = 0 en x = ' + F(xz, 2) + ' m', { ha: 1, h: th * 0.8 }); break; }
-        D.line(2 * h, yV - th * 3, 2 * h, yV + h * 1.2, 'COTAS'); D.line(Lmm - 2 * h, yV - th * 3, Lmm - 2 * h, yV + h * 1.2, 'COTAS'); D.text(2 * h, yV - th * 3.8, 'zona 2h', { ha: 1, h: th * 0.7 });
-        var Mabs = Math.max(Mp, Mn, 1), sc = h * 1.4 / Mabs, y0 = yV - h * 1.2 - th * 12;
-        D.text(0, y0 + h * 1.5 + th * 2, 'DIAGRAMA DE MOMENTOS (kN·m, tracción hacia abajo)', { h: th * 1.0 }); D.line(0, y0, Lmm, y0, 'EJES');
-        var pts = r.xs.map(function (xx, k) { return [xx * 1000, y0 - r.ms[k] * sc]; }); pts.push([Lmm, y0]); pts.unshift([0, y0]);
-        D.poly(pts, true, 'SOMBRA');
-        D.text(r.xM * 1000, y0 - Mp * sc - th * 1.6, 'M⁺ = ' + F(Mp, 1), { ha: 1, h: th * 0.85 });
-        if (Mn > 0.5) D.text(r.xMabs * 1000, y0 + Mn * sc + th * 0.8, 'M⁻ = ' + F(Mn, 1), { ha: 1, h: th * 0.85 });
-        var sy = y0 - h * 1.6 - th * 12; D.section(0, sy, b, h, rec, dest, P.bars, { n: 2, no: 4 }, 'SECCION CENTRO'); D.section(b + 1600, sy, b, h, rec, dest, { n: 2, no: 4 }, N.bars, 'SECCION APOYO (sup.)');
+        var sy = -h * 1.1 - th * 16; D.section(0, sy, b, h, rec, dest, P.bars, { n: 2, no: 4 }, 'SECCION CENTRO'); D.section(b + 1600, sy, b, h, rec, dest, { n: 2, no: 4 }, N.bars, 'SECCION APOYO (sup.)');
         var rows = [], mk = 1; rows.push(bomRow('Inferior', mk++, P.bars.no, P.bars.n, Lmm - 2 * rec + 300));
         if (topL || topR) rows.push(bomRow('Superior (apoyo)', mk++, N.bars.no, N.bars.n * ((topL ? 1 : 0) + (topR ? 1 : 0)), lt));
         rows.push(bomRow('Porta-estribos', mk++, 4, 2, Lmm - 2 * rec + 300)); rows.push(bomRow('Estribos Ø#3', mk++, 3, nst, 2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 150));
