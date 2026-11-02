@@ -66,7 +66,7 @@
             var ang = Math.atan2(uy, ux); if (ang > PI / 2 + 1e-9 || ang < -PI / 2 - 1e-9) ang += PI; this.text((ax + bx) / 2 + nx * sg * this.th * 0.25, (ay + by) / 2 + ny * sg * this.th * 0.25, label == null ? F(L) : label, { layer: 'COTAS', ha: 1, va: sg > 0 ? 0 : 3, rot: ang });
         },
         balloon: function (x, y, n) { this.circle(x, y, this.th * 0.9, 'TEXTO'); this.text(x, y, n, { ha: 1, va: 2, h: this.th * 0.9 }); },
-        table: function (x, y, head, rows, colw) { // tabla con celdas (esquina superior izquierda en x,y; crece hacia abajo)
+        table: function (x, y, head, rows, colw) { var cv = U.bomForTable(head, rows); head = cv.head; rows = cv.rows; // tabla con celdas (esquina superior izquierda en x,y; crece hacia abajo)
             var th = this.th, rh = th * 1.8, tw = colw.reduce(function (a, b) { return a + b; }, 0), all = [head].concat(rows), i, j, cx;
             for (i = 0; i <= all.length; i++) this.line(x, y - i * rh, x + tw, y - i * rh, 'MARCO');
             cx = x; for (j = 0; j <= colw.length; j++) { this.line(cx, y, cx, y - all.length * rh, 'MARCO'); cx += colw[j] || 0; }
@@ -94,7 +94,20 @@
     }
     function fail(msg) { return { ok: false, warns: [msg], memo: [], model: null }; }
     function bomCheck(b) { return b; }
-    S._h = { BARS: BARS, F: F, r5: r5, fl25: fl25, beta1: beta1, wkg: wkg, needAs: needAs, phiMn: phiMn, pickBars: pickBars, pickRow: pickRow, stir: stir, Draw: Draw, bomRow: bomRow, BOMH: BOMH, finish: finish, fail: fail, AVISO: AVISO, userName: userName, niceScale: niceScale };
+    var U = (function () {
+        var FRAC = { 2: '1/4"', 3: '3/8"', 4: '1/2"', 5: '5/8"', 6: '3/4"', 7: '7/8"', 8: '1"', 9: '1 1/8"', 10: '1 1/4"', 11: '1 3/8"' };
+        function fmtM(mm) { var t = (mm / 1000).toFixed(3); if (/0$/.test(t)) t = t.slice(0, -1); return t; }
+        function barTxt(t) {
+            return String(t).replace(/(#\d+) \((?:Ø)?\d+(?:\.\d+)?(?: ?mm)?\)/g, '$1').replace(/Ø#(\d+)/g, function (m, n) { return 'Ø' + (FRAC[n] || '#' + n); }).replace(/E#(\d+)/g, function (m, n) { return 'E ' + (FRAC[n] || '#' + n); }).replace(/#(\d+)(?!\d)/g, function (m, n) { return FRAC[n] || m; });
+        }
+        function luzTxt(t) { return String(t).replace(/\bluces\b/g, 'longitudes').replace(/\bLuces\b/g, 'Longitudes').replace(/\bLuz\b/g, 'Longitud').replace(/\bluz\b/g, 'longitud'); }
+        function bomForTable(head, rows) {
+            var im = -1; head.forEach(function (h, i) { if (/\(mm\)/.test(h)) im = i; });
+            return { head: head.map(function (h) { return luzTxt(String(h).replace('(mm)', '(m)')); }), rows: rows.map(function (r) { return r.map(function (c, i) { c = String(c); if (i === im && c !== '' && isFinite(+c)) return fmtM(+c); return luzTxt(barTxt(c)); }); }) };
+        }
+        return { FRAC: FRAC, fmtM: fmtM, barTxt: barTxt, luzTxt: luzTxt, bomForTable: bomForTable };
+    })();
+    S._h = { U: U, BARS: BARS, F: F, r5: r5, fl25: fl25, beta1: beta1, wkg: wkg, needAs: needAs, phiMn: phiMn, pickBars: pickBars, pickRow: pickRow, stir: stir, Draw: Draw, bomRow: bomRow, BOMH: BOMH, finish: finish, fail: fail, AVISO: AVISO, userName: userName, niceScale: niceScale };
 
     /* ============================================================================
      * 1) VIGA CONTINUA DE 2 Ó 3 TRAMOS — coeficientes aproximados ACI 318 (cap. 6.5)

@@ -164,7 +164,7 @@
     function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
     function parseParams(q) {
         var o = {}, m;
-        if ((m = q.match(/luz\s*(?:de|=)?\s*(\d+(?:[.,]\d+)?)/)) || (m = q.match(/(\d+(?:[.,]\d+)?)\s*(?:m|metros?)\s*de\s*luz/)) || (m = q.match(/puente[^.\d]{0,40}?(\d+(?:[.,]\d+)?)\s*(?:m|metros?)\b/))) o.L = nx(m[1]);
+        if ((m = q.match(/(?:luz|longitud)\s*(?:de|=)?\s*(\d+(?:[.,]\d+)?)/)) || (m = q.match(/(\d+(?:[.,]\d+)?)\s*(?:m|metros?)\s*de\s*(?:luz|longitud)/)) || (m = q.match(/puente[^.\d]{0,40}?(\d+(?:[.,]\d+)?)\s*(?:m|metros?)\b/))) o.L = nx(m[1]);
         if ((m = q.match(/(?:calzada|ancho)\s*(?:de|=)?\s*(\d+(?:[.,]\d+)?)/))) o.Wc = nx(m[1]);
         if ((m = q.match(/and[eé]n(?:es)?\s*(?:de|=)?\s*(\d+(?:[.,]\d+)?)/))) o.Wa = nx(m[1]);
         if ((m = q.match(/(\d)\s*vigas/))) { o.NB = +m[1]; o.tipo = 2; }
@@ -178,7 +178,7 @@
         var o = {}, m;
         if ((m = q.match(/(\d)\s*pisos?/))) o.pisos = Math.min(2, Math.max(1, +m[1]));
         if ((m = q.match(/(\d)\s*vanos?/))) o.vanos = Math.min(2, Math.max(1, +m[1]));
-        if ((m = q.match(/vanos?\s*de\s*(\d+(?:[.,]\d+)?)/)) || (m = q.match(/luz\s*(?:de)?\s*(\d+(?:[.,]\d+)?)/))) o.Lv = nx(m[1]);
+        if ((m = q.match(/vanos?\s*de\s*(\d+(?:[.,]\d+)?)/)) || (m = q.match(/(?:luz|longitud)\s*(?:de)?\s*(\d+(?:[.,]\d+)?)/))) o.Lv = nx(m[1]);
         if ((m = q.match(/altura\s*(?:de\s*(?:piso|entrepiso))?\s*(?:de|=)?\s*(\d+(?:[.,]\d+)?)/)) || (m = q.match(/(\d+(?:[.,]\d+)?)\s*m\s*por\s*piso/))) o.Hp = nx(m[1]);
         if (/base\s*(?:articulada|con pasador)|articulad[ao]s?\s*en\s*la\s*base|apoyos?\s*articulad/.test(q)) o.base = 2; else if (/empotrad/.test(q)) o.base = 1;
         return o;

@@ -71,28 +71,63 @@
         return r;
     }
 
-    /* diagrama de cortante añadido al plano (a la derecha del dibujo) */
-    function shearModel(model, L, vs, label, th) {
-        var bb = CAD.bboxOf(model.ents), D = new Draw(th), Lmm = L * 1000, Vabs = Math.max.apply(null, vs.map(function (p) { return Math.abs(p[1]); }).concat([1])), sc = th * 14 / Vabs, x0 = bb[2] + th * 12, y0 = bb[1] + th * 30, i;
-        D.text(x0, y0 + th * 18, 'DIAGRAMA DE CORTANTE ' + label + ' (kN)', { h: th * 1.1 }); D.line(x0, y0, x0 + Lmm, y0, 'EJES');
-        var pts = [[x0, y0]]; vs.forEach(function (p) { pts.push([x0 + p[0] * 1000, y0 + p[1] * sc]); }); pts.push([x0 + Lmm, y0]); D.poly(pts, true, 'SOMBRA');
-        var f = vs[0], l = vs[vs.length - 1]; D.text(x0, y0 + f[1] * sc + (f[1] >= 0 ? th * 0.8 : -th * 1.8), 'V = ' + F(f[1], 1), { h: th * 0.85 }); D.text(x0 + Lmm, y0 + l[1] * sc + (l[1] >= 0 ? th * 0.8 : -th * 1.8), 'V = ' + F(l[1], 1), { ha: 2, h: th * 0.85 });
-        for (i = 1; i < vs.length; i++) if (vs[i - 1][1] * vs[i][1] < 0) { var xz = vs[i - 1][0] + (vs[i][0] - vs[i - 1][0]) * vs[i - 1][1] / (vs[i - 1][1] - vs[i][1]); D.circle(x0 + xz * 1000, y0, th * 0.35, 'TEXTO'); D.text(x0 + xz * 1000, y0 - th * 1.8, 'V = 0 en x = ' + F(xz, 2) + ' m', { ha: 1, h: th * 0.8 }); }
-        D.text(x0, y0 - th * 4, '(+) hacia arriba · Vmáx = ' + F(Vabs, 1) + ' kN', { h: th * 0.8 });
+    /* diagramas de cortante y momento + distribución de estribos (a la derecha del dibujo) */
+    function fmtS(n, s, len) { return n + ' @ ' + s + ' = ' + Math.round(len); }
+    function extraModel(model, sp) {
+        var bb = CAD.bboxOf(model.ents), th = sp.th, D = new Draw(th * 0.85), i, x0 = bb[2] + th * 12, Lmm = sp.L * 1000, ysh = bb[1] + th * 95, ymo = ysh - th * 38, ystr = ymo - th * 40; if (!sp.vs && !sp.ms) ystr = bb[1] + th * 20;
+        if (sp.vs) {
+            var Vabs = Math.max.apply(null, sp.vs.map(function (p) { return Math.abs(p[1]); }).concat([1])), sc = th * 14 / Vabs;
+            D.text(x0, ysh + th * 18, 'DIAGRAMA DE CORTANTE ' + sp.lab + ' (kN)', { h: th * 1.1 }); D.line(x0, ysh, x0 + Lmm, ysh, 'EJES');
+            var pts = [[x0, ysh]]; sp.vs.forEach(function (p) { pts.push([x0 + p[0] * 1000, ysh + p[1] * sc]); }); pts.push([x0 + Lmm, ysh]); D.poly(pts, true, 'SOMBRA');
+            var f = sp.vs[0], l = sp.vs[sp.vs.length - 1]; D.text(x0, ysh + f[1] * sc + (f[1] >= 0 ? th * 0.8 : -th * 1.8), 'V = ' + F(f[1], 1), { h: th * 0.85 }); D.text(x0 + Lmm, ysh + l[1] * sc + (l[1] >= 0 ? th * 0.8 : -th * 1.8), 'V = ' + F(l[1], 1), { ha: 2, h: th * 0.85 });
+            for (i = 1; i < sp.vs.length; i++) if (sp.vs[i - 1][1] * sp.vs[i][1] < 0) { var xz = sp.vs[i - 1][0] + (sp.vs[i][0] - sp.vs[i - 1][0]) * sp.vs[i - 1][1] / (sp.vs[i - 1][1] - sp.vs[i][1]); D.circle(x0 + xz * 1000, ysh, th * 0.35, 'TEXTO'); D.text(x0 + xz * 1000, ysh - th * 1.8, 'V = 0 en x = ' + F(xz, 2) + ' m', { ha: 1, h: th * 0.8 }); }
+            D.text(x0, ysh - th * 4, '(+) hacia arriba · Vmáx = ' + F(Vabs, 1) + ' kN', { h: th * 0.8 });
+        }
+        if (sp.ms) {
+            var Mmax = Math.max.apply(null, sp.ms.map(function (p) { return Math.abs(p[1]); }).concat([1])), sm = th * 14 / Mmax;
+            D.text(x0, ymo + th * 18, 'DIAGRAMA DE MOMENTO FLECTOR ' + sp.lab + ' (kN·m, tracción hacia abajo)', { h: th * 1.1 }); D.line(x0, ymo, x0 + Lmm, ymo, 'EJES');
+            var pm = [[x0, ymo]]; sp.ms.forEach(function (p) { pm.push([x0 + p[0] * 1000, ymo - p[1] * sm]); }); pm.push([x0 + Lmm, ymo]); D.poly(pm, true, 'SOMBRA');
+            var imax = 0, imin = 0; sp.ms.forEach(function (p, k) { if (p[1] > sp.ms[imax][1]) imax = k; if (p[1] < sp.ms[imin][1]) imin = k; });
+            if (sp.ms[imax][1] > 0.5) D.text(x0 + sp.ms[imax][0] * 1000, ymo - sp.ms[imax][1] * sm - th * 1.8, 'M⁺ = ' + F(sp.ms[imax][1], 1) + ' en x = ' + F(sp.ms[imax][0], 2) + ' m', { ha: 1, h: th * 0.85 });
+            if (sp.ms[imin][1] < -0.5) D.text(x0 + sp.ms[imin][0] * 1000, ymo - sp.ms[imin][1] * sm + th * 0.9, 'M⁻ = ' + F(-sp.ms[imin][1], 1), { ha: 1, h: th * 0.85 });
+        }
+        if (sp.segs && sp.segs.length) {
+            var tot = sp.segs.reduce(function (a, c) { return a + c[0]; }, 0), vert = sp.kind === 'col', pos = 0;
+            if (!vert) { D.text(x0, ystr + th * 6, 'DISTRIBUCION DE ESTRIBOS ' + sp.lab + ' (n @ separación = longitud de zona)', { h: th * 1.1 }); D.line(x0, ystr, x0 + tot, ystr, 'EJES'); }
+            else { x0 = bb[2] + th * 12; ystr = bb[1]; D.text(x0, ystr + tot + th * 5, 'DISTRIBUCION DE ESTRIBOS (n @ separación = longitud de zona)', { h: th * 1.1 }); D.line(x0, ystr, x0, ystr + tot, 'EJES'); }
+            sp.segs.forEach(function (sg) {
+                var len = sg[0], sx = sg[1], n = Math.max(1, Math.round(len / sx)), k;
+                if (len < 1) return;
+                for (k = 0; k <= n && n < 300; k++) { var t = pos + len * k / n; if (!vert) D.line(x0 + t, ystr - th * 1.2, x0 + t, ystr + th * 1.2, 'ARMADURA', 3); else D.line(x0 - th * 1.2, ystr + t, x0 + th * 1.2, ystr + t, 'ARMADURA', 3); }
+                if (!vert) D.dim(x0 + pos, ystr, x0 + pos + len, ystr, -th * 3.2, fmtS(n, sx, len)); else D.dim(x0, ystr + pos, x0, ystr + pos + len, th * 3.2, fmtS(n, sx, len));
+                pos += len;
+            });
+        }
         D.ents.forEach(function (e) { model.ents.push(e); }); Object.keys(D.layers).forEach(function (k) { if (!model.layers[k]) model.layers[k] = D.layers[k]; }); model.bbox = CAD.bboxOf(model.ents);
     }
     function lin(L, wu, Va, n) { var out = [], i; for (i = 0; i <= n; i++) { var x = L * i / n; out.push([x, Va - wu * x]); } return out; }
-    var SHEAR = {
-        viga: function (o, r) { var wu = r.calc.wu, L = o.L; return { L: L, vs: lin(L, wu, wu * L / 2, 60), lab: 'VIGA SIMPLEMENTE APOYADA', th: Math.max(60, L * 18) }; },
-        despieceViga: function (o) { var rr = S.viga(o); if (!rr.ok) return null; return SHEAR.viga(o, rr); },
-        vigaT: function (o, r) { var L = o.L, wu = 8 * r.calc.Mu / (L * L); return { L: L, vs: lin(L, wu, wu * L / 2, 60), lab: 'VIGA T/L', th: Math.max(60, L * 18) }; },
+    function par(L, wu, n) { var out = [], i; for (i = 0; i <= n; i++) { var x = L * i / n; out.push([x, wu * x * (L - x) / 2]); } return out; }
+    function zones(Lmm, h, st) { var z = Math.min(2 * h, Lmm / 2); return [[z, st.sEnd], [Lmm - 2 * z, st.sMid], [z, st.sEnd]]; }
+    var EXTRA = {
+        viga: function (o, r) { var wu = r.calc.wu, L = o.L; return { kind: 'beam', L: L, vs: lin(L, wu, wu * L / 2, 60), ms: par(L, wu, 60), segs: zones(L * 1000, o.h, r.calc), lab: 'VIGA SIMPLEMENTE APOYADA', th: Math.max(60, L * 18) }; },
+        despieceViga: function (o) { var rr = S.viga(o); if (!rr.ok) return null; return EXTRA.viga(o, rr); },
+        vigaT: function (o, r) { var L = o.L, wu = 8 * r.calc.Mu / (L * L); return { kind: 'beam', L: L, vs: lin(L, wu, wu * L / 2, 60), ms: par(L, wu, 60), segs: r.calc.stir ? zones(L * 1000, o.h, r.calc.stir) : null, lab: 'VIGA T/L', th: Math.max(60, L * 18) }; },
         vigaCont: function (o, r) {
-            var n = o.n === 3 ? 3 : 2, Ls = [o.L1, o.L2, o.L3].slice(0, n), wu = r.calc.wu, x = 0, vs = [], i;
-            for (i = 0; i < n; i++) { var ln = Ls[i] - o.cap / 1000, a = i === 0 ? 1 : 1, c = (i === 0 || i === n - 1 ? 1 : 1);
-                var left = wu * ln / 2 * (i === 0 ? 1 : 1), right = -wu * ln / 2 * ((i === 0 && n > 1) || (i === n - 1 && n > 1 && i > 0) ? 1.15 : 1); if (i === n - 1 && i > 0) { left = wu * ln / 2 * 1.15; right = -wu * ln / 2; } if (i === 0) { left = wu * ln / 2; right = -1.15 * wu * ln / 2; }
-                vs.push([x, left], [x + Ls[i], right]); x += Ls[i]; }
-            return { L: x, vs: vs, lab: 'VIGA CONTINUA (coef. ACI aprox.)', th: Math.max(60, x * 18) };
-        }
+            var n = o.n === 3 ? 3 : 2, Ls = [o.L1, o.L2, o.L3].slice(0, n), wu = r.calc.wu, x = 0, vs = [], ms = [], segs = [], i, st = r.calc.stir;
+            for (i = 0; i < n; i++) {
+                var ln = Ls[i] - o.cap / 1000, left = wu * ln / 2, right = -wu * ln / 2; if (i === 0) right = -1.15 * wu * ln / 2; if (i === n - 1 && i > 0) left = 1.15 * wu * ln / 2;
+                vs.push([x, left], [x + Ls[i], right]);
+                var Ml = i === 0 ? 0 : r.calc.Mneg[i - 1], Mr = i === n - 1 ? 0 : r.calc.Mneg[i], Mp = r.calc.Mpos[i], k;
+                for (k = 0; k <= 40; k++) { var t = k / 40; ms.push([x + Ls[i] * t, -Ml * (1 - t) - Mr * t + 4 * (Mp + (Ml + Mr) / 2) * t * (1 - t)]); }
+                if (st) zones(Ls[i] * 1000, o.h, st).forEach(function (z) { segs.push(z); });
+                x += Ls[i];
+            }
+            return { kind: 'beam', L: x, vs: vs, ms: ms, segs: segs, lab: 'VIGA CONTINUA (coef. ACI aprox.)', th: Math.max(60, x * 18) };
+        },
+        vigaApoyos: function (o, r) { var L = o.L, h = o.h; return { kind: 'beam', L: L, vs: null, ms: null, segs: zones(L * 1000, h, r.calc.stir), lab: 'VIGA CON APOYOS A ELECCION', th: Math.max(40, L * 16) }; },
+        columna: function (o, r) { var Lu = o.Lu * 1000, lo = r.calc.lo, c = r.calc; return { kind: 'col', L: o.Lu, segs: [[lo, c.sConf], [Lu - 2 * lo, c.sMid], [lo, c.sConf]], lab: 'COLUMNA', th: Math.max(40, Lu * 0.018) }; },
+        despieceColumna: function (o) { var rr = S.columna(o); return rr.ok ? EXTRA.columna(o, rr) : null; },
+        columnaC: function (o, r) { var Lu = o.Lu * 1000; return r.calc.pitch ? { kind: 'col', L: o.Lu, segs: [[Lu, r.calc.pitch]], lab: 'COLUMNA CIRCULAR (espiral, paso)', th: Math.max(40, Lu * 0.018) } : null; }
     };
 
     ['viga', 'despieceViga', 'vigaCont', 'vigaT', 'columna', 'despieceColumna', 'columnaC', 'zapata', 'zapataComb', 'zapataCorr', 'muro', 'muroC', 'losa', 'losa2d', 'losaNerv', 'escalera', 'pilote', 'muroCorte', 'puente'].forEach(function (k) {
@@ -101,12 +136,21 @@
             var r = f0.apply(this, arguments);
             try {
                 if (r && r.ok) {
-                    if (SHEAR[k] && r.model && !r.__shear) { var sh = SHEAR[k](dflt(k, o), r); if (sh) { shearModel(r.model, sh.L, sh.vs, sh.lab, sh.th); r.__shear = true; r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DIAGRAMA DE CORTANTE: V(apoyo izq.) = ' + F(sh.vs[0][1], 1) + ' kN · V(apoyo der.) = ' + F(sh.vs[sh.vs.length - 1][1], 1) + ' kN (kN, carga factorada; ver plano).'); } }
+                    if (EXTRA[k] && r.model && !r.__extra) { var sp = EXTRA[k](dflt(k, o), r); if (sp && !sp.noVM) { extraModel(r.model, sp); r.__extra = true; if (sp.vs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DIAGRAMAS: V(apoyo izq.) = ' + F(sp.vs[0][1], 1) + ' kN · V(apoyo der.) = ' + F(sp.vs[sp.vs.length - 1][1], 1) + ' kN · momento y cortante con carga factorada (ver plano).'); if (sp.segs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DISTRIBUCION DE ESTRIBOS: ' + sp.segs.filter(function (z) { return z[0] > 1; }).map(function (z) { return Math.max(1, Math.round(z[0] / z[1])) + ' @ ' + z[1] + ' mm (zona de ' + Math.round(z[0]) + ' mm)'; }).join(' + ') + '.'); } }
                     addQty(k, o, r);
                 }
             } catch (e) { try { console.warn('CivixCAD cantidades', k, e); } catch (e2) { } }
             return r;
         };
     });
-    var va = S.vigaApoyos; if (typeof va === 'function') S.vigaApoyos = function (o) { var r = va.apply(this, arguments); try { if (r && r.ok && !r.qty) { var a = resumenAcero(r.bom); var vol = r.calc.concreteM3; r.qty = { items: [['ACERO TOTAL', '', F(r.calc.steelKg, 1) + ' kg'], ['Estribos', r.calc.nStir + ' un.', ''], ['Concreto', F(vol, 3) + ' m³', '']], kg: r.calc.steelKg, vol: vol }; } } catch (e) { } return r; };
+    var va = S.vigaApoyos; if (typeof va === 'function') S.vigaApoyos = function (o) {
+        var r = va.apply(this, arguments);
+        try {
+            if (r && r.ok && !r.qty) {
+                var vol = r.calc.concreteM3; r.qty = { items: [['ACERO TOTAL', '', F(r.calc.steelKg, 1) + ' kg'], ['Estribos', r.calc.nStir + ' un.', ''], ['Concreto', F(vol, 3) + ' m³', '']], kg: r.calc.steelKg, vol: vol };
+                var oo = Object.assign({ L: 5, h: 500 }, o || {}), sp = EXTRA.vigaApoyos(oo, r); if (sp && r.model && !r.__extra) { extraModel(r.model, sp); r.__extra = true; r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DISTRIBUCION DE ESTRIBOS: ' + sp.segs.filter(function (z) { return z[0] > 1; }).map(function (z) { return Math.max(1, Math.round(z[0] / z[1])) + ' @ ' + z[1] + ' mm (zona de ' + Math.round(z[0]) + ' mm)'; }).join(' + ') + '.'); }
+            }
+        } catch (e) { try { console.warn('vigaApoyos extra', e); } catch (e2) { } }
+        return r;
+    };
 })(typeof window !== 'undefined' ? window : globalThis);

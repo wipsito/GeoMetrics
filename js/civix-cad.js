@@ -345,6 +345,7 @@
         if (lnames.indexOf('0') < 0) lnames.unshift('0');
         function lname(n) { return String(n || '0').replace(/[<>\/\\":;?*|=`,]/g, '_').toUpperCase().slice(0, 31) || '0'; }
         P(0, 'SECTION'); P(2, 'HEADER'); P(9, '$ACADVER'); P(1, 'AC1009'); P(9, '$INSBASE'); P(10, 0); P(20, 0); P(30, 0);
+        if (model.units != null) { P(9, '$INSUNITS'); P(70, model.units); }
         P(9, '$EXTMIN'); P(10, f(bb[0])); P(20, f(bb[1])); P(30, 0); P(9, '$EXTMAX'); P(10, f(bb[2])); P(20, f(bb[3])); P(30, 0);
         P(9, '$LIMMIN'); P(10, f(bb[0])); P(20, f(bb[1])); P(9, '$LIMMAX'); P(10, f(bb[2])); P(20, f(bb[3]));
         P(9, '$LTSCALE'); P(40, 1); P(9, '$TEXTSIZE'); P(40, f(Math.max(bb[2] - bb[0], bb[3] - bb[1]) * 0.012 || 1)); P(0, 'ENDSEC');
