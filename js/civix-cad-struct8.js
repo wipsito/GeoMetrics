@@ -105,6 +105,25 @@
         }
         D.ents.forEach(function (e) { model.ents.push(e); }); Object.keys(D.layers).forEach(function (k) { if (!model.layers[k]) model.layers[k] = D.layers[k]; }); model.bbox = CAD.bboxOf(model.ents);
     }
+    /* cotas de separación entre dos estribos consecutivos (zona de extremo y zona central), con texto proporcional al elemento */
+    function spacingDims(model, sp) {
+        var thD = Math.max(18, Math.min(60, sp.hdim * 0.09)), D = new Draw(thD), L = sp.L, z = Math.min(sp.zE, L / 2), pa, pb, i, pos;
+        if (sp.start === 'A') { pos = []; var x = 50, c = 0; while (x < L - 40 && c++ < 600) { pos.push(x); x += (x < z || x > L - z) ? sp.sEnd : sp.sMid; } pa = [pos[0], pos[1]]; for (i = 0; i < pos.length - 1; i++) if (pos[i] >= z) { pb = [pos[i], pos[i + 1]]; break; } }
+        else { pa = [sp.sEnd / 2, sp.sEnd * 1.5]; pb = [z + sp.sMid, z + 2 * sp.sMid]; }
+        function one(pr, sv) { if (!pr || pr[0] == null || pr[1] == null || pr[1] > L) return; if (sp.vertical) D.dim(sp.x0, pr[0], sp.x0, pr[1], -thD * 2.4, sv + ' mm'); else D.dim(pr[0], sp.y0, pr[1], sp.y0, thD * 2.4, sv + ' mm'); }
+        one(pa, sp.sEnd); one(pb, sp.sMid);
+        D.ents.forEach(function (e) { model.ents.push(e); }); Object.keys(D.layers).forEach(function (k) { if (!model.layers[k]) model.layers[k] = D.layers[k]; }); model.bbox = CAD.bboxOf(model.ents);
+    }
+    var SPACING = {
+        viga: function (o, r) { return { start: 'A', L: o.L * 1000, zE: 2 * o.h, sEnd: r.calc.sEnd, sMid: r.calc.sMid, hdim: o.h, y0: o.h }; },
+        despieceViga: function (o) { var rr = S.viga(o); return { start: 'B', L: o.L * 1000, zE: 2 * o.h, sEnd: rr.calc.sEnd, sMid: rr.calc.sMid, hdim: o.h, y0: o.h }; },
+        vigaT: function (o, r) { var st = r.calc.stir; return st ? { start: 'B', L: o.L * 1000, zE: 2 * o.h, sEnd: st.sEnd, sMid: st.sMid, hdim: o.h, y0: o.h } : null; },
+        vigaCont: function (o, r) { var st = r.calc.stir; return st ? { start: 'B', L: ((o.L1 || 5) * 1000), zE: 2 * o.h, sEnd: st.sEnd, sMid: st.sMid, hdim: o.h, y0: o.h } : null; },
+        vigaApoyos: function (o, r) { var st = r.calc.stir; return { start: 'A', L: o.L * 1000, zE: 2 * o.h, sEnd: st.sEnd, sMid: st.sMid, hdim: o.h, y0: o.h }; },
+        columnaC: function (o, r) { var pt = r.calc.pitch; return pt ? { start: 'A', vertical: true, L: o.Lu * 1000, zE: o.Lu * 1000, sEnd: Math.max(pt, o.Lu * 1000 / 150), sMid: pt, hdim: o.D, x0: o.D } : null; },
+        columna: function (o, r) { return { start: 'A', vertical: true, L: o.Lu * 1000, zE: r.calc.lo, sEnd: r.calc.sConf, sMid: r.calc.sMid, hdim: Math.min(o.b, o.h), x0: o.b }; },
+        despieceColumna: function (o) { var rr = S.columna(o); return { start: 'B', vertical: true, L: o.Lu * 1000, zE: rr.calc.lo, sEnd: rr.calc.sConf, sMid: rr.calc.sMid, hdim: Math.min(o.b, o.h), x0: o.b }; }
+    };
     function lin(L, wu, Va, n) { var out = [], i; for (i = 0; i <= n; i++) { var x = L * i / n; out.push([x, Va - wu * x]); } return out; }
     function par(L, wu, n) { var out = [], i; for (i = 0; i <= n; i++) { var x = L * i / n; out.push([x, wu * x * (L - x) / 2]); } return out; }
     function zones(Lmm, h, st) { var z = Math.min(2 * h, Lmm / 2); return [[z, st.sEnd], [Lmm - 2 * z, st.sMid], [z, st.sEnd]]; }
@@ -136,6 +155,7 @@
             var r = f0.apply(this, arguments);
             try {
                 if (r && r.ok) {
+                    if (SPACING[k] && r.model && !r.__spc) { var spc = SPACING[k](dflt(k, o), r); if (spc) { spacingDims(r.model, spc); r.__spc = true; } }
                     if (EXTRA[k] && r.model && !r.__extra) { var sp = EXTRA[k](dflt(k, o), r); if (sp && !sp.noVM) { extraModel(r.model, sp); r.__extra = true; if (sp.vs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DIAGRAMAS: V(apoyo izq.) = ' + F(sp.vs[0][1], 1) + ' kN · V(apoyo der.) = ' + F(sp.vs[sp.vs.length - 1][1], 1) + ' kN · momento y cortante con carga factorada (ver plano).'); if (sp.segs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DISTRIBUCION DE ESTRIBOS: ' + sp.segs.filter(function (z) { return z[0] > 1; }).map(function (z) { return Math.max(1, Math.round(z[0] / z[1])) + ' @ ' + z[1] + ' mm (zona de ' + Math.round(z[0]) + ' mm)'; }).join(' + ') + '.'); } }
                     addQty(k, o, r);
                 }
@@ -148,7 +168,7 @@
         try {
             if (r && r.ok && !r.qty) {
                 var vol = r.calc.concreteM3; r.qty = { items: [['ACERO TOTAL', '', F(r.calc.steelKg, 1) + ' kg'], ['Estribos', r.calc.nStir + ' un.', ''], ['Concreto', F(vol, 3) + ' m³', '']], kg: r.calc.steelKg, vol: vol };
-                var oo = Object.assign({ L: 5, h: 500 }, o || {}), sp = EXTRA.vigaApoyos(oo, r); if (sp && r.model && !r.__extra) { extraModel(r.model, sp); r.__extra = true; r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DISTRIBUCION DE ESTRIBOS: ' + sp.segs.filter(function (z) { return z[0] > 1; }).map(function (z) { return Math.max(1, Math.round(z[0] / z[1])) + ' @ ' + z[1] + ' mm (zona de ' + Math.round(z[0]) + ' mm)'; }).join(' + ') + '.'); }
+                var oo = Object.assign({ L: 5, h: 500 }, o || {}), sp = EXTRA.vigaApoyos(oo, r); if (r.model && !r.__spc) { spacingDims(r.model, SPACING.vigaApoyos(oo, r)); r.__spc = true; } if (sp && r.model && !r.__extra) { extraModel(r.model, sp); r.__extra = true; r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DISTRIBUCION DE ESTRIBOS: ' + sp.segs.filter(function (z) { return z[0] > 1; }).map(function (z) { return Math.max(1, Math.round(z[0] / z[1])) + ' @ ' + z[1] + ' mm (zona de ' + Math.round(z[0]) + ' mm)'; }).join(' + ') + '.'); }
             }
         } catch (e) { try { console.warn('vigaApoyos extra', e); } catch (e2) { } }
         return r;
