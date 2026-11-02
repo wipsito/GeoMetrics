@@ -1037,6 +1037,7 @@ function inicializarAsistenteAI() {
                     chip.style.display = 'flex';
                 }
             }
+            window.__civixLastFile = f;
             mostrarChip('⏳ Leyendo ' + f.name + '…');
 
             var ext0 = (f.name.split('.').pop() || '').toLowerCase();
