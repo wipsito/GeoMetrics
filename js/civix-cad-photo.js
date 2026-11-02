@@ -51,7 +51,13 @@
         var inv = o.invert === 'auto' ? mean < 110 : !!o.invert, src = g;
         if (inv) { src = new Uint8Array(n); for (i = 0; i < n; i++) src[i] = 255 - g[i]; }
         var bg = boxBlur(src, w, h, Math.max(12, Math.round(Math.max(w, h) / 22))), bin = new Uint8Array(n), sens = o.sens;
-        for (i = 0; i < n; i++) { var diff = bg[i] - src[i]; bin[i] = (diff > 9 && src[i] < bg[i] * (1 - sens)) ? 1 : 0; }
+        /* umbral de «tinta» (Otsu sobre el contraste): separa el trazo oscuro de la cuadrícula / líneas tenues del papel */
+        var hist = new Float64Array(256), tot = 0, df = new Uint8Array(n);
+        for (i = 0; i < n; i++) { var dv = bg[i] - src[i]; dv = dv < 0 ? 0 : (dv > 255 ? 255 : dv | 0); df[i] = dv; if (dv >= 8) { hist[dv]++; tot++; } }
+        var otsu = 9, sumAll = 0, k; for (k = 8; k < 256; k++) sumAll += k * hist[k];
+        if (tot > 200) { var wB = 0, sB = 0, best = -1; for (k = 8; k < 256; k++) { wB += hist[k]; if (!wB) continue; var wF = tot - wB; if (!wF) break; sB += k * hist[k]; var mB = sB / wB, mF = (sumAll - sB) / wF, bv = wB * wF * (mB - mF) * (mB - mF); if (bv > best) { best = bv; otsu = k; } } }
+        var thr = 9 + Math.max(0, otsu - 9) * (o.grid == null ? 0.7 : o.grid);
+        for (i = 0; i < n; i++) { bin[i] = (df[i] > thr && src[i] < bg[i] * (1 - sens)) ? 1 : 0; }
         /* quitar componentes pequeños (manchas, granos de papel) */
         var lab = new Int32Array(n), stack = new Int32Array(n), minA = Math.max(4, o.minBlob | 0), cur = 0, j;
         for (i = 0; i < n; i++) {
@@ -96,6 +102,17 @@
             }
         }
         return a;
+    }
+
+    function dropSmallComps(sk, w, h, minSide) { // elimina componentes del esqueleto pequeños (letras, números, manchas)
+        if (!(minSide > 0)) return sk; var n = w * h, lab = new Int32Array(n), st = new Int32Array(n), i, j;
+        for (i = 0; i < n; i++) {
+            if (!sk[i] || lab[i]) continue; var sp = 0, mem = [], x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1; st[sp++] = i; lab[i] = 1;
+            while (sp) { var p = st[--sp]; mem.push(p); var px = p % w, py = (p / w) | 0; if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
+                for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; var qx = px + dx, qy = py + dy; if (qx < 0 || qy < 0 || qx >= w || qy >= h) continue; j = qy * w + qx; if (sk[j] && !lab[j]) { lab[j] = 1; st[sp++] = j; } } }
+            if (Math.max(x1 - x0, y1 - y0) < minSide) for (j = 0; j < mem.length; j++) sk[mem[j]] = 0;
+        }
+        return sk;
     }
 
     /* ───────────────────────── 4) esqueleto → trayectorias ───────────────────────── */
@@ -169,9 +186,10 @@
 
     /* ───────────────────────── API principal ───────────────────────── */
     function vectorize(src, opts) {
-        var o = Object.assign({ maxSide: 2000, join: 1, sens: 0.10, minBlob: 8, minLen: 14, eps: 2.0, invert: 'auto', straighten: true, snap: 4, realWidth: 10 }, opts || {});
-        var G = toGray(src, o.maxSide), B = binarize(G, o), sk = thin(dilate(B.bin, G.w, G.h, o.join | 0), G.w, G.h), raw = trace(sk, G.w, G.h), w = G.w, h = G.h;
+        var o = Object.assign({ maxSide: 2000, join: 1, grid: 0.85, minComp: 0.07, margin: true, sens: 0.10, minBlob: 8, minLen: 14, eps: 2.0, invert: 'auto', straighten: true, snap: 4, realWidth: 10 }, opts || {});
+        var G = toGray(src, o.maxSide), B = binarize(G, o), sk = dropSmallComps(thin(dilate(B.bin, G.w, G.h, o.join | 0), G.w, G.h), G.w, G.h, o.minComp * Math.max(G.w, G.h)), raw = trace(sk, G.w, G.h), w = G.w, h = G.h;
         var paths = raw.map(function (p) { return dp(p, o.eps); }).filter(function (p) { return p.length >= 2 && plen(p) >= o.minLen; });
+        if (o.margin) { var mg = 0.09 * Math.max(w, h); paths = paths.filter(function (p) { return !(p.every(function (q) { return q[0] < mg; }) || p.every(function (q) { return q[0] > w - mg; }) || p.every(function (q) { return q[1] < mg; }) || p.every(function (q) { return q[1] > h - mg; })); }); }
         var ang = 0;
         if (o.straighten && paths.length) {
             ang = dominantAngle(paths);
@@ -210,7 +228,7 @@
         opts = opts || {}; host.innerHTML = '';
         var box = el('div', 'cxf'), info = el('p', 'cxf-info', '⏳ Procesando imagen…'); box.appendChild(info); host.appendChild(box);
         loadFile(file).then(function (L) {
-            var st = { sens: 0.10, minLen: 14, eps: 2.0, join: 1, straighten: true, invert: 'auto', realWidth: 10, maxSide: 2000 }, res = null, timer = null, nm = String(file.name || 'plano').replace(/\.[a-z0-9]+$/i, '') + '_civix';
+            var st = { sens: 0.10, minLen: 14, eps: 2.0, join: 1, grid: 0.85, minComp: 0.07, margin: true, straighten: true, invert: 'auto', realWidth: 10, maxSide: 2000 }, res = null, timer = null, nm = String(file.name || 'plano').replace(/\.[a-z0-9]+$/i, '') + '_civix';
             box.innerHTML = '';
             var grid = el('div', 'cxf-grid'), left = el('div', 'cxf-prev'), right = el('div', 'cxf-ctl');
             var cv = el('canvas', 'cxf-canvas'); left.appendChild(cv); var stats = el('p', 'cxf-stats', ''); left.appendChild(stats);
@@ -221,11 +239,15 @@
             }
             right.appendChild(ctl('sens', 'Sensibilidad del trazo', 0.01, 0.5, 0.01, function (x) { return Math.round(x * 100) + ' %'; }, 'BAJA este valor para captar más líneas (también las tenues); súbelo si aparece ruido o sombras.'));
             right.appendChild(ctl('maxSide', 'Resolución de análisis', 800, 3000, 100, function (x) { return x + ' px'; }, 'Más alta = capta líneas finas y detalles (más lento). Usa 2500–3000 en planos grandes.'));
+            right.appendChild(ctl('grid', 'Ignorar cuadrícula del cuaderno / líneas tenues', 0, 1, 0.05, function (x) { return Math.round(x * 100) + ' %'; }, 'Sube hasta que desaparezca la cuadrícula y solo quede el trazo oscuro.'));
+            right.appendChild(ctl('minComp', 'Descartar texto y detalles pequeños', 0, 0.3, 0.01, function (x) { return Math.round(x * 100) + ' % del tamaño'; }, 'Elimina letras, números y garabatos; conserva muros, ejes y cotas largas. Bájalo a 0 para conservarlo todo.'));
             right.appendChild(ctl('join', 'Unir trazos cercanos / punteados', 0, 4, 1, function (x) { return x + ' px'; }, 'Cierra pequeños huecos (líneas de eje, trazos discontinuos).'));
             right.appendChild(ctl('minLen', 'Limpieza de ruido (longitud mínima)', 4, 80, 1, function (x) { return x + ' px'; }, 'Elimina trazos cortos y manchas.'));
             right.appendChild(ctl('eps', 'Suavizado de líneas', 0.5, 8, 0.5, function (x) { return x.toFixed(1) + ' px'; }, 'Más alto = menos vértices (líneas más rectas).'));
             var chkS = el('label', 'cxf-chk'), cs = el('input'); cs.type = 'checkbox'; cs.checked = true; chkS.appendChild(cs); chkS.appendChild(doc.createTextNode(' Enderezar (corregir inclinación y alinear a horizontal/vertical)')); right.appendChild(chkS);
             cs.addEventListener('change', function () { st.straighten = cs.checked; schedule(); });
+            var chkM = el('label', 'cxf-chk'), cm = el('input'); cm.type = 'checkbox'; cm.checked = true; chkM.appendChild(cm); chkM.appendChild(doc.createTextNode(' Ignorar márgenes y bordes de la hoja (espiral, margen del cuaderno)')); right.appendChild(chkM);
+            cm.addEventListener('change', function () { st.margin = cm.checked; schedule(); });
             var chkI = el('label', 'cxf-chk'), ci = el('select'); [['auto', 'Fondo claro / oscuro: automático'], ['0', 'Trazo oscuro sobre papel claro'], ['1', 'Trazo claro sobre fondo oscuro (plano azul)']].forEach(function (o) { var op = el('option', null, esc(o[1])); op.value = o[0]; ci.appendChild(op); }); chkI.appendChild(ci); right.appendChild(chkI);
             ci.addEventListener('change', function () { st.invert = ci.value === 'auto' ? 'auto' : ci.value === '1'; schedule(); });
             var wrow = el('label', 'cxf-f'), wi = el('input'); wi.type = 'number'; wi.min = 0.1; wi.max = 2000; wi.step = 'any'; wi.value = st.realWidth; wrow.appendChild(el('span', null, 'Ancho real del dibujo (m)')); wrow.appendChild(wi); wrow.appendChild(el('small', null, 'Mide una dimensión conocida del plano para que el DXF salga a escala (unidades: mm).'));
@@ -248,7 +270,7 @@
                 stats.innerHTML = '<b>' + res.stats.poly + '</b> polilíneas · <b>' + res.stats.segs + '</b> segmentos · dibujo de <b>' + (res.stats.widthMm / 1000).toFixed(2) + ' × ' + (res.stats.heightMm / 1000).toFixed(2) + ' m</b>' + (Math.abs(res.stats.angle) > 0.2 ? ' · inclinación corregida ' + res.stats.angle.toFixed(1) + '°' : '') + (res.stats.inverted ? ' · fondo oscuro detectado' : '');
                 if (!res.stats.poly) stats.innerHTML += '<br><span class="cx-err">No se detectaron trazos: sube la sensibilidad o usa una foto con más contraste.</span>';
             }
-            function run() { res = vectorize(L.img, { sens: st.sens, minLen: st.minLen, eps: st.eps, join: st.join, straighten: st.straighten, invert: st.invert, realWidth: st.realWidth, maxSide: st.maxSide }); draw(); if (!vbox.hidden) { vbox.innerHTML = ''; CAD.viewer(vbox, res.model, { name: nm }); } if (opts.onResult) opts.onResult(res); }
+            function run() { res = vectorize(L.img, { sens: st.sens, minLen: st.minLen, eps: st.eps, join: st.join, grid: st.grid, minComp: st.minComp, margin: st.margin, straighten: st.straighten, invert: st.invert, realWidth: st.realWidth, maxSide: st.maxSide }); draw(); if (!vbox.hidden) { vbox.innerHTML = ''; CAD.viewer(vbox, res.model, { name: nm }); } if (opts.onResult) opts.onResult(res); }
             function schedule() { clearTimeout(timer); stats.textContent = '⏳ …'; timer = setTimeout(function () { try { run(); } catch (e) { stats.innerHTML = '<span class="cx-err">⚠ ' + esc(e.message) + '</span>'; } }, 220); }
             setTimeout(function () { try { run(); } catch (e) { box.innerHTML = '<p class="cx-err">⚠ ' + esc(e.message) + '</p>'; } }, 30);
         }).catch(function (e) { info.className = 'cx-err'; info.textContent = '⚠ ' + (e.message || e); });
