@@ -1199,34 +1199,7 @@ function escapeHtml(str) {
 function normalizarRespuestaIA(texto) {
     if (!texto) return '';
     var s = String(texto);
-
-    s = s.replace(/\$\$([\s\S]+?)\$\$/g, function(_, math) {
-        return '\n\n⟦' + latexATextoLegible(math) + '⟧\n\n';
-    });
-    s = s.replace(/\\\[([\s\S]+?)\\\]/g, function(_, math) {
-        return '\n\n⟦' + latexATextoLegible(math) + '⟧\n\n';
-    });
-    s = s.replace(/\\\(([\s\S]+?)\\\)/g, function(_, math) {
-        return latexATextoLegible(math);
-    });
-    s = s.replace(/\$([^\$\n]+?)\$/g, function(_, math) {
-        return latexATextoLegible(math);
-    });
-
-    s = latexATextoLegible(s);
-
-    // Potencias frecuentes en vigas
-    s = s.replace(/\bh\s*[³3]\b/g, 'h³');
-    s = s.replace(/\by\s*[²2]\b/g, 'y²');
-    s = s.replace(/\bb\s*[·\*x]?\s*h³/gi, 'b · h³');
-    s = s.replace(/\(b\s*[·\*]?\s*h3\)/gi, '(b · h³)');
-    s = s.replace(/0\.63(?=\))/g, '0.6³'); // si vino mal 0.63 por h3
-
-    // d2v/dx2 → d²v/dx²
-    s = s.replace(/\bd2v\b/g, 'd²v').replace(/\bdx2\b/g, 'dx²');
-    s = s.replace(/\(d2v\)\/\(dx2\)/g, 'd²v/dx²');
-    s = s.replace(/\(d²v\)\/\(dx²\)/g, 'd²v/dx²');
-
+    // Las fórmulas LaTeX se conservan: se renderizan con KaTeX (igual que la teoría).
     s = s.replace(/\n{3,}/g, '\n\n');
     return s.trim();
 }
@@ -1447,6 +1420,31 @@ function agregarMensaje(texto, tipo, temporal) {
 }
 
 /** Respuesta del bot con bloques de código descargables */
+/** Renderiza con KaTeX las fórmulas del chat (mismo motor que la teoría) */
+function civixRenderTex(root, intento) {
+    if (!root) return;
+    var nodes = root.querySelectorAll('.civix-math:not([data-done])');
+    if (!nodes.length) return;
+    if (!window.katex) {
+        intento = (intento || 0) + 1;
+        if (intento < 40) setTimeout(function () { civixRenderTex(root, intento); }, 250);
+        else nodes.forEach(function (n) { n.textContent = n.getAttribute('data-tex'); });
+        return;
+    }
+    nodes.forEach(function (n) {
+        var tex = n.getAttribute('data-tex') || '';
+        try {
+            katex.render(tex, n, {
+                throwOnError: false,
+                displayMode: n.classList.contains('civix-math-block'),
+                strict: 'ignore'
+            });
+            n.setAttribute('data-done', '1');
+        } catch (e) {
+            n.textContent = tex;
+        }
+    });
+}
 function civixEsFilaTabla(line) {
     var t = String(line || '').trim();
     return t.indexOf('|') === 0 || (t.indexOf('|') > 0 && t.split('|').length >= 3);
@@ -1458,6 +1456,19 @@ function civixEsSeparadorTabla(line) {
 /** Renderiza markdown ligero a HTML seguro (títulos, listas, tablas, negritas) */
 function civixMarkdownAHtml(texto) {
     var raw = normalizarRespuestaIA(String(texto || ''));
+    var civixMath = [];
+    function civixPushMath(display, m) {
+        m = String(m || '').trim();
+        if (!m) return '';
+        civixMath.push({ d: display, m: m });
+        return (display ? '\n\n' : '') + '\u2063CMATH' + (civixMath.length - 1) + '\u2063' + (display ? '\n\n' : '');
+    }
+    raw = raw.replace(/\$\$([\s\S]+?)\$\$/g, function (_, m) { return civixPushMath(true, m); });
+    raw = raw.replace(/\\\[([\s\S]+?)\\\]/g, function (_, m) { return civixPushMath(true, m); });
+    raw = raw.replace(/\\\(([\s\S]+?)\\\)/g, function (_, m) { return civixPushMath(false, m); });
+    raw = raw.replace(/\$([^$\n]+?)\$/g, function (_, m) {
+        return /^\s|\s$/.test(m) && !/\\/.test(m) ? '$' + m + '$' : civixPushMath(false, m);
+    });
     var lines = raw.split(/\r?\n/);
     var html = [];
     var i = 0;
@@ -1484,6 +1495,11 @@ function civixMarkdownAHtml(texto) {
         s = s.replace(/&lt;sub&gt;/gi, '<sub>').replace(/&lt;\/sub&gt;/gi, '</sub>');
         s = s.replace(/&lt;sup&gt;/gi, '<sup>').replace(/&lt;\/sup&gt;/gi, '</sup>');
         s = s.replace(/⟦([^⟧]+)⟧/g, '<span class="civix-formula">$1</span>');
+        s = s.replace(/\u2063CMATH(\d+)\u2063/g, function (_, k) {
+            var o = civixMath[Number(k)];
+            if (!o) return '';
+            return '<span class="civix-math' + (o.d ? ' civix-math-block' : '') + '" data-tex="' + escapeHtml(o.m) + '"></span>';
+        });
         return s;
     }
 
@@ -1616,6 +1632,7 @@ function agregarMensajeBotConDescargas(texto) {
             box.className = 'civix-md';
             box.innerHTML = civixMarkdownAHtml(t);
             div.appendChild(box);
+            civixRenderTex(box);
         } else {
             var wrap = document.createElement('div');
             wrap.className = 'civix-code-block';
@@ -2139,6 +2156,7 @@ async function llamarIA(mensaje) {
         var sysCtx = (typeof civixBuildContextSystem === 'function')
             ? civixBuildContextSystem()
             : ('El usuario se llama ' + primerNombre + '. Responde en español.');
+        sysCtx += '\n\nREGLA DE FORMULAS (PRIORIDAD MAXIMA, reemplaza cualquier otra instruccion sobre formulas): escribe TODAS las ecuaciones y simbolos matematicos en LaTeX. En linea usa \\( ... \\) y en bloque (ecuaciones importantes, solas en su linea) usa $$ ... $$. Ejemplos: $$\\sigma=\\frac{N}{A}$$, \\(\\sigma_{max}\\), \\(I=\\frac{bh^3}{12}\\). Escribe con unidades usando \\text{ }. No escribas formulas en texto plano ni dentro de bloques de codigo.';
         msgs = [{ role: 'system', content: sysCtx }].concat(msgs);
 
         var temp = 0.4;
