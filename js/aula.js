@@ -285,6 +285,15 @@ function aulaGetSession() {
 
 function aulaSetSession(user) {
     try {
+        /* Aislamiento entre cuentas: si cambia el usuario (o se cierra sesión) se borra el estado en memoria de la sesión anterior */
+        var prevMail = '';
+        try { prevMail = sessionStorage.getItem('geometrics_prev_user') || ''; } catch (eP) {}
+        var newMail = user && user.email ? String(user.email).trim().toLowerCase() : '';
+        if (!user || (prevMail && prevMail !== newMail)) {
+            try { if (typeof civixResetearEstado === 'function') civixResetearEstado(); } catch (eR) {}
+            try { sessionStorage.removeItem('geometrics_last_pantalla'); } catch (eL) {}
+        }
+        try { if (newMail) sessionStorage.setItem('geometrics_prev_user', newMail); else sessionStorage.removeItem('geometrics_prev_user'); } catch (eS) {}
         if (!user) {
             sessionStorage.removeItem(AULA_KEYS.session);
             try { localStorage.removeItem(AULA_KEYS.session); } catch (e0) {}

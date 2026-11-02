@@ -834,6 +834,28 @@ function civixNuevaConversacion() {
     if (panel) panel.hidden = true;
 }
 
+/** Limpia TODO el estado en memoria de Civix (chat, adjuntos, resultados CAD, fotos) al cambiar de usuario o cerrar sesión. */
+function civixResetearEstado() {
+    try { chatHistory = []; civixChatActualId = null; window.__civixAdjunto = null; window.__civixLastFile = null; } catch (e) {}
+    try {
+        var fi = document.getElementById('inputAsistenteFile'); if (fi) fi.value = '';
+        var chip = document.getElementById('asistenteFileChip') || document.getElementById('civixFileChip'); if (chip) { chip.hidden = true; chip.style.display = 'none'; }
+        var inp = document.getElementById('inputAsistente') || document.getElementById('civixInput'); if (inp) inp.value = '';
+        var box = document.getElementById('chatMensajes'); if (box) box.innerHTML = '';
+        var hp = document.getElementById('civixHistorialPanel'); if (hp) { hp.hidden = true; }
+        document.querySelectorAll('#civixViewCad .cxp-out, #civixViewCad .cxf-editor, #civixViewCad .cx-box').forEach(function (n) { n.innerHTML = ''; });
+        document.querySelectorAll('.civix-hist-lista, #civixHistorialLista').forEach(function (n) { n.innerHTML = ''; });
+        if (typeof civixRenderBienvenida === 'function') civixRenderBienvenida();
+        var m = document.getElementById('civixModal') || document.querySelector('.civix-modal'); if (m && m.classList) m.classList.remove('active');
+    } catch (e2) {}
+    try {
+        window.__chatActivoId = null;
+        ['docChatLista', 'estChatLista', 'estChatMsgs', 'docChatMsgs', 'docChatHeader', 'estChatHeader'].forEach(function (id) { var n = document.getElementById(id); if (n) n.innerHTML = ''; });
+        ['docChatInput', 'estChatInput'].forEach(function (id) { var n = document.getElementById(id); if (n) n.value = ''; });
+    } catch (e3) {}
+}
+window.civixResetearEstado = civixResetearEstado;
+
 function civixAbrirConversacion(id) {
     var list = civixListaUsuario();
     var found = null;
