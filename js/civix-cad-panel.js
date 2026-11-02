@@ -108,7 +108,7 @@
     STRUCT.aceroViga = { nombre: 'Viga de acero (perfil W)', ico: '🔩', fields: [['L', 'Longitud L (m)', 6, 2, 15, 0.1], ['wD', 'Carga muerta wD (kN/m)', 12, 0, 100, 0.5], ['wL', 'Carga viva wL (kN/m)', 15, 0, 100, 0.5], ['fy', 'Fy (MPa)', 250, 235, 420, 5], ['defl', 'Límite deflexión viva L/…', 360, 240, 480, 'sel:240=L/240,360=L/360,480=L/480']] };
     STRUCT.aceroColumna = { nombre: 'Columna de acero (perfil W)', ico: '🔩', fields: [['Pu', 'Carga axial Pu (kN)', 800, 50, 5000, 10], ['KL', 'Longitud efectiva KL (m)', 3.5, 1, 12, 0.1], ['fy', 'Fy (MPa)', 250, 235, 420, 5]] };
     STRUCT.combinaciones = { nombre: 'Combinaciones de carga LRFD', ico: '➕', fields: [['D', 'Muerta D', 100, 0, 100000, 1], ['L', 'Viva L', 50, 0, 100000, 1], ['Lr', 'Cubierta Lr', 10, 0, 100000, 1], ['W', 'Viento W (con signo)', 20, -100000, 100000, 1], ['E', 'Sismo E (con signo)', 30, -100000, 100000, 1]] };
-    var SCATS = [['Vigas', ['viga', 'vigaApoyos', 'vigaCont', 'vigaT']], ['Losas', ['losa', 'losa2d', 'losaNerv', 'escalera']], ['Columnas', ['columna', 'columnaC', 'columnaFlex']], ['Cimentaciones', ['zapata', 'zapataComb', 'zapataCorr', 'pilote']], ['Contención', ['muro', 'muroC', 'muroCorte']], ['Pórticos', ['portico', 'cercha', 'cerchaPH']], ['Puentes', ['puente']], ['Acero', ['aceroViga', 'aceroColumna']], ['Combinaciones', ['combinaciones']], ['Despieces', ['despieceViga', 'despieceColumna']]];
+    var SCATS = [['Vigas', ['vigaApoyos', 'vigaCont', 'vigaT']], ['Losas', ['losa', 'losa2d', 'losaNerv', 'escalera']], ['Columnas', ['columna', 'columnaC', 'columnaFlex']], ['Cimentaciones', ['zapata', 'zapataComb', 'zapataCorr', 'pilote']], ['Contención', ['muro', 'muroC', 'muroCorte']], ['Pórticos', ['portico', 'cercha', 'cerchaPH']], ['Puentes', ['puente']], ['Acero', ['aceroViga', 'aceroColumna']], ['Combinaciones', ['combinaciones']], ['Despieces', ['despieceViga', 'despieceColumna']]];
 
     function build() {
         if ($('civixViewCad')) return;
@@ -191,7 +191,7 @@
         if (r.warns.length) t += '\nAdvertencias: ' + r.warns.join(' | '); return t.length > 3200 ? t.slice(0, 3200) + '…' : t;
     }
     function buildStruct(sec) {
-        var cats = el('div', 'cxp-presets', '<span>Categoría:</span>'), sel = el('div', 'cxp-els'), form = el('div', 'cxp-form'), out = el('div', 'cx-box cxp-out'), cur = 'viga', curCat = 0, last = null;
+        var cats = el('div', 'cxp-presets', '<span>Categoría:</span>'), sel = el('div', 'cxp-els'), form = el('div', 'cxp-form'), out = el('div', 'cx-box cxp-out'), cur = 'vigaApoyos', curCat = 0, last = null;
         function paintEls() { sel.innerHTML = ''; SCATS[curCat][1].forEach(function (k) { var b = el('button', 'cxp-el' + (k === cur ? ' on' : ''), '<span>' + STRUCT[k].ico + '</span>' + STRUCT[k].nombre); b.type = 'button'; b.addEventListener('click', function () { cur = k; paintEls(); renderForm(); out.innerHTML = ''; last = null; }); sel.appendChild(b); }); }
         SCATS.forEach(function (c, i) { var b = el('button', 'cxp-chip' + (i === 0 ? ' on' : ''), esc(c[0])); b.type = 'button'; b.addEventListener('click', function () { curCat = i; cur = SCATS[i][1][0]; cats.querySelectorAll('.cxp-chip').forEach(function (x) { x.classList.toggle('on', x === b); }); paintEls(); renderForm(); out.innerHTML = ''; last = null; }); cats.appendChild(b); });
         var gridBox = el('div', 'cxp-grid'), go = el('button', 'cx-btn cxp-go', '▶ Calcular'); go.type = 'button';
