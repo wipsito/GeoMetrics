@@ -101,3 +101,10 @@ body.cvx-open{overflow:hidden}
 .cxa-box dl{margin:0;display:grid;grid-template-columns:minmax(120px,220px) 1fr;gap:6px 14px}
 .cxa-box dt{font-weight:700}.cxa-box dd{margin:0;opacity:.9}
 @media(max-width:640px){.cxa-box dl{grid-template-columns:1fr}.cxa-box dt{margin-top:6px}}
+
+.cxa-rol{margin:0 0 8px;font-weight:700;color:#facc15}
+.cxa-tb{width:100%;border-collapse:collapse;margin-top:6px}
+.cxa-tb th{text-align:left;padding:8px 10px;border-bottom:1px solid rgba(148,163,184,.35);color:#7dd3fc;font-size:.82rem}
+.cxa-tb td{padding:8px 10px;border-bottom:1px solid rgba(148,163,184,.15);vertical-align:top}
+.cxa-tb td:first-child{font-weight:700;white-space:nowrap}
+@media(max-width:700px){.cxa-tb,.cxa-tb tbody,.cxa-tb tr,.cxa-tb td{display:block}.cxa-tb thead{display:none}.cxa-tb td:first-child{white-space:normal;padding-bottom:0}.cxa-tb tr{border-bottom:1px solid rgba(148,163,184,.25);padding:6px 0}}
