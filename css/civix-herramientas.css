@@ -92,3 +92,12 @@ body.cvx-open{overflow:hidden}
 .cxf-f{display:block;margin:10px 0;font-size:.88rem}.cxf-f input[type=range]{width:100%}.cxf-f input[type=number]{width:100%;padding:6px;border-radius:8px}
 .cxf-f small{display:block;opacity:.65;font-size:.75rem}.cxf-chk{display:block;margin:10px 0;font-size:.85rem}.cxf-chk select{width:100%;padding:6px;border-radius:8px}
 .cxf-btns{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.cxf-note{font-size:.78rem;opacity:.8}
+
+/* Civix CAD — instrucciones */
+.cxa-btn{display:inline-block;margin:0 0 8px;padding:7px 14px;border-radius:10px;border:1px solid rgba(56,189,248,.5);background:rgba(56,189,248,.12);color:#7dd3fc;font-weight:700;cursor:pointer}
+.cxa-btn:hover{background:rgba(56,189,248,.25)}
+.cxa-box{margin:0 0 12px;padding:12px 14px;border:1px solid rgba(56,189,248,.35);border-radius:12px;background:rgba(15,23,42,.55);font-size:.9rem;line-height:1.5}
+.cxa-box h5{margin:12px 0 6px;font-size:.95rem;color:#7dd3fc}
+.cxa-box dl{margin:0;display:grid;grid-template-columns:minmax(120px,220px) 1fr;gap:6px 14px}
+.cxa-box dt{font-weight:700}.cxa-box dd{margin:0;opacity:.9}
+@media(max-width:640px){.cxa-box dl{grid-template-columns:1fr}.cxa-box dt{margin-top:6px}}
