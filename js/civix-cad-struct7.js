@@ -58,7 +58,7 @@
         var Lst = F(2 * (b - 2 * rec) + 2 * (h - 2 * rec) + 150, 0); D.text(h, h / 2, 'E#3 @' + st.sEnd + '\nL = ' + Lst + ' mm c/u', { h: th * 0.8, ha: 1, va: 2, rot: PI / 2 }); D.text(Lmm / 2, h / 2, 'E#3 @' + st.sMid + ' (centro)\nL = ' + Lst + ' mm c/u', { h: th * 0.9, ha: 1, va: 2 });
         D.dim(0, h, Lmm, h, th * 2.6, 'L = ' + F(Lmm));
         /* diagrama de momentos (tracción hacia abajo: M⁺ se dibuja hacia abajo) */
-        var Vabs = Math.max.apply(null, r.vs.map(Math.abs).concat([1])), scV = h * 1.2 / Vabs, yV = -h * 1.1 - th * 6;
+        var Vabs = Math.max.apply(null, r.vs.map(Math.abs).concat([1])), scV = h * 1.2 / Vabs, yV = -h * 1.1 - th * 16;
         D.text(0, yV + h * 1.2 + th * 2, 'DIAGRAMA DE CORTANTE (kN, positivo hacia arriba)', { h: th * 1.0 }); D.line(0, yV, Lmm, yV, 'EJES');
         var pv = r.xs.map(function (xx, k) { return [xx * 1000, yV + r.vs[k] * scV]; }); pv.push([Lmm, yV]); pv.unshift([0, yV]); D.poly(pv, true, 'SOMBRA');
         D.text(0, yV + r.vs[0] * scV + (r.vs[0] >= 0 ? th * 0.8 : -th * 1.8), 'V = ' + F(r.vs[0], 1), { h: th * 0.85 });

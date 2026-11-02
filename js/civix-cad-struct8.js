@@ -74,7 +74,8 @@
     /* diagramas de cortante y momento + distribución de estribos (a la derecha del dibujo) */
     function fmtS(n, s, len) { return n + ' @ ' + s + ' = ' + Math.round(len); }
     function extraModel(model, sp) {
-        var bb = CAD.bboxOf(model.ents), th = sp.th, D = new Draw(th * 0.85), i, x0 = bb[2] + th * 12, Lmm = sp.L * 1000, ysh = bb[1] + th * 95, ymo = ysh - th * 38, ystr = ymo - th * 40; if (!sp.vs && !sp.ms) ystr = bb[1] + th * 20;
+        var stL = ''; model.ents = model.ents.filter(function (e) { if (e.t === 'text' && /c\/u/.test((e.s || []).join(' '))) { var mm = (e.s || []).join(' ').match(/L\s*=\s*[\d.,]+\s*(mm|m)/); if (mm && !stL) stL = mm[0]; return false; } return true; });
+        var bb = CAD.bboxOf(model.ents), th = sp.th, D = new Draw(th * 0.85), i, x0 = bb[2] + th * 12, Lmm = sp.L * 1000, ysh = bb[1] + th * 95, ymo = ysh - th * 38, ystr = ymo - th * 40; if (!sp.vs && !sp.ms) ystr = bb[1] + th * 20; if (sp.kind !== 'col' && (sp.vs || sp.ms)) { x0 = 0; ysh = bb[1] - th * 36; ymo = ysh - th * 36; ystr = ymo - th * 28; }
         if (sp.vs) {
             var Vabs = Math.max.apply(null, sp.vs.map(function (p) { return Math.abs(p[1]); }).concat([1])), sc = th * 14 / Vabs;
             D.text(x0, ysh + th * 18, 'DIAGRAMA DE CORTANTE ' + sp.lab + ' (kN)', { h: th * 1.1 }); D.line(x0, ysh, x0 + Lmm, ysh, 'EJES');
@@ -91,9 +92,9 @@
             if (sp.ms[imax][1] > 0.5) D.text(x0 + sp.ms[imax][0] * 1000, ymo - sp.ms[imax][1] * sm - th * 1.8, 'M⁺ = ' + F(sp.ms[imax][1], 1) + ' en x = ' + F(sp.ms[imax][0], 2) + ' m', { ha: 1, h: th * 0.85 });
             if (sp.ms[imin][1] < -0.5) D.text(x0 + sp.ms[imin][0] * 1000, ymo - sp.ms[imin][1] * sm + th * 0.9, 'M⁻ = ' + F(-sp.ms[imin][1], 1), { ha: 1, h: th * 0.85 });
         }
-        if (sp.segs && sp.segs.length) {
+        if (false && sp.segs && sp.segs.length) {
             var tot = sp.segs.reduce(function (a, c) { return a + c[0]; }, 0), vert = sp.kind === 'col', pos = 0;
-            if (!vert) { D.text(x0, ystr + th * 6, 'DISTRIBUCION DE ESTRIBOS ' + sp.lab + ' (n @ separación = longitud de zona)', { h: th * 1.1 }); D.line(x0, ystr, x0 + tot, ystr, 'EJES'); }
+            if (!vert) { D.text(x0, ystr + th * 6, 'DISTRIBUCION DE ESTRIBOS ' + sp.lab + (stL ? ' · estribo ' + stL.replace(/\s+/g,' ') + ' c/u' : '') + ' (n @ separación = longitud de zona)', { h: th * 1.1 }); D.line(x0, ystr, x0 + tot, ystr, 'EJES'); }
             else { x0 = bb[2] + th * 12; ystr = bb[1]; D.text(x0, ystr + tot + th * 5, 'DISTRIBUCION DE ESTRIBOS (n @ separación = longitud de zona)', { h: th * 1.1 }); D.line(x0, ystr, x0, ystr + tot, 'EJES'); }
             sp.segs.forEach(function (sg) {
                 var len = sg[0], sx = sg[1], n = Math.max(1, Math.round(len / sx)), k;
@@ -112,6 +113,12 @@
         else { pa = [sp.sEnd / 2, sp.sEnd * 1.5]; pb = [z + sp.sMid, z + 2 * sp.sMid]; }
         function one(pr, sv) { if (!pr || pr[0] == null || pr[1] == null || pr[1] > L) return; if (sp.vertical) D.dim(sp.x0, pr[0], sp.x0, pr[1], -thD * 2.4, sv + ' mm'); else D.dim(pr[0], sp.y0, pr[1], sp.y0, thD * 2.4, sv + ' mm'); }
         one(pa, sp.sEnd); one(pb, sp.sMid);
+        D.ents.forEach(function (e) { model.ents.push(e); }); Object.keys(D.layers).forEach(function (k) { if (!model.layers[k]) model.layers[k] = D.layers[k]; }); model.bbox = CAD.bboxOf(model.ents);
+    }
+    function hDim(model, h) {
+        var has = model.ents.some(function (e) { return e.t === 'text' && /^h\s*=/.test((e.s || []).join('')) && e.p && e.p[0] < 0; });
+        if (has) return;
+        var thD = Math.max(18, Math.min(60, h * 0.09)), D = new Draw(thD * 1.3); D.dim(0, 0, 0, h, thD * 5, 'h = ' + h + ' mm');
         D.ents.forEach(function (e) { model.ents.push(e); }); Object.keys(D.layers).forEach(function (k) { if (!model.layers[k]) model.layers[k] = D.layers[k]; }); model.bbox = CAD.bboxOf(model.ents);
     }
     var SPACING = {
@@ -155,7 +162,7 @@
             var r = f0.apply(this, arguments);
             try {
                 if (r && r.ok) {
-                    if (SPACING[k] && r.model && !r.__spc) { var spc = SPACING[k](dflt(k, o), r); if (spc) { spacingDims(r.model, spc); r.__spc = true; } }
+                    if (SPACING[k] && r.model && !r.__spc) { var spc = SPACING[k](dflt(k, o), r); if (spc) { spacingDims(r.model, spc); if (!spc.vertical) hDim(r.model, spc.hdim); r.__spc = true; } }
                     if (EXTRA[k] && r.model && !r.__extra) { var sp = EXTRA[k](dflt(k, o), r); if (sp && !sp.noVM) { extraModel(r.model, sp); r.__extra = true; if (sp.vs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DIAGRAMAS: V(apoyo izq.) = ' + F(sp.vs[0][1], 1) + ' kN · V(apoyo der.) = ' + F(sp.vs[sp.vs.length - 1][1], 1) + ' kN · momento y cortante con carga factorada (ver plano).'); if (sp.segs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DISTRIBUCION DE ESTRIBOS: ' + sp.segs.filter(function (z) { return z[0] > 1; }).map(function (z) { return Math.max(1, Math.round(z[0] / z[1])) + ' @ ' + z[1] + ' mm (zona de ' + Math.round(z[0]) + ' mm)'; }).join(' + ') + '.'); } }
                     addQty(k, o, r);
                 }
@@ -168,7 +175,7 @@
         try {
             if (r && r.ok && !r.qty) {
                 var vol = r.calc.concreteM3; r.qty = { items: [['ACERO TOTAL', '', F(r.calc.steelKg, 1) + ' kg'], ['Estribos', r.calc.nStir + ' un.', ''], ['Concreto', F(vol, 3) + ' m³', '']], kg: r.calc.steelKg, vol: vol };
-                var oo = Object.assign({ L: 5, h: 500 }, o || {}), sp = EXTRA.vigaApoyos(oo, r); if (r.model && !r.__spc) { spacingDims(r.model, SPACING.vigaApoyos(oo, r)); r.__spc = true; } if (sp && r.model && !r.__extra) { extraModel(r.model, sp); r.__extra = true; r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DISTRIBUCION DE ESTRIBOS: ' + sp.segs.filter(function (z) { return z[0] > 1; }).map(function (z) { return Math.max(1, Math.round(z[0] / z[1])) + ' @ ' + z[1] + ' mm (zona de ' + Math.round(z[0]) + ' mm)'; }).join(' + ') + '.'); }
+                var oo = Object.assign({ L: 5, h: 500 }, o || {}), sp = EXTRA.vigaApoyos(oo, r); if (r.model && !r.__spc) { spacingDims(r.model, SPACING.vigaApoyos(oo, r)); hDim(r.model, oo.h); r.__spc = true; } if (sp && r.model && !r.__extra) { extraModel(r.model, sp); r.__extra = true; r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DISTRIBUCION DE ESTRIBOS: ' + sp.segs.filter(function (z) { return z[0] > 1; }).map(function (z) { return Math.max(1, Math.round(z[0] / z[1])) + ' @ ' + z[1] + ' mm (zona de ' + Math.round(z[0]) + ' mm)'; }).join(' + ') + '.'); }
             }
         } catch (e) { try { console.warn('vigaApoyos extra', e); } catch (e2) { } }
         return r;
