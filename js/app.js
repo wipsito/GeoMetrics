@@ -724,48 +724,40 @@ function civixTituloDesdeMensajes(messages) {
     }
     if (!raw) return '✨ Nueva conversación';
 
-    // Quitar instrucciones largas de metodología; quedarse con lo esencial
+    // Quitar instrucciones de contexto/metodología largas
     var t = raw
         .replace(/act[uú]a como docente[\s\S]{0,200}/i, '')
         .replace(/asignatura\s*:\s*/i, '')
         .replace(/textos?\s*gu[ií]a[s]?\s*:\s*/i, '')
+        .replace(/\[Archivo\]\s*/i, '')
         .trim();
-    if (t.length < 8) t = raw;
+    if (t.length < 4) t = raw;
+    // Quedarse con la primera frase / pregunta
+    t = t.replace(/^[¿¡\s]+/, '');
+    t = t.split(/[\n?!¿¡]|\.\s/)[0] || t;
 
-    var low = t.toLowerCase();
-    var mapa = [
-        { re: /momento\s*flector|flexi[oó]n/, name: '📐 Momento flector' },
-        { re: /esfuerzo\s*cortante|cortante|shear/, name: '✂️ Esfuerzo cortante' },
-        { re: /tracci[oó]n|tensi[oó]n\s*axial/, name: '🔗 Ensayo de tracción' },
-        { re: /compresi[oó]n/, name: '⬇️ Compresión' },
-        { re: /torsión|torsion/, name: '🌀 Torsión' },
-        { re: /m[oó]dulo\s*de\s*elasticidad|young|hooke/, name: '📈 Módulo de elasticidad' },
-        { re: /c[ií]rculo\s*de\s*mohr|mohr/, name: '⭕ Círculo de Mohr' },
-        { re: /corte\s*directo/, name: '🧪 Corte directo' },
-        { re: /consolidaci[oó]n|ed[oó]metro/, name: '📚 Consolidación' },
-        { re: /inconfinad/, name: '🧱 Compresión inconfinada' },
-        { re: /triaxial/, name: '🔬 Triaxial' },
-        { re: /granulometr|curva\s*granul/, name: '📊 Granulometría' },
-        { re: /l[ií]mites?\s*de\s*atterberg|l[ií]mite\s*l[ií]quido|plasticidad/, name: '📏 Límites de Atterberg' },
-        { re: /humedad|contenido\s*de\s*agua/, name: '💧 Contenido de humedad' },
-        { re: /proctor|compactaci[oó]n/, name: '🏗️ Compactación Proctor' },
-        { re: /permeabilidad/, name: '💦 Permeabilidad' },
-        { re: /clasificaci[oó]n\s*de\s*suelos|usc[s]?|aasho/, name: '🗂️ Clasificación de suelos' },
-        { re: /nsr-?10|norma\s*sismo/, name: '📋 NSR-10' },
-        { re: /beer|hibbeler|resistencia\s*de\s*materiales/, name: '📖 Resistencia de materiales' },
-        { re: /das|suelos|geot[eé]cnic/, name: '🌍 Mecánica de suelos' },
-        { re: /python|c[oó]digo|error|debug/, name: '🐛 Corrección de código' },
-        { re: /resuelve|ejercicio|taller|problema/, name: '✏️ Ejercicio guiado' },
-        { re: /explica|qu[eé]\s*es|tema/, name: '🎓 Tutoría de tema' }
+    // Quitar muletillas y verbos de petición para dejar solo el TEMA
+    var re = /^(hola|buenas|por favor|porfa|oye|civix|ayuda|ay[uú]dame( con| a)?|quiero( que)?( me)?( expliques| des| ayudes con| saber| conocer)?|necesito( que)?( me)?( expliques| des| ayudes con)?|puedes|podr[ií]as|me puedes|me podr[ií]as|dame|dime|expl[ií]came|explica|expl[ií]queme|mu[eé]strame|ens[eé]ñame|resuelve|resu[eé]lveme|calcula|calcular|haz(me)?|hacer|dise[nñ]a|dibuja|genera|crea|cu[eé]ntame( sobre)?|h[aá]blame( de| sobre)?|qu[eé] es|qu[eé] son|cu[aá]l es|cu[aá]les son|c[oó]mo se (calcula|hace|obtiene|resuelve|dise[nñ]a)|c[oó]mo (calculo|hago|obtengo|resuelvo|dise[nñ]o)|c[oó]mo funciona|para qu[eé] sirve|sobre|acerca de|la ecuaci[oó]n de|las ecuaciones de|la f[oó]rmula de|las f[oó]rmulas de|la teor[ií]a de|el tema de|el concepto de|un resumen de|ejemplos? de|un ejemplo de|un ejercicio de|la|el|los|las|un|una|unos|unas|de|del|me|que|con|y|,)\b[\s,:]*/i;
+    var guard = 0;
+    while (guard++ < 8 && re.test(t) && t.replace(re, '').trim().length >= 3) t = t.replace(re, '');
+    t = t.replace(/[\s,;:.\-–]+$/g, '').trim();
+    if (!t) t = raw;
+
+    // Emoji según el tema (el título sigue siendo el tema preguntado)
+    var low = (t + ' ' + raw).toLowerCase();
+    var emo = [
+        [/momento|flexi[oó]n|viga/, '📐'], [/cortante|shear/, '✂️'], [/tracci[oó]n|tensi[oó]n|esfuerzo|deformaci[oó]n/, '🔗'],
+        [/compresi[oó]n|columna|pandeo/, '⬇️'], [/torsi[oó]n/, '🌀'], [/mohr/, '⭕'], [/consolidaci[oó]n|ed[oó]metro/, '📚'],
+        [/triaxial|corte directo|inconfinad/, '🔬'], [/granulometr|atterberg|humedad|proctor|permeabilidad|suelo|sucs|aashto/, '🌍'],
+        [/zapata|cimentaci[oó]n|pilote|capacidad portante/, '🧱'], [/concreto|mezcla|cemento|agregado/, '🏗️'],
+        [/p[oó]rtico|cercha|estructur|apoyo|reacci[oó]n/, '🏢'], [/puente/, '🌉'], [/nsr|norma|sismo|s[ií]smic/, '📋'],
+        [/python|c[oó]digo|error|debug/, '🐛'], [/dxf|plano|cad|curvas? de nivel|topograf/, '📐'], [/ejercicio|taller|problema/, '✏️']
     ];
-    for (var j = 0; j < mapa.length; j++) {
-        if (mapa[j].re.test(low)) return mapa[j].name;
-    }
-    // Título llamativo genérico a partir del prompt
-    var corto = t.replace(/[^\wáéíóúñüÁÉÍÓÚÑÜ\s\-]/gi, '').trim();
-    if (corto.length > 42) corto = corto.slice(0, 42).replace(/\s+\S*$/, '') + '…';
-    if (!corto) corto = 'Consulta Civix';
-    return '💡 ' + corto.charAt(0).toUpperCase() + corto.slice(1);
+    var ic = '💡';
+    for (var j = 0; j < emo.length; j++) { if (emo[j][0].test(low)) { ic = emo[j][1]; break; } }
+    t = t.charAt(0).toUpperCase() + t.slice(1);
+    if (t.length > 46) t = t.slice(0, 46).replace(/\s+\S*$/, '') + '…';
+    return ic + ' ' + t;
 }
 
 
@@ -1144,7 +1136,7 @@ function inicializarAsistenteAI() {
     var btnHist = document.getElementById('btnCivixHistorial');
     var btnNuevo = document.getElementById('btnCivixNuevo');
     var panelHist = document.getElementById('civixHistorialPanel');
-    var btnCerrarHist = document.getElementById('btnCerrarHistorialCivix');
+    var btnCerrarHist = document.getElementById('btnCivixHistorialCerrar') || document.getElementById('btnCerrarHistorialCivix');
     if (btnHist && panelHist) {
         btnHist.addEventListener('click', function() {
             var open = panelHist.hidden;
@@ -1432,7 +1424,7 @@ function civixRenderTex(root, intento) {
         return;
     }
     nodes.forEach(function (n) {
-        var tex = n.getAttribute('data-tex') || '';
+        var tex = (n.getAttribute('data-tex') || '').replace(/\\cdotp/g, '\\cdot ').replace(/\\dots(?![a-z])/g, '\\ldots ').replace(/\\mathrm\{\s*\}/g, '');
         try {
             katex.render(tex, n, {
                 throwOnError: false,

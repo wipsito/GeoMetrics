@@ -474,6 +474,12 @@
         madera: { n: 'Madera estruct.', E: 11, adm: 10 },
         aluminio: { n: 'Aluminio 6061', E: 69, adm: 100 }
     };
+    var SUPOPTS = [['pin', 'Pasador (articulado)'], ['roller', 'Rodillo'], ['fixed', 'Empotrado'], ['free', 'Libre (voladizo)']];
+    function drawSup(ctx, type, x, y, side) {
+        if (type === 'pin') pin(ctx, x, y + 2);
+        else if (type === 'roller') roller(ctx, x, y + 2);
+        else if (type === 'fixed') fixed(ctx, x, y - 22, y + 28, side);
+    }
     function matOf(P) { return MATS[P.mat] || MATS.concreto; }
     function selectCtl(k, label, opts, sel, hint) {
         return '<label class="est-range est-selrow"><span>' + label + '</span><select id="esim-' + k + '" data-k="' + k + '">' +
@@ -637,7 +643,7 @@
     function portalChart(ctx, W, H, r, P, p) {
         bg(ctx, W, H);
         var q = clamp(p, 0, 1), half = (W - 8) / 2, wmax = 120;
-        var k = P.W > 0 ? r.sway / P.W : C.portalFrame({ W: 1, h: P.h, b: P.b, E: matOf(P).E, bc: 300, hc: P.hc }).sway;
+        var k = P.W > 0 ? r.sway / P.W : C.portalFrame({ W: 1, h: P.h, b: P.b, E: matOf(P).E, bc: 300, hc: P.hc, base: P.base }).sway;
         var lim = P.h * 1000 / 250, ymax = Math.max(lim, k * wmax) * 1.12;
         var g1 = panel(ctx, { x: 0, y: 6, w: half, h: H - 10 }, { xmin: 0, xmax: wmax, ymin: 0, ymax: ymax, ylabel: 'Δ (mm)', xlabel: 'W (kN)', color: COL.ok });
         curve(ctx, g1, [0, wmax], [0, k * wmax], 1, COL.ok, 2, null, null);
@@ -661,14 +667,14 @@
        01 · VIGA SIMPLEMENTE APOYADA
        ========================================================= */
     SIMS.viga = {
-        num: '01', title: 'Viga simplemente apoyada', accent: '#3B82F6', rgb: '59,130,246',
-        desc: 'Carga puntual y distribuida sobre una viga isostática. Observa reacciones, momento y flecha.',
+        num: '01', title: 'Viga con apoyos configurables', accent: '#3B82F6', rgb: '59,130,246',
+        desc: 'Cambia el tipo de apoyo de cada extremo (pasador, rodillo, empotrado, libre) y observa reacciones, momento y flecha.',
         chips: ['L', 'P', 'a', 'w'],
         norma: 'Hibbeler, Análisis Estructural, cap. 4 · NSR-10 C.8',
         icon: '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 38h54"/><path d="M9 38l-5 12h10zM55 38l-5 12h10z"/><path d="M32 8v18M27 14l5-6 5 6"/><path d="M14 28v10M18 28l-4 10M42 28v10M46 28l-4 10"/><path d="M8 56h48" stroke-dasharray="2 4"/></svg>',
-        defaults: { L: 7, P: 45, aF: 0.45, w: 9, b: 300, h: 500, mat: 'concreto' },
+        defaults: { L: 7, P: 45, aF: 0.45, w: 9, b: 300, h: 500, mat: 'concreto', sl: 'pin', sr: 'roller' },
         steps: [
-            { t: 'Modelo y apoyos', d: 'Viga isostática: pasador en A y rodillo en B. Se supone material elástico lineal y sección constante.' },
+            { t: 'Modelo y apoyos', d: 'Elige el apoyo de A y B: pasador, rodillo, empotrado o libre. Pasador–rodillo y empotrado–libre son isostáticas; con empotramiento y otro apoyo la viga es hiperestática.' },
             { t: 'Aplicación de cargas', d: 'La carga distribuida w y la puntual P suben de 0 al 100 % (la barra de avance las controla).' },
             { t: 'Reacciones', d: 'ΣM_A = 0 y ΣFy = 0 dan R_A y R_B; de ahí arrancan los diagramas.' },
             { t: 'Diagrama de cortante', d: 'V(x) cambia de signo donde el momento es máximo (dM/dx = V).' },
@@ -676,23 +682,26 @@
             { t: 'Deformada y chequeos', d: 'δ por superposición; se compara con L/360 y el esfuerzo con el admisible de referencia.' }
         ],
         chartRatio: 0.86, cursor: true,
-        chart: function (ctx, W, H, r, P, p) { beamChart(ctx, W, H, r, P, p, ['V', 'M', 'd'], r.xM / r.L); },
+        chart: function (ctx, W, H, r, P, p) { beamChart(ctx, W, H, r, P, p, ['V', 'M', 'd'], r.xMabs / r.L); },
         controls: function () {
             var d = this.defaults;
-            return matSelect(d.mat) + slider('L', 'Luz L', 3, 12, 0.5, d.L, ' m', 1) + slider('P', 'Carga puntual P', 0, 120, 5, d.P, ' kN', 0) +
+            return selectCtl('sl', 'Apoyo izquierdo (A)', SUPOPTS, d.sl) + selectCtl('sr', 'Apoyo derecho (B)', SUPOPTS, d.sr, 'Un empotramiento impide giro y desplazamiento; el libre no restringe nada.') + matSelect(d.mat) + slider('L', 'Luz L', 3, 12, 0.5, d.L, ' m', 1) + slider('P', 'Carga puntual P', 0, 120, 5, d.P, ' kN', 0) +
                 slider('aF', 'Posición de P', 0.1, 0.9, 0.05, d.aF, ' L', 2) + slider('w', 'Carga distribuida w', 0, 30, 1, d.w, ' kN/m', 0) +
                 slider('b', 'Base b', 100, 500, 10, d.b, ' mm', 0) + slider('h', 'Altura h', 150, 800, 10, d.h, ' mm', 0);
         },
         compute: function (P) {
-            return C.simpleBeam({ L: P.L, P: P.P, a: P.L * P.aF, w: P.w, E: matOf(P).E, b: P.b, h: P.h });
+            return C.beamSupports({ L: P.L, P: P.P, a: P.L * P.aF, w: P.w, E: matOf(P).E, b: P.b, h: P.h, sl: P.sl, sr: P.sr });
         },
         tiles: function (r, P) {
-            return [
-                { l: 'Momento máximo', v: fmt(r.Mabs, 1) + ' kN·m', s: 'x = ' + fmt(r.xM, 2) + ' m' },
-                { l: 'Flecha máxima', v: fmt(r.dmax, 2) + ' mm', s: 'x = ' + fmt(r.xd, 2) + ' m' },
-                { l: 'Reacción RA', v: fmt(r.RA, 1) + ' kN', s: 'RB = ' + fmt(r.RB, 1) + ' kN' },
-                { l: 'Esfuerzo σ = Mc/I', v: fmt(r.sigma, 2) + ' MPa', s: 'sección ' + P.b + ' × ' + P.h + ' mm' }
-            ].concat(checkTiles(r.dmax, P.L * 1000 / 360, 'L/360', r.sigma, matOf(P).adm));
+            var t = [{ l: 'Clasificación', v: r.clase, s: C.supportNames[r.sl] + ' · ' + C.supportNames[r.sr] }];
+            t.push({ l: 'Momento máx. (abs)', v: fmt(r.Mabs, 1) + ' kN·m', s: 'x = ' + fmt(r.xMabs, 2) + ' m' });
+            t.push({ l: 'Flecha máxima', v: fmt(r.dmax, 2) + ' mm', s: 'x = ' + fmt(r.xd, 2) + ' m' });
+            var rr = [];
+            if (r.sl !== 'free') rr.push('RA = ' + fmt(r.RA, 1) + (r.sl === 'fixed' ? ' · MA = ' + fmt(r.MA, 1) : ''));
+            if (r.sr !== 'free') rr.push('RB = ' + fmt(r.RB, 1) + (r.sr === 'fixed' ? ' · MB = ' + fmt(r.MB, 1) : ''));
+            t.push({ l: 'Reacciones', v: rr.join('<br>').replace(/<br>/g, ' · '), s: 'kN y kN·m' });
+            t.push({ l: 'Esfuerzo σ = Mc/I', v: fmt(r.sigma, 2) + ' MPa', s: 'sección ' + P.b + ' × ' + P.h + ' mm' });
+            return t.concat(checkTiles(r.dmax, P.L * 1000 / 360, 'L/360', r.sigma, matOf(P).adm));
         },
         note: function (r, P) {
             return '<b>Lectura:</b> al mover P hacia el centro el momento máximo crece; al acercarla a un apoyo, la reacción de ese apoyo aumenta. La flecha límite de referencia es L/360 = ' + fmt(P.L * 1000 / 360, 1) + ' mm.';
@@ -705,7 +714,7 @@
             var x0 = 48, x1 = W - 18, beamY = H * 0.30;
             function X(x) { return x0 + (x / P.L) * (x1 - x0); }
             ln(ctx, x0, beamY, x1, beamY, COL.beam, 8);
-            pin(ctx, x0, beamY + 2); roller(ctx, x1, beamY + 2);
+            drawSup(ctx, P.sl, x0, beamY, 'left'); drawSup(ctx, P.sr, x1, beamY, 'right');
             tx(ctx, 'A', x0, beamY + 38, { align: 'center', size: 10, color: '#A7B4C8' });
             tx(ctx, 'B', x1, beamY + 38, { align: 'center', size: 10, color: '#A7B4C8' });
             dimH(ctx, x0, x1, beamY - 58, 'L = ' + fmt(P.L, 2) + ' m', P.aF > 0.35 && P.aF < 0.65 ? 0.12 : 0.5);
@@ -733,7 +742,7 @@
             ctx.stroke(); ctx.restore();
             tx(ctx, 'δmax = ' + fmt(r.dmax, 2) + ' mm', x1 - 130, beamY + 24 + H * 0.10, { size: 10, color: COL.pink });
             // momento
-            var mb = H * 0.80, amp = H * 0.20, mmax = Math.max(1e-9, r.Mabs);
+            var mb = H * 0.80, amp = H * 0.17, mmax = Math.max(1e-9, r.Mabs);
             ln(ctx, x0, mb, x1, mb, 'rgba(167,180,200,.35)', 1);
             tx(ctx, 'M (kN·m)', 12, mb - amp - 4, { size: 10, color: COL.dim });
             ctx.save(); ctx.beginPath(); ctx.moveTo(x0, mb);
@@ -743,7 +752,7 @@
             ctx.strokeStyle = COL.ok; ctx.lineWidth = 2; ctx.beginPath();
             for (var k2 = 0; k2 < r.xs.length; k2++) { var mx = X(r.xs[k2]), my = mb - (r.ms[k2] / mmax) * amp; k2 ? ctx.lineTo(mx, my) : ctx.moveTo(mx, my); }
             ctx.stroke(); ctx.restore();
-            tag(ctx, 'Mmax = ' + fmt(r.Mabs, 1) + ' kN·m', Math.min(X(r.xM) + 6, W - 150), mb - amp - 12, COL.ok);
+            tag(ctx, 'Mmax = ' + fmt(r.Mext, 1) + ' kN·m', Math.min(X(r.xMabs) + 6, W - 150), mb - amp - 12, COL.ok);
             tx(ctx, 'Vista 2D · equilibrio y diagrama de momento', W - 12, H - 8, { align: 'right', size: 10, color: COL.dim });
         },
         draw3d: function (ctx, W, H, r, P, p) {
@@ -753,8 +762,8 @@
             ground(ctx, W, H, o, Math.ceil(L / 1.4));
             box3(ctx, -L / 2, L / 2, -0.25, 0.25, -0.15, 0.15, o, '#94A3B8');
             // apoyos
-            box3(ctx, -L / 2 - 0.08, -L / 2 + 0.08, -0.9, -0.25, -0.28, 0.28, o, '#475569');
-            box3(ctx, L / 2 - 0.08, L / 2 + 0.08, -0.9, -0.25, -0.28, 0.28, o, '#475569');
+            if (P.sl !== 'free') box3(ctx, -L / 2 - 0.08, -L / 2 + 0.08, P.sl === 'fixed' ? -0.9 : -0.9, P.sl === 'fixed' ? 0.55 : -0.25, -0.28, 0.28, o, '#475569');
+            if (P.sr !== 'free') box3(ctx, L / 2 - 0.08, L / 2 + 0.08, -0.9, P.sr === 'fixed' ? 0.55 : -0.25, -0.28, 0.28, o, '#475569');
             var f = loadFactor(p);
             function P3(x, y, z) { return project(x, y, z, o); }
             if (P.w > 0) {
@@ -1020,7 +1029,7 @@
         chips: ['W', 'h', 'b'],
         norma: 'Hibbeler, Análisis Estructural, cap. 12 · McCormac, cap. 7',
         icon: '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 54V16h40v38"/><path d="M8 54h10M46 54h10"/><path d="M32 16V8"/><path d="M26 8h12"/><path d="M12 30h40" stroke-dasharray="2 4"/><path d="M12 30l8-6M52 30l-8-6"/><circle cx="12" cy="16" r="2.4"/><circle cx="52" cy="16" r="2.4"/></svg>',
-        defaults: { W: 35, h: 4, b: 6, hc: 300, mat: 'concreto' },
+        defaults: { W: 35, h: 4, b: 6, hc: 300, mat: 'concreto', base: 'fixed' },
         steps: [
             { t: 'Modelo del pórtico', d: 'Un vano y un piso, columnas empotradas en la base y viga superior rígida.' },
             { t: 'Carga lateral', d: 'La fuerza horizontal W (viento o sismo) actúa a nivel de la viga y sube de 0 al 100 %.' },
@@ -1034,10 +1043,10 @@
         chart: function (ctx, W, H, r, P, p) { portalChart(ctx, W, H, r, P, p); },
         controls: function () {
             var d = this.defaults;
-            return matSelect(d.mat) + slider('W', 'Carga lateral total W', 0, 120, 5, d.W, ' kN', 0) + slider('h', 'Altura h', 2, 8, 0.25, d.h, ' m', 2) +
+            return selectCtl('base', 'Apoyo en la base', [['fixed', 'Empotrado'], ['pinned', 'Articulado (pasador)']], d.base, 'Con base articulada no hay momento en la base y la deriva es 4 veces mayor.') + matSelect(d.mat) + slider('W', 'Carga lateral total W', 0, 120, 5, d.W, ' kN', 0) + slider('h', 'Altura h', 2, 8, 0.25, d.h, ' m', 2) +
                 slider('b', 'Luz b', 3, 12, 0.5, d.b, ' m', 1) + slider('hc', 'Peralte columna hc', 200, 600, 25, d.hc, ' mm', 0);
         },
-        compute: function (P) { return C.portalFrame({ W: P.W, h: P.h, b: P.b, E: matOf(P).E, bc: 300, hc: P.hc }); },
+        compute: function (P) { return C.portalFrame({ W: P.W, h: P.h, b: P.b, E: matOf(P).E, bc: 300, hc: P.hc, base: P.base }); },
         tiles: function (r, P) {
             return [
                 { l: 'Cortante por columna', v: fmt(r.Vcol, 1) + ' kN', s: 'W/2' },
@@ -1057,7 +1066,7 @@
             var lx = W * 0.30, rx = W * 0.70, top = H * 0.27, base = H * 0.76;
             ctx.save(); ctx.strokeStyle = COL.beam; ctx.lineWidth = 8; ctx.lineCap = 'round';
             ctx.beginPath(); ctx.moveTo(lx, base); ctx.lineTo(lx, top); ctx.lineTo(rx, top); ctx.lineTo(rx, base); ctx.stroke(); ctx.restore();
-            fixed(ctx, lx, base - 2, base + 2, 'left'); fixed(ctx, rx, base - 2, base + 2, 'right');
+            if (r.base === 'pinned') { pin(ctx, lx, base + 2); pin(ctx, rx, base + 2); } else { fixed(ctx, lx, base - 2, base + 2, 'left'); fixed(ctx, rx, base - 2, base + 2, 'right'); }
             var f = loadFactor(p);
             arrow(ctx, lx - 50 - 40 * f, top - 10, lx - 10, top - 10, COL.load, 3);
             tag(ctx, 'W = ' + fmt(P.W, 1) + ' kN', lx - 60 - 40 * f, top - 30, COL.load);

@@ -324,16 +324,17 @@
         guard(W >= 0 && h > 0 && b > 0, 'La carga, la altura y la luz deben ser válidas.');
         guard(E > 0 && bc > 0 && hc > 0, 'Revisa E y las dimensiones de las columnas.');
         var Ic = rectI(bc, hc), EI = E * 1e6 * Ic;
+        var base = p.base === 'pinned' ? 'pinned' : 'fixed';
         var Vcol = W / 2;
-        var Mcol = Vcol * h / 2;
+        var Mcol = base === 'pinned' ? Vcol * h : Vcol * h / 2;   // articulada: M = V·h en la cabeza y 0 en la base
         var Mbeam = Mcol;
         var N = W * h / (2 * b);           // fuerza axial en vigas por vuelco
-        var sway = (W * Math.pow(h, 3)) / (24 * EI) * 1000; // mm, columnas empotradas
+        var sway = base === 'pinned' ? (W * Math.pow(h, 3)) / (6 * EI) * 1000 : (W * Math.pow(h, 3)) / (24 * EI) * 1000; // mm
         return {
-            W: W, h: h, b: b, E: E, bc: bc, hc: hc, Ic: Ic, EI: EI,
+            base: base, W: W, h: h, b: b, E: E, bc: bc, hc: hc, Ic: Ic, EI: EI,
             Vcol: Vcol, Mcol: Mcol, Mbeam: Mbeam, N: N, sway: sway,
             reactionX: W / 2, reactionY: N,
-            note: 'Hipótesis del portal: punto de inflexión a media altura de columnas y a media luz de la viga.'
+            note: base === 'pinned' ? 'Bases articuladas: sin momento en la base, M = V·h en la cabeza de la columna y deriva 4 veces mayor que con bases empotradas (viga rígida).' : 'Hipótesis del portal: punto de inflexión a media altura de columnas y a media luz de la viga.'
         };
     }
 
@@ -431,7 +432,124 @@
         };
     }
 
+    /* ---------------------------------------------------------
+       VIGA CON APOYOS CONFIGURABLES (elementos finitos de viga)
+       Extremos: 'pin' (pasador), 'roller' (rodillo), 'fixed' (empotrado), 'free' (libre).
+       Carga puntual P (hacia abajo) en x=a y carga distribuida w en toda la luz.
+       Convención: V y M positivos como en el análisis clásico (M>0 tracciona abajo).
+       --------------------------------------------------------- */
+    var SUP_N = { pin: 'Pasador', roller: 'Rodillo', fixed: 'Empotrado', free: 'Libre' };
+    function solveSym(A, b) {
+        var n = b.length, i, j, k;
+        for (i = 0; i < n; i++) {
+            var m = i;
+            for (j = i + 1; j < n; j++) if (Math.abs(A[j][i]) > Math.abs(A[m][i])) m = j;
+            if (Math.abs(A[m][i]) < 1e-12) return null;
+            var t = A[i]; A[i] = A[m]; A[m] = t; var tb = b[i]; b[i] = b[m]; b[m] = tb;
+            for (j = i + 1; j < n; j++) {
+                var f = A[j][i] / A[i][i]; if (!f) continue;
+                for (k = i; k < n; k++) A[j][k] -= f * A[i][k];
+                b[j] -= f * b[i];
+            }
+        }
+        var x = new Array(n);
+        for (i = n - 1; i >= 0; i--) { var s = b[i]; for (k = i + 1; k < n; k++) s -= A[i][k] * x[k]; x[i] = s / A[i][i]; }
+        return x;
+    }
+    function beamSupports(p) {
+        p = p || {};
+        var L = +p.L, P = +(p.P || 0), a = (p.a == null ? L / 2 : +p.a), w = +(p.w || 0), E = +p.E, b = +p.b, h = +p.h;
+        var sl = p.sl || 'pin', sr = p.sr || 'roller';
+        validateBase({ L: L, E: E, b: b, h: h });
+        guard(P >= 0 && w >= 0, 'Las cargas no pueden ser negativas en este modelo.');
+        guard(a >= 0 && a <= L, 'La posición de la carga debe estar entre 0 y L.');
+        guard(SUP_N[sl] && SUP_N[sr], 'Tipo de apoyo no válido.');
+        var nv = { pin: 1, roller: 1, fixed: 2, free: 0 }, nR = nv[sl] + nv[sr];
+        guard(sl === 'fixed' || sr === 'fixed' || (nv[sl] === 1 && nv[sr] === 1),
+            'Con esos apoyos la viga es un mecanismo (inestable): usa un empotramiento o dos apoyos (pasador/rodillo).');
+        var I = rectI(b, h), EI = E * 1e6 * I;
+        // malla
+        var N = 120, xn = [], i;
+        for (i = 0; i <= N; i++) xn.push(L * i / N);
+        if (a > 1e-9 && a < L - 1e-9) { var near = 0; for (i = 1; i < xn.length; i++) if (Math.abs(xn[i] - a) < Math.abs(xn[near] - a)) near = i; xn[near] = a; }
+        xn.sort(function (u, v) { return u - v; });
+        var nn = xn.length, nd = 2 * nn, K = [], F = new Array(nd).fill(0), r, c;
+        for (r = 0; r < nd; r++) K.push(new Array(nd).fill(0));
+        var els = [];
+        for (i = 0; i < nn - 1; i++) {
+            var l = xn[i + 1] - xn[i], k = EI / Math.pow(l, 3);
+            var ke = [[12, 6 * l, -12, 6 * l], [6 * l, 4 * l * l, -6 * l, 2 * l * l], [-12, -6 * l, 12, -6 * l], [6 * l, 2 * l * l, -6 * l, 4 * l * l]];
+            var fe = [w * l / 2, w * l * l / 12, w * l / 2, -w * l * l / 12];   // fuerzas nodales equivalentes (hacia abajo → restar)
+            var dof = [2 * i, 2 * i + 1, 2 * i + 2, 2 * i + 3];
+            for (r = 0; r < 4; r++) { F[dof[r]] -= fe[r]; for (c = 0; c < 4; c++) K[dof[r]][dof[c]] += k * ke[r][c]; }
+            els.push({ l: l, k: k, ke: ke, fe: fe, dof: dof });
+        }
+        // carga puntual en el nudo de x=a
+        var ia = 0; for (i = 0; i < nn; i++) if (Math.abs(xn[i] - a) < 1e-9) { ia = i; break; }
+        F[2 * ia] -= P;
+        // apoyos
+        var fixedD = {};
+        if (sl !== 'free') fixedD[0] = 1;
+        if (sl === 'fixed') fixedD[1] = 1;
+        if (sr !== 'free') fixedD[2 * (nn - 1)] = 1;
+        if (sr === 'fixed') fixedD[2 * (nn - 1) + 1] = 1;
+        var free = []; for (i = 0; i < nd; i++) if (!fixedD[i]) free.push(i);
+        var Kf = free.map(function (u) { return free.map(function (v) { return K[u][v]; }); });
+        var uf = solveSym(Kf, free.map(function (u) { return F[u]; }));
+        guard(uf, 'No se pudo resolver la viga con esos apoyos (revisa la configuración).');
+        var U = new Array(nd).fill(0); free.forEach(function (d, j) { U[d] = uf[j]; });
+        // reacciones = K·U − F en grados restringidos
+        function react(d) { var s = -F[d]; for (var j = 0; j < nd; j++) s += K[d][j] * U[j]; return s; }
+        var RA = sl !== 'free' ? react(0) : 0, MAr = sl === 'fixed' ? react(1) : 0;
+        var RB = sr !== 'free' ? react(2 * (nn - 1)) : 0, MBr = sr === 'fixed' ? react(2 * (nn - 1) + 1) : 0;
+        // fuerzas internas por elemento
+        els.forEach(function (e) {
+            var u = e.dof.map(function (d) { return U[d]; }), f = [0, 0, 0, 0], r2, c2;
+            for (r2 = 0; r2 < 4; r2++) { for (c2 = 0; c2 < 4; c2++) f[r2] += e.k * e.ke[r2][c2] * u[c2]; f[r2] -= e.fe[r2]; }
+            e.V0 = f[0]; e.M0 = -f[1]; e.u = u;
+        });
+        var starts = xn.slice(0, nn - 1);
+        function idx(x) { var lo = 0, hi = starts.length - 1; while (lo < hi) { var m = (lo + hi + 1) >> 1; if (starts[m] <= x + 1e-12) lo = m; else hi = m - 1; } return lo; }
+        function V(x) { var e = els[idx(x)], t = x - starts[idx(x)]; return e.V0 - w * t; }
+        function M(x) { var j = idx(x), e = els[j], t = x - starts[j]; return e.M0 + e.V0 * t - w * t * t / 2; }
+        function defl(x) {            // positiva hacia abajo
+            var j = idx(x), e = els[j], l = e.l, t = (x - starts[j]) / l, u = e.u;
+            var h1 = 1 - 3 * t * t + 2 * t * t * t, h2 = l * (t - 2 * t * t + t * t * t), h3 = 3 * t * t - 2 * t * t * t, h4 = l * (-t * t + t * t * t);
+            var v = h1 * u[0] + h2 * u[1] + h3 * u[2] + h4 * u[3];
+            var xe = t * l; v -= w * xe * xe * (l - xe) * (l - xe) / (24 * EI);
+            return -v;
+        }
+        var NS = 240, xs = [], vs = [], ms = [], ds = [], Mpos = 0, Mneg = 0, Vmax = 0, xM = 0, xMabs = 0, Mext = 0, dmax = 0, xd = 0;
+        for (i = 0; i <= NS; i++) {
+            var x = L * i / NS, v = V(x), m = M(x), d = defl(x);
+            xs.push(x); vs.push(v); ms.push(m); ds.push(d);
+            if (m > Mpos) { Mpos = m; xM = x; }
+            if (m < Mneg) Mneg = m;
+            if (Math.abs(m) > Math.abs(Mext)) { Mext = m; xMabs = x; }
+            if (Math.abs(v) > Math.abs(Vmax)) Vmax = v;
+            if (Math.abs(d) > Math.abs(dmax)) { dmax = d; xd = x; }
+        }
+        // en los extremos empotrados el momento exacto es el de la reacción
+        ms[0] = sl === 'fixed' ? -MAr : 0;
+        ms[NS] = sr === 'fixed' ? MBr : 0;
+        Mpos = 0; Mneg = 0; Mext = 0;
+        ms.forEach(function (m, j) { if (m > Mpos) { Mpos = m; xM = xs[j]; } if (m < Mneg) Mneg = m; if (Math.abs(m) > Math.abs(Mext)) { Mext = m; xMabs = xs[j]; } });
+        var Mabs = Math.max(Math.abs(Mpos), Math.abs(Mneg));
+        var sigma = Mabs * 1e6 * (h / 2) / mm4(b, h);
+        var grado = nR - 2;
+        return {
+            kind: 'supports', L: L, P: P, a: a, w: w, E: E, b: b, h: h, I: I, EI: EI, sl: sl, sr: sr,
+            RA: RA, RB: RB, MA: sl === 'fixed' ? -MAr : 0, MB: sr === 'fixed' ? MBr : 0,
+            grado: grado, clase: grado === 0 ? 'isostática' : 'hiperestática de grado ' + grado,
+            Vmax: Vmax, Mpos: Mpos, Mneg: Mneg, Mabs: Mabs, Mext: Mext, xM: xM, xMabs: xMabs,
+            dmax: Math.abs(dmax) * 1000, xd: xd, sigma: sigma, xs: xs, vs: vs, ms: ms, ds: ds, V: V, M: M, defl: defl
+        };
+    }
+
     global.EstCalc = {
+        beamSupports: beamSupports,
+        supportNames: SUP_N,
+
         simpleBeam: simpleBeam,
         cantilever: cantilever,
         sectionProps: sectionProps,

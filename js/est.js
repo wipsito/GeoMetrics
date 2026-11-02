@@ -476,20 +476,24 @@
        03 · VIGA SIMPLEMENTE APOYADA
        ========================================================= */
     DEFS.viga = {
-        id: 'viga', ratio: 0.85, title: 'Viga simplemente apoyada', tag: 'Flexión',
+        id: 'viga', ratio: 0.85, title: 'Viga con apoyos configurables', tag: 'Flexión',
         accent: '#3B82F6', rgb: '59,130,246', unidad: 'Unidad 1 · equilibrio y flexión',
         entrega: 'Reacciones, cortante, momento y flecha',
-        desc: 'Carga puntual y distribuida: reacciones, diagramas de cortante y momento, flecha máxima.',
+        desc: 'Elige el tipo de apoyo en cada extremo (pasador, rodillo, empotrado, libre): reacciones, cortante, momento y flecha.',
         objetivo: 'resolver una viga isostática y relacionar el diagrama de momentos con el esfuerzo y la flecha.',
         norma: 'Hibbeler, Análisis Estructural, caps. 4–5 · NSR-10 C.8',
         chips: ['RA', 'RB', 'M(x)', 'V(x)', 'δmax', 'σ'],
         sim: 'viga',
         proc: '<p>Se aplican equilibrio de fuerzas y de momentos. La carga puntual P actúa a una distancia a del apoyo A; la carga distribuida w cubre toda la luz.</p>' +
             '<div class="est-eq">RA = P(L−a)/L + wL/2 · RB = Pa/L + wL/2<br>V(x) = RA − wx − P⟨x−a⟩⁰ · M(x) = RAx − wx²/2 − P⟨x−a⟩¹</div>' +
-            '<p>La flecha se obtiene por superposición de la solución de la carga puntual y la distribuida. El esfuerzo normal máximo es σ = M c / I con c = h/2.</p>' +
+            '<p><b>Tipos de apoyo:</b> el pasador y el rodillo restringen el desplazamiento vertical (el pasador además el horizontal); el empotramiento impide también el giro y aporta un momento de reacción; el extremo libre no restringe nada. Con empotrado–pasador/rodillo la viga es hiperestática de grado 1 y con empotrado–empotrado de grado 2: se resuelve imponiendo compatibilidad de giros y desplazamientos (el programa usa elementos finitos de viga).</p>' +
+            '<p>La flecha de la viga isostática simple se obtiene por superposición. El esfuerzo normal máximo es σ = M c / I con c = h/2.</p>' +
             '<p><b>Chequeo de servicio:</b> para vigas de edificación se suele limitar la flecha a L/360 (cargas totales) o L/480 (cargas vivas), según el uso. Verifica la norma aplicable.</p>',
         form: function () {
-            return '<div class="dm-formrow dm-3">' + field('vgL', 'Luz L', 6, { unit: 'm', step: '0.1', min: 0.1 }) +
+            var SUPS = [['pin', 'Pasador (articulado)'], ['roller', 'Rodillo'], ['fixed', 'Empotrado'], ['free', 'Libre (voladizo)']];
+            return '<div class="dm-formrow dm-3">' + select('vgSL', 'Apoyo izquierdo (A)', SUPS, 'pin') + select('vgSR', 'Apoyo derecho (B)', SUPS, 'roller') + '</div>' +
+                '<p class="dm-hint">Isostática: pasador–rodillo o empotrado–libre. Hiperestática: empotrado–pasador/rodillo (grado 1) o empotrado–empotrado (grado 2).</p>' +
+                '<div class="dm-formrow dm-3">' + field('vgL', 'Luz L', 6, { unit: 'm', step: '0.1', min: 0.1 }) +
                 field('vgP', 'Carga puntual P', 40, { unit: 'kN', step: '1', min: 0 }) +
                 field('vgA', 'Posición a desde A', 2.5, { unit: 'm', step: '0.1', min: 0 }) + '</div>' +
                 '<div class="dm-formrow dm-3">' + field('vgW', 'Carga distribuida w', 8, { unit: 'kN/m', step: '0.5', min: 0 }) +
@@ -498,9 +502,10 @@
                 field('vgH', 'Altura h', 500, { unit: 'mm', step: '10', min: 10 }) + '</div>';
         },
         read: function () {
-            var p = { L: num('vgL'), P: num('vgP') || 0, a: num('vgA'), w: num('vgW') || 0, E: num('vgE'), b: num('vgB'), h: num('vgH') };
+            var p = { L: num('vgL'), P: num('vgP') || 0, a: num('vgA'), w: num('vgW') || 0, E: num('vgE'), b: num('vgB'), h: num('vgH'), sl: val('vgSL') || 'pin', sr: val('vgSR') || 'roller' };
             if (!(p.a >= 0)) p.a = 0;
             p.entradas = entradas([
+                ['Apoyo A', C.supportNames[p.sl]], ['Apoyo B', C.supportNames[p.sr]],
                 ['Luz L (m)', p.L], ['Carga puntual P (kN)', p.P], ['Posición a (m)', p.a],
                 ['Carga distribuida w (kN/m)', p.w], ['E (GPa)', p.E], ['Sección b × h (mm)', p.b + ' × ' + p.h]
             ]);
@@ -508,18 +513,19 @@
         },
         calc: function (p) {
             if (!(p.a <= p.L)) throwObject('La posición de la carga debe estar entre 0 y L.');
-            return C.simpleBeam(p);
+            return C.beamSupports(p);
         },
         tiles: function (r, p) {
-            var lim = p.L * 1000 / 360;
-            return [
-                { l: 'Reacción RA', v: fmt(r.RA, 1) + ' kN', big: true, s: 'RB = ' + fmt(r.RB, 1) + ' kN' },
-                { l: 'Cortante máximo', v: fmt(r.Vmax, 1) + ' kN', s: 'V = dM/dx' },
-                { l: 'Momento máximo', v: fmt(r.Mabs, 1) + ' kN·m', tone: 'ok', s: 'x = ' + fmt(r.xM, 2) + ' m' },
-                { l: 'Flecha máxima', v: fmt(r.dmax, 2) + ' mm', tone: r.dmax > lim ? 'warn' : 'ok', s: 'x = ' + fmt(r.xd, 2) + ' m · límite L/360 = ' + fmt(lim, 1) + ' mm' },
-                { l: 'Esfuerzo σ = Mc/I', v: fmt(r.sigma, 2) + ' MPa', s: 'fibra extrema' },
-                { l: 'Rigidez EI', v: fmt(r.EI, 0) + ' kN·m²', s: 'I = ' + fmt(r.I * 1e12, 0) + ' mm⁴' }
-            ];
+            var lim = p.L * 1000 / 360, t = [];
+            t.push({ l: 'Clasificación', v: r.clase, tone: r.grado > 0 ? 'warn' : 'ok', s: C.supportNames[r.sl] + ' (A) · ' + C.supportNames[r.sr] + ' (B)' });
+            if (r.sl !== 'free') t.push({ l: 'Reacción RA', v: fmt(r.RA, 1) + ' kN', big: true, s: r.sl === 'fixed' ? 'MA = ' + fmt(r.MA, 1) + ' kN·m' : 'vertical en A' });
+            if (r.sr !== 'free') t.push({ l: 'Reacción RB', v: fmt(r.RB, 1) + ' kN', big: r.sl === 'free', s: r.sr === 'fixed' ? 'MB = ' + fmt(r.MB, 1) + ' kN·m' : 'vertical en B' });
+            t.push({ l: 'Cortante máximo', v: fmt(Math.abs(r.Vmax), 1) + ' kN', s: 'V = dM/dx' });
+            t.push({ l: 'Momento máximo (+)', v: fmt(r.Mpos, 1) + ' kN·m', tone: 'ok', s: 'x = ' + fmt(r.xM, 2) + ' m' });
+            if (r.Mneg < -1e-6) t.push({ l: 'Momento máximo (−)', v: fmt(r.Mneg, 1) + ' kN·m', tone: 'warn', s: 'tracción en la fibra superior' });
+            t.push({ l: 'Flecha máxima', v: fmt(r.dmax, 2) + ' mm', tone: r.dmax > lim ? 'warn' : 'ok', s: 'x = ' + fmt(r.xd, 2) + ' m · límite L/360 = ' + fmt(lim, 1) + ' mm' });
+            t.push({ l: 'Esfuerzo σ = Mc/I', v: fmt(r.sigma, 2) + ' MPa', s: 'fibra extrema' });
+            return t;
         },
         table: function (r) {
             return '<div class="dm-tablewrap"><table class="dm-table"><thead><tr><th>x (m)</th><th>V (kN)</th><th>M (kN·m)</th><th>δ (mm)</th></tr></thead><tbody>' +
@@ -539,8 +545,8 @@
         legend: [['Viga', '#93C5FD'], ['Carga', '#FBBF24'], ['Momento', '#34D399'], ['Elástica', '#F472B6']],
         report: function (r, p) {
             return {
-                titulo: 'Estructuras I — Viga simplemente apoyada', norma: this.norma,
-                resumen: 'RA = ' + fmt(r.RA, 1) + ' kN · Mmax = ' + fmt(r.Mabs, 1) + ' kN·m · δmax = ' + fmt(r.dmax, 2) + ' mm',
+                titulo: 'Estructuras I — Viga con apoyos configurables', norma: this.norma,
+                resumen: C.supportNames[r.sl] + '–' + C.supportNames[r.sr] + ' (' + r.clase + ') · RA = ' + fmt(r.RA, 1) + ' kN · Mmax = ' + fmt(r.Mabs, 1) + ' kN·m · δmax = ' + fmt(r.dmax, 2) + ' mm',
                 entradas: p.entradas,
                 resultados: this.tiles(r, p).map(function (t) { return { label: t.l, valor: String(t.v) + (t.s ? ' · ' + t.s : '') }; }),
                 tablaHtml: this.table(r, p),
@@ -710,7 +716,8 @@
             '<p>Es una estimación para pórticos regulares con cargas laterales; no sustituye un análisis matricial cuando hay irregularidades, vanos desiguales o cargas verticales importantes.</p>' +
             '<p>La deriva se calcula con columnas empotradas en la base y vigas supuestas infinitamente rígidas; sirve para dimensionar preliminarmente y comparar con el límite normativo de deriva.</p>',
         form: function () {
-            return '<div class="dm-formrow dm-3">' + field('ptW', 'Carga lateral total W', 30, { unit: 'kN', step: '1', min: 0 }) +
+            return '<div class="dm-formrow">' + select('ptBase', 'Apoyo en la base de las columnas', [['fixed', 'Empotrado'], ['pinned', 'Articulado (pasador)']], 'fixed') + '</div>' +
+                '<div class="dm-formrow dm-3">' + field('ptW', 'Carga lateral total W', 30, { unit: 'kN', step: '1', min: 0 }) +
                 field('ptH', 'Altura h', 4, { unit: 'm', step: '0.1', min: 0.5 }) +
                 field('ptB', 'Luz b', 6, { unit: 'm', step: '0.5', min: 1 }) + '</div>' +
                 '<div class="dm-formrow dm-3">' + field('ptE', 'Módulo E', 25, { unit: 'GPa', step: '1', min: 1 }) +
@@ -718,9 +725,9 @@
                 field('ptHc', 'Altura columna', 300, { unit: 'mm', step: '10', min: 10 }) + '</div>';
         },
         read: function () {
-            var p = { W: num('ptW') || 0, h: num('ptH'), b: num('ptB'), E: num('ptE'), bc: num('ptBc'), hc: num('ptHc') };
+            var p = { W: num('ptW') || 0, h: num('ptH'), b: num('ptB'), E: num('ptE'), bc: num('ptBc'), hc: num('ptHc'), base: val('ptBase') || 'fixed' };
             p.entradas = entradas([
-                ['Carga lateral W (kN)', p.W], ['Altura h (m)', p.h], ['Luz b (m)', p.b],
+                ['Apoyo en la base', p.base === 'pinned' ? 'Articulado' : 'Empotrado'], ['Carga lateral W (kN)', p.W], ['Altura h (m)', p.h], ['Luz b (m)', p.b],
                 ['E (GPa)', p.E], ['Columna b × h (mm)', p.bc + ' × ' + p.hc]
             ]);
             return p;
@@ -1086,7 +1093,12 @@
         // viga
         ctx.save(); ctx.strokeStyle = COL.beam; ctx.lineWidth = 7; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(x0, beamY); ctx.lineTo(x1, beamY); ctx.stroke(); ctx.restore();
-        pin(ctx, x0, beamY + 3); roller(ctx, x1, beamY + 3);
+        function sup(type, x, side) {
+            if (type === 'pin') pin(ctx, x, beamY + 3);
+            else if (type === 'roller') roller(ctx, x, beamY + 3);
+            else if (type === 'fixed') fixedWall(ctx, x, beamY - 22, beamY + 28, side);
+        }
+        sup(r.sl || 'pin', x0, 'left'); sup(r.sr || 'roller', x1, 'right');
         tx(ctx, 'A', x0, beamY + 38, { align: 'center', size: 10, color: '#A7B4C8' });
         tx(ctx, 'B', x1, beamY + 38, { align: 'center', size: 10, color: '#A7B4C8' });
         dimH(ctx, x0, x1, beamY - 80, 'L = ' + fmt(r.L, 2) + ' m', '#A7B4C8');
@@ -1124,9 +1136,13 @@
         ctx.strokeStyle = '#34D399'; ctx.lineWidth = 2; ctx.beginPath();
         for (var k2 = 0; k2 < r.xs.length; k2++) { var xx = X(r.xs[k2]), yy = mb - (r.ms[k2] / maxM) * amp; k2 ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); }
         ctx.stroke(); ctx.restore();
-        var xm = X(r.xM);
-        ln(ctx, xm, mb, xm, mb - (r.Mpos / maxM) * amp, 'rgba(52,211,153,.6)', 1, [3, 3]);
-        tag(ctx, 'Mmax = ' + fmt(r.Mpos, 1) + ' kN·m', Math.min(xm + 6, W - 150), mb - (r.Mpos / maxM) * amp - 14, '#34D399');
+        var xm = X(r.xMabs != null ? r.xMabs : r.xM), mv = r.Mext != null ? r.Mext : r.Mpos;
+        ln(ctx, xm, mb, xm, mb - (mv / maxM) * amp, 'rgba(52,211,153,.6)', 1, [3, 3]);
+        tag(ctx, 'Mmax = ' + fmt(mv, 1) + ' kN·m', Math.min(xm + 6, W - 150), mb - (mv / maxM) * amp + (mv < 0 ? 16 : -14), '#34D399');
+        if (r.Mpos > 1e-6 && r.Mneg < -1e-6) {
+            var xp2 = X(r.xM);
+            tag(ctx, 'M+ = ' + fmt(r.Mpos, 1), Math.min(xp2 + 6, W - 110), mb - (r.Mpos / maxM) * amp - 14, '#34D399');
+        }
         // elástica
         var db = H * 0.88, damp = H * 0.11;
         var dmax = Math.max(1e-12, r.dmax);
@@ -1240,7 +1256,7 @@
         var lx = W * 0.28, rx = W * 0.72, top = H * 0.26, base = H * 0.78;
         ctx.save(); ctx.strokeStyle = COL.beam; ctx.lineWidth = 8; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(lx, base); ctx.lineTo(lx, top); ctx.lineTo(rx, top); ctx.lineTo(rx, base); ctx.stroke(); ctx.restore();
-        fixedWall(ctx, lx, base - 2, base + 2, 'left'); fixedWall(ctx, rx, base - 2, base + 2, 'right');
+        if (r.base === 'pinned') { pin(ctx, lx, base + 2); pin(ctx, rx, base + 2); } else { fixedWall(ctx, lx, base - 2, base + 2, 'left'); fixedWall(ctx, rx, base - 2, base + 2, 'right'); }
         // carga lateral
         arrow(ctx, lx - 72, top - 8, lx - 10, top - 8, COL.load, 3);
         tag(ctx, 'W = ' + fmt(r.W, 1) + ' kN', lx - 76, top - 26, '#FBBF24');
