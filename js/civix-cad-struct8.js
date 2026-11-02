@@ -130,6 +130,30 @@
         x0 = Math.min(x0, bb[0] - gap); y0 = Math.min(y0, bb[1] - gap); x1 = Math.max(x1, bb[2] + gap); y1 = Math.max(y1, bb[3] + gap);
         fr.pts = [[x0, y0, 0], [x1, y0, 0], [x1, y1, 0], [x0, y1, 0]]; model.bbox = CAD.bboxOf(model.ents);
     }
+    var TITLES = { viga: 'VIGA', columna: 'COLUMNA', zapata: 'ZAPATA AISLADA', muro: 'MURO DE CONTENCION', losa: 'LOSA MACIZA', escalera: 'ESCALERA', columnaC: 'COLUMNA CIRCULAR', cercha: 'CERCHA' };
+    function userNm() { try { var s = typeof aulaGetSession === 'function' && aulaGetSession(); return s ? (s.nombre || s.nombres || s.email || '') : ''; } catch (e) { return ''; } }
+    function niceSc(mm) { var t = mm / 380, c = [5, 10, 20, 25, 50, 75, 100, 150, 200, 250, 500, 1000], i; for (i = 0; i < c.length; i++) if (c[i] >= t) return '1:' + c[i]; return '1:' + Math.ceil(t / 100) * 100; }
+    /* planos antiguos sin marco: agrega cuadro de acero + cajetín + marco */
+    function addSheet(model, r, k) {
+        if (model.ents.some(function (e) { return e.layer === 'MARCO' || e.layer === 'CAJETIN'; })) return;
+        var bb = CAD.bboxOf(model.ents), span = Math.max(bb[2] - bb[0], bb[3] - bb[1]), th = span * 0.012, D = new Draw(th);
+        if (r.bom && r.bom.rows && r.bom.rows.length) {
+            var nc = r.bom.head.length, wd = []; for (var i = 0; i < nc; i++) wd.push(th * (r.bom.head[0] === 'Marca' ? (i === 0 ? 5 : (i === 1 ? 14 : 8)) : (i === 0 ? 16 : 8)));
+            D.text(bb[0], bb[1] - th * 3, 'CUADRO DE ACERO (despiece)', { h: th * 1.1 });
+            D.table(bb[0], bb[1] - th * 4.2, r.bom.head, r.bom.rows.map(function (q) { return q.map(function (c) { return String(c); }); }), wd);
+            D.ents.forEach(function (e) { model.ents.push(e); }); Object.keys(D.layers).forEach(function (kk) { if (!model.layers[kk]) model.layers[kk] = D.layers[kk]; });
+        }
+        model.bbox = CAD.bboxOf(model.ents); var sp2 = Math.max(model.bbox[2] - model.bbox[0], model.bbox[3] - model.bbox[1]);
+        if (CAD.addTitleBlock) { CAD.addTitleBlock(model, { proyecto: 'GeoMetrics · Universidad de Pamplona · Ing. Civil', contenido: TITLES[k] || k, autor: userNm(), escala: niceSc(sp2) + ' (en hoja A3)', hoja: '1/1' }); model.ents.forEach(function (e) { if (e.layer === 'CAJETIN') e.layer = 'MARCO'; }); delete model.layers.CAJETIN; model.bbox = CAD.bboxOf(model.ents); }
+    }
+    /* cotas que faltaban en la zapata: lados de la columna en planta y en corte */
+    function zapataDims(model, o, r) {
+        var B = r.calc && r.calc.B, h = r.calc && r.calc.h, c1 = o.c1 || 400, c2 = o.c2 || 400; if (!B || !h) return; if (B < 50) B *= 1000; if (h < 5) h *= 1000;
+        var th = Math.max(50, B * 0.022) * 0.9, D = new Draw(th), cx = B + 2500;
+        D.dim((B - c1) / 2, B, (B + c1) / 2, B, th * 2.2, 'c1 = ' + c1 + ' mm'); D.dim(B, (B - c2) / 2, B, (B + c2) / 2, th * 2.2, 'c2 = ' + c2 + ' mm');
+        D.dim(cx + (B - c1) / 2, h + 900, cx + (B + c1) / 2, h + 900, th * 2.2, 'c1 = ' + c1 + ' mm'); D.dim(cx + (B + c1) / 2, h, cx + (B + c1) / 2, h + 900, th * 2.2, '900 mm');
+        D.ents.forEach(function (e) { model.ents.push(e); }); Object.keys(D.layers).forEach(function (kk) { if (!model.layers[kk]) model.layers[kk] = D.layers[kk]; }); model.bbox = CAD.bboxOf(model.ents);
+    }
     var SPACING = {
         viga: function (o, r) { return { start: 'A', L: o.L * 1000, zE: 2 * o.h, sEnd: r.calc.sEnd, sMid: r.calc.sMid, hdim: o.h, y0: o.h }; },
         despieceViga: function (o) { var rr = S.viga(o); return { start: 'B', L: o.L * 1000, zE: 2 * o.h, sEnd: rr.calc.sEnd, sMid: rr.calc.sMid, hdim: o.h, y0: o.h }; },
@@ -174,11 +198,14 @@
                     if (SPACING[k] && r.model && !r.__spc) { var spc = SPACING[k](dflt(k, o), r); if (spc) { spacingDims(r.model, spc); if (!spc.vertical && k !== 'viga' && k !== 'despieceViga') hDim(r.model, spc.hdim); growFrame(r.model); r.__spc = true; } }
                     if (EXTRA[k] && r.model && !r.__extra) { var sp = EXTRA[k](dflt(k, o), r); if (sp && !sp.noVM) { extraModel(r.model, sp); r.__extra = true; if (sp.vs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DIAGRAMAS: V(apoyo izq.) = ' + F(sp.vs[0][1], 1) + ' kN · V(apoyo der.) = ' + F(sp.vs[sp.vs.length - 1][1], 1) + ' kN · momento y cortante con carga factorada (ver plano).'); if (sp.segs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DISTRIBUCION DE ESTRIBOS: ' + sp.segs.filter(function (z) { return z[0] > 1; }).map(function (z) { return Math.max(1, Math.round(z[0] / z[1])) + ' @ ' + z[1] + ' mm (zona de ' + Math.round(z[0]) + ' mm)'; }).join(' + ') + '.'); } }
                     addQty(k, o, r);
+                    if (k === 'zapata' && !r.__zd) { zapataDims(r.model, dflt(k, o), r); r.__zd = true; }
+                    if (TITLES[k] && r.model) addSheet(r.model, r, k);
                 }
             } catch (e) { try { console.warn('CivixCAD cantidades', k, e); } catch (e2) { } }
             return r;
         };
     });
+    var ce = S.cercha; if (typeof ce === 'function') S.cercha = function (o) { var r = ce.apply(this, arguments); try { if (r && r.ok && r.model) addSheet(r.model, r, 'cercha'); } catch (e) { } return r; };
     var va = S.vigaApoyos; if (typeof va === 'function') S.vigaApoyos = function (o) {
         var r = va.apply(this, arguments);
         try {

@@ -65,15 +65,34 @@
     };
     function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
     function help(label) { var l = label.toLowerCase().replace(/\s+/g, ' ').trim(), i; for (i = 0; i < D.length; i++) if (D[i][0].test(l)) return D[i][1]; return ''; }
+    /* tercera columna según el rol: [regex, consejo para el estudiante, criterio para el docente] */
+    var R = [
+        [/f.c|f′c/, 'Prueba 21, 28 y 35 MPa y mira cómo baja la sección o el acero.', 'Valores usuales 21–35 MPa (NSR-10 C.1.1.1: mín. 17 MPa). Útil para comparar economía vs. resistencia.'],
+        [/^fy|fy \(/, 'Casi siempre se usa 420 MPa (grado 60).', '240 MPa solo para ejemplos históricos; 420 y 500 MPa son los de obra.'],
+        [/recubrimiento/, 'Si lo subes, la altura útil d baja y puede aumentar el acero.', 'NSR-10 C.7.7: 40 mm vigas/columnas, 50 mm losas expuestas, 75 mm contra el suelo.'],
+        [/alto h|altura h|altura total h|^alto/, 'Aumenta h y verás que baja el acero necesario.', 'Criterio de predimensionamiento: h ≈ L/10 a L/12 en vigas simplemente apoyadas (NSR-10 C.9.5).'],
+        [/ancho b|ancho del alma/, 'b ≥ 250 mm es lo habitual en vigas de pórtico.', 'NSR-10 C.21: bw ≥ 250 mm en DES; relación h/b ≤ 3.'],
+        [/longitud l|longitud del vano|longitud entre apoyos|longitud tramo/, 'Duplica L y observa cómo el momento se cuadruplica.', 'Buen parámetro para ejercicios de sensibilidad (M ∝ L²).'],
+        [/carga muerta/, 'Incluye el peso propio y los acabados.', 'Verifique que el estudiante no duplique el peso propio de la viga.'],
+        [/carga viva/, 'Depende del uso: vivienda 1.8 kPa, oficinas 2.0 kPa.', 'NSR-10 B.4.2: tabla de cargas vivas mínimas por ocupación.'],
+        [/apoyo/, 'Cambia de articulado a empotrado y compara los diagramas.', 'Permite discutir hiperestaticidad y redistribución de momentos.'],
+        [/qadm|capacidad portante/, 'A menor qadm, más grande la zapata.', 'Debe provenir del estudio de suelos; aquí es un dato académico.'],
+        [/barra/, '#4–#6 son las más comunes en vigas.', 'Controle separación mínima y longitud de desarrollo (C.12).'],
+        [/equidistancia/, 'Con 1 m el plano se ve limpio; con 0.5 m salen más curvas.', 'Regla práctica: equidistancia = desnivel / 5 a 10 curvas maestras.'],
+        [/n\.º de puntos/, 'Más puntos = terreno más fiel, pero más lento.', 'Con 400 puntos la triangulación sigue siendo ágil en un computador de aula.'],
+        [/semilla/, 'Repite el número para obtener el mismo terreno.', 'Entregue la misma semilla a todo el grupo para comparar resultados.']
+    ];
+    function extra(label, rol) { var l = label.toLowerCase(), i; for (i = 0; i < R.length; i++) if (R[i][0].test(l)) return rol === 'docente' ? R[i][2] : R[i][1]; return rol === 'docente' ? 'Úselo para un ejercicio de sensibilidad: fije los demás datos y varíe solo este.' : 'Cámbialo y observa cómo se modifican el acero, los diagramas y las cantidades.'; }
+    function rolActual() { try { var s = typeof aulaGetSession === 'function' && aulaGetSession(); return s && s.rol === 'docente' ? 'docente' : 'estudiante'; } catch (e) { return 'estudiante'; } }
     function build(sec, key) {
-        var box = sec.querySelector('.cxa-box'); if (!box) return;
-        var html = '<p class="cxa-tip">' + (TIPS[key] || TIPS.struct) + '</p>';
+        var box = sec.querySelector('.cxa-box'); if (!box) return; var rol = rolActual();
+        var html = '<p class="cxa-rol">' + (rol === 'docente' ? '👨‍🏫 Vista docente — criterios y sugerencias para clase' : '🎓 Vista estudiante — qué significa y cómo experimentar') + '</p><p class="cxa-tip">' + (TIPS[key] || TIPS.struct) + '</p>';
         var els = sec.querySelector('.cxp-el.on'); if (els) html += '<h5>Elemento: ' + esc(els.textContent.replace(/^\S+\s*/, '')) + '</h5>';
         var seen = {}, rows = '';
         sec.querySelectorAll('label.cxp-f > span, label.cxf-f > span, .cxf-row > span, .cxf-row > label').forEach(function (sp) {
-            var t = sp.textContent.trim(); if (!t || seen[t]) return; seen[t] = 1; var h = help(t); if (h) rows += '<dt>' + esc(t) + '</dt><dd>' + h + '</dd>';
+            var t = sp.textContent.trim(); if (!t || seen[t]) return; seen[t] = 1; var h = help(t); if (h) rows += '<tr><td>' + esc(t) + '</td><td>' + h + '</td><td>' + esc(extra(t, rol)) + '</td></tr>';
         });
-        if (rows) html += '<h5>Parámetros</h5><dl>' + rows + '</dl>';
+        if (rows) html += '<table class="cxa-tb"><thead><tr><th>Parámetro</th><th>Qué es y para qué sirve</th><th>' + (rol === 'docente' ? 'Criterio docente' : 'Consejo') + '</th></tr></thead><tbody>' + rows + '</tbody></table>';
         box.innerHTML = html;
     }
     function attach(panel) {
