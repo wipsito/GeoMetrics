@@ -154,6 +154,41 @@
         D.dim(cx + (B - c1) / 2, h + 900, cx + (B + c1) / 2, h + 900, th * 2.2, 'c1 = ' + c1 + ' mm'); D.dim(cx + (B + c1) / 2, h, cx + (B + c1) / 2, h + 900, th * 2.2, '900 mm');
         D.ents.forEach(function (e) { model.ents.push(e); }); Object.keys(D.layers).forEach(function (kk) { if (!model.layers[kk]) model.layers[kk] = D.layers[kk]; }); model.bbox = CAD.bboxOf(model.ents);
     }
+    /* cotas (azules) con la separación entre dos barras consecutivas de cada grupo de barras paralelas: cimentaciones, losas, muros… */
+    function barDims(model) {
+        var L = [], bb0 = CAD.bboxOf(model.ents), span = Math.max(bb0[2] - bb0[0], bb0[3] - bb0[1]);
+        model.ents.forEach(function (e) {
+            if (e.t !== 'poly' || e.closed || !e.pts || e.pts.length !== 2 || !/^(ARMADURA|ACERO)/.test(e.layer || '')) return;
+            var a = e.pts[0], c = e.pts[1], dx = Math.abs(c[0] - a[0]), dy = Math.abs(c[1] - a[1]);
+            if (dy < 0.5 && dx > 400) L.push({ h: true, k: Math.round(Math.min(a[0], c[0])) + '|' + Math.round(Math.max(a[0], c[0])) + '|' + e.layer, p: a[1], a0: Math.min(a[0], c[0]), a1: Math.max(a[0], c[0]) });
+            else if (dx < 0.5 && dy > 400) L.push({ h: false, k: Math.round(Math.min(a[1], c[1])) + '|' + Math.round(Math.max(a[1], c[1])) + '|' + e.layer, p: a[0], a0: Math.min(a[1], c[1]), a1: Math.max(a[1], c[1]) });
+        });
+        var groups = {}; L.forEach(function (l) { var key = (l.h ? 'h' : 'v') + l.k; (groups[key] = groups[key] || []).push(l); });
+        var list = Object.keys(groups).map(function (k) { var g = groups[k]; g.sort(function (u, v) { return u.p - v.p; }); return g; }).filter(function (g) {
+            if (g.length < 3) return false; var d1 = g[1].p - g[0].p, d2 = g[2].p - g[1].p; return d1 >= 30 && Math.abs(d1 - d2) <= Math.max(2, d1 * 0.03);
+        });
+        list.sort(function (u, v) { return v.length - u.length; });
+        var used = { h: 0, v: 0 }, thD = Math.max(14, Math.min(90, span * 0.014)), D = new Draw(thD), n = 0;
+        list.forEach(function (g) {
+            var o = g[0], dir = o.h ? 'h' : 'v'; if (used[dir] >= 2) return; used[dir]++;
+            var gap = Math.round(g[1].p - g[0].p), same = g.filter(function (q) { return q.a1 === o.a1; });
+            if (o.h) D.dim(o.a1, g[0].p, o.a1, g[1].p, -thD * (2.4 + 2.2 * (used[dir] - 1)), gap + ' mm');
+            else D.dim(g[0].p, o.a1, g[1].p, o.a1, thD * (2.4 + 2.2 * (used[dir] - 1)), gap + ' mm');
+            n++;
+        });
+        if (n) { D.ents.forEach(function (e) { model.ents.push(e); }); Object.keys(D.layers).forEach(function (kk) { if (!model.layers[kk]) model.layers[kk] = D.layers[kk]; }); model.bbox = CAD.bboxOf(model.ents); }
+        return n;
+    }
+    /* detalle de separación de barras (3 barras en sección + cota azul) para diseños donde el acero se dibuja como línea única */
+    function barDetail(model, s, lab) {
+        var bb = CAD.bboxOf(model.ents), span = Math.max(bb[2] - bb[0], bb[3] - bb[1]); if (!s || s < 30) return;
+        var thD = Math.max(14, Math.min(90, span * 0.014)), D = new Draw(thD), k = Math.max(1, (thD * 14) / (s * 2)), sc = Math.min(1, k), x0 = bb[2] + span * 0.05, y0 = bb[1] + span * 0.12, sp = s, r = Math.max(thD * 0.6, 6);
+        D.text(x0, y0 + thD * 5, lab || 'DETALLE DE SEPARACION DEL ACERO', { h: thD * 1.1 });
+        for (var i = 0; i < 3; i++) D.circle(x0 + i * sp, y0, r, 'ARMADURA', 5);
+        D.line(x0 - sp * 0.4, y0 - r * 2, x0 + 2 * sp + sp * 0.4, y0 - r * 2, 'CONCRETO');
+        D.dim(x0, y0, x0 + sp, y0, thD * 2.4, Math.round(sp) + ' mm');
+        D.ents.forEach(function (e) { model.ents.push(e); }); Object.keys(D.layers).forEach(function (kk) { if (!model.layers[kk]) model.layers[kk] = D.layers[kk]; }); model.bbox = CAD.bboxOf(model.ents);
+    }
     var SPACING = {
         viga: function (o, r) { return { start: 'A', L: o.L * 1000, zE: 2 * o.h, sEnd: r.calc.sEnd, sMid: r.calc.sMid, hdim: o.h, y0: o.h }; },
         despieceViga: function (o) { var rr = S.viga(o); return { start: 'B', L: o.L * 1000, zE: 2 * o.h, sEnd: rr.calc.sEnd, sMid: rr.calc.sMid, hdim: o.h, y0: o.h }; },
@@ -199,6 +234,7 @@
                     if (EXTRA[k] && r.model && !r.__extra) { var sp = EXTRA[k](dflt(k, o), r); if (sp && !sp.noVM) { extraModel(r.model, sp); r.__extra = true; if (sp.vs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DIAGRAMAS: V(apoyo izq.) = ' + F(sp.vs[0][1], 1) + ' kN · V(apoyo der.) = ' + F(sp.vs[sp.vs.length - 1][1], 1) + ' kN · momento y cortante con carga factorada (ver plano).'); if (sp.segs) r.memo.splice(Math.max(0, r.memo.length - 2), 0, 'DISTRIBUCION DE ESTRIBOS: ' + sp.segs.filter(function (z) { return z[0] > 1; }).map(function (z) { return Math.max(1, Math.round(z[0] / z[1])) + ' @ ' + z[1] + ' mm (zona de ' + Math.round(z[0]) + ' mm)'; }).join(' + ') + '.'); } }
                     addQty(k, o, r);
                     if (k === 'zapata' && !r.__zd) { zapataDims(r.model, dflt(k, o), r); r.__zd = true; }
+                    if (['zapata', 'zapataComb', 'zapataCorr', 'muro', 'muroC', 'losa', 'losa2d', 'losaNerv', 'escalera', 'pilote', 'muroCorte', 'puente'].indexOf(k) >= 0 && r.model && !r.__bd) { r.__bd = true; var nbd = barDims(r.model); r.__nbd = nbd; if (!nbd && r.calc) { var sv = k === 'muro' ? r.calc.sS : (k === 'escalera' ? r.calc.s : 0); if (sv) { barDetail(r.model, sv, k === 'muro' ? 'DETALLE: SEPARACION DEL ACERO VERTICAL' : 'DETALLE: SEPARACION DEL ACERO'); r.__nbd = 1; } } growFrame(r.model); }
                     if (TITLES[k] && r.model) addSheet(r.model, r, k);
                 }
             } catch (e) { try { console.warn('CivixCAD cantidades', k, e); } catch (e2) { } }
