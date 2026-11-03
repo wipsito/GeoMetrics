@@ -516,11 +516,13 @@
 
   function removeMember(userId) {
     if (!isSuperAdmin()) return;
-    if (!confirm('¿Retirar a esta persona del equipo creador? Su cuenta de GeoMetrics no se eliminará.')) return;
-    persistRemove(userId).then(function () {
-      renderGrid();
-      renderAdminList();
-      renderUserPick('');
+    gmConfirm('¿Retirar a esta persona del equipo creador? Su cuenta de GeoMetrics no se eliminará.', { titulo: 'Retirar del equipo', okTexto: 'Retirar' }).then(function (ok) {
+      if (!ok) return;
+      persistRemove(userId).then(function () {
+        renderGrid();
+        renderAdminList();
+        renderUserPick('');
+      });
     });
   }
 

@@ -1450,8 +1450,7 @@
         var msgId = delMsg.getAttribute('data-ch-del-msg');
         var chatId = activeChatId();
         closeAllMenus();
-        if (!confirm('¿Eliminar este mensaje?')) return;
-        if (deleteMessage(chatId, msgId)) paint(host, true);
+        gmConfirm('¿Eliminar este mensaje?', { titulo: 'Eliminar mensaje' }).then(function (ok) { if (ok && deleteMessage(chatId, msgId)) paint(host, true); });
         return;
       }
 
@@ -1520,8 +1519,7 @@
         var cid = activeChatId();
         closeAllMenus();
         if (!cid) return;
-        if (!confirm('¿Vaciar todos los mensajes de este chat?')) return;
-        if (clearChat(cid)) paint(host, true);
+        gmConfirm('¿Vaciar todos los mensajes de este chat?', { titulo: 'Vaciar chat', okTexto: 'Vaciar' }).then(function (ok) { if (ok && clearChat(cid)) paint(host, true); });
         return;
       }
 
@@ -1533,8 +1531,7 @@
         var cid2 = activeChatId();
         closeAllMenus();
         if (!cid2) return;
-        if (!confirm('¿Eliminar esta conversación por completo?')) return;
-        if (deleteConversation(cid2)) paint(host, true);
+        gmConfirm('¿Eliminar esta conversación por completo?', { titulo: 'Eliminar conversación' }).then(function (ok) { if (ok && deleteConversation(cid2)) paint(host, true); });
         return;
       }
 
