@@ -6,8 +6,8 @@
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
     function medir() {
         var w = window.innerWidth, h = window.innerHeight, movil = w < 900;
-        var gz = movil ? 1 : clamp(w / 2150, 0.6, 0.92);                       /* pantallas con scroll */
-        var gzf = movil ? 1 : clamp(Math.min(w / 2150, h / 1120), 0.58, 0.9), gzl = movil ? 1 : clamp(Math.min(w / 1680, h / 860), 0.66, 1);   /* pantallas a una sola vista */
+        var gz = movil ? 1 : clamp(w / 1920, 0.62, 1);                       /* pantallas con scroll */
+        var gzf = movil ? 1 : clamp(Math.min(w / 1920, h / 1000), 0.6, 1), gzl = movil ? 1 : clamp(Math.min(w / 1680, h / 860), 0.66, 1);   /* pantallas a una sola vista */
         H.style.setProperty('--gz', gz.toFixed(4));
         H.style.setProperty('--gzf', gzf.toFixed(4)); H.style.setProperty('--gzl', gzl.toFixed(4));
     }
