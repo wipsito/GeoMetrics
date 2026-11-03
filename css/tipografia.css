@@ -1,0 +1,310 @@
+/* ============================================================
+   GeoMetrics — TIPOGRAFÍA CENTRAL
+   Archivo: css/tipografia.css
+
+   CÓMO USAR
+   1) Cambia solo los valores de las variables en :root (en px).
+   2) Guarda el archivo y recarga la página (Ctrl+F5).
+   3) Este archivo se carga AL FINAL para poder ajustar tamaños
+      sin tocar el resto de hojas de estilo.
+
+   Escala recomendada (referencia):
+     xs 11–12 · sm 12–13 · base 14 · md 15–16 · lg 18
+     título 20–24 · título grande 28–36 · héroe 40–60
+   ============================================================ */
+
+:root {
+  /* ——— Texto general ——— */
+  --fs-xs: 11px;          /* ayudas, badges, pie de página */
+  --fs-sm: 12px;          /* labels, hints, meta */
+  --fs-base: 14px;        /* párrafo base de la app */
+  --fs-md: 15px;          /* texto destacado */
+  --fs-lg: 16px;          /* intro, lead */
+
+  /* ——— Títulos ——— */
+  --fs-h6: 14px;
+  --fs-h5: 16px;
+  --fs-h4: 18px;
+  --fs-h3: 20px;
+  --fs-h2: 24px;
+  --fs-h1: 32px;
+  --fs-hero: 48px;        /* logo / título de portada */
+
+  /* ——— Botones ——— */
+  --fs-btn-sm: 12px;
+  --fs-btn: 14px;
+  --fs-btn-lg: 15px;
+
+  /* ——— Formularios ——— */
+  --fs-label: 12px;
+  --fs-input: 14px;
+  --fs-placeholder: 13px;
+
+  /* ——— Navegación / menú ——— */
+  --fs-nav: 14px;
+  --fs-nav-title: 18px;
+  --fs-card-title: 16px;
+  --fs-card-text: 13px;
+
+  /* ——— Chat Civix ——— */
+  --fs-chat: 14px;
+  --fs-chat-meta: 12px;
+
+  /* ——— Tablas ——— */
+  --fs-table: 13px;
+  --fs-table-head: 12px;
+
+  /* ——— Line-height (opcional) ——— */
+  --lh-tight: 1.25;
+  --lh-base: 1.45;
+  --lh-loose: 1.6;
+}
+
+
+/* ============================================================
+   APLICACIÓN GLOBAL
+   (si un módulo no reacciona, añade su selector abajo)
+   ============================================================ */
+
+html {
+  font-size: var(--fs-base);
+}
+
+body {
+  font-size: var(--fs-base);
+  line-height: var(--lh-base);
+}
+
+/* Títulos HTML */
+h1, .h1 { font-size: var(--fs-h1); line-height: var(--lh-tight); }
+h2, .h2 { font-size: var(--fs-h2); line-height: var(--lh-tight); }
+h3, .h3 { font-size: var(--fs-h3); line-height: var(--lh-tight); }
+h4, .h4 { font-size: var(--fs-h4); line-height: var(--lh-tight); }
+h5, .h5 { font-size: var(--fs-h5); line-height: var(--lh-tight); }
+h6, .h6 { font-size: var(--fs-h6); line-height: var(--lh-tight); }
+
+/* Párrafos y texto auxiliar */
+p { font-size: var(--fs-base); }
+small, .text-sm, .login-hint, .hint, .meta, .subtitle {
+  font-size: var(--fs-sm);
+}
+.text-xs, .badge, .chip, .tag {
+  font-size: var(--fs-xs);
+}
+.lead, .intro {
+  font-size: var(--fs-lg);
+}
+
+
+/* ——— Botones ——— */
+button,
+.btn,
+.btn-calcular,
+.btn-limpiar,
+.btn-primario,
+.btn-secundario,
+.btn-enviar,
+input[type="button"],
+input[type="submit"] {
+  font-size: var(--fs-btn);
+}
+
+.btn-sm, .btn-mini, .gm-team-mini-btn, .gm-team-ico-btn {
+  font-size: var(--fs-btn-sm);
+}
+
+.btn-lg, .btn-grande {
+  font-size: var(--fs-btn-lg);
+}
+
+
+/* ——— Formularios ——— */
+label,
+.gm-team-field-label,
+.gm-team-role-label {
+  font-size: var(--fs-label);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="date"],
+input[type="time"],
+input[type="url"],
+textarea,
+select {
+  font-size: var(--fs-input);
+}
+
+input::placeholder,
+textarea::placeholder {
+  font-size: var(--fs-placeholder);
+}
+
+
+/* ——— Menú / cards del centro de aprendizaje ——— */
+.menu-titulo,
+.seccion-titulo h1,
+.seccion-titulo h2,
+.centro-titulo {
+  font-size: var(--fs-h1);
+}
+
+.card-titulo,
+.modulo-titulo,
+.aula-card h3,
+.gm-team-col-title {
+  font-size: var(--fs-card-title);
+}
+
+.card-texto,
+.card-desc,
+.modulo-desc {
+  font-size: var(--fs-card-text);
+}
+
+.nav-item,
+.civix-nav-item,
+.menu-btn {
+  font-size: var(--fs-nav);
+}
+
+
+/* ——— Login / inicio ——— */
+.inicio-titulo,
+.titulo-principal,
+.logo-titulo {
+  font-size: var(--fs-hero);
+}
+
+.inicio-subtitulo {
+  font-size: var(--fs-lg);
+}
+
+
+/* ——— Civix chat ——— */
+.mensaje,
+.mensaje-bot,
+.mensaje-user,
+.civix-md,
+#inputAsistente,
+.chat-input {
+  font-size: var(--fs-chat);
+}
+
+.mensaje-meta,
+.civix-brand-sub,
+.civix-online {
+  font-size: var(--fs-chat-meta);
+}
+
+
+/* ——— Tablas ——— */
+table,
+.tabla,
+.cxp-tbl {
+  font-size: var(--fs-table);
+}
+
+th {
+  font-size: var(--fs-table-head);
+}
+
+
+/* ——— Panel docente / aula ——— */
+.aula-card h3,
+.panel-titulo,
+.docente-titulo {
+  font-size: var(--fs-h3);
+}
+
+.aula-card p,
+.panel-texto {
+  font-size: var(--fs-base);
+}
+
+
+/* ——— Foros / avisos ——— */
+.fa-title,
+.foro-titulo {
+  font-size: var(--fs-h4);
+}
+
+.fa-body,
+.aviso-texto {
+  font-size: var(--fs-base);
+}
+
+
+/* ——— Equipo creador ——— */
+.gm-team-name {
+  font-size: var(--fs-h5);
+}
+.gm-team-role {
+  font-size: var(--fs-sm);
+}
+.gm-team-handle {
+  font-size: var(--fs-xs);
+}
+
+
+/* ============================================================
+   PRESETS RÁPIDOS (opcional)
+   Descomenta UNA de estas clases en <html> o <body>
+   Ejemplo: <body class="tipo-grande">
+   ============================================================ */
+
+body.tipo-compacto {
+  --fs-xs: 10px;
+  --fs-sm: 11px;
+  --fs-base: 13px;
+  --fs-md: 14px;
+  --fs-lg: 15px;
+  --fs-h1: 26px;
+  --fs-h2: 20px;
+  --fs-h3: 17px;
+  --fs-h4: 15px;
+  --fs-btn: 13px;
+  --fs-hero: 40px;
+  --fs-chat: 13px;
+}
+
+body.tipo-grande {
+  --fs-xs: 12px;
+  --fs-sm: 14px;
+  --fs-base: 16px;
+  --fs-md: 17px;
+  --fs-lg: 18px;
+  --fs-h1: 36px;
+  --fs-h2: 28px;
+  --fs-h3: 22px;
+  --fs-h4: 20px;
+  --fs-btn: 15px;
+  --fs-btn-lg: 16px;
+  --fs-hero: 56px;
+  --fs-chat: 16px;
+  --fs-input: 16px;
+  --fs-card-title: 18px;
+}
+
+body.tipo-accesible {
+  --fs-xs: 13px;
+  --fs-sm: 15px;
+  --fs-base: 18px;
+  --fs-md: 19px;
+  --fs-lg: 20px;
+  --fs-h1: 40px;
+  --fs-h2: 32px;
+  --fs-h3: 26px;
+  --fs-h4: 22px;
+  --fs-btn: 17px;
+  --fs-btn-lg: 18px;
+  --fs-hero: 60px;
+  --fs-chat: 18px;
+  --fs-input: 18px;
+  --fs-label: 14px;
+  --fs-card-title: 20px;
+  --fs-nav: 16px;
+}

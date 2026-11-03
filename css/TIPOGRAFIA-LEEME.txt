@@ -1,0 +1,11 @@
+GeoMetrics — tamaños de letra
+=============================
+
+Esta versión usa los tamaños de letra de "GeoMetrics_civix_cad":
+  · la escala de pantalla está en js/gm-escala.js (variables gz / gzf);
+  · css/tipografia.css y js/gm-tipo.js (sistema tipográfico de la versión main)
+    quedan en el proyecto pero NO se cargan, porque reducían el texto.
+
+Para volver a activarlos, agrega en index.html:
+  <link rel="stylesheet" href="css/tipografia.css">    (junto a los demás CSS)
+  <script src="js/gm-tipo.js"></script>                (después de gm-escala.js)
