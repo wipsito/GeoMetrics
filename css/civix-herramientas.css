@@ -108,3 +108,27 @@ body.cvx-open{overflow:hidden}
 .cxa-tb td{padding:8px 10px;border-bottom:1px solid rgba(148,163,184,.15);vertical-align:top}
 .cxa-tb td:first-child{font-weight:700;white-space:nowrap}
 @media(max-width:700px){.cxa-tb,.cxa-tb tbody,.cxa-tb tr,.cxa-tb td{display:block}.cxa-tb thead{display:none}.cxa-tb td:first-child{white-space:normal;padding-bottom:0}.cxa-tb tr{border-bottom:1px solid rgba(148,163,184,.25);padding:6px 0}}
+
+/* Instrucciones: ventana estilo "Editar perfil" */
+.cxa-ov{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(2,6,16,.72);backdrop-filter:blur(6px)}
+.cxa-card{position:relative;width:min(640px,100%);max-height:calc(100vh - 36px);display:flex;flex-direction:column;overflow:hidden;border-radius:24px;border:1px solid rgba(56,189,248,.28);background:#0d1b33;box-shadow:0 30px 80px rgba(0,0,0,.6);color:#e8f6ff}
+.cxa-x{position:absolute;top:14px;right:14px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:18px;cursor:pointer;z-index:2}
+.cxa-x:hover{background:rgba(0,0,0,.7)}
+.cxa-head{display:flex;align-items:center;gap:18px;padding:26px 28px 22px;background:linear-gradient(135deg,#17356b 0%,#12466a 55%,#0f4a52 100%)}
+.cxa-av{width:84px;height:84px;border-radius:50%;border:3px solid #38bdf8;background:#0b2a45;object-fit:cover;flex:none}
+.cxa-ht small{display:block;color:#7dd3fc;font-weight:600;margin-bottom:2px}
+.cxa-ht h3{margin:0 0 8px;font-size:1.35rem;line-height:1.2}
+.cxa-pill{display:inline-block;margin:0 6px 0 0;padding:4px 12px;border-radius:999px;border:1px solid #34d399;background:rgba(52,211,153,.14);color:#6ee7b7;font-size:.72rem;font-weight:800;letter-spacing:.06em}
+.cxa-pill2{border-color:#38bdf8;background:rgba(56,189,248,.14);color:#7dd3fc;letter-spacing:0}
+.cxa-tabs{display:flex;border-bottom:1px solid rgba(148,163,184,.2);background:#0d1b33}
+.cxa-tabs button{flex:1;padding:14px 8px;border:0;border-bottom:3px solid transparent;background:transparent;color:#94a3b8;font-weight:700;font-size:.95rem;cursor:pointer}
+.cxa-tabs button.on{color:#fff;border-bottom-color:#38bdf8}
+.cxa-tabs b{margin-left:4px;padding:1px 7px;border-radius:999px;background:rgba(56,189,248,.2);color:#7dd3fc;font-size:.75rem}
+.cxa-body{padding:20px 24px 26px;overflow:auto}
+.cxa-tipbox{padding:16px 18px;border-radius:14px;border:1px solid rgba(148,163,184,.25);background:#0a1528;line-height:1.6;font-size:.95rem}
+.cxa-item{margin:0 0 12px;padding:14px 16px;border-radius:14px;border:1px solid rgba(148,163,184,.22);background:#0a1528}
+.cxa-item h4{margin:0 0 6px;font-size:.98rem;color:#fff}
+.cxa-item p{margin:0 0 10px;color:#cbd5e1;font-size:.9rem;line-height:1.5}
+.cxa-adv{padding:8px 12px;border-radius:10px;background:rgba(250,204,21,.09);border:1px solid rgba(250,204,21,.28);color:#fde68a;font-size:.86rem;line-height:1.45}
+.cxa-adv span{display:block;font-size:.68rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#facc15;margin-bottom:2px}
+@media(max-width:560px){.cxa-head{flex-direction:column;text-align:center;padding:24px 16px 18px}.cxa-body{padding:16px 14px 22px}}
