@@ -1475,7 +1475,8 @@
         e.preventDefault();
         e.stopPropagation();
         closeAllMenus();
-        var q = prompt('Buscar en este chat:');
+        var askQ = window.gmPrompt ? window.gmPrompt('Escribe la palabra o frase a buscar en este chat.', { titulo: 'Buscar en el chat', okTexto: 'Buscar', placeholder: 'Ej.: tarea, parcial…' }) : Promise.resolve(prompt('Buscar en este chat:'));
+        askQ.then(function (q) {
         if (q == null || !String(q).trim()) return;
         var body = host.querySelector('[data-ch-scroll]');
         if (!body) return;
@@ -1492,6 +1493,7 @@
         } else {
           try { alert('No se encontraron mensajes.'); } catch (eA) {}
         }
+        });
         return;
       }
 

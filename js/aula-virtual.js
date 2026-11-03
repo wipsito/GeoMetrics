@@ -1183,7 +1183,10 @@
       btnDel.onclick = function (e) {
         e.preventDefault();
         e.stopPropagation();
-        var ok = window.confirm('¿Eliminar tu horario guardado (este PC y la nube)?\nPodrás cargar uno nuevo después.');
+        var ask = window.gmConfirm
+          ? window.gmConfirm('¿Eliminar tu horario guardado (este PC y la nube)?\nPodrás cargar uno nuevo después.', { titulo: 'Eliminar horario', okTexto: 'Eliminar' })
+          : Promise.resolve(window.confirm('¿Eliminar tu horario guardado (este PC y la nube)?'));
+        ask.then(function (ok) {
         if (!ok) return;
         var empty = emptyHorario();
         applyHorarioPayload(empty, 'Horario eliminado. Ya puedes cargar uno nuevo.');
@@ -1194,6 +1197,7 @@
             window.GeoCloud.cloudSet(path, null);
           }
         } catch (e3) {}
+        });
       };
     }
   }
