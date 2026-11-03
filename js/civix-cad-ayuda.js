@@ -140,6 +140,7 @@
         var els = key === 'struct' ? sec.querySelector('.cxp-el.on') : null;
         return { rol: rol, rows: rows, elem: els ? els.textContent.replace(/^\S+\s*/, '') : '' };
     }
+    function avatarSrc() { try { if (typeof civixAvatarSrc === 'function') { var u = civixAvatarSrc(); if (u) return u; } var im = document.getElementById('civixAvatarImg'); if (im && im.src) return im.src; } catch (e) { } return 'docs/civix-robot.svg'; }
     function closeModal() { var m = document.getElementById('cxaModal'); if (m) m.remove(); document.removeEventListener('keydown', onKey); }
     function onKey(e) { if (e.key === 'Escape') closeModal(); }
     function openModal(sec, key) {
@@ -149,7 +150,7 @@
         var ov = document.createElement('div'); ov.id = 'cxaModal'; ov.className = 'cxa-ov';
         ov.innerHTML = '<div class="cxa-card" role="dialog" aria-modal="true" aria-label="Instrucciones">' +
             '<button type="button" class="cxa-x" aria-label="Cerrar">✕</button>' +
-            '<div class="cxa-head"><img src="docs/civix-robot.svg" alt="Civix" class="cxa-av" width="84" height="84"><div class="cxa-ht"><small>' + (doc ? 'Guía para el docente' : 'Bienvenido futuro ingeniero' + (nombre ? ' ' + esc(nombre) : '')) + '</small><h3>Instrucciones · ' + esc(NAMES[key] || key) + '</h3><span class="cxa-pill">' + (doc ? 'DOCENTE' : 'ESTUDIANTE') + '</span>' + (d.elem ? '<span class="cxa-pill cxa-pill2">' + esc(d.elem) + '</span>' : '') + '</div></div>' +
+            '<div class="cxa-head"><img src="' + avatarSrc() + '" alt="Civix" class="cxa-av" width="84" height="84"><div class="cxa-ht"><small>' + (doc ? 'Guía para el docente' : 'Bienvenido futuro ingeniero' + (nombre ? ' ' + esc(nombre) : '')) + '</small><h3>Instrucciones · ' + esc(NAMES[key] || key) + '</h3><span class="cxa-pill">' + (doc ? 'DOCENTE' : 'ESTUDIANTE') + '</span>' + (d.elem ? '<span class="cxa-pill cxa-pill2">' + esc(d.elem) + '</span>' : '') + '</div></div>' +
             '<div class="cxa-tabs"><button type="button" class="on" data-p="uso">📘 Cómo usar</button><button type="button" data-p="par">⚙️ Parámetros <b>' + d.rows.length + '</b></button></div>' +
             '<div class="cxa-body"><div class="cxa-pane" data-p="uso"><div class="cxa-tipbox">' + (TIPS[key] || TIPS.struct) + '</div></div>' +
             '<div class="cxa-pane" data-p="par" hidden>' + d.rows.map(function (r) { return '<div class="cxa-item"><h4>' + esc(r[0]) + '</h4><p>' + r[1] + '</p><div class="cxa-adv"><span>' + (doc ? 'Criterio docente' : 'Consejo') + '</span>' + esc(r[2]) + '</div></div>'; }).join('') + '</div></div></div>';

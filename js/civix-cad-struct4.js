@@ -75,7 +75,7 @@
             if (ki === 0) { for (i = 0; i < NV; i++) D.dim(i * o.Lv * 1000, 0, (i + 1) * o.Lv * 1000, 0, -th * 3, F(o.Lv * 1000)); for (f = 0; f < NP; f++) D.dim(W, f * o.Hp * 1000, W, (f + 1) * o.Hp * 1000, th * 3, F(o.Hp * 1000)); }
         });
         G.floors.forEach(function (fl, k) { var y = (k + 1) * o.Hp * 1000; D.line(-th * 5, y, -th * 0.8, y, 'COTAS'); D.line(-th * 1.6, y + th * 0.5, -th * 0.8, y, 'COTAS'); D.line(-th * 1.6, y - th * 0.5, -th * 0.8, y, 'COTAS'); D.text(-th * 5.2, y + th * 0.6, 'E = ' + o.Fh + ' kN', { h: th * 0.8, ha: 2 }); });
-        rows.push(['Vigas', 'M máx (kN·m)', F(s1.mb, 1), F(s2.mb, 1)], ['Vigas', 'V máx (kN)', F(s1.vb, 1), F(s2.vb, 1)], ['Columnas', 'M máx (kN·m)', F(s1.mc, 1), F(s2.mc, 1)], ['Columnas', 'N máx (kN)', F(s1.nc, 1), F(s2.nc, 1)]); var by = -th * 8; D.text(0, by, 'RESULTADOS MAXIMOS', { h: th * 1.1 }); D.table(0, by - th * 1.2, ['Elemento', 'Magnitud', 'Caso 1', 'Caso 2'], rows, [th * 9, th * 12, th * 8, th * 8]);
+        rows.push(['Vigas', 'M máx (kN·m)', F(s1.mb, 1), F(s2.mb, 1)], ['Vigas', 'V máx (kN)', F(s1.vb, 1), F(s2.vb, 1)], ['Columnas', 'M máx (kN·m)', F(s1.mc, 1), F(s2.mc, 1)], ['Columnas', 'N máx (kN)', F(s1.nc, 1), F(s2.nc, 1)]); var by = -th * 12, k2 = 3.6, th0 = D.th; D.th = th * k2; D.text(0, by, 'RESULTADOS MAXIMOS', { h: th * 3.6 }); D.table(0, by - th * 4.6, ['Elemento', 'Magnitud', 'Caso 1', 'Caso 2'], rows, [th * 9 * k2, th * 12 * k2, th * 8 * k2, th * 8 * k2]); D.th = th0;
         var model = finish(D, 'PORTICO PLANO', null, { noTable: true });
         return { ok: true, warns: warns, memo: memo, model: model, calc: { s1: s1, s2: s2, drift: dmax } };
     };
