@@ -63,6 +63,51 @@
         ia: '<b>Cómo usar:</b> arma el prompt con el constructor (tipo de plano, unidades, datos) y se envía a Civix en el chat. Las peticiones de elementos estructurales se resuelven con los mismos diseños del apartado <b>Diseño estructural</b>; el resto las dibuja la IA y <b>consume tokens</b>.',
         foto: '<b>Cómo usar:</b> sube una foto o escaneo de un plano hecho a mano, ajusta los controles y pulsa convertir. Se detectan líneas, se enderezan, se escalan al ancho real y se descargan como DXF. Mejor con fondo claro, trazo oscuro y buena luz.<br><b>Controles:</b> <i>Sensibilidad</i> (qué tan tenue puede ser un trazo y aun contarse), <i>Resolución</i> (tamaño de procesamiento), <i>Unir trazos</i> (cierra huecos pequeños), <i>Ignorar cuadrícula</i> (descarta líneas más tenues que el trazo), <i>Descartar texto y detalles pequeños</i> (elimina garabatos), <i>Longitud mínima</i> y <i>Simplificar</i> (elimina segmentos cortos y reduce vértices), <i>Márgenes</i> (ignora el borde del cuaderno), <i>Enderezar</i> (corrige inclinación), <i>Invertir</i> (para pizarras oscuras) y <i>Ancho real (m)</i> (escala final del dibujo).'
     };
+    /* Filas fijas por apartado (coinciden exactamente con los controles que se ven): [control, qué es y para qué sirve, consejo estudiante, criterio docente] */
+    var SECT = {
+        curvas: [
+            ['Plantillas (Lote urbano, Predio rural, Colina, Valle)', 'Botones que llenan de una vez los datos del terreno con ejemplos típicos.', 'Empieza con una plantilla y luego cambia un dato a la vez.', 'Útil para dar el mismo punto de partida a todo el grupo.'],
+            ['Terreno aleatorio / Mis puntos (X, Y, Z)', 'Aleatorio: el programa inventa un terreno con la forma que elijas. Mis puntos: pegas tu levantamiento real y se interpola.', 'Usa «Mis puntos» con los datos de una práctica de topografía.', 'Permite contrastar un terreno sintético con un levantamiento real de campo.'],
+            ['Forma del terreno', 'Tipo de relieve del terreno aleatorio: mixto, colina, cuenca, ladera, valle u ondulado.', 'Compara cómo se ven las curvas en una colina y en una cuenca (cerradas hacia arriba o hacia abajo).', 'Ayuda a explicar cómo se leen las curvas cerradas, el espaciamiento y las divisorias.'],
+            ['Ancho (m)', 'Dimensión del terreno en el sentido este–oeste (eje X).', 'Con el alto define el área total del terreno.', 'Ancho × alto = área; relaciónela con el volumen de corte y relleno.'],
+            ['Alto (m)', 'Dimensión del terreno en el sentido norte–sur (eje Y).', 'Un terreno más alargado da curvas más separadas.', 'Compare terrenos cuadrados y alargados con el mismo desnivel.'],
+            ['N.º de puntos', 'Cantidad de puntos de cota con los que se arma la superficie (triangulación TIN). Más puntos = más detalle y más peso del DXF.', 'Con pocos puntos las curvas salen angulosas; con 400 se ven suaves.', 'Muestra cómo la densidad del levantamiento afecta la precisión de las curvas.'],
+            ['Desnivel total (m)', 'Diferencia entre la cota más alta y la más baja del terreno.', 'A mayor desnivel, más curvas y más juntas (pendiente más fuerte).', 'Relaciónelo con pendiente = desnivel / distancia horizontal.'],
+            ['Cota base (m)', 'Altitud (m s. n. m.) del punto más bajo; las demás cotas se suman a este valor.', 'Solo desplaza todas las cotas; no cambia la forma.', 'Puede usarse el valor real de la ciudad (ej. Pamplona ≈ 2300 m).'],
+            ['Equidistancia (m, 0 = auto)', 'Diferencia de cota entre dos curvas consecutivas. Con 0 el programa elige una adecuada.', 'Con 1 m el plano se ve limpio; con 0.5 m salen más curvas.', 'Regla práctica: equidistancia ≈ desnivel / 5 a 10 curvas maestras.'],
+            ['Semilla', 'Número que fija el terreno aleatorio; vacío = terreno distinto cada vez.', 'Repite el mismo número para obtener el mismo terreno.', 'Entregue la misma semilla a todo el grupo para comparar resultados.'],
+            ['Pega tus puntos (X, Y, Z)', 'Cuadro de texto para tu levantamiento: una fila por punto, formato X, Y, Z (también P, E, N, Z, con coma decimal o «;»).', 'Copia directamente la tabla de Excel de tu práctica.', 'Verifique que el sistema de coordenadas sea el mismo para todos los puntos.'],
+            ['Proyecto (para el cajetín)', 'Nombre que aparece en el cajetín (recuadro de datos) del plano.', 'Escribe el nombre de tu práctica o proyecto.', 'Exija un nombre claro para identificar cada entrega.'],
+            ['Elaboró', 'Nombre de quien hizo el plano; sale en el cajetín.', 'Pon tu nombre completo.', 'Sirve para identificar al autor de cada entrega.'],
+            ['▶ Generar curvas de nivel', 'Calcula la triangulación, traza las curvas y abre el visor con botones de DXF, PNG y SVG y las pestañas de resultados (estadísticas, perfil, pendientes y volúmenes).', 'Prueba el perfil entre dos puntos para ver el corte del terreno.', 'Los resultados permiten pedir informes de pendientes y movimiento de tierras.']
+        ],
+        ia: [
+            ['Tipo de plano', 'Clase de plano que Civix debe dibujar (estructural, arquitectónico, cimentación, vía, hidráulico, topográfico…).', 'Elige el tipo más cercano a lo que necesitas.', 'Cada tipo cambia las capas y el estilo del DXF generado.'],
+            ['Unidades', 'Unidad en que se dibuja el plano: metros, milímetros o centímetros.', 'Usa metros para planos de edificación y obra civil.', 'Pida siempre la misma unidad para poder comparar entregas.'],
+            ['Escala de referencia', 'Escala con la que se piensa imprimir; define el tamaño de textos y cotas.', '1:50 sirve para detalles; 1:100 para plantas.', 'Debe ser coherente con el tamaño de hoja exigido.'],
+            ['Nivel de detalle', 'Cuánta información lleva el plano: esencial (pocos tokens), medio o detallado (cotas, textos y cuadros). Más detalle consume más tokens.', 'Empieza en «esencial» y sube solo si lo necesitas.', 'Controla el consumo de la IA en el aula.'],
+            ['Describe lo que necesitas', 'Texto libre con dimensiones, cargas, materiales y número de elementos. Mientras más datos des, más preciso el plano.', 'Escribe números concretos (ej. viga de 6 m, 40 kN).', 'Pida a los estudiantes que justifiquen cada dato que escriban.'],
+            ['Capas deseadas (opcional)', 'Nombres de capas que quieres en el DXF (EJES, MUROS, COTAS, TEXTOS, ACERO…).', 'Déjalo vacío si no sabes qué capas usar.', 'Permite exigir una convención de capas.'],
+            ['➤ Enviar a Civix / Copiar prompt', 'Envía el prompt armado al chat de Civix, o lo copia para usarlo en otro lugar.', 'Lee el prompt antes de enviarlo; cuenta los tokens estimados.', 'Los elementos estructurales usan los diseños locales y no gastan IA.'],
+            ['✏️ Refinar el último plano', 'Botones que piden un cambio puntual al último plano: + Cotas, + Cuadro de áreas, + Cuadro de acero, + Norte y escala, Más compacto y Revisar errores.', 'Úsalos para completar el plano sin volver a describir todo.', 'Revisar errores sirve para una autoevaluación del plano antes de entregar.'],
+            ['Filtros de prompts (Todos, Estructuras, Cimentaciones…)', 'Filtran la lista de prompts listos por tema; al pulsar uno se envía a Civix.', 'Explora los ejemplos para aprender qué pedir.', 'Son una biblioteca de ejercicios base.']
+        ],
+        foto: [
+            ['🖼 Elegir imagen / 📸 Tomar foto', 'Sube una imagen del plano hecho a mano o toma la foto con la cámara. Mejor con buena luz, hoja plana y trazo oscuro.', 'Fotografía de frente, sin sombras, y llenando el encuadre.', 'Permite digitalizar planos antiguos o bocetos de clase.'],
+            ['Sensibilidad del trazo', 'Qué tan tenue puede ser un trazo y aun así detectarse. Bájalo para captar más líneas; súbelo si aparece ruido o sombras.', 'Si faltan líneas, baja este valor.', 'Ajuste distinto para lápiz suave y para tinta.'],
+            ['Resolución de análisis', 'Tamaño con el que se procesa la imagen. Más alta capta líneas finas pero tarda más.', 'Usa 2500–3000 en planos grandes.', 'Equilibre calidad y tiempo en computadores del aula.'],
+            ['Ignorar cuadrícula del cuaderno / líneas tenues', 'Descarta líneas más débiles que el trazo (cuadrícula del cuaderno).', 'Súbelo hasta que desaparezca la cuadrícula.', 'Evita que la cuadrícula se convierta en entidades del DXF.'],
+            ['Descartar texto y detalles pequeños', 'Elimina letras, números y garabatos; conserva muros, ejes y cotas largas. Con 0 se conserva todo.', 'Si se pierden líneas pequeñas importantes, bájalo.', 'Recuerde que el texto no se reconoce; debe re-escribirse en CAD.'],
+            ['Unir trazos cercanos / punteados', 'Cierra pequeños huecos (líneas de eje, trazos discontinuos).', 'Súbelo si una línea sale partida en pedazos.', 'Útil para ejes punteados.'],
+            ['Limpieza de ruido (longitud mínima)', 'Elimina trazos cortos y manchas por debajo de la longitud elegida.', 'Súbelo si salen puntitos sueltos.', 'Controla la limpieza del DXF final.'],
+            ['Suavizado de líneas', 'Reduce vértices de las polilíneas: más alto = líneas más rectas y archivo más liviano.', 'Súbelo para muros rectos.', 'Menos vértices facilitan la edición posterior.'],
+            ['Enderezar', 'Corrige la inclinación de la foto y alinea los trazos casi horizontales y verticales.', 'Déjalo activado en planos de plantas.', 'Desactívelo en dibujos curvos o libres.'],
+            ['Ignorar márgenes y bordes de la hoja', 'Descarta el borde, la espiral y el margen del cuaderno.', 'Actívalo si el cuaderno tiene margen rojo o espiral.', 'Evita que los bordes de la hoja entren al dibujo.'],
+            ['Fondo claro / oscuro', 'Indica si el trazo es oscuro sobre papel claro, o claro sobre fondo oscuro (plano azul); en automático lo detecta.', 'Déjalo en automático.', 'Fije «oscuro» para impresiones de planos azules.'],
+            ['Ancho real del dibujo (m)', 'Medida real del ancho del dibujo; escala todo el DXF a metros.', 'Mide una dimensión conocida del plano y escríbela.', 'Sin este dato el DXF no queda a escala real.'],
+            ['⬇ Descargar DXF / 👁 Ver en visor CAD', 'Descarga el resultado para AutoCAD o lo muestra en el visor del programa para revisarlo.', 'Revisa siempre las medidas antes de usarlo.', 'El resultado es un borrador para retocar, no un plano final.']
+        ]
+    };
     function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
     function help(label) { var l = label.toLowerCase().replace(/\s+/g, ' ').trim(), i; for (i = 0; i < D.length; i++) if (D[i][0].test(l)) return D[i][1]; return ''; }
     /* tercera columna según el rol: [regex, consejo para el estudiante, criterio para el docente] */
@@ -87,10 +132,11 @@
     function build(sec, key) {
         var box = sec.querySelector('.cxa-box'); if (!box) return; var rol = rolActual();
         var html = '<p class="cxa-rol">' + (rol === 'docente' ? '👨‍🏫 Vista docente — criterios y sugerencias para clase' : '🎓 Vista estudiante — qué significa y cómo experimentar') + '</p><p class="cxa-tip">' + (TIPS[key] || TIPS.struct) + '</p>';
-        var els = sec.querySelector('.cxp-el.on'); if (els) html += '<h5>Elemento: ' + esc(els.textContent.replace(/^\S+\s*/, '')) + '</h5>';
+        var els = key === 'struct' ? sec.querySelector('.cxp-el.on') : null; if (els) html += '<h5>Elemento: ' + esc(els.textContent.replace(/^\S+\s*/, '')) + '</h5>';
         var seen = {}, rows = '';
-        sec.querySelectorAll('label.cxp-f > span, label.cxf-f > span, .cxf-row > span, .cxf-row > label').forEach(function (sp) {
-            var t = sp.textContent.trim(); if (!t || seen[t]) return; seen[t] = 1; var h = help(t); if (h) rows += '<tr><td>' + esc(t) + '</td><td>' + h + '</td><td>' + esc(extra(t, rol)) + '</td></tr>';
+        if (SECT[key]) { SECT[key].forEach(function (q) { rows += '<tr><td>' + esc(q[0]) + '</td><td>' + q[1] + '</td><td>' + q[rol === 'docente' ? 3 : 2] + '</td></tr>'; }); }
+        else sec.querySelectorAll('label.cxp-f > span').forEach(function (sp) {
+            var t = sp.textContent.trim(); if (!t || seen[t]) return; seen[t] = 1; var h = help(t) || 'Dato de entrada de este elemento; cámbialo y vuelve a pulsar ▶ Calcular para ver el efecto.'; rows += '<tr><td>' + esc(t) + '</td><td>' + h + '</td><td>' + esc(extra(t, rol)) + '</td></tr>';
         });
         if (rows) html += '<table class="cxa-tb"><thead><tr><th>Parámetro</th><th>Qué es y para qué sirve</th><th>' + (rol === 'docente' ? 'Criterio docente' : 'Consejo') + '</th></tr></thead><tbody>' + rows + '</tbody></table>';
         box.innerHTML = html;
