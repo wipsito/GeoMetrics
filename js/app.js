@@ -3564,15 +3564,15 @@ function calcularRMFlexion() {
 
 function crearFormularioRMTorsion(modo) {
     return rmShell((modo === 'sim' ? 'Simulador' : 'Ensayo') + ' de Torsión', 'torsion', modo,
-        '<label>Diámetro d (mm)<input type="number" id="rm-to-d" value="20" step="0.1"></label>' +
+        '<label>Lado a (mm)<input type="number" id="rm-to-d" value="20" step="0.1"></label>' +
         '<label>Longitud L (mm)<input type="number" id="rm-to-L" value="250" step="1"></label>' +
         '<label>Torque T (N·m)<input type="number" id="rm-to-T" value="80" step="0.1"></label>' +
         '<label>Ángulo θ (°)<input type="number" id="rm-to-th" value="2.5" step="0.1"></label>',
-        '<div><span>J</span><strong id="rm-to-j">—</strong><small>mm⁴</small></div>' +
-        '<div><span>τ</span><strong id="rm-to-tau">—</strong><small>MPa</small></div>' +
+        '<div><span>K = β·a⁴</span><strong id="rm-to-j">—</strong><small>mm⁴</small></div>' +
+        '<div><span>τ máx</span><strong id="rm-to-tau">—</strong><small>MPa</small></div>' +
         '<div><span>γ</span><strong id="rm-to-g">—</strong><small>—</small></div>' +
         '<div><span>G</span><strong id="rm-to-G">—</strong><small>GPa</small></div>',
-        '<p class="login-hint">τ = Tr/J · γ = rθ/L · G = τ/γ</p>'
+        '<p class="login-hint">Sección cuadrada a × a (Saint-Venant): τmáx = T/(α·a³) · θ = T·L/(G·β·a⁴) · α = 0,208 · β = 0,1406</p>'
     );
 }
 function calcularRMTorsion() {
@@ -3580,17 +3580,18 @@ function calcularRMTorsion() {
     if (err) err.textContent = '';
     var d = rmNum('rm-to-d'), L = rmNum('rm-to-L'), T = rmNum('rm-to-T'), thDeg = rmNum('rm-to-th');
     if (!d || !L || !T || thDeg == null) { if (err) err.textContent = 'Complete todos los datos'; return; }
-    var r = d / 2;
-    var J = Math.PI * Math.pow(d, 4) / 32;
-    var tau = (T * 1000 * r) / J;
+    // Barra de sección cuadrada a × a (Saint-Venant): τmáx = T/(α·a³), θ = T·L/(G·β·a⁴)
+    var ALFA = 0.208, BETA = 0.1406;
+    var J = BETA * Math.pow(d, 4);                       // constante torsional K (mm⁴)
+    var tau = (T * 1000) / (ALFA * Math.pow(d, 3));      // MPa, en el centro de cada cara
     var th = thDeg * Math.PI / 180;
-    var gamma = (r * th) / L;
-    var G = (gamma > 0) ? (tau / gamma) / 1000 : null;
+    var G = (th > 0) ? ((T * 1000 * L) / (th * J)) / 1000 : null;   // GPa
+    var gamma = (G != null && G > 0) ? tau / (G * 1000) : 0;   // γmáx = τmáx / G
     rmSet('rm-to-j', J.toFixed(0));
     rmSet('rm-to-tau', tau.toFixed(2));
     rmSet('rm-to-g', gamma.toFixed(6));
     rmSet('rm-to-G', G != null ? G.toFixed(1) : '—');
-    window.__datosEnsayoRM.torsion = { d: d, L: L, T: T, thDeg: thDeg, J: J, tau: tau, gamma: gamma, G: G };
+    window.__datosEnsayoRM.torsion = { seccion: 'cuadrada', a: d, d: d, L: L, T: T, thDeg: thDeg, J: J, tau: tau, gamma: gamma, G: G };
     if (!window.__simRM.running) dibujarMaquinaRM('torsion', 0);
 }
 

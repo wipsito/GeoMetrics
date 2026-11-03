@@ -432,16 +432,18 @@
         alum: { n: 'Aluminio 6061-T6', G: 26000, ty: 160, tu: 205, gf: 0.12 },
         laton: { n: 'Latón', G: 39000, ty: 140, tu: 280, gf: 0.25 }
     };
+    var TQ_A = 0.208, TQ_B = 0.1406;   /* coeficientes de Saint-Venant para sección cuadrada (b/a = 1) */
     function tauO(m, g) { var gy = m.ty / m.G; if (g <= gy) return m.G * g; var q = clamp((g - gy) / (m.gf * 0.75 - gy), 0, 1); return m.ty + (m.tu - m.ty) * (1 - Math.pow(1 - q, 2)) - (g > m.gf * 0.75 ? (m.tu - m.ty) * 0.15 * (g - m.gf * 0.75) / (m.gf * 0.25) : 0); }
     G.register('torsion', {
         key: 'torsion', num: '04', title: 'Ensayo de Torsión', accent: OA, rgb: '192,132,252',
         norma: 'ASTM E143 (módulo de corte)', duration: 12, machine: 'Banco de torsión con goniómetro',
         glyph: SVG('<rect x="10" y="26" width="44" height="12" rx="3"/><path d="M10 20v24M54 20v24"/><path d="M18 26l6 12M28 26l6 12M38 26l6 12" stroke-dasharray="2 3"/>'),
-        desc: 'Barra circular retorcida: torque, ángulo de giro, esfuerzo cortante τ = T·c/J, deformación γ y módulo G.',
-        chips: ['τ = Tc/J', 'γ', 'G', 'φ = TL/GJ'],
+        desc: 'Barra de sección cuadrada (o circular) retorcida: torque, ángulo de giro, esfuerzo cortante τmáx, deformación γ y módulo G.',
+        chips: ['τ = T/(α·a³)', 'γ', 'G', 'φ = TL/(G·β·a⁴)'],
         fields: [
             { id: 'mat', type: 'select', label: 'Material', value: 'acero', options: Object.keys(OMAT).map(function (k) { return [k, OMAT[k].n]; }) },
-            { id: 'd', label: 'Diámetro d', unit: 'mm', min: 10, max: 50, step: 1, value: 25, dec: 0 },
+            { id: 'sec', type: 'select', label: 'Sección de la barra', value: 'cuadrada', options: [['cuadrada', 'Cuadrada (lado a)'], ['circular', 'Circular (diámetro d)']] },
+            { id: 'd', label: 'Lado a / diámetro d', unit: 'mm', min: 10, max: 50, step: 1, value: 25, dec: 0 },
             { id: 'L', label: 'Longitud calibrada L', unit: 'mm', min: 100, max: 600, step: 10, value: 300, dec: 0 }
         ],
         readouts: [
@@ -453,14 +455,16 @@
         ],
         fromData: null,
         model: function (P) {
-            var m = OMAT[P.mat], J = Math.PI * Math.pow(P.d, 4) / 32, c = P.d / 2, pts = [], i;
-            for (i = 0; i <= 160; i++) { var g = m.gf * i / 160, t = tauO(m, g), T = t * J / c / 1000, ph = g * P.L / c * 180 / Math.PI; pts.push({ x: ph, y: T }); }
-            var Ty = m.ty * J / c / 1000, Tu = m.tu * J / c / 1000;
-            return { m: m, J: J, c: c, pts: pts, Ty: Ty, Tu: Tu, phiMax: m.gf * P.L / c * 180 / Math.PI };
+            /* circular: τ = T·c/J, φ = γ·L/c · cuadrada (Saint-Venant, a × a): τmáx = T/(α·a³), φ = T·L/(G·β·a⁴), α = 0,208, β = 0,1406 */
+            var m = OMAT[P.mat], sq = P.sec === 'cuadrada', J = sq ? TQ_B * Math.pow(P.d, 4) : Math.PI * Math.pow(P.d, 4) / 32, c = P.d / 2, pts = [], i;
+            var Jc = sq ? TQ_A * Math.pow(P.d, 3) : J / c, kphi = sq ? TQ_A / (TQ_B * P.d) : 1 / c;
+            for (i = 0; i <= 160; i++) { var g = m.gf * i / 160, t = tauO(m, g), T = t * Jc / 1000, ph = g * P.L * kphi * 180 / Math.PI; pts.push({ x: ph, y: T }); }
+            var Ty = m.ty * Jc / 1000, Tu = m.tu * Jc / 1000;
+            return { m: m, J: J, c: c, Jc: Jc, kphi: kphi, sq: sq, pts: pts, Ty: Ty, Tu: Tu, phiMax: m.gf * P.L * kphi * 180 / Math.PI };
         },
         at: function (P, M, p) {
-            var m = M.m, q = clamp(p / 0.97, 0, 1), g = q * m.gf, tau = tauO(m, g), T = tau * M.J / M.c / 1000, broke = p >= 0.97;
-            return { g: g, gam: g, tau: broke ? 0 : tau, T: broke ? 0 : T, phi: g * P.L / M.c, phiD: g * P.L / M.c * 180 / Math.PI, broke: broke, tauR: tau, fase: g <= m.ty / m.G ? 'Elástica' : (broke ? 'Fractura' : 'Plástica') };
+            var m = M.m, q = clamp(p / 0.97, 0, 1), g = q * m.gf, tau = tauO(m, g), Jc = M.Jc || M.J / M.c, kp = M.kphi || 1 / M.c, T = tau * Jc / 1000, broke = p >= 0.97;
+            return { g: g, gam: g, tau: broke ? 0 : tau, T: broke ? 0 : T, phi: g * P.L * kp, phiD: g * P.L * kp * 180 / Math.PI, broke: broke, tauR: tau, fase: g <= m.ty / m.G ? 'Elástica' : (broke ? 'Fractura' : 'Plástica') };
         },
         estado: function (S, p) {
             if (p <= 0) return { txt: 'Listo', cls: '' };
@@ -473,7 +477,7 @@
                 { label: 'τ fluencia', value: fmt(M.m.ty, 0), unit: 'MPa', hi: true },
                 { label: 'τ última', value: fmt(M.m.tu, 0), unit: 'MPa' },
                 { label: 'T fluencia', value: fmt(M.Ty, 1), unit: 'N·m' },
-                { label: 'J = πd⁴/32', value: fmt(M.J / 1e4, 2), unit: 'cm⁴' }
+                M.sq ? { label: 'K = 0,141·a⁴', value: fmt(M.J / 1e4, 2), unit: 'cm⁴' } : { label: 'J = πd⁴/32', value: fmt(M.J / 1e4, 2), unit: 'cm⁴' }
             ];
         },
         stage: function (ctx, W, Ht, P, M, S, p, tick) {
@@ -486,31 +490,69 @@
             var rot = S.phi;
             H.steel(ctx, 660, cy - 78, 70, 156, 8, true); H.steel(ctx, 630, cy - 46, 30, 92, 4);
             /* barra */
-            function bar(a, b) {
-                var g = ctx.createLinearGradient(0, cy - R, 0, cy + R); g.addColorStop(0, '#e1e8f0'); g.addColorStop(0.5, '#9fb0c8'); g.addColorStop(1, '#4a586e');
-                ctx.fillStyle = g; ctx.fillRect(a, cy - R, b - a, 2 * R); ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.strokeRect(a, cy - R, b - a, 2 * R);
-            }
-            var brk = S.broke, mid = (xl + xr) / 2, gap = brk ? S.gam * 0 + 14 : 0;
-            if (!brk) bar(xl, xr); else { bar(xl, mid - gap / 2); bar(mid + gap / 2, xr); }
-            /* líneas helicoidales */
-            ctx.save(); ctx.beginPath(); ctx.rect(xl, cy - R, xr - xl, 2 * R); ctx.clip();
-            for (var kk = 0; kk < 6; kk++) {
-                ctx.beginPath(); var started = false;
-                for (var i = 0; i <= 60; i++) {
-                    var t = i / 60, x = lerp(xl, xr, t), ang = rot * t + kk * Math.PI / 3, vis = Math.cos(ang);
-                    if (brk && Math.abs(x - mid) < gap / 2) { started = false; continue; }
-                    if (vis < 0) { started = false; continue; }
-                    var y = cy + R * Math.sin(ang); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+            var brk = S.broke, mid = (xl + xr) / 2, gap = brk ? 14 : 0;
+            if (M.sq) {
+                /* barra cuadrada: caras visibles calculadas por franjas según el giro local */
+                var hS = R, NS = 140;
+                for (var si = 0; si < NS; si++) {
+                    var x0 = Math.floor(lerp(xl, xr, si / NS)), x1 = Math.ceil(lerp(xl, xr, (si + 1) / NS)) + 1, tm = (si + 0.5) / NS;
+                    if (brk && x1 > mid - gap / 2 && x0 < mid + gap / 2) continue;
+                    var ang = rot * tm;
+                    for (var f = 0; f < 4; f++) {
+                        var nA = ang + f * Math.PI / 2;            /* normal de la cara */
+                        if (Math.cos(nA) <= 0.02) continue;          /* cara de espaldas */
+                        var cA = nA - Math.PI / 4, cB = nA + Math.PI / 4, yA = cy + hS * Math.SQRT2 * Math.sin(cA), yB = cy + hS * Math.SQRT2 * Math.sin(cB);
+                        var lit = 0.45 + 0.55 * Math.cos(nA) * (0.75 - 0.25 * Math.sin(nA));
+                        var cc = Math.round(70 + 150 * lit), cb2 = Math.round(85 + 150 * lit), cc3 = Math.round(105 + 140 * lit);
+                        ctx.fillStyle = 'rgb(' + cc + ',' + cb2 + ',' + Math.min(255, cc3) + ')';
+                        ctx.fillRect(x0, Math.floor(Math.min(yA, yB)), x1 - x0, Math.ceil(Math.abs(yB - yA)) + 1);
+                    }
                 }
-                ctx.strokeStyle = kk === 0 ? '#fb7185' : 'rgba(30,41,59,.65)'; ctx.lineWidth = kk === 0 ? 3 : 1.6; ctx.stroke();
+                /* aristas (esquinas) */
+                ctx.save();
+                for (var kq = 0; kq < 4; kq++) {
+                    ctx.beginPath(); var st2 = false;
+                    for (var iq = 0; iq <= 80; iq++) {
+                        var tq = iq / 80, xq = lerp(xl, xr, tq), aq = rot * tq + kq * Math.PI / 2 + Math.PI / 4;
+                        if (brk && Math.abs(xq - mid) < gap / 2) { st2 = false; continue; }
+                        if (Math.cos(aq) < -0.72) { st2 = false; continue; }
+                        var yq = cy + hS * Math.SQRT2 * Math.sin(aq); if (!st2) { ctx.moveTo(xq, yq); st2 = true; } else ctx.lineTo(xq, yq);
+                    }
+                    ctx.strokeStyle = kq === 0 ? '#fb7185' : 'rgba(15,23,42,.75)'; ctx.lineWidth = kq === 0 ? 3 : 1.4; ctx.stroke();
+                }
+                ctx.restore();
+                /* sección transversal de referencia */
+                var sxp = 400, syp = 92, ss = 26;
+                ctx.save(); ctx.translate(sxp, syp); ctx.rotate(rot);
+                ctx.fillStyle = 'rgba(159,176,200,.9)'; ctx.fillRect(-ss / 2, -ss / 2, ss, ss); ctx.strokeStyle = '#fb7185'; ctx.lineWidth = 2; ctx.strokeRect(-ss / 2, -ss / 2, ss, ss);
+                ctx.restore();
+                H.label(ctx, 'Sección a × a', sxp, syp + 30, { align: 'center', size: 10.5, color: C.soft, weight: '700' });
+            } else {
+                var bar = function (a, b) {
+                    var g = ctx.createLinearGradient(0, cy - R, 0, cy + R); g.addColorStop(0, '#e1e8f0'); g.addColorStop(0.5, '#9fb0c8'); g.addColorStop(1, '#4a586e');
+                    ctx.fillStyle = g; ctx.fillRect(a, cy - R, b - a, 2 * R); ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.strokeRect(a, cy - R, b - a, 2 * R);
+                };
+                if (!brk) bar(xl, xr); else { bar(xl, mid - gap / 2); bar(mid + gap / 2, xr); }
+                /* líneas helicoidales */
+                ctx.save(); ctx.beginPath(); ctx.rect(xl, cy - R, xr - xl, 2 * R); ctx.clip();
+                for (var kk = 0; kk < 6; kk++) {
+                    ctx.beginPath(); var started = false;
+                    for (var i = 0; i <= 60; i++) {
+                        var t = i / 60, x = lerp(xl, xr, t), ang2 = rot * t + kk * Math.PI / 3, vis = Math.cos(ang2);
+                        if (brk && Math.abs(x - mid) < gap / 2) { started = false; continue; }
+                        if (vis < 0) { started = false; continue; }
+                        var y = cy + R * Math.sin(ang2); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+                    }
+                    ctx.strokeStyle = kk === 0 ? '#fb7185' : 'rgba(30,41,59,.65)'; ctx.lineWidth = kk === 0 ? 3 : 1.6; ctx.stroke();
+                }
+                ctx.restore();
             }
-            ctx.restore();
-            if (brk) { ctx.strokeStyle = '#fb7185'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(mid, cy - R - 10); ctx.lineTo(mid, cy + R + 10); ctx.stroke(); ctx.setLineDash([]); }
+            if (brk) { ctx.strokeStyle = '#fb7185'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(mid, cy - R * 1.45 - 10); ctx.lineTo(mid, cy + R * 1.45 + 10); ctx.stroke(); ctx.setLineDash([]); }
             /* flecha de giro */
             ctx.strokeStyle = OA; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.ellipse(695, cy, 18, 52, 0, -1.9, 1.5); ctx.stroke();
             H.arrow(ctx, 698, cy + 52, 690, cy + 53, OA, 3, 11);
             H.label(ctx, 'T', 724, cy - 60, { size: 16, color: OA, weight: '900' });
-            H.label(ctx, 'L = ' + P.L + ' mm  ·  d = ' + P.d + ' mm', mid, cy + R + 40, { align: 'center', size: 11.5, color: C.soft, weight: '700' });
+            H.label(ctx, 'L = ' + P.L + ' mm  ·  ' + (M.sq ? 'a = ' : 'd = ') + P.d + ' mm', mid, cy + R * (M.sq ? 1.45 : 1) + 40, { align: 'center', size: 11.5, color: C.soft, weight: '700' });
             /* goniómetro */
             var gx = 690, gy = 130, gr = 40;
             ctx.beginPath(); ctx.arc(gx, gy, gr, 0, H.TAU); ctx.fillStyle = '#f1f5f9'; ctx.fill(); ctx.strokeStyle = '#334155'; ctx.lineWidth = 2; ctx.stroke();
@@ -536,7 +578,7 @@
                 draw: function (ctx, W, Ht, P, M, S, p) {
                     var tmax = M.m.tu * 1.1;
                     H.plot(ctx, W, Ht, {
-                        title: 'Distribución de τ en la sección (τ = Tr/J)', xlabel: 'τ (MPa)', ylabel: 'Radio r (mm)',
+                        title: M.sq ? 'τ a lo largo de la cara (máx. en el centro del lado)' : 'Distribución de τ en la sección (τ = Tr/J)', xlabel: 'τ (MPa)', ylabel: M.sq ? 'Distancia al centro (mm)' : 'Radio r (mm)',
                         xmin: 0, xmax: tmax, ymin: 0, ymax: M.c, pts: [{ x: 0, y: 0 }, { x: tmax, y: M.c }], progress: 1, color: OA, nolive: true,
                         over: function (c, X, Y) {
                             var t = Math.min(S.tauR, M.m.tu);

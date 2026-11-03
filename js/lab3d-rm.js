@@ -231,7 +231,7 @@
             parts: [
                 { name: 'Cabezal fijo', desc: 'Sujeta un extremo e impide el giro.' },
                 { name: 'Mandril (mordaza)', desc: 'Agarra la barra sin deslizamiento.' },
-                { name: 'Probeta con rayas', desc: 'Las rayas rectas se vuelven hélices al torcerse.' },
+                { name: 'Probeta con rayas', desc: 'Barra de sección cuadrada (o circular): las rayas rectas se vuelven hélices al torcerse.' },
                 { name: 'Cabezal giratorio con motor', desc: 'Aplica el torque T girando un extremo.' },
                 { name: 'Goniómetro', desc: 'Disco graduado: ángulo de giro φ.' },
                 { name: 'Torquímetro', desc: 'Mide el torque aplicado.' }
@@ -257,6 +257,9 @@
             var st = new THREE.CanvasTexture(stripes); st.wrapS = THREE.RepeatWrapping;
             var specGeo = new THREE.CylinderGeometry(1, 1, 1, 36, 60); specGeo.rotateZ(Math.PI / 2);
             var spec = new THREE.Mesh(specGeo, new THREE.MeshStandardMaterial({ map: st, metalness: 0.5, roughness: 0.4 })); spec.castShadow = true; root.add(spec);
+            /* barra de sección cuadrada (4 caras planas, aristas a 45° para que las caras queden alineadas) */
+            var sqGeo = new THREE.CylinderGeometry(1, 1, 1, 4, 60, false, Math.PI / 4); sqGeo.rotateZ(Math.PI / 2);
+            var specSq = new THREE.Mesh(sqGeo, new THREE.MeshStandardMaterial({ map: st, metalness: 0.5, roughness: 0.38, flatShading: true })); specSq.castShadow = true; root.add(specSq);
             var tq = K.makeDial(root, -3.2, 2.9, 0.7, 0.5, { chrome: mt.steelL, white: mt.white, accent: M(0xC084FC, 0.3, 0.4), black: mt.dark, red: mt.red });
             var scr = screen(root, 1.0, 0.36, 3.2, 0.9, 0.67, 288, 104);
             var pins = [{ v: [-3.2, 2.6, 0.5] }, { v: [-2.4, 1.95, 0.3] }, { v: [0, 1.9, 0.3] }, { v: [3.2, 2.6, 0.5] }, { v: [3.4, 2.4, 0.5] }, { v: [-3.2, 3.3, 0.7] }];
@@ -264,8 +267,10 @@
                 var S = stateOf(prm, p), P = prm.P, R = clamp(0.12 + P.d / 50 * 0.22, 0.14, 0.34), Lm = 4.4, x0 = -2.05;
                 var phi = Math.min(S.phi, Math.PI * 7), tw = phi;
                 var gap = S.broke ? 0.1 : 0, xr = x0 + Lm;
-                deform(spec, function (x, y, z) {
-                    var t = (x + 0.5), X = x0 + t * Lm + (t > 0.5 ? gap : 0), a = tw * t, ca = Math.cos(a), sa = Math.sin(a), yy = y * R, zz = z * R;
+                var sq = P.sec !== 'circular', bar = sq ? specSq : spec, k = sq ? R * Math.SQRT2 * 0.92 : R;
+                spec.visible = !sq; specSq.visible = sq;
+                deform(bar, function (x, y, z) {
+                    var t = (x + 0.5), X = x0 + t * Lm + (t > 0.5 ? gap : 0), a = tw * t, ca = Math.cos(a), sa = Math.sin(a), yy = y * k, zz = z * k;
                     return [X, 1.6 + yy * ca - zz * sa, yy * sa + zz * ca];
                 });
                 tail.position.x = xr + 0.8 + gap; tail.rotation.x = tw;
