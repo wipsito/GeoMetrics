@@ -26,8 +26,8 @@
         if (/muro/.test(q) && /(contenci|voladizo|retenci|sosten)/.test(q)) return 'muroC';
         if (/zapata/.test(q) && /combinad/.test(q)) return 'zapataComb';
         if (/zapata/.test(q) && /(corrida|bajo muro|continua)/.test(q)) return 'zapataCorr';
+        if (/pilote|pilotes|pilotaje|pilotaje/.test(q)) return 'pilote';
         if (/zapata|cimentacion|cimiento/.test(q)) return 'zapata';
-        if (/pilote|pilotes|dado de pilotes/.test(q)) return 'pilote';
         if (/losa/.test(q) && /(nervad|aligerad|casetonad|reticular)/.test(q)) return 'losaNerv';
         if (/losa/.test(q) && /(dos direcciones|2 direcciones|bidireccional|dos sentidos)/.test(q)) return 'losa2d';
         if (/losa/.test(q)) return 'losa';
@@ -89,7 +89,10 @@
                 if (wL != null) o.wL = wL; break; }
             case 'escalera': if (H) o.H = H; else if (L) o.H = L; if ((v = g(q2, new RegExp('ancho\\s*(?:de|=)?\\s*' + N)))) o.b = v; break;
             case 'cercha': case 'cerchaPH': if (L) o.L = L; if ((v = g(q2, new RegExp('altura\\s*(?:de|=)?\\s*' + N)))) o.h = v; if ((m = q.match(/(\d+)\s*paneles/))) o.n = +m[1]; if (type === 'cerchaPH') o.tipo = /howe/.test(q) ? 2 : 1; if ((v = g(q2, new RegExp('(?:carga|p)\\s*(?:por nudo|de)?\\s*(?:=)?\\s*' + N + '\\s*kn')))) o.P = v; break;
-            case 'pilote': if (P != null) o.P = P; if (L) o.L = L; if ((m = q.match(/(\d)\s*pilotes/))) o.n = +m[1] === 2 ? 2 : 4; break;
+            case 'pilote': if (P != null) o.P = P; if (L) o.L = L; if ((m = q.match(/(\d)\s*pilotes/))) o.n = +m[1] === 2 ? 2 : 4;
+                { var dm = q.match(new RegExp(N + '\\s*(mm|cm|m)\\b\\s*de\\s*diametro')) || q.match(new RegExp('diametro\\s*(?:de|=)?\\s*' + N + '\\s*(mm|cm|m)?')); if (dm) { var dd = nx(dm[1]), du = dm[2]; o.D = Math.round(dd * (du === 'mm' ? 1 : (du === 'cm' ? 10 : (du === 'm' ? 1000 : (dd <= 3 ? 1000 : (dd <= 150 ? 10 : 1)))))); }
+                  var sp = q.match(new RegExp('separacion\\s*(?:entre\\s*(?:ejes|pilotes)\\s*)?(?:de|=)?\\s*' + N + '\\s*(mm|cm|m)?')); if (sp) { var sv = nx(sp[1]), su = sp[2], smm = sv * (su === 'mm' ? 1 : (su === 'cm' ? 10 : (su === 'm' ? 1000 : (sv <= 10 ? 1000 : 10)))); var Dn = o.D || 400; o.sD = Math.max(2, Math.min(6, Math.round(smm / Dn * 100) / 100)); } }
+                break;
             case 'aceroColumna': if (P != null) o.Pu = P; if (H || L) o.KL = H || L; break;
         }
         return o;
@@ -134,6 +137,13 @@
                 }
             }
         } catch (e) { try { console.warn('CivixCAD chat diseño', e); } catch (e2) { } }
+        try {
+            var q2 = norm(texto);
+            if (q2 && !adj && /dibuj|plano|dxf|despiece|planta|elevacion|corte/.test(q2) && !/\[nivel de detalle/.test(q2) && !/^(que es|que son|como funciona|cual es|por que|explica|define)/.test(q2.trim())) {
+                texto = texto + '\n[Nivel de detalle del plano: entrégalo como los planos de Planos y CAD — unidades en metros, varillas en pulgadas, capas EJES/CONTORNO/ARMADURA/COTAS/TEXTO/MARCO, cotas lineales azules (capa COTAS) con todas las dimensiones y la separación entre barras o estribos consecutivos, secciones con armado, cuadro de acero (marca, barra, cantidad, longitud, peso), cajetín y marco.]';
+                arguments[0] = texto;
+            }
+        } catch (e3) { }
         return prevSend ? prevSend.apply(this, arguments) : false;
     };
     CAD.chatDesign = { classify: classify, parse: parse };
