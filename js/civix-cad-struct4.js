@@ -45,7 +45,7 @@
     }
     S.portico = function (o) {
         o = Object.assign({ pisos: 2, vanos: 2, Lv: 5, Hp: 3, bc: 400, hc: 400, bv: 300, hv: 500, wD: 20, wL: 8, Fh: 30, fc: 28, base: 1, caso: 1 }, o || {});
-        var NP = o.pisos === 1 ? 1 : 2, NV = o.vanos === 1 ? 1 : 2, warns = [], memo = [], fc = o.fc, E = 4700 * SQ(fc) * 1000, Ic = 0.70 * (o.bc / 1000) * Math.pow(o.hc / 1000, 3) / 12, Ib = 0.35 * (o.bv / 1000) * Math.pow(o.hv / 1000, 3) / 12, Ac = o.bc * o.hc / 1e6, Ab = o.bv * o.hv / 1e6;
+        var NP = Math.max(1, Math.min(10, Math.round(+o.pisos) || 2)), NV = Math.max(1, Math.min(8, Math.round(+o.vanos) || 2)), warns = [], memo = [], fc = o.fc, E = 4700 * SQ(fc) * 1000, Ic = 0.70 * (o.bc / 1000) * Math.pow(o.hc / 1000, 3) / 12, Ib = 0.35 * (o.bv / 1000) * Math.pow(o.hv / 1000, 3) / 12, Ac = o.bc * o.hc / 1e6, Ab = o.bv * o.hv / 1e6;
         var G = { nodes: [], els: [], floors: [], base: [] }, id = [], f, i; for (f = 0; f <= NP; f++) { id.push([]); for (i = 0; i <= NV; i++) { id[f].push(G.nodes.length); G.nodes.push([i * o.Lv, f * o.Hp]); } }
         for (f = 0; f < NP; f++) for (i = 0; i <= NV; i++) G.els.push({ i: id[f][i], j: id[f + 1][i], col: true, f: f }); for (f = 1; f <= NP; f++) for (i = 0; i < NV; i++) G.els.push({ i: id[f][i], j: id[f][i + 1], col: false, f: f }); for (f = 1; f <= NP; f++) G.floors.push({ nodes: id[f].slice() }); G.base = id[0].slice();
         var wself = 24 * o.bv * o.hv / 1e6, w1 = 1.2 * (o.wD + wself) + 1.6 * o.wL, w2 = 1.2 * (o.wD + wself) + 1.0 * o.wL, R1 = frameSolve(G, w1, 0, E, Ic, Ib, Ac, Ab, o.base), R2 = frameSolve(G, w2, o.Fh, E, Ic, Ib, Ac, Ab, o.base);

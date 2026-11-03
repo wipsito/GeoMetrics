@@ -129,25 +129,43 @@
     ];
     function extra(label, rol) { var l = label.toLowerCase(), i; for (i = 0; i < R.length; i++) if (R[i][0].test(l)) return rol === 'docente' ? R[i][2] : R[i][1]; return rol === 'docente' ? 'Úselo para un ejercicio de sensibilidad: fije los demás datos y varíe solo este.' : 'Cámbialo y observa cómo se modifican el acero, los diagramas y las cantidades.'; }
     function rolActual() { try { var s = typeof aulaGetSession === 'function' && aulaGetSession(); return s && s.rol === 'docente' ? 'docente' : 'estudiante'; } catch (e) { return 'estudiante'; } }
-    function build(sec, key) {
-        var box = sec.querySelector('.cxa-box'); if (!box) return; var rol = rolActual();
-        var html = '<p class="cxa-rol">' + (rol === 'docente' ? '👨‍🏫 Vista docente — criterios y sugerencias para clase' : '🎓 Vista estudiante — qué significa y cómo experimentar') + '</p><p class="cxa-tip">' + (TIPS[key] || TIPS.struct) + '</p>';
-        var els = key === 'struct' ? sec.querySelector('.cxp-el.on') : null; if (els) html += '<h5>Elemento: ' + esc(els.textContent.replace(/^\S+\s*/, '')) + '</h5>';
-        var seen = {}, rows = '';
-        if (SECT[key]) { SECT[key].forEach(function (q) { rows += '<tr><td>' + esc(q[0]) + '</td><td>' + q[1] + '</td><td>' + q[rol === 'docente' ? 3 : 2] + '</td></tr>'; }); }
+    var NAMES = { struct: 'Diseño estructural', curvas: 'Curvas de nivel', ia: 'Planos con IA', foto: 'Foto → DXF' };
+    function collect(sec, key) {
+        var rol = rolActual(), rows = [], seen = {};
+        if (SECT[key]) SECT[key].forEach(function (q) { rows.push([q[0], q[1], q[rol === 'docente' ? 3 : 2]]); });
         else sec.querySelectorAll('label.cxp-f > span').forEach(function (sp) {
-            var t = sp.textContent.trim(); if (!t || seen[t]) return; seen[t] = 1; var h = help(t) || 'Dato de entrada de este elemento; cámbialo y vuelve a pulsar ▶ Calcular para ver el efecto.'; rows += '<tr><td>' + esc(t) + '</td><td>' + h + '</td><td>' + esc(extra(t, rol)) + '</td></tr>';
+            var t = sp.textContent.trim(); if (!t || seen[t]) return; seen[t] = 1;
+            rows.push([t, help(t) || 'Dato de entrada de este elemento; cámbialo y vuelve a pulsar ▶ Calcular para ver el efecto.', extra(t, rol)]);
         });
-        if (rows) html += '<table class="cxa-tb"><thead><tr><th>Parámetro</th><th>Qué es y para qué sirve</th><th>' + (rol === 'docente' ? 'Criterio docente' : 'Consejo') + '</th></tr></thead><tbody>' + rows + '</tbody></table>';
-        box.innerHTML = html;
+        var els = key === 'struct' ? sec.querySelector('.cxp-el.on') : null;
+        return { rol: rol, rows: rows, elem: els ? els.textContent.replace(/^\S+\s*/, '') : '' };
+    }
+    function closeModal() { var m = document.getElementById('cxaModal'); if (m) m.remove(); document.removeEventListener('keydown', onKey); }
+    function onKey(e) { if (e.key === 'Escape') closeModal(); }
+    function openModal(sec, key) {
+        closeModal(); var d = collect(sec, key), doc = d.rol === 'docente', ses = null;
+        try { ses = typeof aulaGetSession === 'function' ? aulaGetSession() : null; } catch (e) { }
+        var nombre = ses ? String(ses.nombre || ses.nombres || '').split(' ')[0] : '';
+        var ov = document.createElement('div'); ov.id = 'cxaModal'; ov.className = 'cxa-ov';
+        ov.innerHTML = '<div class="cxa-card" role="dialog" aria-modal="true" aria-label="Instrucciones">' +
+            '<button type="button" class="cxa-x" aria-label="Cerrar">✕</button>' +
+            '<div class="cxa-head"><img src="docs/civix-robot.svg" alt="Civix" class="cxa-av" width="84" height="84"><div class="cxa-ht"><small>' + (doc ? 'Guía para el docente' : 'Bienvenido futuro ingeniero' + (nombre ? ' ' + esc(nombre) : '')) + '</small><h3>Instrucciones · ' + esc(NAMES[key] || key) + '</h3><span class="cxa-pill">' + (doc ? 'DOCENTE' : 'ESTUDIANTE') + '</span>' + (d.elem ? '<span class="cxa-pill cxa-pill2">' + esc(d.elem) + '</span>' : '') + '</div></div>' +
+            '<div class="cxa-tabs"><button type="button" class="on" data-p="uso">📘 Cómo usar</button><button type="button" data-p="par">⚙️ Parámetros <b>' + d.rows.length + '</b></button></div>' +
+            '<div class="cxa-body"><div class="cxa-pane" data-p="uso"><div class="cxa-tipbox">' + (TIPS[key] || TIPS.struct) + '</div></div>' +
+            '<div class="cxa-pane" data-p="par" hidden>' + d.rows.map(function (r) { return '<div class="cxa-item"><h4>' + esc(r[0]) + '</h4><p>' + r[1] + '</p><div class="cxa-adv"><span>' + (doc ? 'Criterio docente' : 'Consejo') + '</span>' + esc(r[2]) + '</div></div>'; }).join('') + '</div></div></div>';
+        document.body.appendChild(ov);
+        ov.addEventListener('click', function (e) { if (e.target === ov) closeModal(); });
+        ov.querySelector('.cxa-x').addEventListener('click', closeModal);
+        ov.querySelectorAll('.cxa-tabs button').forEach(function (b) { b.addEventListener('click', function () { ov.querySelectorAll('.cxa-tabs button').forEach(function (x) { x.classList.toggle('on', x === b); }); ov.querySelectorAll('.cxa-pane').forEach(function (pn) { pn.hidden = pn.getAttribute('data-p') !== b.getAttribute('data-p'); }); }); });
+        document.addEventListener('keydown', onKey);
     }
     function attach(panel) {
         panel.querySelectorAll('.cxp-sec').forEach(function (sec) {
             if (sec.querySelector('.cxa-btn')) return;
-            var key = sec.getAttribute('data-s') || 'struct', b = document.createElement('button'), box = document.createElement('div');
-            b.type = 'button'; b.className = 'cxa-btn'; b.textContent = '📖 Instrucciones'; box.className = 'cxa-box'; box.hidden = true;
-            b.addEventListener('click', function () { if (box.hidden) { build(sec, key); box.hidden = false; } else box.hidden = true; });
-            sec.insertBefore(box, sec.firstChild); sec.insertBefore(b, box);
+            var key = sec.getAttribute('data-s') || 'struct', b = document.createElement('button');
+            b.type = 'button'; b.className = 'cxa-btn'; b.textContent = '📖 Instrucciones';
+            b.addEventListener('click', function () { openModal(sec, key); });
+            sec.insertBefore(b, sec.firstChild);
         });
     }
     function init() {

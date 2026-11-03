@@ -176,8 +176,8 @@
     }
     function parsePortico(q) {
         var o = {}, m;
-        if ((m = q.match(/(\d)\s*pisos?/))) o.pisos = Math.min(2, Math.max(1, +m[1]));
-        if ((m = q.match(/(\d)\s*vanos?/))) o.vanos = Math.min(2, Math.max(1, +m[1]));
+        if ((m = q.match(/(\d{1,2})\s*pisos?/))) o.pisos = Math.min(10, Math.max(1, +m[1]));
+        if ((m = q.match(/(\d{1,2})\s*vanos?/))) o.vanos = Math.min(8, Math.max(1, +m[1]));
         if ((m = q.match(/vanos?\s*de\s*(\d+(?:[.,]\d+)?)/)) || (m = q.match(/(?:luz|longitud)\s*(?:de)?\s*(\d+(?:[.,]\d+)?)/))) o.Lv = nx(m[1]);
         if ((m = q.match(/altura\s*(?:de\s*(?:piso|entrepiso))?\s*(?:de|=)?\s*(\d+(?:[.,]\d+)?)/)) || (m = q.match(/(\d+(?:[.,]\d+)?)\s*m\s*por\s*piso/))) o.Hp = nx(m[1]);
         if (/base\s*(?:articulada|con pasador)|articulad[ao]s?\s*en\s*la\s*base|apoyos?\s*articulad/.test(q)) o.base = 2; else if (/empotrad/.test(q)) o.base = 1;
