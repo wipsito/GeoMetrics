@@ -45,8 +45,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
     <script src="js/cloud.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <!-- SheetJS y Plotly (~4,4 MB) ya NO se cargan aquí: bloqueaban el arranque.
+         js/gm-libs.js las trae sola en segundo plano cuando la pantalla de carga se va. -->
+    <script src="js/gm-libs.js"></script>
 
 
   <script>
