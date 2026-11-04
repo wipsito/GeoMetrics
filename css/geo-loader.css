@@ -28,10 +28,14 @@ html.gl-lock, html.gl-lock body{overflow:hidden !important}
 /* ground with soil strata */
 .gl-ground{position:absolute; left:0; right:0; top:var(--ground); bottom:0; border-top:2px solid var(--c);
   box-shadow:0 -8px 30px rgba(0,229,255,.25)}
-.gl-layer{position:relative; border-bottom:1px solid rgba(234,242,255,.18); background-repeat:repeat;
-  animation:gl-soil 2.2s linear infinite; animation-play-state:paused}
-#geo-loader.gl-drive .gl-layer{animation-play-state:running}
-@keyframes gl-soil{to{background-position:-120px 0}}
+/* El desplazamiento del suelo va con transform (compositor) y no con background-position,
+   que obligaba a repintar las franjas completas en cada cuadro. */
+.gl-layer{position:relative; overflow:hidden; border-bottom:1px solid rgba(234,242,255,.18)}
+.gl-layer > i{position:absolute; top:0; bottom:0; left:-120px; right:-120px; display:block;
+  background-repeat:repeat; background-image:inherit; background-size:inherit; background-position:inherit;
+  animation:gl-soil 2.2s linear infinite; animation-play-state:paused; will-change:transform}
+#geo-loader.gl-drive .gl-layer > i{animation-play-state:running}
+@keyframes gl-soil{to{transform:translateX(-120px)}}
 .gl-l1{height:3.2vh; background-color:#3A2A1C}
 .gl-l2{height:7vh; background-color:#6B4E2E;
   background-image:radial-gradient(circle,#FFB547 1.2px,transparent 1.6px),radial-gradient(circle,#E6C08A 1px,transparent 1.4px);
@@ -90,7 +94,8 @@ html.gl-lock, html.gl-lock body{overflow:hidden !important}
   padding:16px 18px 14px; background:rgba(3,5,12,.72); border:1px solid rgba(0,229,255,.25);
   clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
 .gl-track{position:relative; height:8px; background:rgba(131,148,180,.25)}
-.gl-fill{position:absolute; inset:0 auto 0 0; width:0; background:linear-gradient(90deg,var(--c),var(--v)); box-shadow:0 0 18px rgba(0,229,255,.6)}
+.gl-fill{position:absolute; inset:0 auto 0 0; width:100%; transform-origin:0 50%; transform:scaleX(0); will-change:transform;
+  background:linear-gradient(90deg,var(--c),var(--v)); box-shadow:0 0 18px rgba(0,229,255,.6)}
 .gl-row{display:flex; justify-content:space-between; margin-top:12px; font-size:12.5px; letter-spacing:.14em; color:#C4CEE2}
 .gl-row b{color:var(--c)}
 .gl-hint{margin-top:10px; text-align:center; font-size:10.5px; letter-spacing:.16em; color:var(--mut)}
@@ -99,7 +104,7 @@ html.gl-lock, html.gl-lock body{overflow:hidden !important}
 @media (max-width:700px){ .gl-tag,.gl-ruler{display:none} .gl-load{bottom:6vh} }
 @media (prefers-reduced-motion:reduce){
   .gl-leg,.gl-arm,.gl-bob{animation:none !important}
-  .gl-city,.gl-layer,.gl-wheel,.gl-beacon,#geo-loader .gl-bk,#geo-loader.gl-engine .gl-body{animation:none !important}
+  .gl-city,.gl-layer > i,.gl-wheel,.gl-beacon,#geo-loader .gl-bk,#geo-loader.gl-engine .gl-body{animation:none !important}
 }
 
 /* operator */
