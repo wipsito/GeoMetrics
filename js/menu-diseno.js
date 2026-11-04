@@ -76,25 +76,25 @@
                 var X = 58, Z = 58, P = [[-X, -Z], [X, -Z], [-X, Z], [X, Z]];
 
                 var zy = cota + 7;                                        /* zapatas apoyadas en el terreno */
-                P.forEach(function (p) { w.appendChild(box({ w: 58, h: 14, d: 58, x: p[0], z: p[1], y: zy, line: CON, fill: CF, f: { all: CT } })); });
+                P.forEach(function (p) { w.appendChild(box({ w: 58, h: 14, d: 58, x: p[0], z: p[1], y: zy, line: CON, fill: CF, f: { all: CT }, skip: ['bottom'] })); });
 
                 var dy = zy + 13;                                         /* dados de arranque */
-                P.forEach(function (p) { w.appendChild(box({ w: 26, h: 12, d: 26, x: p[0], z: p[1], y: dy, line: CON, fill: CF2, f: { all: CT } })); });
+                P.forEach(function (p) { w.appendChild(box({ w: 26, h: 12, d: 26, x: p[0], z: p[1], y: dy, line: CON, fill: CF2, skip: ['top', 'bottom'] })); });
 
-                [-Z, Z].forEach(function (z) { w.appendChild(box({ w: 2 * X - 24, h: 10, d: 10, z: z, y: dy, line: CON, fill: CF })); });
-                [-X, X].forEach(function (x) { w.appendChild(box({ w: 10, h: 10, d: 2 * Z - 24, x: x, y: dy, line: CON, fill: CF })); });
+                [-Z, Z].forEach(function (z) { w.appendChild(box({ w: 2 * X - 24, h: 10, d: 10, z: z, y: dy, line: CON, fill: CF, skip: ['bottom'] })); });
+                [-X, X].forEach(function (x) { w.appendChild(box({ w: 10, h: 10, d: 2 * Z - 24, x: x, y: dy, line: CON, fill: CF, skip: ['bottom'] })); });
 
                 var ch = 72, cy = dy + 6 + ch / 2;                        /* columnas */
-                P.forEach(function (p) { w.appendChild(box({ w: 18, h: ch, d: 18, x: p[0], z: p[1], y: cy, line: CON, fill: CF2, f: { all: CT } })); });
+                P.forEach(function (p) { w.appendChild(box({ w: 18, h: ch, d: 18, x: p[0], z: p[1], y: cy, line: CON, fill: CF2, skip: ['top', 'bottom'] })); });
 
                 var by = cy + ch / 2 - 6;                                 /* vigas de amarre superiores */
-                [-Z, Z].forEach(function (z) { w.appendChild(box({ w: 2 * X + 13, h: 13, d: 13, z: z, y: by, line: CON, fill: CF })); });
-                [-X, X].forEach(function (x) { w.appendChild(box({ w: 13, h: 13, d: 2 * Z + 13, x: x, y: by, line: CON, fill: CF })); });
+                [-Z, Z].forEach(function (z) { w.appendChild(box({ w: 2 * X + 13, h: 13, d: 13, z: z, y: by, line: CON, fill: CF, skip: ['bottom'] })); });
+                [-X, X].forEach(function (x) { w.appendChild(box({ w: 13, h: 13, d: 2 * Z + 13, x: x, y: by, line: CON, fill: CF, skip: ['bottom'] })); });
 
-                w.appendChild(box({ w: 2 * X + 30, h: 7, d: 2 * Z + 30, y: by + 10, line: 'rgba(34,211,238,.85)', fill: 'rgba(8,47,73,.5)', f: { top: TX.grid('rgba(34,211,238,.22)') } }));
+                w.appendChild(box({ w: 2 * X + 30, h: 7, d: 2 * Z + 30, y: by + 10, line: 'rgba(34,211,238,.85)', fill: 'rgba(8,47,73,.5)', f: { top: TX.grid('rgba(34,211,238,.22)') }, skip: ['bottom'] }));
 
                 /* 3 · carga y cota de desplante */
-                w.appendChild(box({ w: 4, h: 34, d: 4, y: by + 32, line: '#f43f5e', fill: '#f43f5e' }));
+                w.appendChild(box({ w: 4, h: 34, d: 4, y: by + 32, line: '#f43f5e', fill: '#f43f5e', skip: ['top', 'bottom'] }));
 
             }
         },
@@ -396,9 +396,18 @@
     }
 
     /* ------------------------------------------------------------------ visor 3D */
-    var V = { k: 1.25, cur: null, ang: -45, target: null, spin: false, raf: 0, last: 0, world: null, view: null, base: 'estructura', pend: null, visible: true };
+    var V = { k: 1.25, cur: null, spin: false, anim: null, world: null, view: null, base: 'estructura', pend: null, visible: true };
     var TILT = -24;
-    function pintarMundo() { var vh = V.view ? V.view.clientHeight : 0; V.k = window.innerWidth < 640 ? 0.72 : window.innerWidth < 1100 ? 1 : (vh ? Math.max(0.55, Math.min(1.2, (vh - 110) / 290)) : 1.2); if (V.world) V.world.style.transform = 'scale3d(' + V.k + ',' + V.k + ',' + V.k + ') rotateX(' + TILT + 'deg) rotateY(' + V.ang.toFixed(2) + 'deg)'; }
+    /* Se mide el tamaño SOLO cuando cambia la ventana. Leer el layout en cada cuadro
+       obliga al navegador a recalcular toda la página 60 veces por segundo y es lo que
+       hacía que el giro fuera a tirones cuando el resto de la app está ocupada. */
+    function medir() {
+        var vh = V.view ? V.view.clientHeight : 0;
+        var k = window.innerWidth < 640 ? 0.72 : window.innerWidth < 1100 ? 1 : (vh ? Math.max(0.55, Math.min(1.2, (vh - 110) / 290)) : 1.2);
+        if (Math.abs(k - V.k) < 0.001 && V.anim) return;
+        V.k = k; crearGiro(true);
+    }
+    function baseT() { return 'scale3d(' + V.k + ',' + V.k + ',' + V.k + ') rotateX(' + TILT + 'deg) '; }
     function cambiarModelo(key) {
         if (!V.world || V.cur === key) return;
         var m = MODELS[key]; if (!m) return;
@@ -416,39 +425,48 @@
         V.view.classList.add('fade');
         clearTimeout(V.pend); V.pend = setTimeout(aplicar, 220);
     }
-    /* el modelo gira 360° siempre: más rápido con el cursor encima de una asignatura */
-    var GIRO_HOVER = 60, GIRO_REPOSO = 26;                         /* grados por segundo */
-    function loop(ts) {
-        if (!V.world || !V.world.isConnected || !V.visible) { V.raf = 0; V.last = 0; return; }
-        var dt = V.last ? Math.min(0.05, (ts - V.last) / 1000) : 0; V.last = ts;
-        V.ang += dt * (V.spin ? GIRO_HOVER : GIRO_REPOSO);         /* 360° cada 6 s / cada 14 s */
-        if (V.ang >= 360) V.ang -= 360;
-        pintarMundo();
-        V.raf = requestAnimationFrame(loop);
+    /* El modelo gira 360° siempre: más rápido con el cursor sobre una asignatura.
+       El giro lo lleva el propio navegador (Web Animations), no un bucle de JavaScript,
+       así que sigue fluido aunque la página esté ocupada sincronizando o pintando. */
+    var VUELTA_REPOSO = 14000, VUELTA_HOVER = 6000;                /* ms por vuelta completa */
+    function crearGiro(mantener) {
+        if (!V.world) return;
+        var t = 0;
+        if (V.anim) { try { t = +V.anim.currentTime || 0; } catch (e) { } try { V.anim.cancel(); } catch (e2) { } V.anim = null; }
+        var b = baseT();
+        if (reduce || !V.world.animate) { V.world.style.transform = b + 'rotateY(-45deg)'; return; }
+        V.world.style.transform = '';
+        V.anim = V.world.animate(
+            [{ transform: b + 'rotateY(-45deg)' }, { transform: b + 'rotateY(315deg)' }],
+            { duration: VUELTA_REPOSO, iterations: Infinity, easing: 'linear' }
+        );
+        V.anim.playbackRate = V.spin ? (VUELTA_REPOSO / VUELTA_HOVER) : 1;
+        if (mantener && t) { try { V.anim.currentTime = t % VUELTA_REPOSO; } catch (e3) { } }
+        if (!V.visible) { try { V.anim.pause(); } catch (e4) { } }
     }
-    function arrancar() { if (!V.raf && !reduce && V.visible) { V.last = 0; V.raf = requestAnimationFrame(loop); } }
+    function velocidad() { if (V.anim) { try { V.anim.playbackRate = V.spin ? (VUELTA_REPOSO / VUELTA_HOVER) : 1; } catch (e) { } } }
+    function arrancar() { if (V.anim && V.visible) { try { V.anim.play(); } catch (e) { } } else if (!V.anim) crearGiro(false); }
     function hover(key) {
         cambiarModelo(key);
         if (reduce) return;
-        V.spin = true; arrancar();
+        V.spin = true; velocidad(); arrancar();
     }
     function salir() {
         V.spin = false;                                            /* sigue girando, solo más despacio */
-        cambiarModelo(V.base); arrancar();
+        velocidad(); cambiarModelo(V.base); arrancar();
     }
     function visor() {
         var v = el('div', 'gmx-view', '<i class="gmx-corner a"></i><i class="gmx-corner b"></i><i class="gmx-corner c"></i><i class="gmx-corner d"></i><div class="gmx-vh"></div><div class="gmx-stage"><div class="gmx-world"></div></div><div class="gmx-legend"></div><div class="gmx-vf"></div>');
-        V.view = v; V.world = v.querySelector('.gmx-world'); V.home = -45; V.ang = -45;
-        cambiarModelo(V.base); pintarMundo();
-        if (window.ResizeObserver) new ResizeObserver(function () { pintarMundo(); }).observe(v);
+        V.view = v; V.world = v.querySelector('.gmx-world');
+        cambiarModelo(V.base); crearGiro(false);
+        if (window.ResizeObserver) new ResizeObserver(function () { medir(); }).observe(v);
         /* solo gira mientras el visor está a la vista (con el menú oculto no consume nada) */
         if (window.IntersectionObserver) {
             new IntersectionObserver(function (ent) {
                 V.visible = !!(ent[0] && ent[0].isIntersecting);
-                if (V.visible) arrancar();
+                if (V.anim) { try { V.visible ? V.anim.play() : V.anim.pause(); } catch (e) { } }
             }, { threshold: 0 }).observe(v);
         }
-        arrancar();
         return v;
     }
 
@@ -529,7 +547,7 @@
             team.parentNode.insertBefore(el('footer', 'gmx-foot', '<span>© ' + new Date().getFullYear() + ' GEOMETRICS // LABORATORIO VIRTUAL</span><span>MECÁNICA DE SUELOS · MATERIALES · ESTRUCTURAS</span>'), team.nextSibling);
         }
     }
-    window.addEventListener('resize', function () { pintarMundo(); });
+    window.addEventListener('resize', function () { medir(); });
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', montar); else montar();
     window.GMMenuDiseno = { montar: montar, modelos: MODELS };
 })();
