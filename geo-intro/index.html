@@ -1,1 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GeoMetrics — Intro fósil (prueba)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/geo-intro.css">
+<style>html,body{margin:0;height:100%;background:#03050C;overflow:hidden}</style>
+</head>
+<body>
 
+<!-- Página suelta para probar la intro y ajustar la duración.
+     La app real la carga desde index.html (js/geo-intro.js + js/gm-intro.js). -->
+<div id="geoIntro" class="demo on"></div>
+
+<div class="geo-intro-ctrl">
+  <button class="p" id="play">▶ INICIAR SESIÓN</button>
+  <button id="reset">↺ RESTAURAR MÓDULOS</button>
+  <label>DURACIÓN <input id="dur" type="number" min="1" max="20" step="0.5" value="4" style="width:70px;height:34px;font:inherit;font-size:12.5px;background:rgba(10,16,32,.9);color:#EAF2FF;border:1px solid rgba(131,148,180,.35);padding:0 8px"> s</label>
+  <span>TOCA UN MÓDULO PARA ELEGIR CUÁL SE COME · SI NO, ES ALEATORIO</span>
+</div>
+
+<script>window.GEO_INTRO_IMG = '../docs/intro/';</script>
+<script src="../js/geo-intro.js"></script>
+<script>
+(function () {
+  var host = document.getElementById('geoIntro');
+  var play = document.getElementById('play'), reset = document.getElementById('reset'), dur = document.getElementById('dur');
+  GeoIntro.setDuracion(4000);
+  GeoIntro.montar(host);
+  dur.addEventListener('change', function () { GeoIntro.setDuracion((parseFloat(dur.value) || 4) * 1000); });
+  play.addEventListener('click', function () {
+    play.disabled = true;
+    GeoIntro.play().then(function () { play.disabled = false; });
+  });
+  reset.addEventListener('click', function () { GeoIntro.reset(); });
+})();
+</script>
+</body>
+</html>
