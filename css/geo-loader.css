@@ -1,0 +1,117 @@
+/* GeoMetrics · pantalla de carga (retroexcavadora) */
+html.gl-lock, html.gl-lock body{overflow:hidden !important}
+#geo-loader{
+  --c:#00E5FF; --v:#9D6BFF; --a:#FFB547; --txt:#EAF2FF; --mut:#8394B4;
+  --ground:64vh;
+  position:fixed; inset:0; z-index:2147483000; overflow:hidden;
+  background:#02040B; color:var(--txt);
+  font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  transition:opacity .3s ease, visibility .3s;
+}
+#geo-loader.gl-out{opacity:0; visibility:hidden; pointer-events:none}
+#geo-loader, #geo-loader *{box-sizing:border-box}
+
+/* sky */
+.gl-sky{position:absolute; inset:0;
+  background:radial-gradient(ellipse 70% 45% at 50% var(--ground),rgba(0,229,255,.22),transparent 65%),
+             linear-gradient(180deg,#02040B 0%,#061230 50%,#0A1D45 var(--ground))}
+.gl-sky:after{content:""; position:absolute; inset:0;
+  background-image:radial-gradient(rgba(0,229,255,.25) 1px,transparent 1.3px); background-size:28px 28px;
+  -webkit-mask-image:linear-gradient(180deg,#000,transparent 65%); mask-image:linear-gradient(180deg,#000,transparent 65%)}
+
+/* skyline (parallax) */
+.gl-city{position:absolute; left:0; bottom:calc(100% - var(--ground)); width:4800px; height:300px;
+  animation:gl-scroll 90s linear infinite; animation-play-state:paused}
+#geo-loader.gl-drive .gl-city{animation-play-state:running}
+@keyframes gl-scroll{to{transform:translateX(-2400px)}}
+
+/* ground with soil strata */
+.gl-ground{position:absolute; left:0; right:0; top:var(--ground); bottom:0; border-top:2px solid var(--c);
+  box-shadow:0 -8px 30px rgba(0,229,255,.25)}
+.gl-layer{position:relative; border-bottom:1px solid rgba(234,242,255,.18); background-repeat:repeat;
+  animation:gl-soil 2.2s linear infinite; animation-play-state:paused}
+#geo-loader.gl-drive .gl-layer{animation-play-state:running}
+@keyframes gl-soil{to{background-position:-120px 0}}
+.gl-l1{height:3.2vh; background-color:#3A2A1C}
+.gl-l2{height:7vh; background-color:#6B4E2E;
+  background-image:radial-gradient(circle,#FFB547 1.2px,transparent 1.6px),radial-gradient(circle,#E6C08A 1px,transparent 1.4px);
+  background-size:24px 18px,40px 30px; background-position:0 0,12px 9px}
+.gl-l3{height:9vh; background-color:#4B2F3A;
+  background-image:repeating-linear-gradient(45deg,rgba(157,107,255,.45) 0 1.2px,transparent 1.2px 10px)}
+.gl-l4{height:30vh; background-color:#27303F;
+  background-image:linear-gradient(rgba(131,148,180,.35) 1px,transparent 1px),linear-gradient(90deg,rgba(131,148,180,.35) 1px,transparent 1px);
+  background-size:120px 18px,60px 18px}
+.gl-ground:after{content:""; position:absolute; inset:0; background:linear-gradient(180deg,transparent 10%,rgba(2,4,11,.85) 70%); pointer-events:none}
+.gl-tag{position:absolute; right:3vw; top:50%; transform:translateY(-50%); font-size:11px; letter-spacing:.22em; color:#C4CEE2; display:flex; align-items:center; gap:8px; z-index:2}
+.gl-tag:before{content:""; width:26px; height:1px; background:var(--c)}
+.gl-ruler{position:absolute; left:3vw; top:0; height:33vh; border-left:1px solid var(--c); z-index:2;
+  background:repeating-linear-gradient(180deg,var(--c) 0 1px,transparent 1px 2vh) left top/6px 100% no-repeat}
+.gl-ruler span{position:absolute; left:12px; white-space:nowrap; font-size:10px; color:var(--mut); transform:translateY(-50%)}
+
+/* title */
+.gl-title{position:absolute; left:0; right:0; top:7vh; text-align:center; z-index:3}
+.gl-title h1{margin:0; font-family:system-ui,'Segoe UI',sans-serif; font-weight:800; font-size:clamp(40px,6.5vw,86px); letter-spacing:-.03em; line-height:1}
+.gl-title h1 b{color:var(--c); text-shadow:0 0 40px rgba(0,229,255,.5)}
+.gl-title p{margin:14px 0 0; font-size:clamp(9px,1vw,13px); letter-spacing:.42em; color:var(--mut)}
+
+/* the backhoe */
+.gl-rig{position:absolute; left:50%; bottom:calc(100% - var(--ground) - 2px); width:clamp(260px,40vw,620px); aspect-ratio:770/296;
+  transform:translateX(-50%); z-index:4; cursor:pointer; -webkit-tap-highlight-color:transparent; background:none; border:0; padding:0}
+.gl-rig:focus-visible{outline:2px dashed var(--c); outline-offset:8px}
+.gl-body{position:absolute; inset:0; transform-origin:30% 100%}
+.gl-body img{width:100%; height:100%; display:block; filter:drop-shadow(0 16px 16px rgba(0,0,0,.55)); user-select:none; pointer-events:none}
+#geo-loader.gl-engine .gl-body{animation:gl-rumble .18s linear infinite}
+@keyframes gl-rumble{50%{transform:translateY(-1.5px) rotate(-.3deg)}}
+.gl-bucket{position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; filter:drop-shadow(0 10px 10px rgba(0,0,0,.45))}
+.gl-bk{transform-box:view-box; transform-origin:622px 240px; transition:transform .35s ease}
+#geo-loader.gl-engine:not(.gl-raise) .gl-bk{animation:gl-dig 1.3s ease-in-out infinite}
+@keyframes gl-dig{0%,100%{transform:rotate(0)} 40%{transform:rotate(-9deg) translateY(-4px)} 70%{transform:rotate(3deg)}}
+#geo-loader.gl-raise .gl-bk{animation:none; transform:rotate(-14deg) translateY(-10px)}
+.gl-wheel{position:absolute; border-radius:50%; border:3px dashed rgba(255,255,255,.22); transform:translate(-50%,-50%);
+  animation:gl-spin 1.4s linear infinite; animation-play-state:paused; pointer-events:none}
+#geo-loader.gl-drive .gl-wheel{animation-play-state:running}
+@keyframes gl-spin{to{transform:translate(-50%,-50%) rotate(-360deg)}}
+.gl-beam{position:absolute; left:72.3%; top:60%; width:70%; height:60%; transform:translateY(-50%);
+  background:radial-gradient(ellipse at 0 50%,rgba(255,236,170,.32),transparent 70%);
+  clip-path:polygon(0 42%,100% 0,100% 100%,0 58%); pointer-events:none; opacity:0; transition:opacity .25s}
+#geo-loader.gl-engine .gl-beam{opacity:1}
+.gl-beacon{position:absolute; left:28.8%; top:11.8%; width:2.6%; aspect-ratio:1; border-radius:50%;
+  background:#FF5C5C; box-shadow:0 0 18px 6px rgba(255,92,92,.7); pointer-events:none; opacity:0}
+#geo-loader.gl-engine .gl-beacon{opacity:1; animation:gl-blink .7s steps(2) infinite}
+@keyframes gl-blink{50%{opacity:.15}}
+.gl-puff,.gl-dust{position:absolute; border-radius:50%; pointer-events:none}
+.gl-puff{background:rgba(180,190,210,.35); z-index:5}
+.gl-dust{background:rgba(200,154,106,.35); z-index:3}
+.gl-beep{position:absolute; z-index:6; font-weight:700; font-size:clamp(16px,2vw,24px); letter-spacing:.12em; color:var(--a);
+  text-shadow:0 0 16px rgba(255,181,71,.6); pointer-events:none; white-space:nowrap}
+
+/* loading bar */
+.gl-load{position:absolute; left:50%; bottom:9vh; transform:translateX(-50%); width:min(560px,86vw); z-index:5;
+  padding:16px 18px 14px; background:rgba(3,5,12,.72); border:1px solid rgba(0,229,255,.25);
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.gl-track{position:relative; height:8px; background:rgba(131,148,180,.25)}
+.gl-fill{position:absolute; inset:0 auto 0 0; width:0; background:linear-gradient(90deg,var(--c),var(--v)); box-shadow:0 0 18px rgba(0,229,255,.6)}
+.gl-row{display:flex; justify-content:space-between; margin-top:12px; font-size:12.5px; letter-spacing:.14em; color:#C4CEE2}
+.gl-row b{color:var(--c)}
+.gl-hint{margin-top:10px; text-align:center; font-size:10.5px; letter-spacing:.16em; color:var(--mut)}
+.gl-hud{position:absolute; width:26px; height:26px; border:0 solid var(--c); opacity:.7; z-index:6}
+
+@media (max-width:700px){ .gl-tag,.gl-ruler{display:none} .gl-load{bottom:6vh} }
+@media (prefers-reduced-motion:reduce){
+  .gl-leg,.gl-arm,.gl-bob{animation:none !important}
+  .gl-city,.gl-layer,.gl-wheel,.gl-beacon,#geo-loader .gl-bk,#geo-loader.gl-engine .gl-body{animation:none !important}
+}
+
+/* operator */
+.gl-cabin{position:absolute; inset:0; width:100%; height:100%; pointer-events:none}
+.gl-seated{opacity:0}
+.gl-walk{position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:2}
+.gl-op{transform-box:view-box; transform-origin:0 0; transform:translate(-2000px,296px)}
+.gl-leg,.gl-arm{transform-box:fill-box; transform-origin:50% 4%}
+#geo-loader.gl-walking .gl-leg-f{animation:gl-step .42s ease-in-out infinite}
+#geo-loader.gl-walking .gl-leg-b{animation:gl-step .42s ease-in-out infinite reverse}
+#geo-loader.gl-walking .gl-arm-f{animation:gl-step .42s ease-in-out infinite reverse}
+#geo-loader.gl-walking .gl-arm-b{animation:gl-step .42s ease-in-out infinite}
+#geo-loader.gl-walking .gl-bob{animation:gl-bobbing .21s ease-in-out infinite alternate}
+@keyframes gl-step{0%,100%{transform:rotate(-26deg)}50%{transform:rotate(26deg)}}
+@keyframes gl-bobbing{to{transform:translateY(-4px)}}
