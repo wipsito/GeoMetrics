@@ -49,6 +49,55 @@
 
     /* ------------------------------------------------------------------ modelos por asignatura */
     var MODELS = {
+        /* ---- modelo en reposo: el terreno con una estructura cimentada sobre zapatas ---- */
+        estructura: {
+            head: 'CIMENTACIÓN SOBRE ESTRATOS // MODELO 3D', foot: 'q_adm · B · Df · γ · φ', accent: '#22d3ee',
+            labels: [['ESTRUCTURA', 'pórtico'], ['ZAPATAS', 'B × B'], ['ARENA', '0.0 m'], ['ARCILLA', 'φ'], ['ROCA', '']],
+            build: function (w) {
+                /* 1 · el terreno */
+                var S = 212, layers = [
+                    ['vegetal', 12, TX.speck('rgba(168,162,158,.45)'), 'rgba(68,64,60,.40)'],
+                    ['arena', 34, TX.dots('rgba(245,158,11,.9)'), 'rgba(120,53,15,.28)'],
+                    ['arcilla', 34, TX.hatch('rgba(167,139,250,.75)'), 'rgba(76,29,149,.32)'],
+                    ['roca', 26, TX.brick('rgba(148,163,184,.75)'), 'rgba(30,41,59,.55)']
+                ];
+                /* Y0 baja todo el conjunto para que la estructura no tape el título del visor */
+                var Y0 = -44;
+                var tot = layers.reduce(function (a, l) { return a + l[1]; }, 0), y = tot / 2 + Y0, cota = tot / 2 + Y0;
+                layers.forEach(function (l, i) {
+                    y -= l[1] / 2;
+                    w.appendChild(box({ w: S, h: l[1], d: S, y: y, line: CY, fill: l[3], f: { side: l[2], top: i === 0 ? TX.grid('rgba(34,211,238,.25)') : null, topFill: i === 0 ? 'rgba(8,47,73,.55)' : l[3] }, skip: i === 0 ? [] : ['top'] }));
+                    y -= l[1] / 2;
+                });
+                var ring = el('div', 'gmx-ring'); ring.style.transform = 'translate3d(0,' + (-(cota + 1)) + 'px,0) rotateX(90deg)'; w.appendChild(ring);
+
+                /* 2 · la estructura: zapatas → dados → columnas → vigas → losa */
+                var CON = 'rgba(226,232,240,.95)', CF = 'rgba(148,163,184,.42)', CF2 = 'rgba(148,163,184,.52)', CT = TX.speck('rgba(226,232,240,.3)');
+                var X = 58, Z = 58, P = [[-X, -Z], [X, -Z], [-X, Z], [X, Z]];
+
+                var zy = cota + 7;                                        /* zapatas apoyadas en el terreno */
+                P.forEach(function (p) { w.appendChild(box({ w: 58, h: 14, d: 58, x: p[0], z: p[1], y: zy, line: CON, fill: CF, f: { all: CT } })); });
+
+                var dy = zy + 13;                                         /* dados de arranque */
+                P.forEach(function (p) { w.appendChild(box({ w: 26, h: 12, d: 26, x: p[0], z: p[1], y: dy, line: CON, fill: CF2, f: { all: CT } })); });
+
+                [-Z, Z].forEach(function (z) { w.appendChild(box({ w: 2 * X - 24, h: 10, d: 10, z: z, y: dy, line: CON, fill: CF })); });
+                [-X, X].forEach(function (x) { w.appendChild(box({ w: 10, h: 10, d: 2 * Z - 24, x: x, y: dy, line: CON, fill: CF })); });
+
+                var ch = 72, cy = dy + 6 + ch / 2;                        /* columnas */
+                P.forEach(function (p) { w.appendChild(box({ w: 18, h: ch, d: 18, x: p[0], z: p[1], y: cy, line: CON, fill: CF2, f: { all: CT } })); });
+
+                var by = cy + ch / 2 - 6;                                 /* vigas de amarre superiores */
+                [-Z, Z].forEach(function (z) { w.appendChild(box({ w: 2 * X + 13, h: 13, d: 13, z: z, y: by, line: CON, fill: CF })); });
+                [-X, X].forEach(function (x) { w.appendChild(box({ w: 13, h: 13, d: 2 * Z + 13, x: x, y: by, line: CON, fill: CF })); });
+
+                w.appendChild(box({ w: 2 * X + 30, h: 7, d: 2 * Z + 30, y: by + 10, line: 'rgba(34,211,238,.85)', fill: 'rgba(8,47,73,.5)', f: { top: TX.grid('rgba(34,211,238,.22)') } }));
+
+                /* 3 · carga y cota de desplante */
+                w.appendChild(box({ w: 4, h: 34, d: 4, y: by + 32, line: '#f43f5e', fill: '#f43f5e' }));
+
+            }
+        },
         suelos: {
             head: 'PERFIL ESTRATIGRÁFICO // MODELO 3D', foot: 'w · γ · LL · LP · IP', accent: '#22d3ee',
             labels: [['ARENA', '0.0 m'], ['LIMO', ''], ['ARCILLA', ''], ['ROCA', '']],
@@ -347,7 +396,7 @@
     }
 
     /* ------------------------------------------------------------------ visor 3D */
-    var V = { k: 1.25, cur: null, ang: -45, target: null, spin: false, raf: 0, last: 0, world: null, view: null, base: 'suelos', pend: null };
+    var V = { k: 1.25, cur: null, ang: -45, target: null, spin: false, raf: 0, last: 0, world: null, view: null, base: 'estructura', pend: null, visible: true };
     var TILT = -24;
     function pintarMundo() { var vh = V.view ? V.view.clientHeight : 0; V.k = window.innerWidth < 640 ? 0.72 : window.innerWidth < 1100 ? 1 : (vh ? Math.max(0.55, Math.min(1.2, (vh - 110) / 290)) : 1.2); if (V.world) V.world.style.transform = 'scale3d(' + V.k + ',' + V.k + ',' + V.k + ') rotateX(' + TILT + 'deg) rotateY(' + V.ang.toFixed(2) + 'deg)'; }
     function cambiarModelo(key) {
@@ -367,28 +416,24 @@
         V.view.classList.add('fade');
         clearTimeout(V.pend); V.pend = setTimeout(aplicar, 220);
     }
+    /* el modelo gira 360° siempre: más rápido con el cursor encima de una asignatura */
+    var GIRO_HOVER = 60, GIRO_REPOSO = 26;                         /* grados por segundo */
     function loop(ts) {
-        if (!V.world || !V.world.isConnected) { V.raf = 0; return; }
+        if (!V.world || !V.world.isConnected || !V.visible) { V.raf = 0; V.last = 0; return; }
         var dt = V.last ? Math.min(0.05, (ts - V.last) / 1000) : 0; V.last = ts;
-        if (V.spin) V.ang += dt * 60;                              /* 360° cada 6 s */
-        else {
-            var goal = V.home; var d = goal - V.ang;
-            if (Math.abs(d) < 0.05) { V.ang = goal; pintarMundo(); V.raf = 0; V.last = 0; return; }
-            V.ang += d * Math.min(1, dt * 5);
-        }
+        V.ang += dt * (V.spin ? GIRO_HOVER : GIRO_REPOSO);         /* 360° cada 6 s / cada 14 s */
+        if (V.ang >= 360) V.ang -= 360;
         pintarMundo();
         V.raf = requestAnimationFrame(loop);
     }
-    function arrancar() { if (!V.raf) { V.last = 0; V.raf = requestAnimationFrame(loop); } }
+    function arrancar() { if (!V.raf && !reduce && V.visible) { V.last = 0; V.raf = requestAnimationFrame(loop); } }
     function hover(key) {
         cambiarModelo(key);
         if (reduce) return;
         V.spin = true; arrancar();
     }
     function salir() {
-        V.spin = false;
-        /* volver al ángulo isométrico más cercano hacia adelante */
-        var k = Math.ceil((V.ang + 45) / 360); V.home = k * 360 - 45;
+        V.spin = false;                                            /* sigue girando, solo más despacio */
         cambiarModelo(V.base); arrancar();
     }
     function visor() {
@@ -396,6 +441,14 @@
         V.view = v; V.world = v.querySelector('.gmx-world'); V.home = -45; V.ang = -45;
         cambiarModelo(V.base); pintarMundo();
         if (window.ResizeObserver) new ResizeObserver(function () { pintarMundo(); }).observe(v);
+        /* solo gira mientras el visor está a la vista (con el menú oculto no consume nada) */
+        if (window.IntersectionObserver) {
+            new IntersectionObserver(function (ent) {
+                V.visible = !!(ent[0] && ent[0].isIntersecting);
+                if (V.visible) arrancar();
+            }, { threshold: 0 }).observe(v);
+        }
+        arrancar();
         return v;
     }
 

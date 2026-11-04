@@ -253,7 +253,12 @@
       } catch (e) {}
     }
     var mats = teacherMaterias(u).map(function (m) { return String(m.nombre || '').toLowerCase(); });
-    var estudiantes = users.filter(function (x) {
+    /* filtro real: materia Y grupo que el docente registró */
+    var estudiantes = null;
+    if (typeof window.aulaEstudiantesDeDocente === 'function') {
+      try { estudiantes = window.aulaEstudiantesDeDocente(u); } catch (e) { estudiantes = null; }
+    }
+    if (!estudiantes) estudiantes = users.filter(function (x) {
       if (!x || x.rol === 'docente') return false;
       var xm = x.materias || x.materiasEstudiante || [];
       if (!Array.isArray(xm)) return false;
@@ -291,6 +296,14 @@
     var html = mats.map(function (m) {
       var nombre = m.nombre || 'Curso';
       var estCount = data.estudiantes.filter(function (e) {
+        /* solo cuenta si comparte materia Y grupo con el docente */
+        if (typeof window.aulaMateriasDeDocente === 'function') {
+          try {
+            return window.aulaMateriasDeDocente(e, data.u).some(function (mm) {
+              return String(mm.nombre).toLowerCase() === String(nombre).toLowerCase();
+            });
+          } catch (err) {}
+        }
         var xm = e.materias || e.materiasEstudiante || [];
         return xm.some(function (mm) {
           var n = typeof mm === 'string' ? mm : (mm && (mm.nombre || mm.materia));

@@ -120,14 +120,49 @@
     function load(k) { try { return window.aulaLoad(window.AULA_KEYS[k], []); } catch (e) { return []; } }
     function uniq(ms) { var seen = {}; return ms.filter(function (m) { var k = norm(m.nombre); if (seen[k]) return false; seen[k] = 1; return true; }); }
     function materias(u) { var m = []; try { m = window.aulaMateriasUsuario(u) || []; } catch (e) { m = (u && u.materias) || []; } return m.map(function (x) { return typeof x === 'string' ? { nombre: x, grupo: '' } : { nombre: x.nombre || x.materia || '', grupo: x.grupo || '' }; }).filter(function (x) { return x.nombre; }); }
+    /* ¿este estudiante está en ESTE curso, con un grupo que el docente dicta? */
+    function enCurso(student, nombre) {
+        if (typeof window.aulaMateriasDeDocente === 'function') {
+            try {
+                return window.aulaMateriasDeDocente(student, sesion()).some(function (m) { return norm(m.nombre) === norm(nombre); });
+            } catch (e) {}
+        }
+        return tieneMat(student, nombre);
+    }
     function tieneMat(user, nombre) { return materias(user).some(function (m) { return norm(m.nombre) === norm(nombre); }); }
     function datos() {
         var u = sesion(); if (!u) return null;
         var ms = materias(u), ts = load('tareas').filter(function (t) { return t && t.docenteId === u.id; }), ids = {};
         ts.forEach(function (t) { ids[t.id] = t; });
         var es = load('entregas').filter(function (e) { return e && ids[e.tareaId]; });
-        var est = load('users').filter(function (x) { return x && x.rol === 'estudiante' && ms.some(function (m) { return tieneMat(x, m.nombre); }); });
+        var est;
+        if (typeof window.aulaEstudiantesDeDocente === 'function') {
+            try { est = window.aulaEstudiantesDeDocente(u); } catch (e) { est = null; }
+        }
+        if (!est) est = load('users').filter(function (x) { return x && x.rol === 'estudiante' && ms.some(function (m) { return tieneMat(x, m.nombre); }); });
         return { u: u, ms: ms, ts: ts, es: es, est: est, ids: ids };
+    }
+    /* materias y grupos que el docente escribió al registrarse:
+       { "mecanica de suelos i": ["A","B"] }  ·  null = todos los grupos de esa materia */
+    function gruposDoc() {
+        var u = sesion();
+        if (u && typeof window.aulaGruposDocente === 'function') {
+            try {
+                var orig = window.aulaGruposDocente(u) || {}, re = {};
+                /* las claves de aula.js van en minúsculas con tilde; aquí se usan sin tilde */
+                Object.keys(orig).forEach(function (k) { re[norm(k)] = orig[k]; });
+                return re;
+            } catch (e) {}
+        }
+        var mapa = {};
+        (u ? materias(u) : []).forEach(function (m) {
+            var k = norm(m.nombre); if (!k) return;
+            var gs = String(m.grupo || '').split(',').map(function (g) { return g.trim().toUpperCase(); }).filter(Boolean);
+            if (!gs.length) { mapa[k] = null; return; }
+            if (mapa[k] === null) return;
+            mapa[k] = (mapa[k] || []).concat(gs);
+        });
+        return mapa;
     }
     function irA(v) { var b = doc.querySelector('#pantallaDocente .dp-side [data-dp-view="' + v + '"]') || doc.querySelector('#pantallaDocente [data-dp-view="' + v + '"]'); if (b) b.click(); }
     function limite(t) { return t && t.fechaLimite ? new Date(t.fechaLimite + 'T' + (t.horaLimite || '23:59')) : null; }
@@ -197,32 +232,52 @@
     function pintarEst() {
         var box = $('listaEstudiantes'), tb = box && box.querySelector('table'), list = box && box.querySelector('.gtd-stlist');
         var rows = tb ? [].slice.call(tb.querySelectorAll('tbody tr')) : [], d = datos();
-        var head = box && box.closest('.dp-card') && box.closest('.dp-card').querySelector('.gtd-st-head'); if (head) head.style.display = rows.length ? '' : 'none';
+        var head = box && box.closest('.dp-card') && box.closest('.dp-card').querySelector('.gtd-st-head');
         var hace7 = Date.now() - 7 * 864e5, act = {};
         if (d) d.es.forEach(function (e) { if (new Date(e.fecha).getTime() >= hace7) { act[norm(e.estudianteEmail)] = 1; act[e.estudianteId] = 1; } });
-        var mset = {}, gset = {}, sin = 0, dm = {}; (d ? d.ms : []).forEach(function (m) { dm[norm(m.nombre)] = 1; }); var filtrar = Object.keys(dm).length > 0;
+        var mset = {}, gset = {}, sin = 0, nEst = 0;
+        var su = sesion(), dg = gruposDoc();
+        var filtrar = !!(su && su.rol === 'docente');     /* sin materias registradas → no dicta nada */
         var html = rows.map(function (tr) {
             var td = tr.children; if (td.length < 5) return '';
             var nm = td[1].textContent.trim(), em = td[2].textContent.trim(), ms = td[3].textContent.split(/\s*,\s*/), gs = td[4].textContent.split(/\s*,\s*/);
             var foto = td[0].querySelector('img'), av = foto ? '<img src="' + esc(foto.getAttribute('src')) + '" alt="">' : esc(ini(nm));
             var user = load('users').filter(function (u) { return norm(u.email) === norm(em); })[0];
+            /* solo las materias Y grupos que el docente dicta de verdad */
+            var tags = ms.map(function (m, i) {
+                if (!m || m === '—') return '';
+                var k = norm(m);
+                if (filtrar && !(k in dg)) return '';
+                var g = (gs[i] || gs[0] || '—').trim().toUpperCase();
+                var permitidos = filtrar ? dg[k] : null;
+                if (permitidos && g && g !== '—' && permitidos.indexOf(g) < 0) return '';
+                var mm = mat(m);
+                mset[k] = 1; if (g && g !== '—') gset[g] = 1;
+                return '<i style="--m:' + mm[2] + '" title="' + esc(m + ' · Grupo ' + g) + '">' + mm[1] + ' · ' + esc(g === '—' ? 'X' : g) + '</i>';
+            }).join('');
+            if (filtrar && !tags) return '';                 /* no pertenece a ningún grupo suyo */
+            nEst++;
             if (!act[norm(em)] && !(user && act[user.id])) sin++;
-            var tags = ms.map(function (m, i) { if (!m || m === '—') return ''; if (filtrar && !dm[norm(m)]) return ''; var mm = mat(m), g = (gs[i] || gs[0] || '—').trim().toUpperCase(); mset[norm(m)] = 1; if (g && g !== '—') gset[g] = 1; return '<i style="--m:' + mm[2] + '" title="' + esc(m + ' · Grupo ' + g) + '">' + mm[1] + ' · ' + esc(g === '—' ? 'X' : g) + '</i>'; }).join('');
             return '<div class="gtd-st" data-n="' + esc(nm) + '" data-e="' + esc(em) + '"><div class="n"><span class="gtd-av">' + av + '</span><b>' + esc(nm) + '</b></div><div class="e">' + esc(em) + '</div><div class="t">' + tags + '</div><div class="a"><button type="button" data-gtd-st="msg" title="Enviar mensaje" aria-label="Enviar mensaje">' + IC.msg + '</button><button type="button" data-gtd-st="ver" title="Ver detalle" aria-label="Ver detalle">' + IC.eye + '</button></div></div>';
         }).join('');
         var leg = box.closest('.dp-card') && box.closest('.dp-card').querySelector('.gtd-mleg');
-        if (leg && filtrar) { var NOMB = { 'MS-I': 'Suelos I', 'MS-II': 'Suelos II', 'RM': 'Resistencia', 'DM': 'Mezclas', 'EST-I': 'Estructuras' }, lh = uniq(d.ms).map(function (m) { var mm = mat(m.nombre); return '<span style="--m:' + mm[2] + '">' + mm[1] + ' · ' + esc(NOMB[mm[1]] || m.nombre) + '</span>'; }).join(''); if (leg.__h !== lh) { leg.__h = lh; leg.innerHTML = lh; } }
+        if (head) head.style.display = nEst ? '' : 'none';
+        if (leg && d && d.ms && d.ms.length) { var NOMB = { 'MS-I': 'Suelos I', 'MS-II': 'Suelos II', 'RM': 'Resistencia', 'DM': 'Mezclas', 'EST-I': 'Estructuras' }, lh = uniq(d.ms).map(function (m) { var mm = mat(m.nombre); return '<span style="--m:' + mm[2] + '">' + mm[1] + ' · ' + esc(NOMB[mm[1]] || m.nombre) + '</span>'; }).join(''); if (leg.__h !== lh) { leg.__h = lh; leg.innerHTML = lh; } }
         if (!list) { list = el('div', 'gtd-stlist'); box.appendChild(list); }
         if (list.__h !== html) { list.__h = html; list.innerHTML = html; }
         var k = doc.querySelector('#pantallaDocente .gtd-stk');
-        if (k) { var kh = kpi('#22d3ee', IC.users, rows.length, 'Estudiantes') + kpi('#f59e0b', IC.book, Object.keys(mset).length, 'Materias') + kpi('#a78bfa', IC.layers, Object.keys(gset).length, 'Grupos') + kpi('#f472b6', IC.clock, rows.length ? sin : 0, 'Sin actividad 7d'); if (k.__h !== kh) { k.__h = kh; k.innerHTML = kh; } }
-        contadores(rows.length);
+        if (k) { var kh = kpi('#22d3ee', IC.users, nEst, 'Estudiantes') + kpi('#f59e0b', IC.book, Object.keys(mset).length, 'Materias') + kpi('#a78bfa', IC.layers, Object.keys(gset).length, 'Grupos') + kpi('#f472b6', IC.clock, nEst ? sin : 0, 'Sin actividad 7d'); if (k.__h !== kh) { k.__h = kh; k.innerHTML = kh; } }
+        contadores();
     }
-    function contadores(nEst) {
+    function contadores() {
+        /* total real: estudiantes matriculados en las materias Y grupos del docente */
+        var d = datos(), total = d ? d.est.length : 0;
+        var kd = doc.getElementById('kpiEstudiantes');
+        if (kd && kd.textContent !== String(total)) kd.textContent = String(total);
         var side = doc.querySelector('#pantallaDocente .dp-side'); if (!side) return;
         function badge(v, n) { var b = side.querySelector('[data-dp-view="' + v + '"]'); if (!b) return; var s = b.querySelector('.gtd-cnt'); if (!s) { s = el('span', 'gtd-cnt'); b.appendChild(s); } if (s.textContent !== String(n)) s.textContent = n; var dsp = n ? '' : 'none'; if (s.style.display !== dsp) s.style.display = dsp; }
-        if (nEst != null) badge('estudiantes', nEst);
-        var d = datos(); badge('cursos', d ? uniq(d.ms).length : 0);
+        badge('estudiantes', total);
+        badge('cursos', d ? uniq(d.ms).length : 0);
     }
     function botonCursos() {
         var side = doc.querySelector('#pantallaDocente .dp-side'); if (!side || side.querySelector('[data-dp-view="cursos"]')) return;
@@ -258,7 +313,7 @@
         var now = new Date(), by = {};
         d.ms.forEach(function (m) { var k = norm(m.nombre); if (!by[k]) by[k] = { nombre: m.nombre, grupos: [] }; if (m.grupo && by[k].grupos.indexOf(m.grupo) < 0) by[k].grupos.push(m.grupo); });
         var h = Object.keys(by).map(function (k) {
-            var c = by[k], mm = mat(c.nombre), ne = d.est.filter(function (x) { return tieneMat(x, c.nombre); }).length;
+            var c = by[k], mm = mat(c.nombre), ne = d.est.filter(function (x) { return enCurso(x, c.nombre); }).length;
             var tt = d.ts.filter(function (t) { return norm(t.materia) === k; }), tids = {}; tt.forEach(function (t) { tids[t.id] = 1; });
             var ee = d.es.filter(function (e) { return tids[e.tareaId]; }), cal = ee.filter(function (e) { return e.nota != null && e.nota !== ''; });
             var prom = cal.length ? (cal.reduce(function (a, e) { return a + (+e.nota || 0); }, 0) / cal.length).toFixed(1) : '—';

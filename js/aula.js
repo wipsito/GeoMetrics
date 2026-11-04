@@ -1659,7 +1659,13 @@ function aulaActualizarResumenDocente() {
     tareas.forEach(function(t) { ids[t.id] = true; });
     var entregas = aulaLoad(AULA_KEYS.entregas, []).filter(function(e) { return ids[e.tareaId]; });
     var pendientes = entregas.filter(function(e) { return e.nota == null || e.nota === ''; }).length;
-    var estudiantes = aulaLoad(AULA_KEYS.users, []).filter(function(u) { return u.rol === 'estudiante'; }).length;
+    // Estudiantes matriculados en las materias y grupos del docente (no el total del sistema)
+    var estudiantes;
+    if (user && user.rol === 'docente') {
+        estudiantes = aulaEstudiantesDeDocente(user).length;
+    } else {
+        estudiantes = aulaLoad(AULA_KEYS.users, []).filter(function(u) { return u.rol === 'estudiante'; }).length;
+    }
 
     var el = function(id, val) { var n = document.getElementById(id); if (n) n.textContent = String(val); };
     el('kpiTareas', tareas.length);
@@ -2254,18 +2260,14 @@ function aulaRenderEstudiantes() {
     var students = aulaLoad(AULA_KEYS.users, []).filter(function(u) {
         return u && u.rol === 'estudiante' && u.email;
     });
-    // Si el docente tiene materias, por defecto mostrar alumnos de esas materias
-    if (!materia && docUser && docUser.rol === 'docente') {
-        var docMats = typeof aulaNombresMaterias === 'function' ? aulaNombresMaterias(docUser) : [];
-        if (docMats.length) {
-            students = students.filter(function(u) {
-                return docMats.some(function(nm) {
-                    return typeof aulaUsuarioCoincideMateriaGrupo === 'function'
-                        ? aulaUsuarioCoincideMateriaGrupo(u, nm, '')
-                        : true;
-                });
-            });
-        }
+    // El docente solo ve los estudiantes de SUS materias y SUS grupos
+    var mapaDoc = null;
+    if (docUser && docUser.rol === 'docente') {
+        // Sin materias registradas no dicta ningún grupo: la lista queda vacía
+        mapaDoc = aulaGruposDocente(docUser);
+        students = students.filter(function(u) {
+            return aulaEsEstudianteDeDocente(u, docUser, mapaDoc);
+        });
     }
     if (materia || grupo) {
         students = students.filter(function(u) {
@@ -2273,7 +2275,13 @@ function aulaRenderEstudiantes() {
         });
     }
     if (!students.length) {
-        box.innerHTML = '<p class="aula-vacio">No hay estudiantes registrados' + ((materia || grupo) ? ' con ese filtro' : '') + '.</p>';
+        var aviso;
+        if (mapaDoc && !Object.keys(mapaDoc).length) {
+            aviso = 'No tienes materias ni grupos registrados. Vuelve a registrarte indicando las materias y los grupos que dictas.';
+        } else {
+            aviso = 'No hay estudiantes matriculados en tus materias y grupos' + ((materia || grupo) ? ' con ese filtro' : '') + '.';
+        }
+        box.innerHTML = '<p class="aula-vacio">' + aviso + '</p>';
         return;
     }
     // Columnas: si hay filtro de materia, solo mostrar esa materia + su grupo
@@ -2289,8 +2297,10 @@ function aulaRenderEstudiantes() {
                 grpStr = found ? (found.grupo || '—') : (s.grupo || '—');
                 if (grupo) grpStr = grupo; // el filtro de grupo ya limitó la lista
             } else {
-                matStr = mats.map(function(m) { return m.nombre; }).join(', ') || (s.materia || '—');
-                grpStr = mats.map(function(m) { return (m.grupo || '—'); }).join(', ') || (s.grupo || '—');
+                var propias = mapaDoc ? aulaMateriasDeDocente(s, docUser, mapaDoc) : mats;
+                if (!propias.length) propias = mats;
+                matStr = propias.map(function(m) { return m.nombre; }).join(', ') || (s.materia || '—');
+                grpStr = propias.map(function(m) { return (m.grupo || '—'); }).join(', ') || (s.grupo || '—');
             }
             var foto = (s.foto || s.photo)
                 ? '<img class="tabla-foto" src="' + String(s.foto || s.photo).replace(/"/g, '&quot;') + '" alt="">'
@@ -5049,6 +5059,68 @@ function aulaParseGrupos(str) {
         .filter(Boolean);
 }
 /** ¿El docente dicta esta materia y este grupo exacto? */
+/* ============================================================
+   Filtro real docente → estudiantes (materia + GRUPO)
+   Un docente solo ve los grupos que escribió al registrarse.
+   Si marcó la materia pero no escribió ningún grupo, se entiende
+   que dicta todos los grupos de esa materia.
+   ============================================================ */
+
+/** Grupos que dicta el docente, por materia: { "mecanica de suelos i": ["A","B"] | null } */
+function aulaGruposDocente(docUser) {
+    var mapa = {};
+    if (!docUser) return mapa;
+    var mats = aulaMateriasUsuario(docUser) || [];
+    for (var i = 0; i < mats.length; i++) {
+        var nom = String(mats[i].nombre || '').trim();
+        if (!nom) continue;
+        var k = nom.toLowerCase();
+        var gs = (mats[i].grupos && mats[i].grupos.length) ? mats[i].grupos : aulaParseGrupos(mats[i].grupo);
+        gs = gs.map(function(g) { return String(g).trim().toUpperCase(); }).filter(Boolean);
+        if (!gs.length) { mapa[k] = null; continue; }          // null = todos los grupos
+        if (mapa[k] === null) continue;                        // ya era "todos"
+        mapa[k] = (mapa[k] || []).concat(gs);
+    }
+    return mapa;
+}
+
+/** Pares materia·grupo del estudiante que este docente realmente dicta. */
+function aulaMateriasDeDocente(student, docUser, mapa) {
+    mapa = mapa || aulaGruposDocente(docUser);
+    var out = [];
+    if (!student) return out;
+    var mats = aulaMateriasUsuario(student) || [];
+    for (var i = 0; i < mats.length; i++) {
+        var nom = String(mats[i].nombre || '').trim();
+        if (!nom) continue;
+        var k = nom.toLowerCase();
+        if (!(k in mapa)) continue;                            // el docente no dicta esa materia
+        var permitidos = mapa[k];
+        var gEst = String(mats[i].grupo || '').trim().toUpperCase();
+        if (permitidos === null || !gEst) {                    // todos los grupos, o estudiante sin grupo asignado
+            out.push({ nombre: nom, grupo: mats[i].grupo || '' });
+            continue;
+        }
+        if (permitidos.indexOf(gEst) >= 0) out.push({ nombre: nom, grupo: mats[i].grupo || '' });
+    }
+    return out;
+}
+
+/** ¿El estudiante está matriculado en alguna materia Y grupo de este docente? */
+function aulaEsEstudianteDeDocente(student, docUser, mapa) {
+    return aulaMateriasDeDocente(student, docUser, mapa).length > 0;
+}
+
+/** Estudiantes matriculados en las materias y grupos de este docente. */
+function aulaEstudiantesDeDocente(docUser) {
+    if (!docUser || docUser.rol !== 'docente') return [];
+    var mapa = aulaGruposDocente(docUser);
+    if (!Object.keys(mapa).length) return [];                  // sin materias registradas → sin estudiantes
+    return aulaLoad(AULA_KEYS.users, []).filter(function(u) {
+        return u && u.rol === 'estudiante' && u.email && aulaEsEstudianteDeDocente(u, docUser, mapa);
+    });
+}
+
 function aulaDocenteDicta(user, materia, grupo) {
     if (!user || user.rol !== 'docente') return false;
     var mats = aulaMateriasUsuario(user);
