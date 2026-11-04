@@ -136,10 +136,10 @@
     <div class="gl-sky"></div>${city()}
     <div class="gl-ground" aria-hidden="true">
       <div class="gl-ruler"><span style="top:0">0.0 m</span><span style="top:50%">-2.5 m</span><span style="top:100%">-5.0 m</span></div>
-      <div class="gl-layer gl-l1"><span class="gl-tag">TIERRA VEGETAL</span></div>
-      <div class="gl-layer gl-l2"><span class="gl-tag">ARENA</span></div>
-      <div class="gl-layer gl-l3"><span class="gl-tag">ARCILLA</span></div>
-      <div class="gl-layer gl-l4"><span class="gl-tag" style="top:18%">ROCA</span></div>
+      <div class="gl-layer gl-l1"><i></i><span class="gl-tag">TIERRA VEGETAL</span></div>
+      <div class="gl-layer gl-l2"><i></i><span class="gl-tag">ARENA</span></div>
+      <div class="gl-layer gl-l3"><i></i><span class="gl-tag">ARCILLA</span></div>
+      <div class="gl-layer gl-l4"><i></i><span class="gl-tag" style="top:18%">ROCA</span></div>
     </div>
     <div class="gl-title"><h1>Geo<b>Metrics</b></h1><p>LABORATORIO VIRTUAL · INGENIERÍA CIVIL</p></div>
     <button class="gl-rig" type="button" aria-label="Tocar la bocina">
@@ -190,16 +190,20 @@
     setLine(A.g.querySelector('.u'), A.s, e); setLine(A.g.querySelector('.f'), e, hand);
     const c = A.g.querySelector('.h'); c.setAttribute('cx', hand.x); c.setAttribute('cy', hand.y);
   }
-  let th1 = -.35, th2 = -.3;
-  (function controls(t) {
+  let th1 = -.35, th2 = -.3, ctrlOn = false, ctrlRaf = 0;
+  function controls(t) {
+    if (!ctrlOn) { ctrlRaf = 0; return; }
     t /= 1000;
     let g1 = -.35, g2 = -.3;
     if (root.classList.contains('gl-drive')) { g1 = .22; g2 = .2; }                                   // push both levers forward to drive
     else if (root.classList.contains('gl-engine')) { g1 = -.33 + .2 * Math.sin(t * 7); g2 = -.28 + .17 * Math.sin(t * 7 + 1.9); }   // working the bucket
     th1 += (g1 - th1) * .25; th2 += (g2 - th2) * .25;
     arm(A2, lever(L2, th2)); arm(A1, lever(L1, th1));
-    requestAnimationFrame(controls);
-  })(0);
+    ctrlRaf = requestAnimationFrame(controls);
+  }
+  function controlsOn() { if (!ctrlOn && !reduce) { ctrlOn = true; ctrlRaf = requestAnimationFrame(controls); } }
+  function controlsOff() { ctrlOn = false; if (ctrlRaf) cancelAnimationFrame(ctrlRaf); ctrlRaf = 0; }
+  controls(0);                                   /* una pasada para dejar la pose inicial */
 
   // ---------- particles ----------
   function spawn(cls, x, y, size, kf, ms) {
@@ -207,9 +211,12 @@
     Object.assign(p.style, { width: size + 'px', height: size + 'px', left: x + 'px', top: y + 'px' }); root.appendChild(p);
     p.animate(kf, { duration: ms, easing: 'ease-out' }).finished.then(() => p.remove());
   }
-  const puff = (big) => { const r = rig.getBoundingClientRect(); spawn('gl-puff', r.left + r.width * .565, r.top + r.height * .24, r.width * (big ? .06 : .03 + Math.random() * .02),
+  let rigRect = null, rigT = 0;
+  const medirRig = () => { const n = performance.now(); if (!rigRect || n - rigT > 500) { rigRect = rig.getBoundingClientRect(); rigT = n; } return rigRect; };
+  addEventListener('resize', () => { rigRect = null; });
+  const puff = (big) => { const r = medirRig(); spawn('gl-puff', r.left + r.width * .565, r.top + r.height * .24, r.width * (big ? .06 : .03 + Math.random() * .02),
       [{ transform: 'translate(-50%,-50%) scale(.6)', opacity: big ? .8 : .55 }, { transform: `translate(${-30 - Math.random() * 25}px,${-40 - Math.random() * 25}px) scale(${big ? 2.8 : 2})`, opacity: 0 }], big ? 900 : 600); };
-  const dust = () => { const r = rig.getBoundingClientRect(); spawn('gl-dust', r.left + r.width * .3, r.bottom - 4, r.width * (.015 + Math.random() * .03),
+  const dust = () => { const r = medirRig(); spawn('gl-dust', r.left + r.width * .3, r.bottom - 4, r.width * (.015 + Math.random() * .03),
       [{ transform: 'translate(-50%,-50%)', opacity: .7 }, { transform: `translate(${-60 - Math.random() * 80}px,${-20 - Math.random() * 30}px) scale(1.8)`, opacity: 0 }], 700); };
   let fx = null;
   const startFx = () => { if (!reduce && !fx) fx = setInterval(() => { puff(); if (root.classList.contains('gl-drive')) { dust(); dust(); } }, 150); };
@@ -258,7 +265,13 @@
 
   // ---------- progress ----------
   let shown = 0, loaded = false, t0 = 0, raf = 0, leaving = false, ready = false;
-  function setPct(p) { shown = p; fill.style.width = p + '%'; pctEl.textContent = Math.round(p) + '%'; }
+  let ultPct = -1;
+  function setPct(p) {
+    shown = p;
+    fill.style.transform = 'scaleX(' + (p / 100).toFixed(4) + ')';
+    var n = Math.round(p);
+    if (n !== ultPct) { ultPct = n; pctEl.textContent = n + '%'; }
+  }
   function loop() {
     const elapsed = performance.now() - t0;
     const target = loaded ? 100 : Math.min(92, 10 + elapsed / 30);
@@ -272,6 +285,7 @@
     root.classList.remove('gl-out', 'gl-drive', 'gl-engine', 'gl-raise'); root.style.display = '';
     rig.getAnimations().forEach(a => a.cancel()); op.getAnimations().forEach(a => a.cancel()); driver.getAnimations().forEach(a => a.cancel());
     driver.style.opacity = 0; leaving = false; ready = false; setPct(0); t0 = performance.now();
+    rigRect = null; controlsOn();
     raf = requestAnimationFrame(loop);
     if (reduce) { driver.style.opacity = 1; op.style.opacity = 0; ready = true; return; }
     await operatorBoards();
@@ -287,7 +301,7 @@
     msgEl.textContent = MSGS.ready;
     root.classList.add('gl-drive', 'gl-raise');
     if (!reduce) await rig.animate([{ transform: 'translateX(-50%)' }, { transform: 'translateX(calc(50vw + 2%))' }], { duration: 2400, easing: 'cubic-bezier(.5,0,.85,.75)', fill: 'forwards' }).finished;   // slow, heavy roll-out
-    stopFx();
+    stopFx(); controlsOff();                       /* el muñeco deja de calcularse al irse la carga */
     root.classList.add('gl-out'); lock(false);
     setTimeout(() => { root.style.display = 'none'; root.classList.remove('gl-drive', 'gl-engine', 'gl-raise'); }, 320);
   }
