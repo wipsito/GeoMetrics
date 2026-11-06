@@ -1,13 +1,29 @@
 /**
  * GeoMetrics — Equipo creador dinámico
- * - Modal público con tarjetas (3 columnas)
+ * - Modal público con tarjetas (3 columnas) — diseño referencia GeoMetrics_Modal_Equipo
  * - Datos desde teamCreators/ (Firebase) + users
  * - Administración exclusiva del Superadministrador
+ * - Cada integrante puede elegir el color del círculo de su foto
  */
 (function (global) {
   'use strict';
 
   var LOCAL_KEY = 'geometrics_team_creators_v1';
+
+  /** Paleta de colores para el anillo de la foto (hex + rgb para CSS vars) */
+  var ACCENT_PALETTE = [
+    { id: 'cyan',   hex: '#00E5FF', rgb: '0, 229, 255',  label: 'Cian' },
+    { id: 'purple', hex: '#A855F7', rgb: '168, 85, 247', label: 'Violeta' },
+    { id: 'orange', hex: '#F59E0B', rgb: '245, 158, 11', label: 'Naranja' },
+    { id: 'green',  hex: '#22C55E', rgb: '34, 197, 94',  label: 'Verde' },
+    { id: 'pink',   hex: '#EC4899', rgb: '236, 72, 153', label: 'Rosa' },
+    { id: 'blue',   hex: '#3B82F6', rgb: '59, 130, 246', label: 'Azul' },
+    { id: 'red',    hex: '#EF4444', rgb: '239, 68, 68',  label: 'Rojo' },
+    { id: 'teal',   hex: '#14B8A6', rgb: '20, 184, 166', label: 'Teal' }
+  ];
+
+  var DEFAULT_ACCENTS = ['cyan', 'purple', 'orange', 'green', 'pink', 'blue'];
+
   var state = {
     team: [],
     listening: false,
@@ -15,6 +31,16 @@
     draftPhoto: null,
     draftUserId: null
   };
+
+  function getAccentById(id) {
+    var found = ACCENT_PALETTE.find(function (c) { return c.id === id; });
+    return found || ACCENT_PALETTE[0];
+  }
+
+  function accentStyle(accentId) {
+    var a = getAccentById(accentId);
+    return '--accent: ' + a.hex + '; --accent-rgb: ' + a.rgb + ';';
+  }
 
   function normEmail(e) {
     return String(e || '').trim().toLowerCase();
@@ -105,7 +131,7 @@
     } catch (e) {}
   }
 
-  function resolveMember(entry) {
+  function resolveMember(entry, index) {
     var email = normEmail(entry.userEmail || entry.email);
     var user = findUserByEmail(email);
     var name = user ? fullName(user) : (entry.fallbackName || email.split('@')[0] || 'Integrante');
@@ -114,6 +140,7 @@
       (entry.photoURL && String(entry.photoURL).trim()) ||
       (user && user.foto) ||
       '';
+    var accentId = entry.accentColor || DEFAULT_ACCENTS[(index || 0) % DEFAULT_ACCENTS.length];
     return {
       userId: entry.userId || emailKey(email),
       userEmail: email,
@@ -122,17 +149,20 @@
       role: (entry.role != null && String(entry.role).trim() !== '') ? String(entry.role) : 'Integrante del equipo',
       photoURL: photo,
       order: entry.order || 0,
+      accentColor: accentId,
       exists: !!user,
       user: user
     };
   }
 
   function getTeamResolved() {
-    return (state.team || [])
+    var list = (state.team || [])
       .filter(function (e) {
         return e && e.active !== false;
       })
-      .map(resolveMember)
+      .map(function (e, i) {
+        return resolveMember(e, i);
+      })
       .filter(function (m) {
         // Si el usuario fue eliminado, ocultar (no mostrar datos fantasmas)
         return m.exists || (m.photoURL && m.nombre);
@@ -140,32 +170,102 @@
       .sort(function (a, b) {
         return (a.order || 0) - (b.order || 0);
       });
+    // Reasignar acento por defecto según orden visual si no tenía uno guardado
+    list.forEach(function (m, i) {
+      if (!m.accentColor || !getAccentById(m.accentColor).id) {
+        m.accentColor = DEFAULT_ACCENTS[i % DEFAULT_ACCENTS.length];
+      }
+    });
+    return list;
+  }
+
+  function currentUserEmail() {
+    var u = session();
+    return u && u.email ? normEmail(u.email) : '';
+  }
+
+  function isTeamMemberSelf(m) {
+    var me = currentUserEmail();
+    return me && m && normEmail(m.userEmail) === me;
+  }
+
+  function canEditAccent(m) {
+    return isSuperAdmin() || isTeamMemberSelf(m);
   }
 
   /* ——— Render público (modal) ——— */
+  function rolePillsHtml(roleStr) {
+    var parts = String(roleStr || '')
+      .split(/[,|;/]+/)
+      .map(function (s) { return s.trim(); })
+      .filter(Boolean);
+    if (!parts.length) parts = ['Integrante'];
+    return (
+      '<ul class="gm-team-roles" aria-label="Roles">' +
+      parts
+        .map(function (r) {
+          return '<li class="gm-team-role-pill">' + esc(r) + '</li>';
+        })
+        .join('') +
+      '</ul>'
+    );
+  }
+
+  function colorPickerHtml(m) {
+    if (!canEditAccent(m)) return '';
+    var swatches = ACCENT_PALETTE.map(function (c) {
+      var active = c.id === m.accentColor ? ' is-active' : '';
+      return (
+        '<button type="button" class="gm-team-color-swatch' +
+        active +
+        '" style="background:' +
+        c.hex +
+        ';color:' +
+        c.hex +
+        '" data-team-accent="' +
+        esc(m.userId) +
+        '" data-accent-id="' +
+        c.id +
+        '" title="' +
+        esc(c.label) +
+        '" aria-label="Color ' +
+        esc(c.label) +
+        '"></button>'
+      );
+    }).join('');
+    return (
+      '<div class="gm-team-color-picker" data-team-color-for="' +
+      esc(m.userId) +
+      '">' +
+      '<span class="gm-team-color-label">Color del círculo</span>' +
+      swatches +
+      '</div>'
+    );
+  }
+
   function cardHtml(m) {
-    var avatar = m.photoURL
-      ? '<div class="gm-team-photo"><img src="' +
-        esc(m.photoURL) +
-        '" alt="' +
-        esc(m.nombre) +
-        '"></div>'
-      : '<div class="gm-team-photo gm-team-photo-fallback" aria-hidden="true">' +
+    var avatarInner = m.photoURL
+      ? '<img src="' + esc(m.photoURL) + '" alt="' + esc(m.nombre) + '">'
+      : '<span class="gm-team-photo-fallback" aria-hidden="true">' +
         esc(initials(m.nombre)) +
-        '</div>';
+        '</span>';
 
     return (
-      '<article class="gm-team-card">' +
-      avatar +
+      '<article class="gm-team-card" style="' +
+      accentStyle(m.accentColor) +
+      '" data-team-id="' +
+      esc(m.userId) +
+      '">' +
+      '<div class="gm-team-photo-wrap">' +
+      '<div class="gm-team-photo">' +
+      avatarInner +
+      '</div></div>' +
       '<h3 class="gm-team-name">' +
       esc(m.nombre) +
       '</h3>' +
-      (m.handle
-        ? '<p class="gm-team-handle">' + esc(m.handle) + '</p>'
-        : '') +
-      '<p class="gm-team-role">' +
-      esc(m.role) +
-      '</p>' +
+      (m.handle ? '<p class="gm-team-handle">' + esc(m.handle) + '</p>' : '') +
+      rolePillsHtml(m.role) +
+      colorPickerHtml(m) +
       '</article>'
     );
   }
@@ -203,7 +303,7 @@
     (state.team || []).forEach(function (e) {
       if (e && e.userId) byId[e.userId] = e;
     });
-    // Fusionar: si el local tiene updatedAt más reciente, conservar role local completo
+    // Fusionar: si el local tiene updatedAt más reciente, conservar role/accent local
     var merged = incoming.map(function (row) {
       if (!row || !row.userId) return row;
       var local = byId[row.userId];
@@ -213,11 +313,16 @@
           userEmail: row.userEmail || local.userEmail,
           role: local.role,
           photoURL: local.photoURL || row.photoURL || '',
+          accentColor: local.accentColor || row.accentColor || '',
           order: typeof row.order === 'number' ? row.order : local.order,
           active: row.active !== false,
           createdAt: row.createdAt || local.createdAt || 0,
           updatedAt: local.updatedAt
         };
+      }
+      // Conservar accentColor si viene de la nube o del local
+      if (!row.accentColor && local && local.accentColor) {
+        row = Object.assign({}, row, { accentColor: local.accentColor });
       }
       return row;
     });
@@ -404,20 +509,21 @@
         var entry = (state.team || []).find(function (e) {
           return e.userId === m.userId;
         }) || {};
-        var avatar = m.photoURL
-          ? '<div class="gm-team-photo"><img src="' + esc(m.photoURL) + '" alt="' + esc(m.nombre) + '"></div>'
-          : '<div class="gm-team-photo gm-team-photo-fallback" aria-hidden="true">' + esc(initials(m.nombre)) + '</div>';
+        var avatarInner = m.photoURL
+          ? '<img src="' + esc(m.photoURL) + '" alt="' + esc(m.nombre) + '">'
+          : '<span class="gm-team-photo-fallback" aria-hidden="true">' + esc(initials(m.nombre)) + '</span>';
 
         return (
-          '<article class="gm-team-card gm-team-card-manage" data-team-id="' + esc(m.userId) + '">' +
-          avatar +
+          '<article class="gm-team-card gm-team-card-manage" style="' + accentStyle(m.accentColor) + '" data-team-id="' + esc(m.userId) + '">' +
+          '<div class="gm-team-photo-wrap"><div class="gm-team-photo">' + avatarInner + '</div></div>' +
           '<h3 class="gm-team-name">' + esc(m.nombre) + '</h3>' +
           (m.handle ? '<p class="gm-team-handle">' + esc(m.handle) + '</p>' : '') +
-          '<p class="gm-team-role">' + esc(m.role) + '</p>' +
+          rolePillsHtml(entry.role || m.role) +
+          colorPickerHtml(m) +
           '<div class="gm-team-card-manage-bar">' +
           '<input type="text" class="gm-team-card-role-input" data-team-role="' + esc(m.userId) +
           '" value="' + esc(entry.role || m.role || '') +
-          '" placeholder="Cargo" maxlength="160" autocomplete="off" title="Editar cargo">' +
+          '" placeholder="Cargo (separa varios con coma)" maxlength="160" autocomplete="off" title="Editar cargo">' +
           '<label class="gm-team-card-photo-btn" title="Cambiar foto">' +
           '📷<input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" data-team-photo="' + esc(m.userId) + '" hidden>' +
           '</label>' +
@@ -453,6 +559,7 @@
       userEmail: email,
       role: '',
       photoURL: user.foto || '',
+      accentColor: DEFAULT_ACCENTS[maxOrder % DEFAULT_ACCENTS.length],
       order: maxOrder + 1,
       active: true,
       createdAt: Date.now()
@@ -482,6 +589,24 @@
     }
     persistEntry(entry).then(function () {
       renderGrid();
+    });
+  }
+
+  /** El integrante (o superadmin) elige el color del círculo de su foto */
+  function updateAccent(userId, accentId) {
+    var entry = state.team.find(function (e) {
+      return e.userId === userId;
+    });
+    if (!entry) return;
+    var me = currentUserEmail();
+    var isSelf = me && normEmail(entry.userEmail || entry.email) === me;
+    if (!isSuperAdmin() && !isSelf) return;
+    if (!getAccentById(accentId)) return;
+    entry.accentColor = accentId;
+    entry.updatedAt = Date.now();
+    persistEntry(entry).then(function () {
+      renderGrid();
+      if (isSuperAdmin()) renderAdminList();
     });
   }
 
@@ -780,6 +905,7 @@
       userEmail: email,
       role: role,
       photoURL: user.foto || '',
+      accentColor: DEFAULT_ACCENTS[maxOrder % DEFAULT_ACCENTS.length],
       order: maxOrder + 1,
       active: true,
       createdAt: Date.now(),
@@ -870,6 +996,15 @@
       if (rm) {
         e.preventDefault();
         removeMember(rm.getAttribute('data-team-remove'));
+        return;
+      }
+      var accentBtn = t.closest('[data-team-accent]');
+      if (accentBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        var uid = accentBtn.getAttribute('data-team-accent');
+        var aid = accentBtn.getAttribute('data-accent-id');
+        if (uid && aid) updateAccent(uid, aid);
         return;
       }
       if (t.closest('#btnAdminTeamRefresh')) {
@@ -994,9 +1129,8 @@
 
     var note = panel.querySelector('.gm-equipo-modal-note');
     if (note) {
-      note.textContent = isSuperAdmin()
-        ? 'Como Superadministrador puedes gestionar el equipo desde el Panel de administración.'
-        : 'Equipo de desarrollo de GeoMetrics · Universidad de Pamplona.';
+      // El pie visual del modal ya muestra la info institucional
+      note.hidden = true;
     }
   }
 
