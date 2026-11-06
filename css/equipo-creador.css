@@ -188,7 +188,7 @@
 .gm-equipo-modal-panel {
   position: relative;
   z-index: 1;
-  width: min(920px, 100%);
+  width: min(980px, 100%);
   max-height: min(88vh, 860px);
   overflow: auto;
   border-radius: 18px;
@@ -246,9 +246,9 @@
 }
 .gm-equipo-modal-head h2 {
   margin: 0 0 8px;
-  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+  font-size: clamp(1.2rem, 2.6vw, 1.55rem);
   font-weight: 800;
-  color: #EAF7FF;
+  color: #FFFFFF;
 }
 .gm-equipo-modal-sub {
   margin: 0;
@@ -414,50 +414,97 @@ body.gm-equipo-modal-open {
 }
 
 /* =========================================================
-   Tarjetas de integrantes — estilo directorio (3 columnas)
+   Tarjetas de integrantes — diseño Modal Equipo (referencia)
    ========================================================= */
 
 #gmEquipoGrid.gm-equipo-grid,
 .gm-equipo-grid {
   display: grid !important;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  padding: 4px 2px 12px;
+  gap: 16px;
+  padding: 4px 2px 8px;
 }
 
 .gm-team-card {
+  --accent: #00E5FF;
+  --accent-rgb: 0, 229, 255;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 22px 16px 18px;
+  padding: 26px 16px 20px;
   border-radius: 16px;
-  border: 1px solid rgba(0, 217, 255, 0.28);
-  background: linear-gradient(165deg, #0c2744 0%, #07192e 55%, #05101f 100%);
-  box-shadow: 0 0 18px rgba(0, 217, 255, 0.08);
+  border: 1.5px solid rgba(var(--accent-rgb), 0.45);
+  background: linear-gradient(165deg, #0a1f38 0%, #07192e 50%, #040f1c 100%);
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-rgb), 0.06),
+    0 0 22px rgba(var(--accent-rgb), 0.1);
   transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
-  min-height: 210px;
+  min-height: 240px;
+  position: relative;
 }
 
 .gm-team-card:hover {
-  border-color: rgba(0, 229, 255, 0.65);
-  box-shadow: 0 0 28px rgba(0, 229, 255, 0.2);
+  border-color: rgba(var(--accent-rgb), 0.85);
+  box-shadow:
+    0 0 0 1px rgba(var(--accent-rgb), 0.12),
+    0 0 32px rgba(var(--accent-rgb), 0.22);
   transform: translateY(-3px);
 }
 
+/* Anillo alrededor de la foto (color elegible por el integrante) */
+.gm-team-photo-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
 .gm-team-photo {
-  width: 88px;
-  height: 88px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   overflow: hidden;
-  border: 2.5px solid rgba(0, 229, 255, 0.55);
-  box-shadow: 0 0 16px rgba(0, 229, 255, 0.25);
-  margin-bottom: 14px;
-  background: rgba(0, 200, 232, 0.1);
+  border: 3px solid rgba(var(--accent-rgb), 0.75);
+  box-shadow:
+    0 0 0 2px rgba(var(--accent-rgb), 0.15),
+    0 0 20px rgba(var(--accent-rgb), 0.35);
+  background: rgba(0, 20, 40, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 1;
 }
+
+/* Arco decorativo que gira alrededor de la foto */
+.gm-team-photo-wrap::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  border-top-color: var(--accent);
+  border-right-color: var(--accent);
+  opacity: 0.95;
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.45);
+  animation: gmTeamRingSpin 3.2s linear infinite;
+  will-change: transform;
+}
+
+@keyframes gmTeamRingSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Pausa sutil al pasar el mouse sobre la tarjeta (opcional, más elegante) */
+.gm-team-card:hover .gm-team-photo-wrap::after {
+  animation-duration: 1.6s;
+}
+
 .gm-team-photo img {
   width: 100%;
   height: 100%;
@@ -465,32 +512,98 @@ body.gm-equipo-modal-open {
   display: block;
 }
 .gm-team-photo-fallback {
-  color: #00E5FF;
+  color: var(--accent);
   font-weight: 800;
-  font-size: 26px;
+  font-size: 28px;
 }
 
 .gm-team-name {
-  margin: 0 0 4px;
-  font-size: 15px;
+  margin: 0 0 3px;
+  font-size: 15.5px;
   font-weight: 700;
   color: #FFFFFF;
   line-height: 1.25;
 }
 
 .gm-team-handle {
-  margin: 0 0 8px;
+  margin: 0 0 12px;
   font-size: 12px;
   color: #7BA3C4;
   font-weight: 500;
 }
 
+/* Roles como pills (pueden ser varios) */
+.gm-team-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gm-team-role-pill {
+  display: inline-block;
+  margin: 0;
+  padding: 4px 10px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  border-radius: 6px;
+  background: rgba(var(--accent-rgb), 0.08);
+  line-height: 1.3;
+}
+
+/* Compatibilidad si aún se usa .gm-team-role */
 .gm-team-role {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #00E5FF;
+  color: var(--accent);
   line-height: 1.3;
+}
+
+/* Selector de color (solo para el propio integrante o admin) */
+.gm-team-color-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.gm-team-color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+.gm-team-color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.gm-team-color-swatch.is-active {
+  box-shadow: 0 0 0 2px #fff, 0 0 10px currentColor;
+  transform: scale(1.1);
+}
+
+.gm-team-color-label {
+  width: 100%;
+  font-size: 10px;
+  color: #6a8eab;
+  margin-bottom: 2px;
+  letter-spacing: 0.02em;
 }
 
 .gm-team-empty {
@@ -502,6 +615,92 @@ body.gm-equipo-modal-open {
   line-height: 1.55;
 }
 .gm-team-empty p { margin: 0 0 6px; }
+
+/* Badge superior del modal */
+.gm-equipo-modal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #00E5FF;
+}
+
+.gm-equipo-modal-badge svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.gm-equipo-modal-head h2 .gm-metrics-accent {
+  color: #00E5FF;
+}
+
+/* Footer del modal (logos + cerrar) */
+.gm-equipo-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 217, 255, 0.15);
+  flex-wrap: wrap;
+}
+
+.gm-equipo-modal-foot-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gm-equipo-modal-foot-left img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #fff;
+  padding: 2px;
+}
+
+.gm-equipo-modal-foot-txt {
+  font-size: 11px;
+  color: #6a8eab;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gm-equipo-modal-foot .gm-equipo-btn-cerrar {
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 217, 255, 0.35);
+  background: transparent;
+  color: #EAF7FF;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.gm-equipo-modal-foot .gm-equipo-btn-cerrar:hover {
+  background: rgba(0, 217, 255, 0.12);
+  border-color: rgba(0, 217, 255, 0.65);
+}
+
+@media (max-width: 720px) {
+  #gmEquipoGrid.gm-equipo-grid,
+  .gm-equipo-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* Botón admin en modal */
 .gm-team-admin-open-btn {
