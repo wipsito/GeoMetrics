@@ -136,9 +136,10 @@
     var user = findUserByEmail(email);
     var name = user ? fullName(user) : (entry.fallbackName || email.split('@')[0] || 'Integrante');
     var handle = email ? '@' + email.split('@')[0] : '';
+    // Foto de perfil del usuario tiene prioridad (así se refleja en equipo/admin)
     var photo =
+      (user && user.foto && String(user.foto).trim()) ||
       (entry.photoURL && String(entry.photoURL).trim()) ||
-      (user && user.foto) ||
       '';
     var accentId = entry.accentColor || DEFAULT_ACCENTS[(index || 0) % DEFAULT_ACCENTS.length];
     return {
@@ -266,6 +267,14 @@
       (m.handle ? '<p class="gm-team-handle">' + esc(m.handle) + '</p>' : '') +
       rolePillsHtml(m.role) +
       colorPickerHtml(m) +
+      (canEditAccent(m)
+        ? '<label class="gm-team-self-photo-btn" title="Cambiar mi foto">' +
+          '📷 Cambiar foto' +
+          '<input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" data-team-photo="' +
+          esc(m.userId) +
+          '" hidden>' +
+          '</label>'
+        : '') +
       '</article>'
     );
   }
@@ -651,58 +660,90 @@
     });
   }
 
-  function compressImage(file, cb) {
-    var reader = new FileReader();
-    reader.onload = function () {
-      var dataUrl = reader.result;
-      try {
-        var img = new Image();
-        img.onload = function () {
-          var max = 320;
-          var w = img.width;
-          var h = img.height;
-          if (w > max || h > max) {
-            var r = Math.min(max / w, max / h);
-            w = Math.round(w * r);
-            h = Math.round(h * r);
+  function applyPhotoDataUrl(userId, dataUrl) {
+    if (!dataUrl) return Promise.resolve(false);
+    var tryStorage = function () {
+      return new Promise(function (resolve) {
+        try {
+          if (typeof firebase === 'undefined' || !firebase.storage) {
+            resolve(null);
+            return;
           }
-          var c = document.createElement('canvas');
-          c.width = w;
-          c.height = h;
-          var ctx = c.getContext('2d');
-          // circle crop center
-          var size = Math.min(w, h);
-          var sx = (w - size) / 2;
-          var sy = (h - size) / 2;
-          var out = document.createElement('canvas');
-          out.width = 256;
-          out.height = 256;
-          var octx = out.getContext('2d');
-          octx.beginPath();
-          octx.arc(128, 128, 128, 0, Math.PI * 2);
-          octx.closePath();
-          octx.clip();
-          octx.drawImage(img, sx, sy, size, size, 0, 0, 256, 256);
-          var jpeg = out.toDataURL('image/jpeg', 0.82);
-          if (jpeg.length > 700000) jpeg = out.toDataURL('image/jpeg', 0.65);
-          cb(jpeg);
-        };
-        img.onerror = function () {
-          cb(dataUrl);
-        };
-        img.src = dataUrl;
-      } catch (e) {
-        cb(dataUrl);
-      }
+          var cfg = typeof FIREBASE_CONFIG !== 'undefined' ? FIREBASE_CONFIG : null;
+          if (!cfg || !cfg.storageBucket) {
+            resolve(null);
+            return;
+          }
+          var storage = firebase.storage();
+          var ref = storage.ref('teamCreators/' + userId + '/photo.jpg');
+          var byteString = atob(dataUrl.split(',')[1]);
+          var mime = (dataUrl.split(',')[0].match(/:(.*?);/) || [])[1] || 'image/jpeg';
+          var ab = new ArrayBuffer(byteString.length);
+          var ia = new Uint8Array(ab);
+          for (var i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+          var blob = new Blob([ab], { type: mime });
+          ref
+            .put(blob, { contentType: 'image/jpeg' })
+            .then(function () { return ref.getDownloadURL(); })
+            .then(function (url) { resolve(url); })
+            .catch(function () { resolve(null); });
+        } catch (e) {
+          resolve(null);
+        }
+      });
     };
-    reader.onerror = function () {
-      cb(null);
-    };
-    reader.readAsDataURL(file);
+
+    return tryStorage().then(function (url) {
+      var entry = state.team.find(function (e) {
+        return e.userId === userId;
+      });
+      if (!entry) return false;
+      entry.photoURL = url || dataUrl;
+      entry.updatedAt = Date.now();
+      // También actualizar la foto del usuario en la base local (perfil)
+      try {
+        var email = normEmail(entry.userEmail);
+        var users = listUsers();
+        var idx = users.findIndex(function (u) { return normEmail(u && u.email) === email; });
+        if (idx >= 0) {
+          users[idx].foto = entry.photoURL;
+          if (typeof aulaSave === 'function' && typeof AULA_KEYS !== 'undefined') {
+            aulaSave(AULA_KEYS.users, users);
+          } else {
+            localStorage.setItem('geometrics_users', JSON.stringify(users));
+          }
+          var sess = session();
+          if (sess && normEmail(sess.email) === email) {
+            sess.foto = entry.photoURL;
+            try {
+              if (typeof aulaSetSession === 'function') aulaSetSession(sess);
+              else localStorage.setItem('geometrics_session', JSON.stringify(sess));
+            } catch (eS) {}
+            try {
+              if (typeof aulaUpdateMenuUser === 'function') aulaUpdateMenuUser(sess);
+            } catch (eM) {}
+          }
+          try {
+            if (window.GeoCloud && typeof GeoCloud.pushUser === 'function') {
+              GeoCloud.pushUser(users[idx]);
+            }
+          } catch (eC) {}
+        }
+      } catch (eU) {}
+      return persistEntry(entry).then(function () {
+        renderGrid();
+        if (isSuperAdmin()) renderAdminList();
+        return true;
+      });
+    });
   }
 
   function setPhoto(userId, file) {
-    if (!isSuperAdmin()) return;
+    var entry = state.team.find(function (e) { return e.userId === userId; });
+    if (!entry) return;
+    var me = currentUserEmail();
+    var isSelf = me && normEmail(entry.userEmail) === me;
+    if (!isSuperAdmin() && !isSelf) return;
     if (!file) return;
     var okType = /image\/(jpeg|jpg|png|webp)/i.test(file.type);
     if (!okType) {
@@ -713,64 +754,33 @@
       alert('La imagen supera 8 MB.');
       return;
     }
-    compressImage(file, function (dataUrl) {
-      if (!dataUrl) {
-        alert('No se pudo leer la imagen.');
-        return;
-      }
-      // Prefer Storage if available
-      var tryStorage = function () {
-        return new Promise(function (resolve) {
-          try {
-            if (typeof firebase === 'undefined' || !firebase.storage) {
-              resolve(null);
-              return;
-            }
-            var cfg = typeof FIREBASE_CONFIG !== 'undefined' ? FIREBASE_CONFIG : null;
-            if (!cfg || !cfg.storageBucket) {
-              resolve(null);
-              return;
-            }
-            var storage = firebase.storage();
-            var ref = storage.ref('teamCreators/' + userId + '/photo.jpg');
-            // dataURL → blob
-            var byteString = atob(dataUrl.split(',')[1]);
-            var mime = dataUrl.split(',')[0].match(/:(.*?);/)[1];
-            var ab = new ArrayBuffer(byteString.length);
-            var ia = new Uint8Array(ab);
-            for (var i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-            var blob = new Blob([ab], { type: mime });
-            ref
-              .put(blob, { contentType: 'image/jpeg' })
-              .then(function () {
-                return ref.getDownloadURL();
-              })
-              .then(function (url) {
-                resolve(url);
-              })
-              .catch(function () {
-                resolve(null);
-              });
-          } catch (e) {
-            resolve(null);
-          }
-        });
-      };
+    var openCrop = typeof openGeoPhotoCrop === 'function' ? openGeoPhotoCrop : window.openGeoPhotoCrop;
+    if (typeof openCrop !== 'function') {
+      alert('No se pudo abrir el recorte de foto.');
+      return;
+    }
+    openCrop(file, { size: 320, quality: 0.84 }).then(function (dataUrl) {
+      if (!dataUrl) return;
+      applyPhotoDataUrl(userId, dataUrl);
+    });
+  }
 
-      tryStorage().then(function (url) {
-        var entry = state.team.find(function (e) {
-          return e.userId === userId;
-        });
-        if (!entry) return;
-        // Si Storage falla (sin Auth), guardar JPEG comprimido en el nodo RTDB
-        // (mismo patrón que el avatar de Civix; tamaño controlado)
-        entry.photoURL = url || dataUrl;
-        entry.updatedAt = Date.now();
-        persistEntry(entry).then(function () {
-          renderGrid();
-          renderAdminList();
-        });
-      });
+  /** Cuando el usuario cambia su foto de perfil, reflejarla en el equipo creador */
+  function syncProfilePhoto(email, fotoUrl) {
+    email = normEmail(email);
+    if (!email) return;
+    var entry = state.team.find(function (e) {
+      return e && normEmail(e.userEmail) === email;
+    });
+    if (!entry) {
+      renderGrid();
+      return;
+    }
+    entry.photoURL = fotoUrl || '';
+    entry.updatedAt = Date.now();
+    persistEntry(entry).then(function () {
+      renderGrid();
+      if (isSuperAdmin()) renderAdminList();
     });
   }
 
@@ -1169,6 +1179,7 @@
     render: renderGrid,
     sync: syncFromCloud,
     isSuperAdmin: isSuperAdmin,
+    syncProfilePhoto: syncProfilePhoto,
     refreshAdmin: function () { renderAdminList(); onAdminEmailInput(); }
   };
 })(window);

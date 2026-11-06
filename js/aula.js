@@ -3643,26 +3643,32 @@ function aulaPerfilBindUI() {
         file.addEventListener('change', function () {
             if (!file.files || !file.files[0]) return;
             var f = file.files[0];
-            if (f.size > 1.5 * 1024 * 1024) {
+            if (f.size > 8 * 1024 * 1024) {
                 var err = document.getElementById('perfilError');
-                if (err) err.textContent = 'La foto debe pesar menos de 1.5 MB.';
+                if (err) err.textContent = 'La foto debe pesar menos de 8 MB.';
+                file.value = '';
                 return;
             }
-            var reader = new FileReader();
-            reader.onload = function () {
-                aulaComprimirFotoPerfil(reader.result, function (comp) {
-                    window.__perfilFotoPendiente = comp;
-                    try {
-                        var prevF = document.getElementById('perfilFotoPreview');
-                        if (prevF) prevF.src = comp;
-                    } catch (eP) {}
-                });
+            var okType = /image\/(jpeg|jpg|png|webp)/i.test(f.type || '');
+            if (!okType) {
+                var err2 = document.getElementById('perfilError');
+                if (err2) err2.textContent = 'Formato no permitido. Usa JPG, PNG o WebP.';
+                file.value = '';
+                return;
+            }
+            // Recorte interactivo: el usuario elige qué parte de la foto se ve
+            openGeoPhotoCrop(f, { size: 320, quality: 0.84 }).then(function (cropped) {
+                file.value = '';
+                if (!cropped) return;
+                window.__perfilFotoPendiente = cropped;
+                window.__perfilQuitarFoto = false;
                 var prev = document.getElementById('perfilFotoPreview');
                 var ph = document.getElementById('perfilFotoPlaceholder');
-                if (prev) { prev.src = reader.result; prev.hidden = false; }
+                if (prev) { prev.src = cropped; prev.hidden = false; }
                 if (ph) ph.hidden = true;
-            };
-            reader.readAsDataURL(f);
+                var err3 = document.getElementById('perfilError');
+                if (err3) err3.textContent = '';
+            });
         });
     }
     var quit = document.getElementById('btnPerfilQuitarFoto');
@@ -4223,6 +4229,20 @@ function aulaGuardarPerfil() {
     if (saludo && typeof aulaTextoSaludo === 'function') saludo.textContent = aulaTextoSaludo(session);
     var nomT = document.getElementById('perfilNombreTitulo');
     if (nomT) nomT.textContent = session.nombre || 'Usuario';
+
+    // Sincronizar foto de perfil → equipo creador (y resto de vistas que lean users)
+    try {
+        if (window.GeoCloud && typeof GeoCloud.pushUser === 'function') {
+            GeoCloud.pushUser(updated);
+        }
+    } catch (eCloud) {}
+    try {
+        if (window.GeoMetricsEquipo && typeof GeoMetricsEquipo.syncProfilePhoto === 'function') {
+            GeoMetricsEquipo.syncProfilePhoto(updated.email, updated.foto || '');
+        } else if (window.GeoMetricsEquipo && typeof GeoMetricsEquipo.render === 'function') {
+            GeoMetricsEquipo.render();
+        }
+    } catch (eEq) {}
 
     if (okEl) {
         okEl.hidden = false;
@@ -7110,6 +7130,229 @@ async function aulaQuizCivixDescargarPDF() {
 
 
 /** Comprime foto de perfil para Firebase (max 320px JPEG) */
+
+/**
+ * Recorte interactivo de foto (arrastrar + zoom) en viewport circular.
+ * openGeoPhotoCrop(fileOrDataUrl, { size, quality }).then(dataUrl | null)
+ */
+function openGeoPhotoCrop(source, opts) {
+    opts = opts || {};
+    var SIZE = opts.size || 320;
+    var QUALITY = opts.quality || 0.84;
+    var modal = document.getElementById('gmCropModal');
+    var imgEl = document.getElementById('gmCropImg');
+    var viewport = document.getElementById('gmCropViewport');
+    var zoomEl = document.getElementById('gmCropZoom');
+    var btnOk = document.getElementById('gmCropConfirm');
+    if (!modal || !imgEl || !viewport || !zoomEl || !btnOk) {
+        return Promise.resolve(null);
+    }
+
+    function loadAsDataUrl(src) {
+        return new Promise(function (resolve, reject) {
+            if (typeof src === 'string') {
+                resolve(src);
+                return;
+            }
+            if (src && src instanceof Blob) {
+                var fr = new FileReader();
+                fr.onload = function () { resolve(fr.result); };
+                fr.onerror = function () { reject(new Error('read')); };
+                fr.readAsDataURL(src);
+                return;
+            }
+            reject(new Error('source'));
+        });
+    }
+
+    return loadAsDataUrl(source).then(function (dataUrl) {
+        return new Promise(function (resolve) {
+            var state = {
+                naturalW: 0,
+                naturalH: 0,
+                scale: 1,
+                minScale: 1,
+                x: 0,
+                y: 0,
+                dragging: false,
+                lastX: 0,
+                lastY: 0,
+                settled: false
+            };
+
+            function vpSize() {
+                return viewport.clientWidth || 260;
+            }
+
+            function applyTransform() {
+                var s = state.scale;
+                imgEl.style.transform =
+                    'translate(-50%, -50%) translate(' + state.x + 'px,' + state.y + 'px) scale(' + s + ')';
+            }
+
+            function clampPos() {
+                var vp = vpSize();
+                var dispW = state.naturalW * state.scale;
+                var dispH = state.naturalH * state.scale;
+                var maxX = Math.max(0, (dispW - vp) / 2);
+                var maxY = Math.max(0, (dispH - vp) / 2);
+                state.x = Math.max(-maxX, Math.min(maxX, state.x));
+                state.y = Math.max(-maxY, Math.min(maxY, state.y));
+            }
+
+            function fitImage() {
+                var vp = vpSize();
+                // Escala mínima: cubrir el círculo
+                state.minScale = Math.max(vp / state.naturalW, vp / state.naturalH);
+                state.scale = state.minScale;
+                state.x = 0;
+                state.y = 0;
+                zoomEl.min = '1';
+                zoomEl.max = '3';
+                zoomEl.step = '0.01';
+                zoomEl.value = '1';
+                imgEl.style.width = state.naturalW + 'px';
+                imgEl.style.height = state.naturalH + 'px';
+                applyTransform();
+            }
+
+            function zoomFactor() {
+                // 1..3 en el slider → minScale .. minScale*3
+                var z = parseFloat(zoomEl.value) || 1;
+                return state.minScale * z;
+            }
+
+            function onZoom() {
+                var prev = state.scale;
+                state.scale = zoomFactor();
+                // Mantener centro visual al hacer zoom
+                if (prev > 0) {
+                    var r = state.scale / prev;
+                    state.x *= r;
+                    state.y *= r;
+                }
+                clampPos();
+                applyTransform();
+            }
+
+            function pointerDown(e) {
+                state.dragging = true;
+                viewport.classList.add('is-dragging');
+                var pt = e.touches ? e.touches[0] : e;
+                state.lastX = pt.clientX;
+                state.lastY = pt.clientY;
+                e.preventDefault();
+            }
+            function pointerMove(e) {
+                if (!state.dragging) return;
+                var pt = e.touches ? e.touches[0] : e;
+                var dx = pt.clientX - state.lastX;
+                var dy = pt.clientY - state.lastY;
+                state.lastX = pt.clientX;
+                state.lastY = pt.clientY;
+                state.x += dx;
+                state.y += dy;
+                clampPos();
+                applyTransform();
+                e.preventDefault();
+            }
+            function pointerUp() {
+                state.dragging = false;
+                viewport.classList.remove('is-dragging');
+            }
+
+            function cleanup() {
+                if (state.settled) return;
+                state.settled = true;
+                modal.hidden = true;
+                document.body.classList.remove('gm-crop-open');
+                zoomEl.removeEventListener('input', onZoom);
+                viewport.removeEventListener('mousedown', pointerDown);
+                window.removeEventListener('mousemove', pointerMove);
+                window.removeEventListener('mouseup', pointerUp);
+                viewport.removeEventListener('touchstart', pointerDown);
+                window.removeEventListener('touchmove', pointerMove);
+                window.removeEventListener('touchend', pointerUp);
+                btnOk.onclick = null;
+                modal.querySelectorAll('[data-gm-crop-cancel]').forEach(function (el) {
+                    el.onclick = null;
+                });
+            }
+
+            function cancel() {
+                cleanup();
+                resolve(null);
+            }
+
+            function confirm() {
+                try {
+                    var vp = vpSize();
+                    var canvas = document.createElement('canvas');
+                    canvas.width = SIZE;
+                    canvas.height = SIZE;
+                    var ctx = canvas.getContext('2d');
+                    // Fondo transparente no ayuda en JPEG; usamos negro suave
+                    ctx.fillStyle = '#0a1520';
+                    ctx.fillRect(0, 0, SIZE, SIZE);
+                    ctx.beginPath();
+                    ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2, 0, Math.PI * 2);
+                    ctx.closePath();
+                    ctx.clip();
+
+                    // En el viewport: la imagen se centra en (vp/2,vp/2) + offset, escalada
+                    // drawImage en coordenadas del canvas mapeando el viewport → SIZE
+                    var scaleToCanvas = SIZE / vp;
+                    var dispW = state.naturalW * state.scale;
+                    var dispH = state.naturalH * state.scale;
+                    var left = (vp / 2) + state.x - dispW / 2;
+                    var top = (vp / 2) + state.y - dispH / 2;
+                    ctx.drawImage(
+                        imgEl,
+                        left * scaleToCanvas,
+                        top * scaleToCanvas,
+                        dispW * scaleToCanvas,
+                        dispH * scaleToCanvas
+                    );
+                    var out = canvas.toDataURL('image/jpeg', QUALITY);
+                    if (out.length > 700000) out = canvas.toDataURL('image/jpeg', 0.65);
+                    cleanup();
+                    resolve(out);
+                } catch (err) {
+                    cleanup();
+                    resolve(null);
+                }
+            }
+
+            imgEl.onload = function () {
+                state.naturalW = imgEl.naturalWidth || imgEl.width;
+                state.naturalH = imgEl.naturalHeight || imgEl.height;
+                fitImage();
+                modal.hidden = false;
+                document.body.classList.add('gm-crop-open');
+                zoomEl.addEventListener('input', onZoom);
+                viewport.addEventListener('mousedown', pointerDown);
+                window.addEventListener('mousemove', pointerMove);
+                window.addEventListener('mouseup', pointerUp);
+                viewport.addEventListener('touchstart', pointerDown, { passive: false });
+                window.addEventListener('touchmove', pointerMove, { passive: false });
+                window.addEventListener('touchend', pointerUp);
+                btnOk.onclick = function (e) { e.preventDefault(); confirm(); };
+                modal.querySelectorAll('[data-gm-crop-cancel]').forEach(function (el) {
+                    el.onclick = function (e) { e.preventDefault(); cancel(); };
+                });
+            };
+            imgEl.onerror = function () {
+                cleanup();
+                resolve(null);
+            };
+            imgEl.src = dataUrl;
+        });
+    }).catch(function () {
+        return null;
+    });
+}
+window.openGeoPhotoCrop = openGeoPhotoCrop;
+
 function aulaComprimirFotoPerfil(dataUrl, cb) {
     try {
         if (!dataUrl || String(dataUrl).indexOf('data:image') !== 0) { cb(dataUrl); return; }
