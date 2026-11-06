@@ -374,19 +374,31 @@
         </section>
     </main>
 
-    <!-- Modal Equipo creador -->
+    <!-- Modal Equipo creador — diseño referencia GeoMetrics_Modal_Equipo -->
     <div class="gm-equipo-modal" id="gmEquipoModal" hidden role="dialog" aria-modal="true" aria-labelledby="gmEquipoModalTitle">
         <div class="gm-equipo-modal-backdrop" data-equipo-close></div>
         <div class="gm-equipo-modal-panel" role="document">
             <button type="button" class="gm-equipo-modal-close" id="btnEquipoCerrar" aria-label="Cerrar">&times;</button>
             <header class="gm-equipo-modal-head">
-                <h2 id="gmEquipoModalTitle">Conoce al equipo detrás de GeoMetrics</h2>
+                <p class="gm-equipo-modal-badge" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    // EQUIPO CREADOR
+                </p>
+                <h2 id="gmEquipoModalTitle">Conoce al equipo detrás de Geo<span class="gm-metrics-accent">Metrics</span></h2>
                 <p class="gm-equipo-modal-sub">Innovación, conocimiento y tecnología al servicio de la Ingeniería Civil</p>
             </header>
             <div class="gm-equipo-grid" id="gmEquipoGrid">
                 <!-- Rellenado por js/equipo-creador.js -->
             </div>
-            <p class="gm-equipo-modal-note">Los datos marcados como <strong>[EDITABLE]</strong> deben completarse con la información real del equipo.</p>
+            <div class="gm-equipo-modal-foot">
+                <div class="gm-equipo-modal-foot-left">
+                    <img src="docs/logo_unipamplona.png" alt="Universidad de Pamplona" width="28" height="28">
+                    <img src="docs/logo_ingenieria_civil.png" alt="Ingeniería Civil" width="28" height="28">
+                    <span class="gm-equipo-modal-foot-txt">Equipo de desarrollo · Universidad de Pamplona</span>
+                </div>
+                <button type="button" class="gm-equipo-btn-cerrar" data-equipo-close>CERRAR</button>
+            </div>
+            <p class="gm-equipo-modal-note" hidden></p>
         </div>
     </div>
 
