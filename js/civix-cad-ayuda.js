@@ -106,6 +106,14 @@
             ['Fondo claro / oscuro', 'Indica si el trazo es oscuro sobre papel claro, o claro sobre fondo oscuro (plano azul); en automático lo detecta.', 'Déjalo en automático.', 'Fije «oscuro» para impresiones de planos azules.'],
             ['Ancho real del dibujo (m)', 'Medida real del ancho del dibujo; escala todo el DXF a metros.', 'Mide una dimensión conocida del plano y escríbela.', 'Sin este dato el DXF no queda a escala real.'],
             ['⬇ Descargar DXF / 👁 Ver en visor CAD', 'Descarga el resultado para AutoCAD o lo muestra en el visor del programa para revisarlo.', 'Revisa siempre las medidas antes de usarlo.', 'El resultado es un borrador para retocar, no un plano final.']
+        ],
+        vision: [
+            ['Antes de empezar', 'CAD Vision necesita su motor local: haz doble clic en iniciar-cad-vision.bat y deja esa ventana abierta.', 'Arriba debe verse «Motor activo · OCR listo».', 'Cada equipo del aula necesita Python y el motor encendido.'],
+            ['Interpretar plano', 'Lee cotas y nombres, reconoce muros, puertas y ventanas, y reconstruye el plano en medidas reales.', 'Foto de frente, con buena luz y cotas claras.', 'Pida al estudiante comparar el resultado con su croquis original.'],
+            ['Colores de confianza', 'Verde: alta confianza. Ámbar: incertidumbre. Rojo: necesita tu decisión. Cian: ya confirmado.', 'Usa «Revisar siguiente» para recorrer los pendientes.', 'Lo incierto llega en rojo al DXF si se acepta exportarlo.'],
+            ['Calibrar', 'Si no hay cotas legibles, pulsa una línea e indica cuánto mide en la realidad; todo el plano se escala.', 'Elige la línea más larga que conozcas.', 'Sin escala el sistema no permite exportar: no inventa medidas.'],
+            ['Aplicar a la geometría', 'Corrige una cota y estira el plano para que la medida se cumpla.', 'Hazlo desde la pestaña Cotas.', 'Sirve para discutir la diferencia entre lo dibujado y lo acotado.'],
+            ['Exportar', 'Descarga DXF para AutoCAD, PDF o SVG, con capas 00 a 09 y entidades editables.', 'Revisa siempre las cotas antes de usar el plano.', 'El resultado debe verificarse: es apoyo, no un plano aprobado.']
         ]
     };
     function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
@@ -129,7 +137,7 @@
     ];
     function extra(label, rol) { var l = label.toLowerCase(), i; for (i = 0; i < R.length; i++) if (R[i][0].test(l)) return rol === 'docente' ? R[i][2] : R[i][1]; return rol === 'docente' ? 'Úselo para un ejercicio de sensibilidad: fije los demás datos y varíe solo este.' : 'Cámbialo y observa cómo se modifican el acero, los diagramas y las cantidades.'; }
     function rolActual() { try { var s = typeof aulaGetSession === 'function' && aulaGetSession(); return s && s.rol === 'docente' ? 'docente' : 'estudiante'; } catch (e) { return 'estudiante'; } }
-    var NAMES = { struct: 'Diseño estructural', curvas: 'Curvas de nivel', ia: 'Planos con IA', foto: 'Foto → DXF' };
+    var NAMES = { struct: 'Diseño estructural', curvas: 'Curvas de nivel', ia: 'Planos con IA', foto: 'Foto → DXF', vision: 'CAD Vision' };
     function collect(sec, key) {
         var rol = rolActual(), rows = [], seen = {};
         if (SECT[key]) SECT[key].forEach(function (q) { rows.push([q[0], q[1], q[rol === 'docente' ? 3 : 2]]); });
