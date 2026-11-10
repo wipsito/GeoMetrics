@@ -1,0 +1,242 @@
+{
+  "rules": {
+    "users": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      "$k": {
+        "password": {
+          ".validate": "false"
+        }
+      }
+    },
+    "docentesExtra": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "admins": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "chats": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "tareas": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "presentaciones": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "entregas": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "civix": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "civixChats": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "foros": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "foros_replies": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "avisos": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "tareaArchivos": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "horarios": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))",
+      ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co'))"
+    },
+    "teamCreators": {
+      ".read": "true",
+      ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()))"
+    },
+    "config": {
+      ".read": "true",
+      ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()))"
+    },
+    "quices": {
+      ".read": "false",
+      ".write": "false"
+    },
+    "quiz_entregas": {
+      ".read": "false",
+      ".write": "false"
+    },
+    "secure": {
+      ".read": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()))",
+      "admins": {
+        ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co'",
+        "$k": {
+          ".validate": "newData.isString()"
+        }
+      },
+      "docentes": {
+        ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()))",
+        "$k": {
+          ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $k == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')",
+          ".validate": "newData.isString()"
+        }
+      }
+    },
+    "quizTeach": {
+      "$t": {
+        ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && ($t == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') || ((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())))",
+        "$c": {
+          ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && $t == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')",
+          ".validate": "newData.isBoolean()"
+        }
+      }
+    },
+    "quizEnroll": {
+      "$c": {
+        ".read": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) || ((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()))",
+        "$s": {
+          ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')",
+          ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')",
+          ".validate": "newData.hasChildren(['nombre']) && newData.child('nombre').isString() && newData.child('nombre').val().length < 120"
+        }
+      }
+    },
+    "quizOwner": {
+      "$t": {
+        ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && ($t == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') || ((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())))",
+        "$qid": {
+          ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && $t == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')",
+          ".validate": "newData.isBoolean()"
+        }
+      }
+    },
+    "quizIndex": {
+      "$c": {
+        ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (root.child('quizEnroll/' + $c + '/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists() || ((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) || ((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())))",
+        "$qid": {
+          ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && newData.parent().parent().parent().child('quizzes/' + $qid + '/meta/ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && (!root.child('quizzes/' + $qid + '/meta').exists() || root.child('quizzes/' + $qid + '/meta').child('ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_'))",
+          ".validate": "newData.isBoolean()"
+        }
+      }
+    },
+    "quizzes": {
+      "$qid": {
+        ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (data.child('meta/ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') || ((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())) || ((data.child('meta/status').val() == 'published' || data.child('meta/status').val() == 'closed') && data.child('meta/publishAt').val() <= now && root.child('quizEnroll/' + data.child('meta/courseKey').val() + '/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()))",
+        ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && data.exists() && data.child('meta/ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && !newData.exists() && !root.child('attempts/' + $qid).exists()",
+        "meta": {
+          ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && newData.child('ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && (!data.exists() || data.child('ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')) && root.child('quizTeach/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') + '/' + newData.child('courseKey').val()).exists() && (!root.child('attempts/' + $qid).exists() || (newData.child('courseKey').val() == data.child('courseKey').val() && newData.child('durationMin').val() == data.child('durationMin').val() && newData.child('totalPoints').val() == data.child('totalPoints').val() && newData.child('version').val() == data.child('version').val() && newData.child('maxAttempts').val() >= data.child('maxAttempts').val()))",
+          ".validate": "newData.hasChildren(['title','courseKey','ownerKey','status','closeAt','publishAt','durationMin','maxAttempts','totalPoints','version','attemptKeys']) && (newData.child('status').val() == 'draft' || newData.child('status').val() == 'published' || newData.child('status').val() == 'closed')",
+          "title": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+          },
+          "durationMin": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 600"
+          },
+          "maxAttempts": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 9"
+          },
+          "totalPoints": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 10000"
+          },
+          "closeAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "publishAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "version": {
+            ".validate": "newData.isNumber()"
+          }
+        },
+        "questions": {
+          ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && newData.parent().child('meta/ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && (!data.parent().child('meta').exists() || data.parent().child('meta/ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')) && !root.child('attempts/' + $qid).exists()",
+          "$q": {
+            ".validate": "newData.hasChildren(['type','text','points','order']) && !newData.hasChild('correct') && !newData.hasChild('answer') && !newData.hasChild('key') && !newData.hasChild('explanation') && !newData.hasChild('criteria')",
+            "type": {
+              ".validate": "newData.val() == 'open' || newData.val() == 'mc' || newData.val() == 'tf'"
+            },
+            "points": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 1000"
+            },
+            "text": {
+              ".validate": "newData.isString() && newData.val().length <= 5000"
+            },
+            "image": {
+              ".validate": "newData.isString() && newData.val().length <= 400000"
+            }
+          }
+        }
+      }
+    },
+    "quizKeys": {
+      "$qid": {
+        ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (root.child('quizzes/' + $qid + '/meta').child('ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') || ((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())) || (root.child('quizzes/' + $qid + '/meta').child('feedbackAfterClose').val() == true && now > root.child('quizzes/' + $qid + '/meta').child('closeAt').val() && root.child('attempts/' + $qid + '/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()))",
+        ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && newData.parent().parent().child('quizzes/' + $qid + '/meta/ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && (!root.child('quizzes/' + $qid + '/meta').exists() || root.child('quizzes/' + $qid + '/meta').child('ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')) && !root.child('attempts/' + $qid).exists()"
+      }
+    },
+    "attempts": {
+      "$qid": {
+        ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (root.child('quizzes/' + $qid + '/meta').child('ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') || ((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())))",
+        "$s": {
+          ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')",
+          "$n": {
+            "startedAt": {
+              ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && !data.exists() && newData.val() == now && root.child('quizzes/' + $qid + '/meta').child('status').val() == 'published' && root.child('quizzes/' + $qid + '/meta').child('publishAt').val() <= now && now < root.child('quizzes/' + $qid + '/meta').child('closeAt').val() && root.child('quizEnroll/' + root.child('quizzes/' + $qid + '/meta').child('courseKey').val() + '/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists() && root.child('quizzes/' + $qid + '/meta').child('attemptKeys/' + $n).exists() && (!root.child('quizzes/' + $qid + '/meta').child('attemptPrev/' + $n).exists() || data.parent().parent().child(root.child('quizzes/' + $qid + '/meta').child('attemptPrev/' + $n).val() + '/submittedAt').exists())"
+            },
+            "version": {
+              ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && !data.exists() && !data.parent().child('startedAt').exists() && newData.val() == root.child('quizzes/' + $qid + '/meta').child('version').val()"
+            },
+            "name": {
+              ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && !data.exists()",
+              ".validate": "newData.isString() && newData.val().length < 120"
+            },
+            "answers": {
+              "$q": {
+                ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && data.parent().parent().child('startedAt').exists() && !data.parent().parent().child('submittedAt').exists() && (root.child('quizzes/' + $qid + '/meta').child('durationMin').val() == 0 || now <= data.parent().parent().child('startedAt').val() + root.child('quizzes/' + $qid + '/meta').child('durationMin').val() * 60000 + 20000) && now <= root.child('quizzes/' + $qid + '/meta').child('closeAt').val() + 20000 && root.child('quizzes/' + $qid + '/questions/' + $q).exists()",
+                ".validate": "(root.child('quizzes/' + $qid + '/questions/' + $q).child('type').val() == 'mc' && newData.isString() && newData.val().matches(/^[ABCD]$/)) || (root.child('quizzes/' + $qid + '/questions/' + $q).child('type').val() == 'tf' && newData.isBoolean()) || (root.child('quizzes/' + $qid + '/questions/' + $q).child('type').val() == 'open' && newData.isString() && newData.val().length <= 20000 && (!root.child('quizzes/' + $qid + '/questions/' + $q).child('maxChars').exists() || newData.val().length <= root.child('quizzes/' + $qid + '/questions/' + $q).child('maxChars').val()))"
+              }
+            },
+            "submittedAt": {
+              ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && !data.exists() && newData.val() == now && data.parent().child('startedAt').exists()"
+            }
+          }
+        }
+      }
+    },
+    "grades": {
+      "$qid": {
+        ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (root.child('quizzes/' + $qid + '/meta').child('ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') || ((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())))",
+        ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && root.child('quizzes/' + $qid + '/meta').child('ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')",
+        "$s": {
+          "$n": {
+            ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && data.child('final').val() == true && root.child('quizzes/' + $qid + '/meta').child('showScore').val() == true",
+            "manual": {
+              "$q": {
+                "points": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= root.child('quizzes/' + $qid + '/questions/' + $q + '/points').val()"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "quizSettings": {
+      "$t": {
+        ".read": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && $t == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')",
+        ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && $t == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')"
+      }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+20:57:55.470 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO akka.event.slf4j.Slf4jLogger - Slf4jLogger started
+20:57:55.644 [main] INFO com.firebase.server.forge.App$ - Listening at 127.0.0.1:9000
+20:57:56.596 [NamespaceSystem-akka.actor.default-dispatcher-4] INFO com.firebase.core.namespace.NamespaceActor - demo-geometrics-default-rtdb successfully activated FBKV (SurveyIdle(0)) wait: 162ms, init: 0ms
+20:58:01.124 [NamespaceSystem-blocking-namespace-operation-dispatcher-8] INFO com.firebase.core.namespace.StateManager - Namespace demo-geometrics-default-rtdb status Active to Active
+20:58:08.258 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+20:58:08.377 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+20:58:08.422 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+20:58:08.533 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...SJ9., assuming ownership.
+20:58:08.597 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+20:58:08.659 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+20:58:08.875 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+20:58:58.999 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+20:58:59.026 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+20:58:59.068 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+20:58:59.131 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...SJ9., assuming ownership.
+20:58:59.165 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+20:58:59.213 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+20:58:59.332 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+20:58:59.429 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...iJ9., assuming ownership.
+21:01:35.985 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...SJ9., assuming ownership.
+21:01:36.015 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+21:01:36.061 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+21:01:36.104 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+21:02:11.351 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...SJ9., assuming ownership.
+21:02:11.412 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+21:02:11.465 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+21:02:11.515 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+21:02:37.157 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+21:02:37.184 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+21:02:37.199 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+21:02:37.260 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...SJ9., assuming ownership.
+21:02:37.307 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+21:02:37.355 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+21:02:37.450 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+21:02:37.530 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...iJ9., assuming ownership.
+21:26:24.995 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+21:26:25.042 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+21:26:25.089 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+21:26:25.152 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...SJ9., assuming ownership.
+21:26:25.199 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+21:26:25.243 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+21:26:25.353 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+21:26:25.432 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...yJ9., assuming ownership.
+21:26:51.985 [FirebaseWorkerPool-1-4] WARN com.firebase.server.forge.App$ - Received service account token eyJh...CJ9., assuming ownership.
+21:26:52.041 [FirebaseWorkerPool-1-1] WARN com.firebase.server.forge.App$ - Received service account token eyJh...ifQ., assuming ownership.
+21:26:52.088 [FirebaseWorkerPool-1-2] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
+21:26:52.135 [FirebaseWorkerPool-1-3] WARN com.firebase.server.forge.App$ - Received service account token eyJh...In0., assuming ownership.
