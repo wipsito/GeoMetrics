@@ -3,7 +3,7 @@
 ## Docente de prueba
 - **Nombre:** Laura Patricia Gómez Rincón
 - **Correo:** docente.demo@unipamplona.edu.co
-- **Contraseña:** docente123
+- **Contraseña:** (no publicada)
 
 ## Superadmin
 - andres.enriquezval@unipamplona.edu.co (tu cuenta registrada)
