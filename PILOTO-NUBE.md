@@ -1,5 +1,8 @@
 # Sincronizar GeoMetrics entre varios PCs (Firebase)
 
+> ⚠️ **Guía obsoleta en la parte de reglas.** Las reglas públicas del paso 6 dejan la base de datos abierta a cualquiera, contraseñas incluidas.
+> Desde la versión con Firebase Authentication usa `firebase/database.rules.json` y sigue `docs/QUICES-Y-SEGURIDAD.md`.
+
 Sin esto, cada navegador guarda sus propios usuarios y chats (localStorage).
 
 ## Pasos (≈ 10 minutos, gratis)

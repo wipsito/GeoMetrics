@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="css/civix-pro.css">
     <link rel="stylesheet" href="css/civix-herramientas.css">
     <link rel="stylesheet" href="css/civix-cad.css">
+    <link rel="stylesheet" href="css/gm-quiz.css">
     <link rel="stylesheet" href="css/suelos1.css">
     <link rel="stylesheet" href="css/aula-virtual.css">
     <link rel="stylesheet" href="css/docente-pro.css">
@@ -44,6 +45,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+    <script src="js/gm-auth.js"></script>
     <script src="js/cloud.js"></script>
     <!-- SheetJS y Plotly (~4,4 MB) ya NO se cargan aquí: bloqueaban el arranque.
          js/gm-libs.js las trae sola en segundo plano cuando la pantalla de carga se va. -->
@@ -128,10 +131,10 @@
                         <h4 class="recupero-titulo">Recuperar contraseña</h4>
 
                         <div id="recuperoPaso1">
-                            <p class="login-hint">Ingresa tu correo institucional. Te enviaremos un código de verificación.</p>
+                            <p class="login-hint">Ingresa tu correo institucional. Te enviaremos un enlace para crear una contraseña nueva.</p>
                             <label>Correo institucional</label>
                             <input type="email" id="recEmail" placeholder="nombre.apellido@unipamplona.edu.co">
-                            <button type="button" class="btn-login" id="btnEnviarCodigo">ENVIAR CÓDIGO</button>
+                            <button type="button" class="btn-login" id="btnEnviarCodigo">ENVIAR ENLACE</button>
                         </div>
 
                         <div id="recuperoPaso2" hidden>
@@ -1360,6 +1363,8 @@
                 <button type="button" data-dp-view="estudiantes"><span class="dp-ico">👥</span><span class="label">Estudiantes</span></button>
                 <button type="button" data-dp-view="foros"><span class="dp-ico">💬</span><span class="label">Mensajes</span></button>
                 <button type="button" data-dp-view="material"><span class="dp-ico">📄</span><span class="label">Material</span></button>
+                <button type="button" data-dp-view="quices"><span class="dp-ico">📝</span><span class="label">Quices y evaluaciones</span></button>
+                <button type="button" data-dp-view="recursos"><span class="dp-ico">📚</span><span class="label">Recursos</span></button>
                 <button type="button" data-dp-view="analisis"><span class="dp-ico">📈</span><span class="label">Análisis</span></button>
                 <div class="dp-side-foot">
                     <button type="button" id="dpBtnPerfil"><span class="dp-ico">👤</span><span class="label">Perfil</span></button>
@@ -1368,6 +1373,16 @@
             </aside>
 
             <div class="dp-main">
+                <!-- QUICES Y EVALUACIONES (js/gm-quiz-docente.js) -->
+                <section class="dp-panel" data-dp-panel="quices">
+                    <div class="dp-head"><div><h1>Quices y evaluaciones</h1><p>Crea, publica y califica evaluaciones para tus asignaturas.</p></div></div>
+                    <div id="gqDocRoot" class="gq-root"></div>
+                </section>
+                <!-- RECURSOS (mismo apartado del aula del estudiante) -->
+                <section class="dp-panel" data-dp-panel="recursos">
+                    <div class="dp-head"><div><h1>Recursos</h1><p>Biblioteca, guías y material publicado para tus cursos.</p></div></div>
+                    <div id="gqDocRecursos" class="gq-root"></div>
+                </section>
                 <!-- DASHBOARD -->
                 <section class="dp-panel active" data-dp-panel="dashboard">
                     <div class="dp-head">
@@ -1688,6 +1703,7 @@
             <button type="button" data-av-view="tareas" title="Tareas"><span class="av-ico">📋</span>Tareas</button>
             <button type="button" data-av-view="foros" title="Mensajes"><span class="av-ico">💬</span>Mensajes</button>
             <button type="button" data-av-view="recursos" title="Recursos"><span class="av-ico">📁</span>Recursos</button>
+            <button type="button" data-av-view="quices" title="Mis quices"><span class="av-ico">📝</span>Quices</button>
             <button type="button" data-av-view="calificaciones" title="Calificaciones"><span class="av-ico">📊</span>Notas</button>
         </nav>
 
@@ -1809,6 +1825,11 @@
                 </div>
                 <h3 class="av-subh">Material publicado por docentes</h3>
                 <div id="listaPresEstudiante" class="av-task-list"></div>
+            </div>
+            <div class="av-view" data-av-view="quices">
+                <h2>Mis quices</h2>
+                <p class="av-view-hint">Evaluaciones de tus asignaturas. Aparecen aquí apenas tu docente las publica.</p>
+                <div id="gqEstRoot" class="gq-root"></div>
             </div>
             <div class="av-view" data-av-view="calificaciones">
                 <h2>Calificaciones y entregas</h2>
@@ -2648,6 +2669,9 @@
     <script src="js/foros-avisos.js"></script>
     <script src="js/equipo-creador.js"></script>
     <script src="js/aula-virtual.js"></script>
+    <script src="js/gm-quiz-core.js"></script>
+    <script src="js/gm-quiz-docente.js"></script>
+    <script src="js/gm-quiz-estudiante.js"></script>
     <script src="js/app.js"></script>
     <script src="js/civix-cad.js"></script>
     <script src="js/civix-cad-struct.js"></script>
