@@ -7,6 +7,7 @@ import numpy as np
 MAX_SIDE = 2400
 MIN_SIDE = 1200
 PDF_DPI = 200
+MAX_PDF_SIDE = 6000
 
 
 class ImagenInvalida(ValueError):
@@ -25,12 +26,18 @@ def load_image(data: bytes) -> tuple[np.ndarray, dict]:
             raise ImagenInvalida(f"No se pudo abrir el PDF: {e}") from e
         if pdf.page_count == 0:
             raise ImagenInvalida("El PDF no tiene páginas.")
-        pix = pdf[0].get_pixmap(dpi=PDF_DPI, alpha=False)
+        rect = pdf[0].rect
+        # una página enorme no debe agotar la memoria: se limita el lado mayor del render
+        dpi = min(PDF_DPI, max(10, int(72 * MAX_PDF_SIDE / max(rect.width, rect.height, 1))))
+        pix = pdf[0].get_pixmap(dpi=dpi, alpha=False)
         arr = np.frombuffer(pix.samples, np.uint8).reshape(pix.height, pix.width, pix.n)
         img = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR) if pix.n == 3 else cv2.cvtColor(arr, cv2.COLOR_GRAY2BGR)
-        meta.update(dpi=PDF_DPI, pages=pdf.page_count, source="pdf")
+        meta.update(dpi=dpi, pages=pdf.page_count, source="pdf")
     else:
-        img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)  # respeta EXIF
+        try:
+            img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)  # respeta EXIF
+        except cv2.error as e:  # por ejemplo, más píxeles de los permitidos
+            raise ImagenInvalida("La imagen es demasiado grande para procesarla.") from e
         if img is None:
             raise ImagenInvalida("El archivo no es una imagen válida (usa PNG, JPG o PDF).")
 
