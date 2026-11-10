@@ -2,9 +2,13 @@ name = "geometrics-civix"
 main = "worker.js"
 compatibility_date = "2024-09-01"
 
+[vars]
+# Calificador de quices (quiz.js). Son identificadores públicos del proyecto, no secretos.
+FIREBASE_PROJECT_ID = "geometrics-c9369"
+FIREBASE_DB_URL = "https://geometrics-c9369-default-rtdb.firebaseio.com"
 # Opcional: modelo por defecto
-# [vars]
 # GROQ_MODEL = "openai/gpt-oss-20b"
 
-# La key se configura con:
+# Secretos (nunca en este archivo ni en GitHub):
 #   wrangler secret put GROQ_API_KEY
+#   wrangler secret put FIREBASE_SERVICE_ACCOUNT   ← pega el JSON completo de la cuenta de servicio

@@ -13,6 +13,8 @@
  * Despliegue: wrangler deploy
  */
 
+import { handleQuiz } from './quiz.js';
+
 const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 /** id → { label, provider, tier } */
@@ -249,7 +251,7 @@ function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Filename',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Filename, Authorization',
     'Access-Control-Max-Age': '86400',
   };
 }
@@ -415,6 +417,10 @@ export default {
     }
 
     const url = new URL(request.url);
+
+    if (url.pathname.startsWith('/api/quiz/')) {
+      return handleQuiz(request, env, origin, corsHeaders);
+    }
 
     if (url.pathname === '/api/convert/status' && request.method === 'GET') {
       const info = { enabled: !!env.CLOUDCONVERT_API_KEY, formats: ['dwg>dxf', 'dxf>dwg'], maxMB: 10 };
