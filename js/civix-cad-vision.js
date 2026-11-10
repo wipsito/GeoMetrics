@@ -10,7 +10,13 @@
     var CAD = global.CivixCAD = global.CivixCAD || {};
     if (CAD.vision) return;
 
-    var API = (function () { try { return global.CAD_VISION_API || localStorage.getItem('cadVisionApi') || 'http://127.0.0.1:8765'; } catch (e) { return global.CAD_VISION_API || 'http://127.0.0.1:8765'; } })().replace(/\/$/, '') + '/api/cad-vision';
+    /* Dirección del servidor público de CAD Vision. Pégala aquí tras publicarlo, por ejemplo 'https://mi-motor.onrender.com'. */
+    var API_PUBLICA = '';
+
+    /* Abierto desde este mismo equipo se usa el motor local; desde la web, el servidor público. */
+    var PAGINA_LOCAL = /^(localhost|127\.0\.0\.1|\[::1\]|)$/.test(global.location ? global.location.hostname : '');
+    var API_BASE = (function () { var o = null; try { o = localStorage.getItem('cadVisionApi'); } catch (e) { } return global.CAD_VISION_API || o || (PAGINA_LOCAL ? 'http://127.0.0.1:8765' : API_PUBLICA); })();
+    var API = API_BASE.replace(/\/$/, '') + '/api/cad-vision';
 
     var LAYERS = [['00_REFERENCIA', '#94A3B8'], ['01_MUROS', '#111827'], ['02_DIVISIONES', '#374151'], ['03_PUERTAS', '#B45309'], ['04_VENTANAS', '#0369A1'], ['05_COLUMNAS', '#7C3AED'], ['06_COTAS', '#15803D'], ['07_TEXTOS', '#111827'], ['08_EJES', '#DC2626'], ['09_OTROS', '#64748B']];
     var LCOLOR = {}; LAYERS.forEach(function (l) { LCOLOR[l[0]] = l[1]; });
@@ -99,14 +105,22 @@
 
     /* ───────── red ───────── */
     function api(path, opt) {
-        return fetch(API + path, opt).catch(function () { setOnline(false); throw new Error('No hay conexión con el motor de CAD Vision. Ejecuta iniciar-cad-vision.bat.'); }).then(function (r) {
+        if (!API_BASE) { setOnline(false); return Promise.reject(new Error('CAD Vision todavía no tiene un servidor configurado.')); }
+        return fetch(API + path, opt).catch(function () { setOnline(false); throw new Error(PAGINA_LOCAL ? 'No hay conexión con el motor de CAD Vision. Ejecuta iniciar-cad-vision.bat.' : 'No se pudo conectar con el servidor de CAD Vision. Inténtalo de nuevo en un momento.'); }).then(function (r) {
             if (r.ok || r.status === 409) return r;
             return r.json().catch(function () { return {}; }).then(function (b) { throw new Error(b.detail || ('Error ' + r.status)); });
         });
     }
     function post(path, body) { return api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
-    function setOnline(on, info) { U.api.className = 'cvv-api' + (on ? ' on' : ''); U.apiT.textContent = on ? (info || 'Motor activo') : 'Motor apagado'; U.off.hidden = on; }
-    function health() { return api('/health').then(function (r) { return r.json(); }).then(function (j) { setOnline(true, j.ocr && j.ocr.ok ? 'Motor activo · OCR listo' : 'Motor activo · sin OCR'); return true; }).catch(function () { setOnline(false); return false; }); }
+    function setOnline(on, info) { U.api.className = 'cvv-api' + (on ? ' on' : ''); U.apiT.textContent = on ? (info || 'Motor activo') : (PAGINA_LOCAL ? 'Motor apagado' : 'Servidor no disponible'); U.off.hidden = on; draw(); }
+    function health() {
+        clearTimeout(S.retry);
+        return api('/health').then(function (r) { return r.json(); }).then(function (j) { setOnline(true, j.ocr && j.ocr.ok ? 'Motor activo · OCR listo' : 'Motor activo · sin OCR'); return true; }).catch(function () {
+            setOnline(false);
+            if (!PAGINA_LOCAL && API_BASE && S.root && !S.root.hidden) S.retry = setTimeout(health, 10000); // un servidor dormido tarda en despertar
+            return false;
+        });
+    }
     function busy(t) { U.busy.hidden = !t; U.busy.textContent = t || ''; }
     function loadImg(src) { return new Promise(function (res, rej) { var i = new Image(); i.onload = function () { res(i); }; i.onerror = rej; i.src = src; }); }
     function fail(e) { busy(null); status('⚠ ' + (e.message || e)); addHist('Error: ' + (e.message || e)); }
@@ -203,7 +217,7 @@
 
     /* ───────── dibujo ───────── */
     function draw() {
-        U.emptyEl.hidden = !!(S.upload || S.doc);
+        U.emptyEl.hidden = !!(S.upload || S.doc) || !U.off.hidden;
         panes().forEach(function (p) {
             var sz = sizeCanvas(p), c = p.__c.getContext('2d'), mode = p.__mode;
             if (!S.T[mode]) S.T[mode] = fitT(mode, sz.w, sz.h);
@@ -571,7 +585,7 @@
         U.btnAna = h('button', { class: 'cvv-b go full', text: '🧠 Interpretar plano', onclick: analyze, style: 'min-height:38px' });
 
         var left = h('aside', { class: 'cvv-left' },
-            h('div', { class: 'cvv-sec' }, h('h3', { text: '1 · Cargar imagen' }), drop, file, U.file),
+            h('div', { class: 'cvv-sec' }, h('h3', { text: '1 · Cargar imagen' }), drop, file, U.file, PAGINA_LOCAL ? null : h('p', { class: 'cvv-hint', text: 'La imagen se envía al servidor de CAD Vision para procesarla y no se guarda: se borra de la memoria en 30 minutos como máximo.' })),
             h('div', { class: 'cvv-sec' }, h('h3', { text: '2 · Preparar imagen' }),
                 h('div', { class: 'cvv-row' }, h('button', { class: 'cvv-b', text: '⟲ 90°', onclick: function () { base90 = (base90 + 270) % 360; applyRot(); previewPrep(); } }), h('button', { class: 'cvv-b', text: '⟳ 90°', onclick: function () { base90 = (base90 + 90) % 360; applyRot(); previewPrep(); } }), rotV),
                 h('label', { class: 'cvv-f' }, 'Rotación fina', rot),
@@ -597,7 +611,12 @@
         U.stage = h('div', { class: 'cvv-stage' });
         U.emptyEl = h('div', { class: 'cvv-empty' }, h('div', { text: 'Carga una fotografía, croquis o PDF para comenzar.' }));
         U.busy = h('div', { class: 'cvv-busy', hidden: true });
-        U.off = h('div', { class: 'cvv-busy cvv-off', hidden: true }, h('div', null, h('p', { text: 'El motor de CAD Vision no está encendido.' }), h('p', { style: 'color:#94A3B8;font-weight:400', text: 'Abre esta carpeta de GeoMetrics y haz doble clic en:' }), h('code', { text: 'iniciar-cad-vision.bat' }), h('button', { class: 'cvv-b go', text: 'Reintentar', onclick: health })));
+        var offMsg = PAGINA_LOCAL
+            ? [h('p', { text: 'El motor de CAD Vision no está encendido.' }), h('p', { style: 'color:#94A3B8;font-weight:400', text: 'Abre la carpeta de GeoMetrics y haz doble clic en:' }), h('code', { text: 'iniciar-cad-vision.bat' })]
+            : API_BASE
+                ? [h('p', { text: 'Conectando con el servidor de CAD Vision…' }), h('p', { style: 'color:#94A3B8;font-weight:400', text: 'Si estaba inactivo puede tardar uno o dos minutos en despertar. Esta pantalla se actualiza sola.' })]
+                : [h('p', { text: 'CAD Vision todavía no está disponible aquí.' }), h('p', { style: 'color:#94A3B8;font-weight:400', text: 'Falta conectar esta página con su servidor.' })];
+        U.off = h('div', { class: 'cvv-busy cvv-off', hidden: true }, h.apply(null, ['div', null].concat(offMsg, API_BASE ? [h('button', { class: 'cvv-b go', text: 'Reintentar', onclick: health })] : [])));
         var center = h('section', { class: 'cvv-c', style: 'position:relative' }, bar, U.stage, U.busy, U.off);
 
         U.tabs = h('div', { class: 'cvv-tabs' });
