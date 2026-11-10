@@ -831,6 +831,20 @@ async function aulaEnviarCodigoRecupero() {
         err.textContent = 'Usa un correo @' + aulaDominio();
         return;
     }
+    // Con Firebase Authentication el restablecimiento lo hace Firebase con un enlace al correo.
+    if (aulaAuthDisponible()) {
+        var btnR = document.getElementById('btnEnviarCodigo');
+        if (btnR) { btnR.disabled = true; btnR.textContent = 'Enviando...'; }
+        try {
+            await GeoAuth.resetPassword(email);
+            ok.textContent = 'Si ' + email + ' tiene una cuenta activa, te llegará un enlace para crear una contraseña nueva (revisa también spam).';
+        } catch (eR) {
+            err.textContent = GeoAuth.message(eR);
+        } finally {
+            if (btnR) { btnR.disabled = false; btnR.textContent = 'ENVIAR ENLACE'; }
+        }
+        return;
+    }
     var users = aulaLoad(AULA_KEYS.users, []);
     var user = users.find(function(u) { return u.email === email; });
     if (!user) {
@@ -932,6 +946,159 @@ function aulaRestablecerPassword() {
         var loginEmail = document.getElementById('loginEmail');
         if (loginEmail) loginEmail.value = email;
     }, 1200);
+}
+
+// ---------- Identidad segura (Firebase Authentication) ----------
+function aulaAuthDisponible() {
+    return !!(window.GeoAuth && window.GeoCloud && GeoCloud.isOn && GeoCloud.isOn());
+}
+function aulaPendienteKey(email) { return 'gm_registro_pendiente_' + aulaNormalizarEmail(email); }
+function aulaGuardarPendiente(perfil) {
+    try {
+        var p = Object.assign({}, perfil);
+        delete p.password;
+        localStorage.setItem(aulaPendienteKey(p.email), JSON.stringify(p));
+    } catch (e) {}
+}
+function aulaLeerPendiente(email) {
+    try { return JSON.parse(localStorage.getItem(aulaPendienteKey(email)) || 'null'); } catch (e) { return null; }
+}
+function aulaBorrarPendiente(email) { try { localStorage.removeItem(aulaPendienteKey(email)); } catch (e) {} }
+
+/** Mensaje con botón para reenviar el correo de confirmación. */
+function aulaAvisoVerificacion(errEl, email) {
+    if (!errEl) return;
+    errEl.innerHTML = 'Te enviamos un enlace de confirmación a <b>' + aulaEsc(email) + '</b>. Ábrelo (revisa también spam) y después inicia sesión aquí. ' +
+        '<button type="button" class="btn-link-recupero" data-gm-reenviar>Reenviar el correo</button>';
+    var b = errEl.querySelector('[data-gm-reenviar]');
+    if (b) b.addEventListener('click', function () {
+        b.disabled = true;
+        GeoAuth.resendVerification().then(function () { b.textContent = 'Correo reenviado ✓'; })
+            .catch(function (e) { b.disabled = false; b.textContent = GeoAuth.message(e); });
+    });
+}
+
+function aulaBotonesAuth(form, ocupado) {
+    if (!form) return;
+    form.querySelectorAll('button[type="submit"]').forEach(function (b) {
+        if (ocupado) { b.dataset.txt = b.dataset.txt || b.textContent; b.disabled = true; b.textContent = 'Un momento…'; }
+        else { b.disabled = false; if (b.dataset.txt) b.textContent = b.dataset.txt; }
+    });
+}
+
+/**
+ * Tras autenticarse con un correo verificado: trae los datos, completa el perfil
+ * (registro pendiente o cuenta anterior) y entra a GeoMetrics.
+ */
+function aulaTrasAutenticar(email, errEl) {
+    email = aulaNormalizarEmail(email);
+    return GeoCloud.syncDown().then(function () {
+        var users = aulaLoad(AULA_KEYS.users, []);
+        var idx = users.findIndex(function (u) { return u && aulaNormalizarEmail(u.email) === email; });
+        var existing = idx >= 0 ? users[idx] : null;
+        var pend = aulaLeerPendiente(email);
+        var user = null;
+
+        if (pend && pend.rol === 'docente') {
+            if (!aulaEsDocenteEmail(email)) {
+                if (errEl) errEl.textContent = 'Este correo no está autorizado como docente. Un administrador debe agregarlo desde el panel Administrador.';
+                GeoAuth.signOut();
+                return null;
+            }
+            if (existing) {
+                user = Object.assign(existing, { nombre: pend.nombre, nombres: pend.nombres, apellidos: pend.apellidos, genero: pend.genero, rol: 'docente', materias: pend.materias, materia: pend.materia, grupo: pend.grupo, mustSetPassword: false });
+                users[idx] = user;
+            } else {
+                user = pend;
+                users.push(user);
+            }
+            try {
+                var extra = aulaDocentesExtraLoad(), foundE = false;
+                extra = extra.map(function (item) {
+                    var em = typeof item === 'string' ? item : (item && item.email);
+                    if (aulaNormalizarEmail(em) !== email) return item;
+                    foundE = true;
+                    if (typeof item === 'string') return { email: email, nombre: user.nombre };
+                    item.nombre = user.nombre;
+                    return item;
+                });
+                if (!foundE && aulaDocentesBase().indexOf(email) < 0) extra.push({ email: email, nombre: user.nombre });
+                aulaDocentesExtraSave(extra);
+            } catch (eX) {}
+        } else if (existing) {
+            user = existing;
+        } else if (pend) {
+            user = pend;
+            users.push(user);
+        } else {
+            if (errEl) errEl.textContent = 'Tu correo está confirmado, pero no encontramos tu registro en GeoMetrics. Completa el formulario de la pestaña «Estudiante» o «Docente» con este mismo correo y contraseña.';
+            GeoAuth.signOut();
+            return null;
+        }
+        aulaBorrarPendiente(email);
+        var teniaPassword = user.password !== undefined;
+        delete user.password;
+        if (aulaEsDocenteEmail(email)) user.rol = 'docente';
+        aulaSave(AULA_KEYS.users, users.map(function (u) { var c = Object.assign({}, u); delete c.password; return c; }));
+        if (teniaPassword && GeoCloud.cloudSet) GeoCloud.cloudSet('users/' + GeoCloud.emailKey(email) + '/password', null);
+        user = aulaUsuarioCompleto(user) || user;
+        aulaSetSession(user);
+        aulaEnterApp(user);
+        try { if (window.GeoQuiz && GeoQuiz.alIniciarSesion) GeoQuiz.alIniciarSesion(user); } catch (eQ) {}
+        try { if (aulaEsAdminEmail(email) && window.GeoSecure) GeoSecure.stripLegacyPasswords(); } catch (eS) {}
+        return user;
+    });
+}
+
+/** Inicia sesión con Firebase y, si el correo está verificado, entra. */
+function aulaEntrarConAuth(email, pass, errEl, form) {
+    aulaBotonesAuth(form, true);
+    return GeoAuth.signIn(email, pass).then(function (u) {
+        if (!u || !u.emailVerified) { aulaAvisoVerificacion(errEl, email); return null; }
+        return aulaTrasAutenticar(email, errEl);
+    }).catch(function (ex) {
+        var code = ex && ex.code || '';
+        if (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(code)) {
+            errEl.innerHTML = 'Correo o contraseña incorrectos. ¿Tu cuenta es anterior a la actualización de seguridad? ' +
+                '<button type="button" class="btn-link-recupero" data-gm-activar>Actívala con este correo y esta contraseña</button>';
+            var b = errEl.querySelector('[data-gm-activar]');
+            if (b) b.addEventListener('click', function () { aulaActivarCuentaAnterior(email, pass, errEl); });
+        } else {
+            errEl.textContent = GeoAuth.message(ex);
+        }
+        return null;
+    }).then(function (r) { aulaBotonesAuth(form, false); return r; });
+}
+
+/** Cuentas creadas antes de la migración: se crea la identidad en Firebase y se confirma el correo. */
+function aulaActivarCuentaAnterior(email, pass, errEl) {
+    if (String(pass || '').length < 6) { errEl.textContent = 'Escribe una contraseña nueva de al menos 6 caracteres en el campo de contraseña.'; return; }
+    GeoAuth.crearCuenta(email, pass).then(function () { aulaAvisoVerificacion(errEl, email); })
+        .catch(function (ex) {
+            errEl.textContent = (ex && ex.code === 'auth/email-already-in-use')
+                ? 'Esta cuenta ya está activada. Si no recuerdas la contraseña, usa «¿Olvidaste tu contraseña?».'
+                : GeoAuth.message(ex);
+        });
+}
+
+/** Registro (estudiante o docente): crea la identidad, guarda el perfil pendiente y pide confirmar el correo. */
+function aulaRegistrarConAuth(perfil, pass, errEl, form) {
+    var email = aulaNormalizarEmail(perfil.email);
+    aulaBotonesAuth(form, true);
+    return GeoAuth.crearCuenta(email, pass).then(function () {
+        aulaGuardarPendiente(perfil);
+        aulaAvisoVerificacion(errEl, email);
+    }).catch(function (ex) {
+        if (ex && ex.code === 'auth/email-already-in-use') {
+            // Puede estar completando el registro desde otro equipo
+            return GeoAuth.signIn(email, pass).then(function (u) {
+                aulaGuardarPendiente(perfil);
+                if (!u.emailVerified) { aulaAvisoVerificacion(errEl, email); return; }
+                return aulaTrasAutenticar(email, errEl);
+            }).catch(function () { errEl.textContent = 'Ese correo ya está registrado. Usa Iniciar sesión.'; });
+        }
+        errEl.textContent = GeoAuth.message(ex);
+    }).then(function () { aulaBotonesAuth(form, false); });
 }
 
 // ---------- Login / Registro local ----------
@@ -1078,6 +1245,10 @@ function aulaInitLogin() {
                 if (err) err.textContent = 'Debes usar un correo @' + aulaDominio();
                 return;
             }
+            if (aulaAuthDisponible()) {
+                aulaEntrarConAuth(email, pass, err, formLogin);
+                return;
+            }
             var users = aulaLoad(AULA_KEYS.users, []);
             var existing = users.find(function(u) { return u.email === email; });
             var user = users.find(function(u) { return u.email === email && u.password === pass; });
@@ -1156,7 +1327,7 @@ function aulaInitLogin() {
             }
 
             var users = aulaLoad(AULA_KEYS.users, []);
-            if (users.some(function(u) { return u.email === email; })) {
+            if (!aulaAuthDisponible() && users.some(function(u) { return u.email === email; })) {
                 err.textContent = 'Ese correo ya está registrado. Usa Iniciar sesión.';
                 return;
             }
@@ -1186,6 +1357,11 @@ function aulaInitLogin() {
                 grupo: materias[0].grupo,
                 foto: ''
             };
+            if (aulaAuthDisponible()) {
+                delete user.password;
+                aulaRegistrarConAuth(user, pass, err, formReg);
+                return;
+            }
             var terminarRegistro = function () {
                 users.push(user);
                 aulaSave(AULA_KEYS.users, users);
@@ -1225,7 +1401,8 @@ function aulaInitLogin() {
                 err.textContent = 'Solo correos @' + aulaDominio();
                 return;
             }
-            if (!aulaEsDocenteEmail(email)) {
+            // Con Firebase, la autorización se comprueba al confirmar el correo (antes la lista no es legible).
+            if (!aulaAuthDisponible() && !aulaEsDocenteEmail(email)) {
                 err.textContent = 'Este correo no está autorizado como docente. Un administrador debe agregarlo desde el panel Administrador.';
                 return;
             }
@@ -1268,6 +1445,14 @@ function aulaInitLogin() {
             var generoDoc = ((document.getElementById('docGenero') || {}).value || '').trim();
             if (generoDoc !== 'mujer' && generoDoc !== 'hombre') {
                 err.textContent = 'Selecciona tu género.';
+                return;
+            }
+            if (aulaAuthDisponible()) {
+                aulaRegistrarConAuth({
+                    id: aulaUid(), nombre: nombres + ' ' + apellidos, nombres: nombres, apellidos: apellidos,
+                    genero: generoDoc, email: email, rol: 'docente', materias: materiasDoc,
+                    materia: materiasDoc[0].nombre, grupo: materiasDoc[0].grupo, foto: ''
+                }, pass, err, formDoc);
                 return;
             }
             var users = aulaLoad(AULA_KEYS.users, []);
@@ -1385,7 +1570,19 @@ function aulaInitLogin() {
                     }
                 }, 80);
             };
-            if (window.GeoCloud && GeoCloud.isOn()) {
+            if (aulaAuthDisponible()) {
+                // La sesión solo es válida si Firebase confirma la misma cuenta verificada
+                GeoAuth.ready().then(function (u) {
+                    if (!u || !u.emailVerified || aulaNormalizarEmail(u.email) !== aulaNormalizarEmail(session.email)) {
+                        aulaSetSession(null);
+                        if (typeof mostrarPantalla === 'function') mostrarPantalla('inicio');
+                        return;
+                    }
+                    GeoCloud.syncDown().then(go).catch(go).then(function () {
+                        try { if (window.GeoQuiz && GeoQuiz.alIniciarSesion) GeoQuiz.alIniciarSesion(aulaGetSession()); } catch (eQ) {}
+                    });
+                });
+            } else if (window.GeoCloud && GeoCloud.isOn()) {
                 GeoCloud.syncDown().then(go).catch(go);
             } else {
                 go();
@@ -1484,6 +1681,8 @@ function aulaUpdateMenuUser(user) {
 
 function aulaLogout() {
     aulaSetSession(null);
+    try { if (window.GeoAuth) GeoAuth.signOut(); } catch (eA) {}
+    try { if (window.GeoQuiz && GeoQuiz.alCerrarSesion) GeoQuiz.alCerrarSesion(); } catch (eQ) {}
     if (typeof mostrarPantalla === 'function') mostrarPantalla('inicio');
     var formLogin = document.getElementById('formLogin');
     var formReg = document.getElementById('formRegistro');
@@ -6051,6 +6250,7 @@ function aulaAbrirAdmin() {
     var dd = document.getElementById('menuUserDropdown');
     if (dd) dd.hidden = true;
     aulaRenderAdmin();
+    try { aulaAdminSeguridadRender(); } catch (eSec) {}
     try { aulaAdminCivixAvatarInit(); } catch (eAv) {}
     try { aulaAdminEquipoVisibility(); } catch (eEq) {}
 }
@@ -6179,6 +6379,9 @@ function aulaAdminAddDocente() {
         ok.hidden = false;
         ok.textContent = 'Autorizado: ' + email + '. La persona debe ir a la pestaña «Docente», completar nombres y crear su contraseña.';
     }
+    if (window.GeoSecure) GeoSecure.setDocente(email, true).then(function (s) {
+        if (!s && ok) ok.textContent += ' (Aviso: no se pudo registrar en el nodo de seguridad; para quices debe hacerlo un administrador.)';
+    });
     var inp = document.getElementById('adminDocEmail'); if (inp) inp.value = '';
     var inpN = document.getElementById('adminDocNombre'); if (inpN) inpN.value = '';
     aulaRenderAdmin();
@@ -6197,6 +6400,7 @@ function aulaAdminQuitarDocente(email) {
         return aulaNormalizarEmail(e) !== email;
     });
     aulaDocentesExtraSave(extra);
+    if (window.GeoSecure) { GeoSecure.setDocente(email, false); GeoSecure.setAdmin(email, false); }
     // Quitar cargo: pasa a estudiante (conserva la cuenta)
     var users = aulaLoad(AULA_KEYS.users, []);
     var found = false;
@@ -6229,6 +6433,9 @@ function aulaAdminPromoverAdmin() {
     var ads = aulaAdminsLoad();
     if (ads.indexOf(email) < 0) ads.push(email);
     aulaAdminsSave(ads);
+    if (window.GeoSecure) GeoSecure.setAdmin(email, true).then(function (s) {
+        if (!s && err) err.textContent = 'Agregado a la lista, pero solo el superadministrador puede darle permisos de seguridad (quices).';
+    });
     var inp = document.getElementById('adminPromoEmail'); if (inp) inp.value = '';
     aulaRenderAdmin();
     if (okEl) {
@@ -6250,7 +6457,51 @@ function aulaAdminQuitarAdmin(email) {
     if (email === aulaNormalizarEmail(AULA_SUPER_ADMIN)) return;
     var ads = aulaAdminsLoad().filter(function(e) { return e !== email; });
     aulaAdminsSave(ads);
+    if (window.GeoSecure) GeoSecure.setAdmin(email, false);
     aulaRenderAdmin();
+}
+
+/**
+ * Recuadro «Seguridad» del panel Administrador: confirma en el nodo de confianza los docentes
+ * de la lista anterior. Es una acción consciente del administrador, porque esa lista vieja podía
+ * modificarla cualquier usuario.
+ */
+function aulaAdminSeguridadRender() {
+    var lista = document.getElementById('adminListaDocentes');
+    if (!lista || !window.GeoSecure || !aulaAuthDisponible()) return;
+    var card = lista.closest('.aula-card') || lista.parentNode;
+    var box = document.getElementById('adminSeguridadBox');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'adminSeguridadBox';
+        box.className = 'aula-card';
+        card.parentNode.insertBefore(box, card.nextSibling);
+    }
+    box.innerHTML = '<h3>🔐 Seguridad: docentes con acceso a quices</h3><p class="login-hint">Cargando…</p>';
+    GeoSecure.docentes().then(function (conf) {
+        if (conf === null) { box.innerHTML = '<h3>🔐 Seguridad</h3><p class="login-hint">Tu cuenta no tiene permisos de administrador en las reglas de Firebase.</p>'; return; }
+        var lst = aulaDocentesBase().concat(aulaDocentesExtraLoad().map(function (i) { return typeof i === 'string' ? i : (i && i.email); }))
+            .map(aulaNormalizarEmail).filter(function (e, i, a) { return e && a.indexOf(e) === i; });
+        var pend = lst.filter(function (e) { return conf.indexOf(e) < 0; });
+        box.innerHTML = '<h3>🔐 Seguridad: docentes con acceso a quices</h3>' +
+            '<p class="login-hint">Confirmados: <b>' + conf.length + '</b>. Solo los confirmados pueden crear y calificar quices.</p>' +
+            (pend.length
+                ? '<p class="login-hint">Revisa y confirma los docentes de la lista anterior:</p><ul>' + pend.map(function (e) { return '<li><label><input type="checkbox" data-sec-doc="' + aulaEsc(e) + '"> ' + aulaEsc(e) + '</label></li>'; }).join('') + '</ul>' +
+                  '<button type="button" class="btn-calcular" id="btnSecConfirmar">Confirmar seleccionados</button>'
+                : '<p class="login-hint">Todos los docentes autorizados están confirmados.</p>') +
+            '<p class="login-hint" id="adminSecMsg"></p>';
+        var b = document.getElementById('btnSecConfirmar');
+        if (b) b.addEventListener('click', function () {
+            var sel = Array.prototype.map.call(box.querySelectorAll('[data-sec-doc]:checked'), function (c) { return c.getAttribute('data-sec-doc'); });
+            if (!sel.length) return;
+            b.disabled = true;
+            Promise.all(sel.map(function (e) { return GeoSecure.setDocente(e, true); })).then(function (r) {
+                var ok = r.filter(Boolean).length;
+                aulaAdminSeguridadRender();
+                setTimeout(function () { var m = document.getElementById('adminSecMsg'); if (m) m.textContent = ok + ' docente(s) confirmados.'; }, 400);
+            });
+        });
+    });
 }
 
 function aulaAdminBind() {

@@ -5,6 +5,7 @@
     var listeners = {};
 
     function cfg() {
+        if (global.GeoAuth) return GeoAuth.config();
         return (typeof FIREBASE_CONFIG !== 'undefined' && FIREBASE_CONFIG) ? FIREBASE_CONFIG : { enabled: false };
     }
 
@@ -13,21 +14,22 @@
         return !!(c.enabled && c.databaseURL && c.apiKey && global.firebase);
     }
 
-    function init() {
-        if (ready) return Promise.resolve(db);
+    /** Las reglas de Firebase exigen sesión con correo institucional verificado. */
+    function authed() {
+        return !!(global.GeoAuth && GeoAuth.verified());
+    }
+    /** Únicos nodos legibles sin sesión (portada pública). */
+    function isPublicPath(path) {
+        return /^(teamCreators|config)(\/|$)/.test(String(path || ''));
+    }
+
+    function init(allowPublic) {
         if (!isOn()) return Promise.resolve(null);
+        if (!authed() && !allowPublic) return Promise.resolve(null);
+        if (ready) return Promise.resolve(db);
         try {
-            if (!firebase.apps || !firebase.apps.length) {
-                firebase.initializeApp({
-                    apiKey: cfg().apiKey,
-                    authDomain: cfg().authDomain,
-                    databaseURL: cfg().databaseURL,
-                    projectId: cfg().projectId,
-                    storageBucket: cfg().storageBucket,
-                    messagingSenderId: cfg().messagingSenderId,
-                    appId: cfg().appId
-                });
-            }
+            if (global.GeoAuth) GeoAuth.firebaseApp();
+            else if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(cfg());
             db = firebase.database();
             ready = true;
             return Promise.resolve(db);
@@ -43,7 +45,7 @@
 
     /** Lee un nodo; si falla o no hay cloud, null */
     function cloudGet(path) {
-        return init().then(function (d) {
+        return init(isPublicPath(path)).then(function (d) {
             if (!d) return null;
             return d.ref(path).once('value').then(function (snap) {
                 return snap.exists() ? snap.val() : null;
@@ -57,7 +59,7 @@
     function cloudSet(path, value) {
         return init().then(function (d) {
             if (!d) {
-                console.error('[GeoCloud] No se puede guardar en la nube: Firebase no está disponible. Ruta:', path);
+                if (isOn() && authed()) console.error('[GeoCloud] No se puede guardar en la nube: Firebase no está disponible. Ruta:', path);
                 return false;
             }
             return d.ref(path).set(value).then(function () { return true; })
@@ -72,22 +74,34 @@
         });
     }
 
+    /**
+     * Suscripciones pedidas por los módulos. Se recuerdan para reactivarlas al iniciar sesión:
+     * sin sesión las reglas las rechazan y al cerrar sesión Firebase las revoca.
+     */
+    var wanted = {};
     function cloudListen(path, cb) {
-        return init().then(function (d) {
+        wanted[path] = cb;
+        return attachListener(path);
+    }
+    function attachListener(path) {
+        return init(isPublicPath(path)).then(function (d) {
             if (!d) {
-                console.error('[GeoCloud] Firebase no está configurado o no pudo inicializarse. Ruta:', path);
+                if (isOn() && authed()) console.error('[GeoCloud] Firebase no está configurado o no pudo inicializarse. Ruta:', path);
                 return false;
             }
             if (listeners[path]) {
                 try { d.ref(path).off('value', listeners[path]); } catch (e) {}
             }
             var handler = function (snap) {
-                try { cb(snap.exists() ? snap.val() : null); }
+                var cb = wanted[path];
+                try { if (cb) cb(snap.exists() ? snap.val() : null); }
                 catch (e) { console.error('[GeoCloud] Error procesando datos de', path, e); }
             };
             listeners[path] = handler;
             // El tercer argumento permite detectar reglas de Firebase que deniegan lectura.
             d.ref(path).on('value', handler, function (error) {
+                delete listeners[path];
+                if (!authed() && !isPublicPath(path)) return; // sesión cerrada: se reanuda al volver a entrar
                 console.error('[GeoCloud] No se pudo leer "' + path + '". Revisa las reglas de Realtime Database y el proyecto configurado:', error);
                 global.dispatchEvent(new CustomEvent('geometrics-cloud-error', { detail: { operation: 'read', path: path, message: error && error.message ? error.message : String(error) } }));
             });
@@ -97,6 +111,9 @@
             return false;
         });
     }
+    global.addEventListener('geometrics-auth-changed', function (ev) {
+        if (ev.detail && ev.detail.verified) Object.keys(wanted).forEach(function (p) { attachListener(p); });
+    });
 
     // ---- API de alto nivel para el aula ----
     function emailKey(email) {
@@ -118,8 +135,8 @@
         if (!user || !user.email) return Promise.resolve(false);
         var copy = {};
         Object.keys(user).forEach(function (k) {
-            if (k === 'password') copy[k] = user[k]; // piloto: se guarda (mejor hash en prod)
-            else copy[k] = user[k];
+            if (k === 'password') return; // la contraseña la custodia Firebase Authentication
+            copy[k] = user[k];
         });
         return cloudSet('users/' + emailKey(user.email), copy);
     }
@@ -293,11 +310,10 @@
                 cloudGet('tareas'),
                 cloudGet('presentaciones'),
                 cloudGet('entregas'),
-                cloudGet('civix'),
-                cloudGet('quices')
+                cloudGet('civix')
             ]).then(function (res) {
                 var users = res[0], docs = res[1], chats = res[2], admins = res[3];
-                var tareas = res[4], presentaciones = res[5], entregas = res[6], civix = res[7], quices = res[8];
+                var tareas = res[4], presentaciones = res[5], entregas = res[6], civix = res[7], quices = null; // el sistema viejo de quices se retiró
                 try {
                     if (users && users.length) mergeUsersIntoLocal(users);
                     if (docs) localStorage.setItem('geometrics_docentes_extra', JSON.stringify(docs));
@@ -380,7 +396,10 @@ function syncUpUsers() {
             try { civix = JSON.parse(localStorage.getItem('geometrics_civix_conversations') || '{}'); } catch (eC) { civix = {}; }
             var umap = {};
             (users || []).forEach(function (u) {
-                if (u && u.email) umap[emailKey(u.email)] = u;
+                if (!u || !u.email) return;
+                var copy = Object.assign({}, u);
+                delete copy.password;
+                umap[emailKey(u.email)] = copy;
             });
             return Promise.all([
                 Promise.all(Object.keys(umap).map(function (k) { return cloudSet('users/' + k, umap[k]); })),
@@ -444,7 +463,7 @@ function syncUpUsers() {
         });
     }
     function startUsersSync() {
-        if (usersListening || !isOn()) return;
+        if (usersListening || !isOn() || !authed()) return;
         usersListening = true;
         listenUsers();
     }
@@ -455,6 +474,8 @@ function syncUpUsers() {
      */
     function registerUser(user) {
         if (!user || !user.email) return Promise.resolve({ ok: false, error: 'sin correo' });
+        user = Object.assign({}, user);
+        delete user.password;
         return init().then(function (d) {
             if (!d) return { ok: false, error: 'Firebase no disponible' };
             var ref = d.ref('users/' + emailKey(user.email)), existed = false;
@@ -604,8 +625,7 @@ function syncUpUsers() {
     }
 
     function pullCivix() {
-        return cloudGet('civix'),
-                cloudGet('quices').then(function (val) {
+        return cloudGet('civix').then(function (val) {
             if (!val || typeof val !== 'object') return {};
             var out = {};
             Object.keys(val).forEach(function (k) {
@@ -845,6 +865,7 @@ function syncUpUsers() {
         purgeLukeSaintDemo: purgeLukeSaintDemo,
         emailKey: emailKey,
         isOn: isOn,
+        authed: authed,
         init: init,
         syncDown: syncDown,
         syncUpAll: syncUpAll,
@@ -883,8 +904,66 @@ function syncUpUsers() {
         listenTeamCreators: listenTeamCreators
     };
 
-    /* Arranque: escuchar usuarios en cuanto Firebase esté disponible */
+    /* ---- Roles de confianza (secure/): solo los escriben administradores; las reglas lo imponen ---- */
+    var SUPER_ADMIN = 'andres.enriquezval@unipamplona.edu.co';
+    function myEmail() { return global.GeoAuth ? GeoAuth.email() : ''; }
+    function setSecure(kind, email, on) {
+        email = String(email || '').trim().toLowerCase();
+        if (!email) return Promise.resolve(false);
+        return init().then(function (d) {
+            if (!d) return false;
+            return d.ref('secure/' + kind + '/' + emailKey(email)).set(on ? email : null)
+                .then(function () { return true; })
+                .catch(function (e) { console.warn('[GeoCloud] secure/' + kind, e && e.message); return false; });
+        });
+    }
+    /** Correos ya confirmados en el nodo de confianza (solo un administrador puede leerlo completo). */
+    function secureList(kind) {
+        return init().then(function (d) {
+            if (!d) return null;
+            return d.ref('secure/' + kind).once('value').then(function (s) {
+                var v = s.val() || {};
+                return Object.keys(v).map(function (k) { return String(v[k]).toLowerCase(); });
+            }).catch(function () { return null; });
+        });
+    }
+    /** ¿La cuenta actual es docente confirmado? (lee solo su propia entrada) */
+    function soyDocenteConfirmado() {
+        var e = myEmail();
+        return init().then(function (d) {
+            if (!d || !e) return false;
+            return d.ref('secure/docentes/' + emailKey(e)).once('value').then(function (s) { return s.exists(); }).catch(function () { return false; });
+        });
+    }
+    /** Borra las contraseñas antiguas que quedaron en users/ (solo un administrador tiene permiso). */
+    function stripLegacyPasswords() {
+        return init().then(function (d) {
+            if (!d) return 0;
+            return d.ref('users').once('value').then(function (s) {
+                var v = s.val() || {}, upd = {};
+                Object.keys(v).forEach(function (k) { if (v[k] && v[k].password !== undefined) upd[k + '/password'] = null; });
+                var n = Object.keys(upd).length;
+                if (!n) return 0;
+                return d.ref('users').update(upd).then(function () { return n; });
+            }).catch(function (e) { console.warn('[GeoCloud] limpieza de contraseñas', e && e.message); return 0; });
+        });
+    }
+    global.GeoSecure = {
+        superAdmin: SUPER_ADMIN,
+        setDocente: function (email, on) { return setSecure('docentes', email, on); },
+        setAdmin: function (email, on) { return setSecure('admins', email, on); },
+        docentes: function () { return secureList('docentes'); },
+        admins: function () { return secureList('admins'); },
+        soyDocenteConfirmado: soyDocenteConfirmado,
+        stripLegacyPasswords: stripLegacyPasswords
+    };
+
+    /* Arranque: escuchar usuarios cuando haya sesión verificada (antes de eso las reglas lo impiden) */
     function bootUsersSync() { try { startUsersSync(); } catch (e) {} }
+    global.addEventListener('geometrics-auth-changed', function (ev) {
+        if (ev.detail && ev.detail.verified) bootUsersSync();
+        else { usersListening = false; }
+    });
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(bootUsersSync, 300); });
     else setTimeout(bootUsersSync, 300);
 })(window);
