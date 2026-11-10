@@ -60,8 +60,7 @@
     var TIPS = {
         struct: '<b>Cómo usar:</b> elige una categoría y un elemento, escribe los datos y pulsa <b>▶ Calcular</b>. El programa predimensiona (ACI 318 / NSR-10, solo educativo), dibuja el plano en metros (varillas en pulgadas), muestra el cuadro de acero y las cantidades, y deja descargar el <b>DXF</b> para AutoCAD. Lo que cambies se recalcula completo; las dimensiones del plano siguen la escala del elemento.<br><b>Resultado:</b> botones DXF/PNG/SVG, memoria de cálculo y tabla de cantidades (concreto, acero, estribos, formaleta).',
         curvas: '<b>Cómo usar:</b> define el tamaño del terreno y su relieve, genera los puntos y pulsa para trazar las curvas de nivel (TIN + interpolación). También puedes pegar tus propios puntos X, Y, Z. Con las pestañas de resultados ves estadísticas, perfil longitudinal, pendientes y volúmenes. Descarga todo como DXF para Civil 3D.',
-        ia: '<b>Cómo usar:</b> arma el prompt con el constructor (tipo de plano, unidades, datos) y se envía a Civix en el chat. Las peticiones de elementos estructurales se resuelven con los mismos diseños del apartado <b>Diseño estructural</b>; el resto las dibuja la IA y <b>consume tokens</b>.',
-        foto: '<b>Cómo usar:</b> sube una foto o escaneo de un plano hecho a mano, ajusta los controles y pulsa convertir. Se detectan líneas, se enderezan, se escalan al ancho real y se descargan como DXF. Mejor con fondo claro, trazo oscuro y buena luz.<br><b>Controles:</b> <i>Sensibilidad</i> (qué tan tenue puede ser un trazo y aun contarse), <i>Resolución</i> (tamaño de procesamiento), <i>Unir trazos</i> (cierra huecos pequeños), <i>Ignorar cuadrícula</i> (descarta líneas más tenues que el trazo), <i>Descartar texto y detalles pequeños</i> (elimina garabatos), <i>Longitud mínima</i> y <i>Simplificar</i> (elimina segmentos cortos y reduce vértices), <i>Márgenes</i> (ignora el borde del cuaderno), <i>Enderezar</i> (corrige inclinación), <i>Invertir</i> (para pizarras oscuras) y <i>Ancho real (m)</i> (escala final del dibujo).'
+        ia: '<b>Cómo usar:</b> arma el prompt con el constructor (tipo de plano, unidades, datos) y se envía a Civix en el chat. Las peticiones de elementos estructurales se resuelven con los mismos diseños del apartado <b>Diseño estructural</b>; el resto las dibuja la IA y <b>consume tokens</b>.'
     };
     /* Filas fijas por apartado (coinciden exactamente con los controles que se ven): [control, qué es y para qué sirve, consejo estudiante, criterio docente] */
     var SECT = {
@@ -91,29 +90,6 @@
             ['➤ Enviar a Civix / Copiar prompt', 'Envía el prompt armado al chat de Civix, o lo copia para usarlo en otro lugar.', 'Lee el prompt antes de enviarlo; cuenta los tokens estimados.', 'Los elementos estructurales usan los diseños locales y no gastan IA.'],
             ['✏️ Refinar el último plano', 'Botones que piden un cambio puntual al último plano: + Cotas, + Cuadro de áreas, + Cuadro de acero, + Norte y escala, Más compacto y Revisar errores.', 'Úsalos para completar el plano sin volver a describir todo.', 'Revisar errores sirve para una autoevaluación del plano antes de entregar.'],
             ['Filtros de prompts (Todos, Estructuras, Cimentaciones…)', 'Filtran la lista de prompts listos por tema; al pulsar uno se envía a Civix.', 'Explora los ejemplos para aprender qué pedir.', 'Son una biblioteca de ejercicios base.']
-        ],
-        foto: [
-            ['🖼 Elegir imagen / 📸 Tomar foto', 'Sube una imagen del plano hecho a mano o toma la foto con la cámara. Mejor con buena luz, hoja plana y trazo oscuro.', 'Fotografía de frente, sin sombras, y llenando el encuadre.', 'Permite digitalizar planos antiguos o bocetos de clase.'],
-            ['Sensibilidad del trazo', 'Qué tan tenue puede ser un trazo y aun así detectarse. Bájalo para captar más líneas; súbelo si aparece ruido o sombras.', 'Si faltan líneas, baja este valor.', 'Ajuste distinto para lápiz suave y para tinta.'],
-            ['Resolución de análisis', 'Tamaño con el que se procesa la imagen. Más alta capta líneas finas pero tarda más.', 'Usa 2500–3000 en planos grandes.', 'Equilibre calidad y tiempo en computadores del aula.'],
-            ['Ignorar cuadrícula del cuaderno / líneas tenues', 'Descarta líneas más débiles que el trazo (cuadrícula del cuaderno).', 'Súbelo hasta que desaparezca la cuadrícula.', 'Evita que la cuadrícula se convierta en entidades del DXF.'],
-            ['Descartar texto y detalles pequeños', 'Elimina letras, números y garabatos; conserva muros, ejes y cotas largas. Con 0 se conserva todo.', 'Si se pierden líneas pequeñas importantes, bájalo.', 'Recuerde que el texto no se reconoce; debe re-escribirse en CAD.'],
-            ['Unir trazos cercanos / punteados', 'Cierra pequeños huecos (líneas de eje, trazos discontinuos).', 'Súbelo si una línea sale partida en pedazos.', 'Útil para ejes punteados.'],
-            ['Limpieza de ruido (longitud mínima)', 'Elimina trazos cortos y manchas por debajo de la longitud elegida.', 'Súbelo si salen puntitos sueltos.', 'Controla la limpieza del DXF final.'],
-            ['Suavizado de líneas', 'Reduce vértices de las polilíneas: más alto = líneas más rectas y archivo más liviano.', 'Súbelo para muros rectos.', 'Menos vértices facilitan la edición posterior.'],
-            ['Enderezar', 'Corrige la inclinación de la foto y alinea los trazos casi horizontales y verticales.', 'Déjalo activado en planos de plantas.', 'Desactívelo en dibujos curvos o libres.'],
-            ['Ignorar márgenes y bordes de la hoja', 'Descarta el borde, la espiral y el margen del cuaderno.', 'Actívalo si el cuaderno tiene margen rojo o espiral.', 'Evita que los bordes de la hoja entren al dibujo.'],
-            ['Fondo claro / oscuro', 'Indica si el trazo es oscuro sobre papel claro, o claro sobre fondo oscuro (plano azul); en automático lo detecta.', 'Déjalo en automático.', 'Fije «oscuro» para impresiones de planos azules.'],
-            ['Ancho real del dibujo (m)', 'Medida real del ancho del dibujo; escala todo el DXF a metros.', 'Mide una dimensión conocida del plano y escríbela.', 'Sin este dato el DXF no queda a escala real.'],
-            ['⬇ Descargar DXF / 👁 Ver en visor CAD', 'Descarga el resultado para AutoCAD o lo muestra en el visor del programa para revisarlo.', 'Revisa siempre las medidas antes de usarlo.', 'El resultado es un borrador para retocar, no un plano final.']
-        ],
-        vision: [
-            ['Antes de empezar', 'CAD Vision necesita su motor local: haz doble clic en iniciar-cad-vision.bat y deja esa ventana abierta.', 'Arriba debe verse «Motor activo · OCR listo».', 'Cada equipo del aula necesita Python y el motor encendido.'],
-            ['Interpretar plano', 'Lee cotas y nombres, reconoce muros, puertas y ventanas, y reconstruye el plano en medidas reales.', 'Foto de frente, con buena luz y cotas claras.', 'Pida al estudiante comparar el resultado con su croquis original.'],
-            ['Colores de confianza', 'Verde: alta confianza. Ámbar: incertidumbre. Rojo: necesita tu decisión. Cian: ya confirmado.', 'Usa «Revisar siguiente» para recorrer los pendientes.', 'Lo incierto llega en rojo al DXF si se acepta exportarlo.'],
-            ['Calibrar', 'Si no hay cotas legibles, pulsa una línea e indica cuánto mide en la realidad; todo el plano se escala.', 'Elige la línea más larga que conozcas.', 'Sin escala el sistema no permite exportar: no inventa medidas.'],
-            ['Aplicar a la geometría', 'Corrige una cota y estira el plano para que la medida se cumpla.', 'Hazlo desde la pestaña Cotas.', 'Sirve para discutir la diferencia entre lo dibujado y lo acotado.'],
-            ['Exportar', 'Descarga DXF para AutoCAD, PDF o SVG, con capas 00 a 09 y entidades editables.', 'Revisa siempre las cotas antes de usar el plano.', 'El resultado debe verificarse: es apoyo, no un plano aprobado.']
         ]
     };
     function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
@@ -137,7 +113,7 @@
     ];
     function extra(label, rol) { var l = label.toLowerCase(), i; for (i = 0; i < R.length; i++) if (R[i][0].test(l)) return rol === 'docente' ? R[i][2] : R[i][1]; return rol === 'docente' ? 'Úselo para un ejercicio de sensibilidad: fije los demás datos y varíe solo este.' : 'Cámbialo y observa cómo se modifican el acero, los diagramas y las cantidades.'; }
     function rolActual() { try { var s = typeof aulaGetSession === 'function' && aulaGetSession(); return s && s.rol === 'docente' ? 'docente' : 'estudiante'; } catch (e) { return 'estudiante'; } }
-    var NAMES = { struct: 'Diseño estructural', curvas: 'Curvas de nivel', ia: 'Planos con IA', foto: 'Foto → DXF', vision: 'CAD Vision' };
+    var NAMES = { struct: 'Diseño estructural', curvas: 'Curvas de nivel', ia: 'Planos con IA' };
     function collect(sec, key) {
         var rol = rolActual(), rows = [], seen = {};
         if (SECT[key]) SECT[key].forEach(function (q) { rows.push([q[0], q[1], q[rol === 'docente' ? 3 : 2]]); });
