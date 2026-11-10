@@ -1,0 +1,100 @@
+/* GeoMetrics — Inicio y Notas del estudiante (js/gm-estudiante-panel.js). Misma estética de «Mis tareas». */
+#pantallaEstudiante { --gpe-ln: #172235; --gpe-card: linear-gradient(165deg, rgba(14, 22, 38, .95), rgba(8, 13, 24, .96)); --gpe-mu: #8b9ab0;
+  --gpe-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, Consolas, monospace; --gpe-sans: Inter, "Segoe UI", system-ui, sans-serif;
+  --gpe-good: #22c55e; --gpe-warn: #f59e0b; --gpe-bad: #f87171; }
+#pantallaEstudiante .gpe-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 0 0 26px; }
+#pantallaEstudiante .gpe-kpi { --c: #22d3ee; position: relative; display: flex; align-items: center; gap: 16px; padding: 20px 20px; background: var(--gpe-card); box-shadow: inset 0 0 0 1px var(--gpe-ln);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px)); }
+#pantallaEstudiante .gpe-kpi:before, #pantallaEstudiante .gpe-card:before { content: ""; position: absolute; left: 0; right: 16px; top: 0; height: 2px; background: linear-gradient(90deg, var(--c, #22d3ee), transparent 75%); }
+#pantallaEstudiante .gpe-kpi b { display: block; font: 700 30px/1 var(--gpe-mono); color: #fff; }
+#pantallaEstudiante .gpe-kpi span:not(.gpe-ico) { display: block; margin-top: 8px; font: 500 11px/1.2 var(--gpe-mono); letter-spacing: .18em; color: #9fb0c6; text-transform: uppercase; }
+#pantallaEstudiante .gpe-kpi em { display: block; margin-top: 8px; font-style: normal; }
+#pantallaEstudiante .gpe-ico { --c: #22d3ee; flex: 0 0 auto; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; color: var(--c);
+  background: color-mix(in srgb, var(--c) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 55%, transparent);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%); }
+#pantallaEstudiante .gpe-kpi .gpe-ico { color: var(--c); }
+#pantallaEstudiante .gpe-ico svg { width: 22px; height: 22px; }
+#pantallaEstudiante .gpe-pill { display: inline-block; padding: 4px 9px; font: 600 10.5px/1.2 var(--gpe-mono); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap;
+  border: 1px solid #334155; color: #cbd5e1; background: rgba(51, 65, 85, .25); font-style: normal; }
+#pantallaEstudiante .gpe-pill.good { border-color: rgba(34, 197, 94, .55); color: #86efac; background: rgba(34, 197, 94, .1); }
+#pantallaEstudiante .gpe-pill.warn { border-color: rgba(245, 158, 11, .55); color: #fcd34d; background: rgba(245, 158, 11, .1); }
+#pantallaEstudiante .gpe-pill.bad { border-color: rgba(248, 113, 113, .55); color: #fca5a5; background: rgba(248, 113, 113, .1); }
+#pantallaEstudiante .gpe-pill.ok { border-color: rgba(34, 211, 238, .45); color: #a5f3fc; background: rgba(34, 211, 238, .08); }
+#pantallaEstudiante .gpe-h { grid-column: 1 / -1; margin: 0 0 4px; font: 500 12px/1 var(--gpe-mono); letter-spacing: .24em; text-transform: uppercase; color: #22d3ee; }
+/* Agenda */
+#pantallaEstudiante .gpe-agenda { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
+#pantallaEstudiante .gpe-ag { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 16px; text-align: left; cursor: pointer; color: #e6edf6;
+  background: var(--gpe-card); border: 0; box-shadow: inset 0 0 0 1px var(--gpe-ln); font-family: var(--gpe-sans); }
+#pantallaEstudiante .gpe-ag:hover, #pantallaEstudiante .gpe-ag:focus-visible { box-shadow: inset 0 0 0 1px rgba(34, 211, 238, .6); outline: none; }
+#pantallaEstudiante .gpe-ag-ico { flex: none; width: 38px; height: 38px; display: grid; place-items: center; color: #22d3ee; background: rgba(34, 211, 238, .08); }
+#pantallaEstudiante .gpe-ag-ico.quiz { color: #a78bfa; background: rgba(167, 139, 250, .1); }
+#pantallaEstudiante .gpe-ag-ico svg { width: 19px; height: 19px; }
+#pantallaEstudiante .gpe-ag-main { flex: 1; min-width: 0; }
+#pantallaEstudiante .gpe-ag-main b { display: block; font-size: 15px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pantallaEstudiante .gpe-ag-main small { display: block; margin-top: 4px; font-size: 12.5px; color: var(--gpe-mu); }
+#pantallaEstudiante .gpe-dot { display: inline-block; width: 8px; height: 8px; margin-right: 7px; background: var(--m); transform: rotate(45deg); vertical-align: 1px; }
+#pantallaEstudiante .gpe-note { margin: 4px 0 0; color: var(--gpe-mu); font-size: 13px; }
+#pantallaEstudiante .gpe-empty { display: flex; align-items: center; gap: 16px; padding: 22px 20px; background: var(--gpe-card); box-shadow: inset 0 0 0 1px var(--gpe-ln); margin-bottom: 24px; }
+#pantallaEstudiante .gpe-empty b { display: block; color: #fff; font-size: 15px; } #pantallaEstudiante .gpe-empty small { display: block; margin-top: 4px; color: var(--gpe-mu); font-size: 13px; }
+/* Laboratorios */
+#pantallaEstudiante .gpe-labs { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+#pantallaEstudiante .gpe-lab { --c: #22d3ee; display: flex; align-items: center; gap: 14px; padding: 16px; text-align: left; cursor: pointer; color: #e6edf6; font-family: var(--gpe-sans);
+  background: var(--gpe-card); border: 0; box-shadow: inset 0 0 0 1px var(--gpe-ln); border-left: 3px solid var(--c); }
+#pantallaEstudiante .gpe-lab:hover, #pantallaEstudiante .gpe-lab:focus-visible { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent); outline: none; }
+#pantallaEstudiante .gpe-lab b { display: block; font-size: 14.5px; color: #fff; } #pantallaEstudiante .gpe-lab small { display: block; margin-top: 4px; color: var(--gpe-mu); font-size: 12.5px; }
+#pantallaEstudiante .gpe-lab > span:nth-child(2) { flex: 1; min-width: 0; }
+#pantallaEstudiante .gpe-lab i { color: var(--gpe-mu); } #pantallaEstudiante .gpe-lab i svg { width: 18px; height: 18px; }
+#pantallaEstudiante .gpe-lab .gpe-ico { width: 42px; height: 42px; }
+/* Notas */
+#pantallaEstudiante .gpe-card { --c: #22d3ee; position: relative; margin: 0 0 20px; padding: 22px 24px; background: var(--gpe-card); box-shadow: inset 0 0 0 1px var(--gpe-ln);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px)); }
+#pantallaEstudiante .gpe-card > header { display: flex; align-items: center; gap: 16px; padding-bottom: 16px; margin-bottom: 14px; border-bottom: 1px solid var(--gpe-ln); }
+#pantallaEstudiante .gpe-card > header small { display: block; font: 500 11px/1 var(--gpe-mono); letter-spacing: .22em; color: var(--c); }
+#pantallaEstudiante .gpe-card > header h3 { margin: 6px 0 0; font: 800 20px/1.2 var(--gpe-sans); color: #fff; }
+#pantallaEstudiante .gpe-mat .gpe-ico { --c: inherit; color: var(--c); }
+#pantallaEstudiante .gpe-mat-avg { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+#pantallaEstudiante .gpe-mat-avg b { font: 700 26px/1 var(--gpe-mono); color: #fff; } #pantallaEstudiante .gpe-mat-avg span { color: var(--gpe-mu); font-size: 13px; }
+#pantallaEstudiante .gpe-rows { display: flex; flex-direction: column; }
+#pantallaEstudiante .gpe-row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(23, 34, 53, .8); }
+#pantallaEstudiante .gpe-row:last-child { border-bottom: 0; }
+#pantallaEstudiante .gpe-row-main { flex: 1; min-width: 0; }
+#pantallaEstudiante .gpe-row-main b { display: block; color: #fff; font-size: 14.5px; } #pantallaEstudiante .gpe-row-main small { color: var(--gpe-mu); font-size: 12.5px; }
+#pantallaEstudiante .gpe-tag { flex: none; width: 54px; text-align: center; padding: 4px 0; font: 600 10px/1.2 var(--gpe-mono); letter-spacing: .1em; text-transform: uppercase; color: #a5f3fc; background: rgba(34, 211, 238, .08); }
+#pantallaEstudiante .gpe-tag.quiz { color: #ddd6fe; background: rgba(167, 139, 250, .12); }
+#pantallaEstudiante .gpe-grade { flex: none; min-width: 84px; text-align: right; }
+#pantallaEstudiante .gpe-grade b { display: block; font: 700 22px/1 var(--gpe-mono); color: #fff; }
+#pantallaEstudiante .gpe-grade small { display: inline-flex; align-items: center; gap: 5px; margin-top: 5px; font: 600 10.5px/1 var(--gpe-mono); letter-spacing: .08em; text-transform: uppercase; }
+#pantallaEstudiante .gpe-grade small:before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+#pantallaEstudiante .gpe-grade.good small { color: #86efac; } #pantallaEstudiante .gpe-grade.bad small { color: #fca5a5; }
+#pantallaEstudiante .gpe-fb { display: flex; gap: 8px; margin: 8px 0 0; padding: 8px 10px; font-size: 13px; color: #cbd5e1; background: rgba(34, 211, 238, .05); border-left: 2px solid rgba(34, 211, 238, .5); }
+#pantallaEstudiante .gpe-fb svg { flex: none; width: 15px; height: 15px; margin-top: 2px; color: #22d3ee; }
+/* Gráfica */
+#pantallaEstudiante .gpe-chart { position: relative; }
+#pantallaEstudiante .gpe-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+#pantallaEstudiante .gpe-gl { stroke: #1c2638; stroke-width: 1; }
+#pantallaEstudiante .gpe-ref { stroke: #64748b; stroke-width: 1; stroke-dasharray: 4 4; }
+#pantallaEstudiante .gpe-ax { fill: #8b9ab0; font: 500 11px var(--gpe-mono); }
+#pantallaEstudiante .gpe-line { fill: none; stroke: #22d3ee; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+#pantallaEstudiante .gpe-pt { fill: #22d3ee; stroke: #0b1426; stroke-width: 2; }
+#pantallaEstudiante .gpe-hit { fill: transparent; cursor: pointer; outline: none; }
+#pantallaEstudiante .gpe-tip { position: absolute; transform: translate(-50%, -100%); min-width: 170px; max-width: 240px; padding: 9px 11px; background: #0b1426; border: 1px solid #2a3b55;
+  color: #e6edf6; font-size: 12.5px; line-height: 1.4; pointer-events: none; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); z-index: 2; }
+#pantallaEstudiante .gpe-tip b { font: 700 15px var(--gpe-mono); color: #fff; } #pantallaEstudiante .gpe-tip small { color: var(--gpe-mu); }
+@media (max-width: 1100px) { #pantallaEstudiante .gpe-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) {
+  #pantallaEstudiante .gpe-kpis { gap: 10px; }
+  #pantallaEstudiante .gpe-kpi { padding: 14px 12px; gap: 10px; flex-direction: column; align-items: flex-start; }
+  #pantallaEstudiante .gpe-kpi b { font-size: 24px; }
+  #pantallaEstudiante .gpe-kpi .gpe-ico { width: 38px; height: 38px; }
+  #pantallaEstudiante .gpe-card { padding: 16px 14px; }
+  #pantallaEstudiante .gpe-card > header { flex-wrap: wrap; gap: 12px; }
+  #pantallaEstudiante .gpe-mat-avg { margin-left: 0; width: 100%; }
+  #pantallaEstudiante .gpe-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "tag val" "main val"; align-items: start; gap: 6px 12px; }
+  #pantallaEstudiante .gpe-row > :first-child { grid-area: tag; justify-self: start; }
+  #pantallaEstudiante .gpe-row > :nth-child(2) { grid-area: main; }
+  #pantallaEstudiante .gpe-row > :nth-child(3) { grid-area: val; align-self: center; }
+  #pantallaEstudiante .gpe-grade { min-width: 0; }
+  #pantallaEstudiante .gpe-ag { padding: 12px; gap: 10px; flex-wrap: wrap; }
+  #pantallaEstudiante .gpe-ag-main { flex-basis: calc(100% - 52px); }
+  #pantallaEstudiante .gpe-ag .gpe-pill { margin-left: 48px; }
+}
