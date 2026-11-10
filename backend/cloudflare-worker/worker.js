@@ -224,7 +224,7 @@ const SYSTEM_CIVIX =
   + '3) LABORATORIO DE SUELOS - Guias FLA-23 Universidad de Pamplona. Das solo apoyo teorico breve.\n'
   + '4) DOCUMENTO ADJUNTO: prioridad de ESA consulta; cita archivo y Pagina N si aparece.\n\n'
   + '=== FORMULAS ===\n'
-  + 'Usa texto plano legible (ej. sigma = M * c / I). Evita LaTeX con barra invertida.\n'
+  + 'Escribe las ecuaciones en LaTeX: en linea con \\( ... \\) y en bloque con $$ ... $$ (ej. $$\\sigma=\\frac{M c}{I}$$). La interfaz las renderiza con KaTeX.\n'
   + 'Solo numera cuando aporte claridad. No fuerces plantillas 1)-5) en respuestas naturales.\n'
   + 'FORMATO: titulos cortos si ayudan, listas con -, tablas markdown, parrafos cortos.';
 
@@ -382,7 +382,7 @@ async function handleConvert(request, env, url, origin) {
       } }),
     });
     const job = await jr.json();
-    if (!jr.ok) return json(502, { error: 'CloudConvert: ' + (job.message || jr.status) }, origin);
+    if (!jr.ok) return json(502, { error: 'CloudConvert (crear tarea, HTTP ' + jr.status + '): ' + (job.message || job.code || 'error') + (jr.status === 401 ? ' — la API key no es válida: usa una clave Live con permisos task.read y task.write.' : '') }, origin);
     const imp = job.data.tasks.find((t) => t.name === 'imp');
     const form = imp && imp.result && imp.result.form;
     if (!form) return json(502, { error: 'CloudConvert no devolvio el formulario de carga' }, origin);
@@ -395,7 +395,7 @@ async function handleConvert(request, env, url, origin) {
     const done = await wr.json();
     const tasks = (done.data && done.data.tasks) || [];
     const failed = tasks.find((t) => t.status === 'error');
-    if (failed) return json(502, { error: 'Conversion fallida: ' + (failed.message || failed.code || 'error') }, origin);
+    if (failed) return json(502, { error: 'Conversion fallida en CloudConvert (' + failed.operation + '): ' + (failed.message || failed.code || 'error') }, origin);
     const exp = tasks.find((t) => t.name === 'exp' && t.status === 'finished');
     const file = exp && exp.result && exp.result.files && exp.result.files[0];
     if (!file) return json(504, { error: 'La conversion no termino a tiempo; intenta de nuevo.' }, origin);
@@ -417,7 +417,15 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/api/convert/status' && request.method === 'GET') {
-      return json(200, { enabled: !!env.CLOUDCONVERT_API_KEY, formats: ['dwg>dxf', 'dxf>dwg'], maxMB: 10 }, origin);
+      const info = { enabled: !!env.CLOUDCONVERT_API_KEY, formats: ['dwg>dxf', 'dxf>dwg'], maxMB: 10 };
+      if (info.enabled && url.searchParams.get('check')) {
+        try {
+          const ur = await fetch('https://api.cloudconvert.com/v2/users/me', { headers: { Authorization: 'Bearer ' + env.CLOUDCONVERT_API_KEY } });
+          info.valid = ur.ok; info.httpStatus = ur.status;
+          if (!ur.ok) info.detail = ur.status === 401 ? 'CloudConvert rechaza la clave (401). Crea una clave Live (no Sandbox) con permisos task.read y task.write y vuelve a ejecutar: wrangler secret put CLOUDCONVERT_API_KEY' : 'CloudConvert respondio HTTP ' + ur.status;
+        } catch (e) { info.valid = false; info.detail = 'No se pudo contactar a CloudConvert: ' + e.message; }
+      }
+      return json(200, info, origin);
     }
     if (url.pathname === '/api/convert' && request.method === 'POST') {
       return handleConvert(request, env, url, origin);
