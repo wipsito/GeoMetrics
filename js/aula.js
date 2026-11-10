@@ -3513,9 +3513,8 @@ function aulaRenderEstudiante() {
         sel.innerHTML = pendientes.length
             ? pendientes.map(function(t) {
                 var plazo = aulaPlazoInfo(t);
-                var extra = t.fechaLimite
-                    ? (' | Límite: ' + t.fechaLimite + (t.horaLimite ? (' ' + t.horaLimite) : '') + ' | ' + plazo.texto)
-                    : '';
+                // plazo.texto ya incluye «Límite: fecha hora» y el tiempo restante
+                var extra = t.fechaLimite ? (' | ' + plazo.texto) : '';
                 return '<option value="' + t.id + '">' + aulaEsc(t.titulo) + aulaEsc(extra) + '</option>';
             }).join('')
             : '<option value="">No hay tareas pendientes</option>';

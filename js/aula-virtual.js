@@ -309,6 +309,13 @@
     entregas.forEach(function (e) { if (u && e.estudianteId === u.id) doneMap[e.tareaId] = e; });
     var pending = tareas.filter(function (t) { return !doneMap[t.id]; });
     var graded = entregas.filter(function (e) { return u && e.estudianteId === u.id && e.nota != null && e.nota !== ''; });
+    // Versión ampliada (js/gm-estudiante-panel.js): indicadores, agenda de la semana y solo las materias del estudiante
+    if (window.GeoPanelEst) {
+      updateNotifBadge(pending.length);
+      var mats = [];
+      try { mats = typeof aulaMateriasUsuario === 'function' ? aulaMateriasUsuario(u) : []; } catch (eM) {}
+      if (GeoPanelEst.home({ user: u, tareas: tareas, entregas: entregas, materias: mats, goToLab: goToLab, badge: updateNotifBadge })) return;
+    }
     if (stats) {
       stats.innerHTML =
         '<div class="av-stat"><strong>' + loadCourses().length + '</strong><span>Cursos</span></div>' +
@@ -363,6 +370,8 @@
     }
     var tareas = (aulaLoad(AULA_KEYS.tareas, []) || []).filter(function (t) { return studentSeesTask(t, u); });
     var entregas = aulaLoad(AULA_KEYS.entregas, []) || [];
+    // Versión ampliada (js/gm-estudiante-panel.js): tareas y quices, promedios, evolución y retroalimentación
+    if (window.GeoPanelEst && GeoPanelEst.grades({ user: u, tareas: tareas, entregas: entregas })) return;
     var byTask = {};
     entregas.forEach(function (e) { if (u && e.estudianteId === u.id) byTask[e.tareaId] = e; });
     if (!tareas.length) {

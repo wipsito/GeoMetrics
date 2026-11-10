@@ -191,6 +191,17 @@
 
     /* Gráfica XY con curva completa tenue + trazo vivo + marcador */
     function plot(ctx, W, H, o) {
+        /* smooth: true → curva continua con pocas lecturas: se densifica con
+           interpolación monótona (pasa por cada punto, sin inventar picos).
+           Se marcan además los puntos medidos originales. */
+        var medidos = null;
+        if (o.smooth && global.GeoCurvas && o.pts && o.pts.length >= 3) {
+            medidos = o.pts;
+            var copia = {};
+            for (var kk in o) if (Object.prototype.hasOwnProperty.call(o, kk)) copia[kk] = o[kk];
+            copia.pts = global.GeoCurvas.monotone(o.pts, { total: 200 });
+            o = copia;
+        }
         var L = 54, R = 16, T = 30, B = 40;
         var pw = W - L - R, ph = H - T - B;
         function X(v) { return L + (v - o.xmin) / (o.xmax - o.xmin) * pw; }
@@ -218,9 +229,16 @@
         /* extras previos (líneas guía) */
         if (o.under) o.under(ctx, X, Y, pw, ph, L, T);
         /* curva completa tenue */
-        ctx.beginPath(); ctx.setLineDash([5, 5]); ctx.lineWidth = 1.6; ctx.strokeStyle = rgba(o.color, 0.35);
+        ctx.beginPath(); ctx.setLineDash([5, 5]); ctx.lineWidth = 1.6; ctx.strokeStyle = rgba(o.color, 0.35); ctx.lineJoin = 'round';
         o.pts.forEach(function (p, i) { if (i) ctx.lineTo(X(p.x), Y(p.y)); else ctx.moveTo(X(p.x), Y(p.y)); });
         ctx.stroke(); ctx.setLineDash([]);
+        /* lecturas medidas (cuando la curva se suavizó) */
+        if (medidos) {
+            medidos.forEach(function (p) {
+                ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 3.6, 0, TAU);
+                ctx.fillStyle = '#151F32'; ctx.fill(); ctx.lineWidth = 1.8; ctx.strokeStyle = rgba(o.color, 0.9); ctx.stroke();
+            });
+        }
         if (o.nolive) { if (o.over) o.over(ctx, X, Y, pw, ph, L, T); ctx.restore(); return; }
         /* trazo vivo */
         var n = Math.max(1, Math.round(o.progress * (o.pts.length - 1)));

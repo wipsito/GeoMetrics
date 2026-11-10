@@ -115,7 +115,7 @@
                     var zp = []; for (var i = 0; i <= 40; i++) { var w = wlo + (whi - wlo) * i / 40; zp.push({ x: w, y: zav(P.Gs, w) }); }
                     H.plot(ctx, W, Ht, {
                         title: 'Curva de compactación', xlabel: 'Humedad w (%)', ylabel: 'γd (kN/m³)',
-                        xmin: wlo, xmax: whi, ymin: gbot, ymax: gtop, pts: M.pts, progress: 1, color: CA, nolive: true,
+                        xmin: wlo, xmax: whi, ymin: gbot, ymax: gtop, pts: M.pts, smooth: M.pts.length < 30, progress: 1, color: CA, nolive: true,
                         over: function (c, X, Y) {
                             c.save(); c.setLineDash([6, 4]); c.strokeStyle = '#38BDF8'; c.lineWidth = 1.8; c.beginPath();
                             zp.forEach(function (q, k) { if (q.y > gtop || q.y < gbot) return; if (k) c.lineTo(X(q.x), Y(q.y)); else c.moveTo(X(q.x), Y(q.y)); }); c.stroke(); c.restore();

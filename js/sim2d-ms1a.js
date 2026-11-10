@@ -315,7 +315,7 @@
                         title: 'Curva granulométrica', xlabel: 'Diámetro de partícula D (mm, escala log)', ylabel: '% que pasa',
                         xmin: -Math.log10(30), xmax: -Math.log10(0.05), ymin: 0, ymax: 100, xticks: xt, yticks: [0, 20, 40, 60, 80, 100],
                         xfmt: function (v) { var d = Math.pow(10, -v); return d >= 1 ? fmt(d, d >= 10 ? 0 : 1) : fmt(d, d < 0.1 ? 3 : 2); },
-                        pts: M.pts, progress: Math.max(0.001, S.f), color: GA,
+                        pts: M.pts, smooth: true, progress: Math.max(0.001, S.f), color: GA,
                         over: function (c, X, Y) {
                             if (S.f < 0.98) return;
                             [[10, M.D10, 'D10'], [30, M.D30, 'D30'], [60, M.D60, 'D60']].forEach(function (a) {

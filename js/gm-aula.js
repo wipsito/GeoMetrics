@@ -174,12 +174,39 @@
         'html body #pantallaDocente.gtd .dp-panel[data-dp-panel="foros"].active .dp-foros-layout{display:block!important;height:auto!important;min-height:640px}',
         '#pantallaDocente.gtd #faRootDocente{min-height:640px!important;width:100%!important;max-width:none!important}',
         '@media (max-width:1400px){' + R + '.av-visible{grid-template-columns:100px minmax(0,1fr) 300px!important}' + R + ' .aula-item-task{grid-template-columns:52px minmax(0,1fr);grid-template-areas:"i t" "i p" "i a" "i m" "i l" ". b"}' + R + ' .btn-entregar-item{justify-self:start;margin-top:14px}}',
-        '@media (max-width:1100px){' + FA + '{grid-template-columns:1fr!important}' + R + ' .gav-kpis{grid-template-columns:1fr}}'
+        '@media (max-width:1100px){' + FA + '{grid-template-columns:1fr!important}' + R + ' .gav-kpis{grid-template-columns:1fr}}',
+        /* Tableta: sin columna derecha (como define aula-virtual.css); el rediseño la forzaba con !important */
+        '@media (max-width:1100px){' + R + '.av-visible{grid-template-columns:96px minmax(0,1fr)!important;grid-template-areas:"top top" "nav main"!important}' + R + ' .av-side{display:none!important}' +
+            R + ' .av-top{gap:12px!important;padding:0 16px!important}' + R + ' .gav-brand img{width:42px;height:42px}' + R + ' .gav-brand div span{display:none!important}' +
+            R + ' .av-user-text,' + R + ' .gav-caret{display:none!important}' + R + ' .av-user-chip{padding:5px!important;gap:0!important}}',
+        /* Celular: encabezado compacto, menú en fila deslizable y contenido a todo el ancho */
+        '@media (max-width:720px){' +
+            R + '.av-visible{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto minmax(0,1fr)!important;grid-template-areas:"top" "nav" "main"!important}' +
+            R + ' .av-top{gap:8px!important;padding:8px 12px!important;min-height:58px}' +
+            R + ' .gav-brand{gap:6px;min-width:0}' + R + ' .gav-brand img{width:36px;height:36px;padding:3px}' + R + ' .gav-brand img + img,' + R + ' .gav-brand div span{display:none!important}' +
+            R + ' .gav-brand div{margin-left:2px;padding-left:10px}' + R + ' .gav-brand b{font-size:13px;letter-spacing:.2em}' +
+            R + ' .av-top-actions{gap:6px!important;flex:none}' +
+            R + ' .av-icon-btn{width:40px!important;height:40px!important}' + R + ' .av-icon-btn svg{width:18px;height:18px}' +
+            R + ' .av-badge{top:2px;right:2px}' +
+            R + ' .av-user-chip{min-height:40px!important;padding:3px!important;gap:0!important}' + R + ' .av-user-text,' + R + ' .gav-caret{display:none!important}' +
+            R + ' .av-user-fb{width:32px!important;height:32px!important;font-size:12px!important}' +
+            R + ' .av-btn-menu{height:40px!important;padding:0 11px!important;font-size:0!important;gap:0!important}' + R + ' .av-btn-menu svg{width:18px;height:18px}' +
+            R + ' .av-nav{flex-direction:row!important;align-items:stretch;gap:2px!important;padding:6px 8px!important;overflow-x:auto;overflow-y:hidden;border-right:0!important;border-bottom:1px solid var(--ln)!important;scrollbar-width:none}' +
+            R + ' .av-nav::-webkit-scrollbar{display:none}' +
+            R + ' .av-nav > button{flex:0 0 auto;min-width:64px;min-height:56px;padding:8px 6px!important;gap:6px!important;font-size:9.5px!important;letter-spacing:.1em!important}' +
+            R + ' .av-nav > button .av-ico svg{width:20px;height:20px}' +
+            R + ' .av-nav > button.active:before{left:6px;right:6px;top:auto;bottom:-6px;width:auto;height:3px}' +
+            R + ' .av-view{padding:20px 14px 32px!important}' +
+            R + ' .av-view > h2{font-size:30px!important}' + R + ' .av-view-hint{font-size:14.5px!important;margin:8px 0 18px!important}' +
+            R + ' .gav-kpis{gap:12px}' + R + ' .gav-kpi{padding:16px 16px;gap:14px}' + R + ' .gav-kpi b{font-size:26px}' + R + ' .gav-ico{width:44px;height:44px}' +
+            R + ' .av-view .av-card,' + R + ' .gav-card{padding:18px 16px!important;margin-bottom:16px!important}' +
+            R + ' .gav-ch{gap:12px;flex-wrap:wrap;padding-bottom:14px;margin-bottom:16px}' + R + ' .gav-ch h3{font-size:20px!important}' + R + ' .gav-ch .gav-r{margin-left:0;width:100%}' +
+        '}'
     ].join('\n');
     doc.head.appendChild(css);
 
     function ico(c, svg) { return '<span class="gav-ico" style="--c:' + c + '">' + svg + '</span>'; }
-    var NAV = { aula: IC.home, inicio: IC.grid, cursos: IC.book, calendario: IC.cal, tareas: IC.check, foros: IC.msg, recursos: SV('<path d="M3 6h6l2 2h10v11H3z"/>'), calificaciones: SV('<path d="M4 4v16h16"/><path d="m7 15 4-5 3 3 5-6"/>') };
+    var NAV = { aula: IC.home, inicio: IC.grid, cursos: IC.book, calendario: IC.cal, tareas: IC.check, foros: IC.msg, recursos: SV('<path d="M3 6h6l2 2h10v11H3z"/>'), quices: SV('<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 3v2h6V3"/><path d="m8.5 12 2 2 4-4"/><path d="M9 18h6"/>'), calificaciones: SV('<path d="M4 4v16h16"/><path d="m7 15 4-5 3 3 5-6"/>') };
     function dropzone(input) {
         if (!input || input.closest('.gav-drop')) return;
         var d = el('div', 'gav-drop', IC.upload + '<div><b>Arrastra tu archivo o haz clic</b><small>PDF · DOCX · XLSX · DWG — máx. 20 MB</small></div>');
@@ -302,6 +329,12 @@
             var chip = $('avUserChip'); if (chip) chip.insertAdjacentHTML('beforeend', '<span class="gav-caret">' + IC.down + '</span>');
             ['avBtnMenu', 'btnVolverEstudiante'].forEach(function (id) { var b = $(id); if (b) b.innerHTML = IC.back + 'MENÚ'; });
             M.querySelectorAll('.av-nav > button[data-av-view]').forEach(function (b) { var k = b.getAttribute('data-av-view'), s = b.querySelector('.av-ico'); if (s && NAV[k]) s.innerHTML = NAV[k]; });
+            // En celular el menú es una fila deslizable: mantener visible el apartado activo
+            var navEl = M.querySelector('.av-nav');
+            if (navEl) new MutationObserver(function () {
+                var a = navEl.querySelector(':scope > button[data-av-view].active');
+                if (a && navEl.scrollWidth > navEl.clientWidth + 2) navEl.scrollTo({ left: Math.max(0, a.offsetLeft - (navEl.clientWidth - a.offsetWidth) / 2), behavior: 'smooth' });
+            }).observe(navEl, { attributes: true, subtree: true, attributeFilter: ['class'] });
             var pend = false;
             new MutationObserver(function () { if (pend) return; pend = true; setTimeout(function () { pend = false; refrescar(); }, 90); }).observe(M, { childList: true, subtree: true });
         }

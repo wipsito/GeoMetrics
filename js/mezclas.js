@@ -143,8 +143,14 @@
         (o.series || []).forEach(function (s) {
             if (!s.pts || s.pts.length < 1) return;
             ctx.strokeStyle = s.color; ctx.lineWidth = s.width || 2; ctx.setLineDash(s.dash || []);
+            ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+            // curva suave en el espacio del papel (log abertura, % pasa): pasa por cada tamiz,
+            // no sube al disminuir la abertura ni sale de 0–100 %
+            var base = s.pts.filter(function (pt) { return pt[0] > 0; }).slice().sort(function (a, b) { return b[0] - a[0]; })
+                .map(function (pt) { return { x: Math.log10(pt[0]), y: pt[1] }; });
+            var dense = (s.smooth !== false && root.GeoCurvas) ? root.GeoCurvas.monotone(base, { total: 240, ymin: 0, ymax: 100 }) : base;
             ctx.beginPath();
-            s.pts.forEach(function (pt, i) { var x = X(pt[0]), y = Y(pt[1]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+            dense.forEach(function (pt, i) { var x = X(Math.pow(10, pt.x)), y = Y(pt.y); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
             ctx.stroke(); ctx.setLineDash([]);
             if (s.dots) s.pts.forEach(function (pt) { ctx.fillStyle = s.color; ctx.beginPath(); ctx.arc(X(pt[0]), Y(pt[1]), 3, 0, 6.283); ctx.fill(); });
         });

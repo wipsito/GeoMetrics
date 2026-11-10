@@ -3344,29 +3344,18 @@ function dibujarGraficaRMLive(tipo, p) {
     if (tipo === 'traccion') {
         var d = window.__datosEnsayoRM.traccion || {};
         var sy = d.sy || 285, su = d.su || 448, E = (d.E || 200) * 1000;
-        var epsY = sy / E, epsU = epsY + 0.12, epsB = epsU + 0.08;
+        if (sy >= su) sy = su * 0.9;
+        var cv = rmCurvaTraccion(sy, su, E, 240), epsB = cv.epsB;
         function x(e) { return pad + (e / (epsB * 1.15)) * (W - pad - 20); }
         function y(s) { return H - pad - (s / (su * 1.2)) * (H - pad - 20); }
+        var lim = Math.max(0, Math.min(1, p)) * epsB;
+        var vivos = cv.pts.filter(function(q) { return q.x <= lim; });
+        if (vivos.length < 2) vivos = cv.pts.slice(0, 2);
         ctx.strokeStyle = '#e8b84a';
         ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
         ctx.beginPath();
-        ctx.moveTo(x(0), y(0));
-        var steps = Math.max(2, Math.floor(p * 40));
-        for (var i = 1; i <= steps; i++) {
-            var t = i / 40;
-            var eps, sig;
-            if (t < epsY / epsB) { eps = t * epsB; sig = E * eps; }
-            else if (t < epsU / epsB) {
-                eps = t * epsB;
-                var u = (eps - epsY) / (epsU - epsY);
-                sig = sy + (su - sy) * (1 - Math.pow(1 - u, 2));
-            } else {
-                eps = t * epsB;
-                var u2 = (eps - epsU) / (epsB - epsU);
-                sig = su * (1 - 0.28 * u2);
-            }
-            ctx.lineTo(x(eps), y(Math.max(0, sig)));
-        }
+        vivos.forEach(function(q, i) { if (i) ctx.lineTo(x(q.x), y(q.y)); else ctx.moveTo(x(q.x), y(q.y)); });
         ctx.stroke();
         ctx.fillText('ε', W - 24, H - 18);
         ctx.fillText('σ', 8, 24);
@@ -3380,8 +3369,8 @@ function dibujarGraficaRMLive(tipo, p) {
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(pad, H - pad);
-        for (var j = 1; j <= Math.floor(p * 30); j++) {
-            var tt = j / 30;
+        for (var j = 1; j <= Math.floor(p * 150); j++) {
+            var tt = j / 150;
             var xx = pad + tt * (W - pad - 20);
             var yy = H - pad - Math.sin(tt * Math.PI * 0.85) * (H - pad - 30) * (fc / (fc + 10));
             ctx.lineTo(xx, yy);
@@ -3395,8 +3384,8 @@ function dibujarGraficaRMLive(tipo, p) {
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(pad, H - pad);
-        for (var k = 1; k <= Math.floor(p * 30); k++) {
-            var tk = k / 30;
+        for (var k = 1; k <= Math.floor(p * 150); k++) {
+            var tk = k / 150;
             ctx.lineTo(pad + tk * (W - pad - 20), H - pad - tk * (H - pad - 40) * 0.85);
         }
         ctx.stroke();
@@ -3409,8 +3398,8 @@ function dibujarGraficaRMLive(tipo, p) {
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(pad, H - pad);
-        for (var m = 1; m <= Math.floor(p * 30); m++) {
-            var tm = m / 30;
+        for (var m = 1; m <= Math.floor(p * 150); m++) {
+            var tm = m / 150;
             ctx.lineTo(pad + tm * (W - pad - 20), H - pad - tm * (H - pad - 40) * 0.9);
         }
         ctx.stroke();
@@ -3477,39 +3466,70 @@ function graficaRMTraccion() {
     var d = window.__datosEnsayoRM.traccion;
     var canvas = document.getElementById('canvas-rm-traccion');
     if (!canvas || !d) return;
-    var ctx = canvas.getContext('2d');
-    var W = canvas.width, H = canvas.height;
+    var gR = window.GeoCurvas ? GeoCurvas.hidpi(canvas) : null;
+    var ctx = gR ? gR.ctx : canvas.getContext('2d');
+    var W = gR ? gR.w : canvas.width, H = gR ? gR.h : canvas.height;
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, 0, W, H);
-    var pad = 50;
-    ctx.strokeStyle = '#64748b';
-    ctx.beginPath();
-    ctx.moveTo(pad, H - pad); ctx.lineTo(W - 20, H - pad);
-    ctx.moveTo(pad, H - pad); ctx.lineTo(pad, 20);
-    ctx.stroke();
     var sy = d.sy || 250, su = d.su || 400, E = (d.E || 200) * 1000;
-    var epsY = sy / E, epsU = epsY + 0.12, epsB = epsU + 0.08;
-    function x(e) { return pad + (e / (epsB * 1.15)) * (W - pad - 30); }
-    function y(s) { return H - pad - (s / (su * 1.2)) * (H - pad - 30); }
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(x(0), y(0));
-    ctx.lineTo(x(epsY), y(sy));
-    ctx.lineTo(x(epsY * 1.08), y(sy * 0.97));
-    ctx.quadraticCurveTo(x(epsU * 0.55), y(su * 0.88), x(epsU), y(su));
-    ctx.quadraticCurveTo(x(epsB * 0.85), y(su * 0.9), x(epsB), y(su * 0.72));
-    ctx.stroke();
+    if (sy >= su) sy = su * 0.9;
+    var curva = rmCurvaTraccion(sy, su, E, 300);
+    var epsB = curva.epsB;
+    var ox = 62, oy = H - 44, gx = W - 24, gy = 28;
+    var maxX = epsB * 1.12, maxY = su * 1.2;
+    function x(e) { return ox + (e / maxX) * (gx - ox); }
+    function y(s) { return oy - (s / maxY) * (oy - gy); }
+    _rejillaMS2(ctx, ox, oy, gx, gy, maxX, maxY, null, null);
+    // relleno y curva continua (300 puntos)
+    var fill = ctx.createLinearGradient(0, gy, 0, oy);
+    fill.addColorStop(0, 'rgba(56,189,248,0.20)'); fill.addColorStop(1, 'rgba(56,189,248,0)');
+    _trazoMS2(ctx, curva.pts, x, y);
+    ctx.lineTo(x(epsB), oy); ctx.lineTo(x(0), oy); ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill();
+    _trazoMS2(ctx, curva.pts, x, y);
+    ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2.5; ctx.stroke();
+    // puntos característicos
+    [[curva.epsY, sy, '#a78bfa', 'σy = ' + sy.toFixed(0)], [curva.epsU, su, '#fbbf24', 'σu = ' + su.toFixed(0)], [epsB, curva.sf, '#34d399', 'rotura']].forEach(function(k, i) {
+        ctx.beginPath(); ctx.arc(x(k[0]), y(k[1]), 5, 0, Math.PI * 2);
+        ctx.fillStyle = k[2]; ctx.fill();
+        ctx.fillStyle = k[2]; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = i === 2 ? 'right' : 'left';
+        ctx.fillText(k[3], x(k[0]) + (i === 2 ? -8 : 8), y(k[1]) - 9);
+    });
     ctx.fillStyle = '#94a3b8';
     ctx.font = '12px sans-serif';
-    ctx.fillText('ε', W - 28, H - 18);
-    ctx.fillText('σ (MPa)', 8, 22);
+    ctx.textAlign = 'left';
+    ctx.fillText('ε (mm/mm)', gx - 70, oy + 34);
+    ctx.fillText('σ (MPa)', ox + 6, gy - 10);
     if (d.sigma != null && d.eps != null) {
-        ctx.fillStyle = '#fbbf24';
         ctx.beginPath();
-        ctx.arc(x(Math.min(d.eps, epsB)), y(Math.min(d.sigma, su * 1.15)), 6, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.arc(x(Math.min(d.eps, maxX)), y(Math.min(d.sigma, maxY)), 6.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f172a'; ctx.fill();
+        ctx.strokeStyle = '#f87171'; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.fillStyle = '#f87171'; ctx.font = 'bold 11px sans-serif';
+        ctx.fillText('lectura (σ, ε)', x(Math.min(d.eps, maxX)) + 10, y(Math.min(d.sigma, maxY)) + 4);
     }
+}
+
+/* Curva σ–ε continua de un acero dúctil: tramo elástico, escalón de fluencia,
+   endurecimiento por deformación y estricción hasta la rotura. */
+function rmCurvaTraccion(sy, su, E, n) {
+    var epsY = sy / E, epsH = epsY + 0.015, epsU = epsY + 0.12, epsB = epsU + 0.08, sf = su * 0.74;
+    var pts = [{ x: 0, y: 0 }, { x: epsY, y: sy }];
+    n = n || 300;
+    for (var i = 1; i <= n; i++) {
+        var e = epsY + (epsB - epsY) * i / n, s;
+        if (e <= epsH) s = sy * (0.985 + 0.015 * Math.cos(Math.PI * (e - epsY) / (epsH - epsY)));  // escalón de fluencia (sale con pendiente 0)
+        else if (e <= epsU) {
+            var u = (e - epsH) / (epsU - epsH);
+            // el endurecimiento arranca con pendiente 0 (sin quiebre ni ondulación al salir de la meseta)
+            var kq = 0.05, ue = u - kq * (1 - Math.exp(-u / kq)), ue1 = 1 - kq * (1 - Math.exp(-1 / kq));
+            var fh = function (z) { return 1 - Math.pow(1 - Math.min(1, z), 2.2); };
+            s = sy * 0.97 + (su - sy * 0.97) * fh(ue) / fh(ue1);
+        }
+        else { var v = (e - epsU) / (epsB - epsU); s = su - (su - sf) * v * v; }       // estricción: sale con pendiente 0 del pico
+        pts.push({ x: e, y: s });
+    }
+    return { pts: pts, epsY: epsY, epsU: epsU, epsB: epsB, sf: sf };
 }
 
 function crearFormularioRMCompresion(modo) {
@@ -3859,11 +3879,11 @@ function crearFormularioCompactacion() {
                 <input type="number" id="cp-vol" placeholder="Ej. 2120" step="0.1">
                 <h4>Datos de Ensayos</h4>
                 <div class="proctor-inputs">
-                    <div><label>Punto 1 - Masa+hoy+mold (g):</label><input type="number" id="cp-h1" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w1" step="0.1"></div>
-                    <div><label>Punto 2 - Masa+hoy+mold (g):</label><input type="number" id="cp-h2" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w2" step="0.1"></div>
-                    <div><label>Punto 3 - Masa+hoy+mold (g):</label><input type="number" id="cp-h3" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w3" step="0.1"></div>
-                    <div><label>Punto 4 - Masa+hoy+mold (g):</label><input type="number" id="cp-h4" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w4" step="0.1"></div>
-                    <div><label>Punto 5 - Masa+hoy+mold (g):</label><input type="number" id="cp-h5" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w5" step="0.1"></div>
+                    <div><label>Punto 1 - Masa suelo húmedo + molde (g):</label><input type="number" id="cp-h1" placeholder="Ej. 8621.3" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w1" placeholder="Ej. 8.0" step="0.1"></div>
+                    <div><label>Punto 2 - Masa suelo húmedo + molde (g):</label><input type="number" id="cp-h2" placeholder="Ej. 8884.2" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w2" placeholder="Ej. 10.0" step="0.1"></div>
+                    <div><label>Punto 3 - Masa suelo húmedo + molde (g):</label><input type="number" id="cp-h3" placeholder="Ej. 9058.8" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w3" placeholder="Ej. 12.0" step="0.1"></div>
+                    <div><label>Punto 4 - Masa suelo húmedo + molde (g):</label><input type="number" id="cp-h4" placeholder="Ej. 9067.8" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w4" placeholder="Ej. 14.0" step="0.1"></div>
+                    <div><label>Punto 5 - Masa suelo húmedo + molde (g):</label><input type="number" id="cp-h5" placeholder="Ej. 8975.7" step="0.1"><label>Humedad (%):</label><input type="number" id="cp-w5" placeholder="Ej. 16.0" step="0.1"></div>
                 </div>
                 <div class="botones-calculo">
                     <button class="btn-calcular" onclick="calcularCompactacion()">CALCULAR</button>
@@ -4451,13 +4471,19 @@ function calcularPermeabilidad() {
 function _prepCanvas(id, hintId, okMsg) {
     var canvas = document.getElementById(id);
     if (!canvas) return null;
-    var ctx = canvas.getContext('2d');
-    var dpr = window.devicePixelRatio || 1;
-    var cssW = canvas.clientWidth || 640;
-    var cssH = 360;
-    canvas.width = Math.floor(cssW * dpr);
-    canvas.height = Math.floor(cssH * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var ctx, cssW, cssH;
+    // Tamaño real en pantalla (ancho y alto) × devicePixelRatio: sin estirar ni aplastar el dibujo
+    var gH = window.GeoCurvas ? GeoCurvas.hidpi(canvas, { minW: 560 }) : null;
+    if (gH) { ctx = gH.ctx; cssW = gH.w; cssH = gH.h; }
+    else {
+        ctx = canvas.getContext('2d');
+        var dpr = window.devicePixelRatio || 1;
+        cssW = canvas.clientWidth || 640;
+        cssH = 360;
+        canvas.width = Math.floor(cssW * dpr);
+        canvas.height = Math.floor(cssH * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
     ctx.fillStyle = '#0B1220';
     ctx.fillRect(0, 0, cssW, cssH);
     if (hintId) {
@@ -4481,6 +4507,44 @@ function _axes(ctx, pad, w, h, title) {
         ctx.textAlign = 'center';
         ctx.fillText(title, w / 2, 22);
     }
+}
+
+/* Rejilla con etiquetas para las gráficas XY de Suelos II (0 → máx en ambos ejes). */
+function _rejillaMS2(ctx, ox, oy, gx, gy, maxX, maxY, fx, fy) {
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.font = '11px sans-serif';
+    // pasos «redondos» (1, 2, 2.5, 5 × 10ⁿ) para las marcas de los ejes
+    function paso(max) {
+        var raw = max / 5, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+        var opts = [1, 2, 2.5, 5, 10];
+        for (var k = 0; k < opts.length; k++) if (opts[k] * mag >= raw) return opts[k] * mag;
+        return 10 * mag;
+    }
+    function dec(st) { return st >= 1 ? 0 : Math.min(4, Math.ceil(-Math.log10(st) + 0.001)); }
+    var sxp = paso(maxX), syp = paso(maxY), xv, yv;
+    ctx.strokeStyle = 'rgba(148,163,184,0.12)';
+    ctx.fillStyle = '#94A3B8';
+    for (xv = 0; xv <= maxX + 1e-9; xv += sxp) {
+        var px = ox + (gx - ox) * xv / maxX;
+        ctx.beginPath(); ctx.moveTo(px, gy); ctx.lineTo(px, oy); ctx.stroke();
+        ctx.textAlign = 'center'; ctx.fillText(fx ? fx(xv, dec(sxp)) : xv.toFixed(dec(sxp)), px, oy + 16);
+    }
+    for (yv = 0; yv <= maxY + 1e-9; yv += syp) {
+        var py = oy - (oy - gy) * yv / maxY;
+        ctx.beginPath(); ctx.moveTo(ox, py); ctx.lineTo(gx, py); ctx.stroke();
+        ctx.textAlign = 'right'; ctx.fillText(fy ? fy(yv, dec(syp)) : yv.toFixed(dec(syp)), ox - 6, py + 4);
+    }
+    ctx.strokeStyle = '#64748B'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
+    ctx.restore();
+}
+
+/* Camino de una curva densa {x, y} con uniones redondeadas. */
+function _trazoMS2(ctx, pts, sx, sy) {
+    if (window.GeoCurvas) { GeoCurvas.trace(ctx, pts, sx, sy); return; }
+    ctx.beginPath();
+    pts.forEach(function(p, i) { if (i) ctx.lineTo(sx(p.x), sy(p.y)); else ctx.moveTo(sx(p.x), sy(p.y)); });
 }
 
 function _barChart(canvasId, hintId, labels, values, title, unit) {
@@ -4658,28 +4722,13 @@ function graficaGranulometria() {
     });
     pts.sort(function(a, b) { return b.d - a.d; });
 
+    /* Curva suave en el espacio del papel (log d, % pasa): interpolación
+       monótona que pasa por cada tamiz, nunca sube al disminuir el tamaño
+       ni se sale de 0–100 %. */
     function curvaSuaveXY(arr) {
-        if (arr.length < 3) {
-            return arr.map(function(p) { return { x: xOf(p.d), y: yOf(p.pasa) }; });
-        }
-        var out = [];
-        var N = 24;
-        for (var i = 0; i < arr.length - 1; i++) {
-            var p0 = arr[Math.max(0, i - 1)];
-            var p1 = arr[i];
-            var p2 = arr[i + 1];
-            var p3 = arr[Math.min(arr.length - 1, i + 2)];
-            for (var s = 0; s < N; s++) {
-                var t = s / N;
-                var t2 = t * t, t3 = t2 * t;
-                var x = 0.5 * ((2 * p1.d) + (-p0.d + p2.d) * t + (2 * p0.d - 5 * p1.d + 4 * p2.d - p3.d) * t2 + (-p0.d + 3 * p1.d - 3 * p2.d + p3.d) * t3);
-                var y = 0.5 * ((2 * p1.pasa) + (-p0.pasa + p2.pasa) * t + (2 * p0.pasa - 5 * p1.pasa + 4 * p2.pasa - p3.pasa) * t2 + (-p0.pasa + 3 * p1.pasa - 3 * p2.pasa + p3.pasa) * t3);
-                out.push({ x: xOf(x), y: yOf(y) });
-            }
-        }
-        var last = arr[arr.length - 1];
-        out.push({ x: xOf(last.d), y: yOf(last.pasa) });
-        return out;
+        var base = arr.map(function(p) { return { x: Math.log10(Math.max(dMin, p.d)), y: p.pasa }; });
+        var dense = window.GeoCurvas ? GeoCurvas.monotone(base, { total: 260, ymin: 0, ymax: 100 }) : base;
+        return dense.map(function(p) { return { x: xOf(Math.pow(10, p.x)), y: yOf(p.y) }; });
     }
 
     if (pts.length) {
@@ -4911,14 +4960,19 @@ function graficaCompactacion() {
     }
     var canvas = document.getElementById('canvas-proctor');
     if (!canvas) return;
-    var ctx = canvas.getContext('2d');
-    var dpr = window.devicePixelRatio || 1;
-    var cssW = Math.max(canvas.clientWidth || 720, 640);
-    var cssH = 480;
-    canvas.width = Math.floor(cssW * dpr);
-    canvas.height = Math.floor(cssH * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    var w = cssW, h = cssH;
+    var ctx, w, h;
+    var gP = window.GeoCurvas ? GeoCurvas.hidpi(canvas, { minW: 640 }) : null;
+    if (gP) { ctx = gP.ctx; w = gP.w; h = gP.h; }
+    else {
+        ctx = canvas.getContext('2d');
+        var dpr = window.devicePixelRatio || 1;
+        var cssW = Math.max(canvas.clientWidth || 720, 640);
+        var cssH = 480;
+        canvas.width = Math.floor(cssW * dpr);
+        canvas.height = Math.floor(cssH * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        w = cssW; h = cssH;
+    }
 
     // Plantilla tipo papel milimetrado
     ctx.fillStyle = '#ffffff';
@@ -4935,11 +4989,11 @@ function graficaCompactacion() {
 
     var pts = d.puntos.slice().sort(function(a, b) { return a.w - b.w; });
     // Escala X: humedad (plantilla 0–12, se amplía si hace falta)
-    var minW = 0, maxW = 12;
-    pts.forEach(function(p) {
-        if (p.w > maxW) maxW = Math.ceil(p.w + 1);
-    });
-    if (d.max && d.max.w > maxW) maxW = Math.ceil(d.max.w + 1);
+    // Escala X ajustada a las lecturas (±2 %) para que la campana se lea bien
+    var wsAll = pts.map(function(p) { return p.w; });
+    var minW = Math.max(0, Math.floor(Math.min.apply(null, wsAll)) - 2);
+    var maxW = Math.ceil(Math.max.apply(null, wsAll)) + 2;
+    if (maxW - minW < 6) maxW = minW + 6;
 
     // Escala Y: densidad seca típica 1.0–2.2 g/cm³; se ajusta a los datos
     var dsVals = pts.map(function(p) { return p.ds; });
@@ -4954,10 +5008,10 @@ function graficaCompactacion() {
         maxD = Math.ceil(dsMaxData * 1.05 * 10) / 10;
         if (maxD <= minD) maxD = minD + 1;
     } else {
-        minD = 1.0;
-        maxD = 2.2;
-        if (dsMinData < minD) minD = Math.floor((dsMinData - 0.05) * 20) / 20;
-        if (dsMaxData > maxD) maxD = Math.ceil((dsMaxData + 0.05) * 20) / 20;
+        // Escala Y ajustada a los datos (margen 0,05 g/cm³, rango mínimo 0,25)
+        minD = Math.floor((dsMinData - 0.05) * 20) / 20;
+        maxD = Math.ceil((dsMaxData + 0.05) * 20) / 20;
+        if (maxD - minD < 0.25) { var midD = (maxD + minD) / 2; minD = Math.floor((midD - 0.125) * 20) / 20; maxD = minD + 0.25; }
     }
 
     function xW(wv) { return pad.l + ((wv - minW) / (maxW - minW)) * plotW; }
@@ -5036,16 +5090,15 @@ function graficaCompactacion() {
     ctx.fillText('Densidad seca gr/cm³', 0, 0);
     ctx.restore();
 
-    // Curva suave
+    // Curva suave: interpolación monótona por los puntos medidos.
+    // El máximo medido (wópt, γd máx) sigue siendo la cima de la curva.
     if (pts.length >= 2) {
+        var curvaP = pts.map(function(p) { return { x: p.w, y: p.ds }; });
+        var densa = window.GeoCurvas ? GeoCurvas.monotone(curvaP, { total: 240 }) : curvaP;
         ctx.strokeStyle = '#111';
-        ctx.lineWidth = 2;
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        pts.forEach(function(p, i) {
-            var x = xW(p.w), y = yD(p.ds);
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        });
+        ctx.lineWidth = 2.2;
+        if (window.GeoCurvas) GeoCurvas.trace(ctx, densa, xW, yD);
+        else { ctx.beginPath(); densa.forEach(function(p, i) { if (i === 0) ctx.moveTo(xW(p.x), yD(p.y)); else ctx.lineTo(xW(p.x), yD(p.y)); }); }
         ctx.stroke();
     }
     pts.forEach(function(p) {
@@ -6155,8 +6208,9 @@ function graficaCorteDirecto() {
     var canvas = document.getElementById('canvas-corte');
     var hint = document.getElementById('hint-corte');
     if (!d || !canvas) { if (hint) hint.textContent = 'Primero pulsa CALCULAR.'; return; }
-    var ctx = canvas.getContext('2d');
-    var w = canvas.width, h = canvas.height;
+    var gC = window.GeoCurvas ? GeoCurvas.hidpi(canvas, { minW: 600 }) : null;
+    var ctx = gC ? gC.ctx : canvas.getContext('2d');
+    var w = gC ? gC.w : canvas.width, h = gC ? gC.h : canvas.height;
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#0B1220';
     ctx.fillRect(0, 0, w, h);
@@ -6189,8 +6243,13 @@ function graficaCorteDirecto() {
     ) * 1.25;
 
     var ox = 70, oy = h - 70, gx = w - 30, gy = 30;
-    function sx(x) { return ox + (x / maxS) * (gx - ox); }
-    function sy(y) { return oy - (y / maxT) * (oy - gy); }
+    // Misma escala en σ y τ: los círculos de Mohr se ven como círculos.
+    // El alto se ajusta a los círculos y puntos de falla (la envolvente se recorta al borde).
+    maxT = Math.max(1, Math.max.apply(null, ptsN.map(function(p) { return Math.max(p.t, p.R, p.radio); })) * 1.45, cY * 1.6);
+    var kMohr = Math.min((gx - ox) / maxS, (oy - gy) / maxT);
+    maxS = (gx - ox) / kMohr; maxT = (oy - gy) / kMohr;
+    function sx(x) { return ox + x * kMohr; }
+    function sy(y) { return oy - y * kMohr; }
 
     // Grid
     ctx.strokeStyle = 'rgba(255,255,255,0.06)';
@@ -6207,12 +6266,15 @@ function graficaCorteDirecto() {
     ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
 
     // Envolvente: τ = c + σ · tan(φ)  (kPa vs kPa)
+    ctx.save();
+    ctx.beginPath(); ctx.rect(ox, gy, gx - ox, oy - gy); ctx.clip();
     ctx.strokeStyle = '#e8b84a';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.moveTo(sx(0), sy(cY));
     ctx.lineTo(sx(maxS), sy(cY + maxS * Math.tan(phiRad)));
     ctx.stroke();
+    ctx.restore();
 
     var colors = ['#5dade2', '#58d68d', '#f5b041', '#af7ac5', '#ec7063', '#1abc9c'];
     var labelBottom = [];
@@ -6224,16 +6286,11 @@ function graficaCorteDirecto() {
         var R = p.radio;
         ctx.strokeStyle = col;
         ctx.lineWidth = 2;
+        // arco superior de σ3 a σ1 (arco exacto, sin segmentos)
         ctx.beginPath();
-        // arco superior de σ3 a σ1
-        var steps = 48;
-        for (var s = 0; s <= steps; s++) {
-            var ang = Math.PI - (Math.PI * s / steps); // π → 0
-            var px = cx + R * Math.cos(ang);
-            var py = R * Math.sin(ang);
-            if (s === 0) ctx.moveTo(sx(px), sy(py));
-            else ctx.lineTo(sx(px), sy(py));
-        }
+        ctx.arc(sx(cx), sy(0), Math.abs(R) * kMohr, Math.PI, 2 * Math.PI);
+        ctx.fillStyle = col + '1f';
+        ctx.fill();
         ctx.stroke();
 
         // Base σ3 — σ1
@@ -7866,8 +7923,8 @@ function crearFormularioInconfinada() {
     var D = rnd(35, 42), L0 = rnd(70, 80);
     var A = Math.PI * Math.pow(D / 2, 2);
     var qu = rnd(18, 45);
-    var eps = [0.4, 1.0, 2.0, 3.5, 5.0, 7.0];
-    var fracs = [0.35, 0.65, 0.9, 1.0, 0.85, 0.55];
+    var eps = [0.25, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 7.5];
+    var fracs = [0.22, 0.4, 0.64, 0.8, 0.9, 0.99, 1.0, 0.94, 0.82, 0.62];
     var pts = eps.map(function(e, i) {
         var sig = qu * fracs[i];
         return { dL: e * L0 / 100, P: sig * A / 1000 };
@@ -7883,7 +7940,7 @@ function crearFormularioInconfinada() {
         <label>Altura L0 (mm)</label>
         <input type="number" id="uc-l0" placeholder="Ej. ` + f1(L0) + `" step="0.1">
         <h4>Lecturas (deformación y carga)</h4>
-        <p class="login-hint">Pares ΔL (mm) y carga P (N). Al menos 4 puntos hasta falla.</p>
+        <p class="login-hint">Pares ΔL (mm) y carga P (N). Al menos 4 puntos hasta falla; con 8–10 lecturas la curva queda mejor definida alrededor del pico.</p>
         <label>ΔL1, P1</label>
         <div style="display:flex;gap:8px"><input type="number" id="uc-dl1" placeholder="Ej. ` + f2(pts[0].dL) + `" step="0.01"><input type="number" id="uc-p1" placeholder="Ej. ` + f1(pts[0].P) + `" step="0.1"></div>
         <label>ΔL2, P2</label>
@@ -7896,6 +7953,14 @@ function crearFormularioInconfinada() {
         <div style="display:flex;gap:8px"><input type="number" id="uc-dl5" placeholder="Ej. ` + f2(pts[4].dL) + `" step="0.01"><input type="number" id="uc-p5" placeholder="Ej. ` + f1(pts[4].P) + `" step="0.1"></div>
         <label>ΔL6, P6 (opcional)</label>
         <div style="display:flex;gap:8px"><input type="number" id="uc-dl6" placeholder="Ej. ` + f2(pts[5].dL) + `" step="0.01"><input type="number" id="uc-p6" placeholder="Ej. ` + f1(pts[5].P) + `" step="0.1"></div>
+        <label>ΔL7, P7 (opcional)</label>
+        <div style="display:flex;gap:8px"><input type="number" id="uc-dl7" placeholder="Ej. ` + f2(pts[6].dL) + `" step="0.01"><input type="number" id="uc-p7" placeholder="Ej. ` + f1(pts[6].P) + `" step="0.1"></div>
+        <label>ΔL8, P8 (opcional)</label>
+        <div style="display:flex;gap:8px"><input type="number" id="uc-dl8" placeholder="Ej. ` + f2(pts[7].dL) + `" step="0.01"><input type="number" id="uc-p8" placeholder="Ej. ` + f1(pts[7].P) + `" step="0.1"></div>
+        <label>ΔL9, P9 (opcional)</label>
+        <div style="display:flex;gap:8px"><input type="number" id="uc-dl9" placeholder="Ej. ` + f2(pts[8].dL) + `" step="0.01"><input type="number" id="uc-p9" placeholder="Ej. ` + f1(pts[8].P) + `" step="0.1"></div>
+        <label>ΔL10, P10 (opcional)</label>
+        <div style="display:flex;gap:8px"><input type="number" id="uc-dl10" placeholder="Ej. ` + f2(pts[9].dL) + `" step="0.01"><input type="number" id="uc-p10" placeholder="Ej. ` + f1(pts[9].P) + `" step="0.1"></div>
         <div class="botones-calculo">
           <button class="btn-calcular" onclick="calcularInconfinada()">CALCULAR</button>
           <button class="btn-calcular btn-guardar-datos" onclick="guardarDatosEnsayoMS2('inconfinada')">GUARDAR DATOS</button>
@@ -7936,7 +8001,7 @@ function calcularInconfinada() {
     // better: d in mm, A0 in mm² then convert to m² for kPa: P(N)/A(m²)=Pa
     var A0_m2 = Math.PI * Math.pow((d / 1000) / 2, 2);
     var pts = [];
-    for (var i = 1; i <= 6; i++) {
+    for (var i = 1; i <= 10; i++) {
         var dl = parse('uc-dl' + i), P = parse('uc-p' + i);
         if (dl != null && P != null && dl >= 0 && P >= 0) {
             var eps = dl / L0; // unit strain
@@ -7961,29 +8026,42 @@ function graficaInconfinada() {
     var canvas = document.getElementById('canvas-inconf');
     var hint = document.getElementById('hint-inconf');
     if (!d || !canvas) { if (hint) hint.textContent = 'Primero pulsa CALCULAR.'; return; }
-    var ctx = canvas.getContext('2d');
-    var w = canvas.width, h = canvas.height;
+    var gI = window.GeoCurvas ? GeoCurvas.hidpi(canvas) : null;
+    var ctx = gI ? gI.ctx : canvas.getContext('2d');
+    var w = gI ? gI.w : canvas.width, h = gI ? gI.h : canvas.height;
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
-    var maxE = Math.max.apply(null, d.pts.map(function(p) { return p.eps; })) * 1.15;
+    var pts = d.pts.slice().sort(function(a, b) { return a.eps - b.eps; });
+    var maxE = Math.max.apply(null, pts.map(function(p) { return p.eps; })) * 1.15;
     var maxS = Math.max(d.qu * 1.2, 1);
-    var ox = 55, oy = h - 40, gx = w - 30, gy = 25;
+    var ox = 62, oy = h - 46, gx = w - 30, gy = 30;
     function sx(x) { return ox + (x / maxE) * (gx - ox); }
     function sy(y) { return oy - (y / maxS) * (oy - gy); }
-    ctx.strokeStyle = '#64748B'; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
-    ctx.strokeStyle = '#e8b84a'; ctx.lineWidth = 2; ctx.beginPath();
-    d.pts.forEach(function(p, i) {
-        var x = sx(p.eps), y = sy(p.sig);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    _rejillaMS2(ctx, ox, oy, gx, gy, maxE, maxS, null, null);
+    // curva desde el origen (ε = 0, σ = 0) por las lecturas, suavizada sin inventar picos
+    var base = [{ x: 0, y: 0 }].concat(pts.filter(function(p) { return p.eps > 0; }).map(function(p) { return { x: p.eps, y: p.sig }; }));
+    var densa = window.GeoCurvas ? GeoCurvas.monotone(base, { total: 260, ymin: 0 }) : base;
+    var area = ctx.createLinearGradient(0, gy, 0, oy);
+    area.addColorStop(0, 'rgba(232,184,74,0.22)'); area.addColorStop(1, 'rgba(232,184,74,0)');
+    _trazoMS2(ctx, densa, sx, sy);
+    ctx.lineTo(sx(densa[densa.length - 1].x), oy); ctx.lineTo(sx(0), oy); ctx.closePath();
+    ctx.fillStyle = area; ctx.fill();
+    _trazoMS2(ctx, densa, sx, sy);
+    ctx.strokeStyle = '#e8b84a'; ctx.lineWidth = 2.4; ctx.stroke();
+    pts.forEach(function(p) {
+        ctx.beginPath(); ctx.arc(sx(p.eps), sy(p.sig), 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#0B1220'; ctx.fill(); ctx.strokeStyle = '#e8b84a'; ctx.lineWidth = 2; ctx.stroke();
     });
-    ctx.stroke();
+    ctx.save(); ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(255,141,141,0.6)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx(d.peak.eps), sy(d.qu)); ctx.lineTo(sx(d.peak.eps), oy); ctx.moveTo(sx(d.peak.eps), sy(d.qu)); ctx.lineTo(ox, sy(d.qu)); ctx.stroke(); ctx.restore();
     ctx.fillStyle = '#ff8d8d';
-    ctx.beginPath(); ctx.arc(sx(d.peak.eps), sy(d.qu), 6, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
-    ctx.fillText('ε (%)', gx - 30, oy + 20);
-    ctx.fillText('σ (kPa)', ox - 10, gy + 12);
-    ctx.fillText('qu = ' + d.qu.toFixed(1) + ' kPa', ox + 10, gy + 20);
-    if (hint) hint.textContent = 'Pico qu marcado en rojo.';
+    ctx.beginPath(); ctx.arc(sx(d.peak.eps), sy(d.qu), 6.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('ε (%)', gx - 34, oy + 34);
+    ctx.fillText('σ (kPa)', ox + 6, gy - 10);
+    ctx.fillStyle = '#ff8d8d'; ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('qu = ' + d.qu.toFixed(1) + ' kPa', Math.min(sx(d.peak.eps) + 10, gx - 120), sy(d.qu) - 10);
+    if (hint) hint.textContent = 'Curva suavizada por las ' + pts.length + ' lecturas · pico qu marcado en rojo.';
 }
 
 function crearFormularioConsolidacionMS2() {
@@ -7991,8 +8069,9 @@ function crearFormularioConsolidacionMS2() {
     function f2(x) { return (Math.round(x * 100) / 100).toFixed(2); }
     function f3(x) { return (Math.round(x * 1000) / 1000).toFixed(3); }
     var H0 = rnd(18, 22), e0 = rnd(0.75, 0.95), e = e0;
-    var sigs = [12.5, 25, 50, 100, 200], es = [];
-    for (var i = 0; i < sigs.length; i++) { e = e - rnd(0.02, 0.08) * (1 + i * 0.15); es.push(Math.max(0.35, e)); }
+    var sigs = [12.5, 25, 50, 100, 200, 400, 800, 1600], es = [];
+    // recompresión suave al inicio y tramo virgen más empinado (forma típica e–log σ′)
+    for (var i = 0; i < sigs.length; i++) { e = e - rnd(0.01, 0.022) * (1 + i * 0.5); es.push(Math.max(0.25, e)); }
     var hdr = H0 / 2, t50 = rnd(8, 20);
     return `
     <h3>Ensayo de Consolidación</h3>
@@ -8015,6 +8094,12 @@ function crearFormularioConsolidacionMS2() {
         <div style="display:flex;gap:8px"><input type="number" id="co-s4" placeholder="Ej. ` + sigs[3] + `"><input type="number" id="co-e4" placeholder="Ej. ` + f3(es[3]) + `" step="0.001"></div>
         <label>σ'5 , e5 (opcional)</label>
         <div style="display:flex;gap:8px"><input type="number" id="co-s5" placeholder="Ej. ` + sigs[4] + `"><input type="number" id="co-e5" placeholder="Ej. ` + f3(es[4]) + `" step="0.001"></div>
+        <label>σ'6 , e6 (opcional)</label>
+        <div style="display:flex;gap:8px"><input type="number" id="co-s6" placeholder="Ej. ` + sigs[5] + `"><input type="number" id="co-e6" placeholder="Ej. ` + f3(es[5]) + `" step="0.001"></div>
+        <label>σ'7 , e7 (opcional)</label>
+        <div style="display:flex;gap:8px"><input type="number" id="co-s7" placeholder="Ej. ` + sigs[6] + `"><input type="number" id="co-e7" placeholder="Ej. ` + f3(es[6]) + `" step="0.001"></div>
+        <label>σ'8 , e8 (opcional)</label>
+        <div style="display:flex;gap:8px"><input type="number" id="co-s8" placeholder="Ej. ` + sigs[7] + `"><input type="number" id="co-e8" placeholder="Ej. ` + f3(es[7]) + `" step="0.001"></div>
         <h4>Para Cv (un incremento)</h4>
         <label>H drenaje (mm) — H0/2 si doble drenaje</label>
         <input type="number" id="co-hdr" placeholder="Ej. ` + f2(hdr) + `" step="0.01">
@@ -8056,7 +8141,7 @@ function calcularConsolidacionMS2() {
     setError('co-error', '');
     var e0 = parse('co-e0');
     var pts = [];
-    for (var i = 1; i <= 5; i++) {
+    for (var i = 1; i <= 8; i++) {
         var s = parse('co-s' + i), e = parse('co-e' + i);
         if (s != null && e != null && s > 0) pts.push({ s: s, e: e });
     }
@@ -8085,33 +8170,56 @@ function graficaConsolidacionMS2() {
     var canvas = document.getElementById('canvas-consol');
     var hint = document.getElementById('hint-consol');
     if (!d || !canvas) { if (hint) hint.textContent = 'Primero pulsa CALCULAR.'; return; }
-    var ctx = canvas.getContext('2d');
-    var w = canvas.width, h = canvas.height;
+    var gK = window.GeoCurvas ? GeoCurvas.hidpi(canvas) : null;
+    var ctx = gK ? gK.ctx : canvas.getContext('2d');
+    var w = gK ? gK.w : canvas.width, h = gK ? gK.h : canvas.height;
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
     var logs = d.pts.map(function(p) { return Math.log10(p.s); });
-    var minL = Math.min.apply(null, logs) - 0.1, maxL = Math.max.apply(null, logs) + 0.1;
-    var minE = Math.min.apply(null, d.pts.map(function(p) { return p.e; })) - 0.05;
-    var maxE = Math.max.apply(null, d.pts.map(function(p) { return p.e; })) + 0.05;
-    var ox = 55, oy = h - 40, gx = w - 30, gy = 25;
+    var minL = Math.floor((Math.min.apply(null, logs) - 0.05) * 10) / 10, maxL = Math.ceil((Math.max.apply(null, logs) + 0.05) * 10) / 10;
+    var minE = Math.min.apply(null, d.pts.map(function(p) { return p.e; })) - 0.04;
+    var maxE = Math.max.apply(null, d.pts.map(function(p) { return p.e; })) + 0.04;
+    var ox = 62, oy = h - 46, gx = w - 30, gy = 30;
     function sx(logS) { return ox + ((logS - minL) / (maxL - minL)) * (gx - ox); }
     function sy(e) { return oy - ((e - minE) / (maxE - minE)) * (oy - gy); }
-    ctx.strokeStyle = '#64748B'; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
-    ctx.strokeStyle = '#e8b84a'; ctx.lineWidth = 2; ctx.beginPath();
-    d.pts.forEach(function(p, i) {
-        var x = sx(Math.log10(p.s)), y = sy(p.e);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-    ctx.fillStyle = '#9dffc0';
+    // rejilla semilogarítmica: décadas y subdivisiones 2…9
+    ctx.lineWidth = 1;
+    for (var dec = Math.floor(minL); dec <= Math.ceil(maxL); dec++) {
+        for (var m = 1; m <= 9; m++) {
+            var lv = dec + Math.log10(m);
+            if (lv < minL || lv > maxL) continue;
+            ctx.strokeStyle = m === 1 ? 'rgba(148,163,184,0.30)' : 'rgba(148,163,184,0.09)';
+            ctx.beginPath(); ctx.moveTo(sx(lv), gy); ctx.lineTo(sx(lv), oy); ctx.stroke();
+            if (m === 1 || m === 2 || m === 5) {
+                ctx.fillStyle = '#94A3B8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+                ctx.fillText(String(Math.round(Math.pow(10, lv) * 100) / 100), sx(lv), oy + 16);
+            }
+        }
+    }
+    for (var gi = 0; gi <= 5; gi++) {
+        var ev = minE + (maxE - minE) * gi / 5;
+        ctx.strokeStyle = 'rgba(148,163,184,0.12)';
+        ctx.beginPath(); ctx.moveTo(ox, sy(ev)); ctx.lineTo(gx, sy(ev)); ctx.stroke();
+        ctx.fillStyle = '#94A3B8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'right';
+        ctx.fillText(ev.toFixed(3), ox - 6, sy(ev) + 4);
+    }
+    ctx.strokeStyle = '#64748B'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
+    // curva e–log σ′ suavizada en el espacio del papel (log σ′, e)
+    var base = d.pts.map(function(p) { return { x: Math.log10(p.s), y: p.e }; });
+    var densa = window.GeoCurvas ? GeoCurvas.monotone(base, { total: 240 }) : base;
+    _trazoMS2(ctx, densa, sx, sy);
+    ctx.strokeStyle = '#e8b84a'; ctx.lineWidth = 2.4; ctx.stroke();
     d.pts.forEach(function(p) {
-        ctx.beginPath(); ctx.arc(sx(Math.log10(p.s)), sy(p.e), 5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx(Math.log10(p.s)), sy(p.e), 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#0B1220'; ctx.fill(); ctx.strokeStyle = '#9dffc0'; ctx.lineWidth = 2; ctx.stroke();
     });
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
-    ctx.fillText('log σ\'', gx - 40, oy + 20);
-    ctx.fillText('e', ox - 15, gy + 12);
-    ctx.fillText('Cc ≈ ' + d.Cc.toFixed(3), ox + 10, gy + 20);
-    if (hint) hint.textContent = 'Curva de consolidación e–log σ\'.';
+    ctx.fillText('σ′ (kPa, escala log)', gx - 130, oy + 34);
+    ctx.fillText('e', ox - 30, gy - 8);
+    ctx.fillStyle = '#e8b84a'; ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('Cc ≈ ' + d.Cc.toFixed(3), ox + 10, gy + 16);
+    if (hint) hint.textContent = 'Curva e–log σ′ suavizada por los ' + d.pts.length + ' incrementos de carga.';
 }
 
 function guardarDatosEnsayoMS2(tipo) {
@@ -8700,32 +8808,38 @@ function graficaTriaxial() {
     var canvas = document.getElementById('canvas-triaxial');
     var hint = document.getElementById('hint-tx');
     if (!d || !canvas) { if (hint) hint.textContent = 'Primero CALCULAR.'; return; }
-    var ctx = canvas.getContext('2d');
-    var w = canvas.width, h = canvas.height;
+    var gT = window.GeoCurvas ? GeoCurvas.hidpi(canvas) : null;
+    var ctx = gT ? gT.ctx : canvas.getContext('2d');
+    var w = gT ? gT.w : canvas.width, h = gT ? gT.h : canvas.height;
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#0B1220'; ctx.fillRect(0, 0, w, h);
     var maxS = Math.max.apply(null, d.pts.map(function(p) { return p.s1; })) * 1.2;
-    var maxT = Math.max(d.c + maxS * Math.tan(d.phi * Math.PI / 180), Math.max.apply(null, d.pts.map(function(p) { return p.R; }))) * 1.25;
+    // alto ajustado a los círculos (la envolvente se recorta al borde del gráfico)
+    var maxT = Math.max(Math.max.apply(null, d.pts.map(function(p) { return p.R; })) * 1.45, d.c * 1.6, 1);
     var ox = 60, oy = h - 45, gx = w - 25, gy = 25;
-    function sx(x) { return ox + (x / maxS) * (gx - ox); }
-    function sy(y) { return oy - (y / maxT) * (oy - gy); }
-    ctx.strokeStyle = '#64748B'; ctx.beginPath(); ctx.moveTo(ox, gy); ctx.lineTo(ox, oy); ctx.lineTo(gx, oy); ctx.stroke();
-    // envelope
+    // Misma escala en σ y τ para que los círculos de Mohr sean círculos
+    var kTx = Math.min((gx - ox) / maxS, (oy - gy) / maxT);
+    maxS = (gx - ox) / kTx; maxT = (oy - gy) / kTx;
+    function sx(x) { return ox + x * kTx; }
+    function sy(y) { return oy - y * kTx; }
+    // sin números en el eje σ: ahí van las etiquetas σ1 / σ3 de cada círculo
+    _rejillaMS2(ctx, ox, oy, gx, gy, maxS, maxT, function() { return ''; }, null);
+    // envelope (recortada al área del gráfico)
+    ctx.save();
+    ctx.beginPath(); ctx.rect(ox, gy, gx - ox, oy - gy); ctx.clip();
     ctx.strokeStyle = '#e8b84a'; ctx.lineWidth = 2.5;
     ctx.beginPath();
     ctx.moveTo(sx(0), sy(d.c));
     ctx.lineTo(sx(maxS), sy(d.c + maxS * Math.tan(d.phi * Math.PI / 180)));
     ctx.stroke();
+    ctx.restore();
     var colors = ['#5ec8ff', '#9dffc0', '#ff9f7a'];
     d.pts.forEach(function(p, i) {
         var col = colors[i % 3];
         ctx.strokeStyle = col; ctx.lineWidth = 2;
         ctx.beginPath();
-        for (var k = 0; k <= 64; k++) {
-            var ang = Math.PI * k / 64;
-            var X = sx(p.p + p.R * Math.cos(ang)), Y = sy(p.R * Math.sin(ang));
-            if (k === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
-        }
+        ctx.arc(sx(p.p), sy(0), Math.abs(p.R) * kTx, Math.PI, 2 * Math.PI);
+        ctx.fillStyle = col + '1f'; ctx.fill();
         ctx.stroke();
         ctx.fillStyle = col;
         ctx.beginPath(); ctx.arc(sx(p.s1), oy, 4, 0, Math.PI * 2); ctx.fill();

@@ -310,7 +310,7 @@
                         xmin: Math.log10(0.02), xmax: Math.log10(30), ymin: 0, ymax: 100,
                         xfmt: function (v) { var d = Math.pow(10, v); return d >= 1 ? d.toFixed(1) : d.toFixed(2); },
                         yfmt: function (v) { return v.toFixed(0); },
-                        pts: M.pts.map(function (q) { return { x: Math.log10(q.x), y: q.y }; }),
+                        pts: M.pts.map(function (q) { return { x: Math.log10(q.x), y: q.y }; }), smooth: true,
                         progress: 1, color: CI, nolive: true,
                         over: function (c, X, Y) {
                             [['D10', M.d10], ['D30', M.d30], ['D60', M.d60]].forEach(function (t) {

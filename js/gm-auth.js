@@ -80,7 +80,8 @@
         'auth/invalid-email': 'El correo no es válido.',
         'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.',
         'auth/network-request-failed': 'Sin conexión. Revisa tu internet e inténtalo de nuevo.',
-        'auth/operation-not-allowed': 'El inicio de sesión con correo no está habilitado en Firebase (Authentication → Sign-in method).',
+        'auth/configuration-not-found': 'Firebase Authentication no está activado en este proyecto. Un administrador debe habilitar «Correo electrónico/contraseña» en la consola de Firebase (Authentication → Sign-in method).',
+        'auth/operation-not-allowed':'El inicio de sesión con correo no está habilitado en Firebase (Authentication → Sign-in method).',
         'auth/unauthorized-domain': 'Este sitio no está autorizado en Firebase (Authentication → Settings → Authorized domains).',
         'auth/unauthorized-continue-uri': 'Este sitio no está autorizado en Firebase (Authentication → Settings → Authorized domains).',
         'gm/no-firebase': 'Firebase no está configurado: no se puede iniciar sesión.'
