@@ -1682,3 +1682,14 @@ body.gm-crop-open { overflow: hidden !important; }
   background: rgba(var(--accent-rgb), 0.16);
   border-color: rgba(var(--accent-rgb), 0.8);
 }
+
+/* Fondo nocturno con retroexcavadora (ventana «Conoce al equipo»).
+   El id gana a la regla con !important que inyecta gm-tema.js. */
+#gmEquipoModal .gm-equipo-modal-panel {
+  background:
+    linear-gradient(180deg, rgba(5, 10, 20, 0.55) 0%, rgba(5, 10, 20, 0.25) 45%, rgba(5, 10, 20, 0.15) 100%),
+    url("../docs/equipo-fondo.webp") right bottom / cover no-repeat,
+    #050a14 !important;
+}
+/* El rótulo «// EQUIPO CREADOR» ya está en la insignia: se quita el duplicado de gm-tema.js */
+#gmEquipoModal .gm-equipo-modal-head::before { content: none !important; display: none !important; }
