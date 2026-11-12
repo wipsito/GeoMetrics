@@ -124,7 +124,9 @@
     CAD.onSend = function (texto, adj) {
         try {
             var q = norm(texto);
-            if (q && !adj && /dise[nñ]|dibuj|calcul|predimension|\bhaz\b|hazme|genera|crea\b|elabora|dame|quiero|necesito|plano|dxf|despiece|armado|detalle|esquema|muestrame|muestra/.test(q) && !/^(que es|que son|como funciona|cual es|por que|explica|define)/.test(q.trim())) {
+            /* también pedidos cortos sin verbo: «zapata combinada», «cercha de 12 m», «muro de contencion 3 m» */
+            var corto = q && q.trim().split(/\s+/).length <= 7 && !/[?¿]/.test(q);
+            if (q && !adj && (/dise[nñ]|dibuj|calcul|predimension|\bhaz\b|hazme|genera|crea\b|elabora|dame|quiero|necesito|plano|dxf|despiece|armado|detalle|esquema|muestrame|muestra/.test(q) || corto) && !/^(que es|que son|como funciona|cual es|por que|explica|define)/.test(q.trim())) {
                 var type = classify(q);
                 if (type && typeof S[type] === 'function') {
                     var o = parse(q, type), clean = {}, k; for (k in o) if (k[0] !== '_') clean[k] = o[k];
