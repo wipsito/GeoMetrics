@@ -92,3 +92,6 @@
 
 /* Prompts prediseñados de «Planos y CAD» en el panel lateral de Civix */
 .civix-cad-prompts-hint { margin: -2px 0 10px; color: #8fa3b8; font-size: 12px; line-height: 1.45; }
+/* El panel derecho es una columna flexible con scroll: sus bloques no deben encogerse
+   (si no, la tarjeta «Civix» de arriba se recorta cuando el panel es más largo que la pantalla) */
+#asistenteModal .civix-side-right > * { flex-shrink: 0 !important; }
