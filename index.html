@@ -618,6 +618,26 @@
                         <button type="button" class="civix-quick" data-q="Muéstrame tablas y fórmulas clave de la materia">Tablas y fórmulas</button>
                         <button type="button" class="civix-quick" data-q="Dame enlaces y recursos útiles de Ingeniería Civil">Enlaces de interés</button>
                     </div>
+                    <!-- Prompts prediseñados: cada uno genera el plano con el generador de «Planos y CAD»
+                         (cálculo + armado + cotas + cuadro de acero + DXF + memoria), sin usar la IA -->
+                    <div class="civix-panel-block civix-cad-prompts">
+                        <h4>📐 Planos y CAD</h4>
+                        <p class="civix-cad-prompts-hint">Generan el plano como en Planos y CAD. Edita los datos del mensaje si quieres otras medidas.</p>
+                        <button type="button" class="civix-quick" data-q="Diseña una zapata aislada para una columna de 40x40 cm con carga de 800 kN, qadm de 150 kPa y profundidad de 1.5 m">Zapata aislada</button>
+                        <button type="button" class="civix-quick" data-q="Diseña una zapata combinada para dos columnas con qadm de 150 kPa">Zapata combinada</button>
+                        <button type="button" class="civix-quick" data-q="Diseña una zapata corrida bajo muro con carga de 180 kN y qadm de 120 kPa">Zapata corrida bajo muro</button>
+                        <button type="button" class="civix-quick" data-q="Diseña una cimentación con 4 pilotes de 40 cm de diámetro y 12 m de longitud para una carga de 1500 kN">Cimentación con pilotes</button>
+                        <button type="button" class="civix-quick" data-q="Diseña un muro de contención en voladizo de 3.5 m de altura con qadm de 200 kPa">Muro de contención</button>
+                        <button type="button" class="civix-quick" data-q="Diseña una columna de 40x40 cm con carga axial de 1500 kN y altura libre de 3 m">Columna</button>
+                        <button type="button" class="civix-quick" data-q="Diseña una viga simplemente apoyada de 6 m de luz, sección 30x45 cm, carga muerta de 18 kN/m y carga viva de 10 kN/m">Viga simplemente apoyada</button>
+                        <button type="button" class="civix-quick" data-q="Diseña una viga continua de 2 tramos de 5 m con carga de 25 kN/m">Viga continua</button>
+                        <button type="button" class="civix-quick" data-q="Diseña una losa maciza de 4x5 m con carga viva de 2 kN/m²">Losa maciza</button>
+                        <button type="button" class="civix-quick" data-q="Diseña una losa nervada de 6x5 m">Losa nervada</button>
+                        <button type="button" class="civix-quick" data-q="Diseña una escalera de concreto de 2.8 m de altura y ancho de 1.2 m">Escalera</button>
+                        <button type="button" class="civix-quick" data-q="Diseña un pórtico de concreto de 2 pisos y 2 vanos de 5 m">Pórtico</button>
+                        <button type="button" class="civix-quick" data-q="Diseña una cercha Pratt de 12 m de luz con 6 paneles">Cercha de techo</button>
+                        <button type="button" class="civix-quick" data-q="Diseña un puente de losa maciza de 10 m de luz">Puente de losa</button>
+                    </div>
                 </aside>
             </div>
         </div>
@@ -2660,8 +2680,7 @@
 <script src="js/sim3d-prensa.js"></script>
     <script src="js/mezclas-calc.js"></script>
     <script src="js/gm-curvas.js"></script>
-    <script src="js/gm-ensayos-defecto.js"></script>
-    <script src="js/mezclas.js"></script>
+    <script src="js/gm-ensayos-defecto.js"></script>    <script src="js/mezclas.js"></script>
     <script src="js/mezclas-sim.js"></script>
     <script src="js/dm-extras.js"></script>
     <script src="js/est-calc.js"></script>
