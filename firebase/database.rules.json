@@ -203,12 +203,25 @@
             },
             "answers": {
               "$q": {
-                ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && data.parent().parent().child('startedAt').exists() && !data.parent().parent().child('submittedAt').exists() && (root.child('quizzes/' + $qid + '/meta').child('durationMin').val() == 0 || now <= data.parent().parent().child('startedAt').val() + root.child('quizzes/' + $qid + '/meta').child('durationMin').val() * 60000 + 20000) && now <= root.child('quizzes/' + $qid + '/meta').child('closeAt').val() + 20000 && root.child('quizzes/' + $qid + '/questions/' + $q).exists()",
+                ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && data.parent().parent().child('startedAt').exists() && !data.parent().parent().child('submittedAt').exists() && (root.child('quizzes/' + $qid + '/meta').child('durationMin').val() == 0 || now <= data.parent().parent().child('startedAt').val() + root.child('quizzes/' + $qid + '/meta').child('durationMin').val() * 60000 + 20000) && now <= root.child('quizzes/' + $qid + '/meta').child('closeAt').val() + 20000 && root.child('quizzes/' + $qid + '/questions/' + $q).exists() && !data.parent().parent().child('annulled').exists()",
                 ".validate": "(root.child('quizzes/' + $qid + '/questions/' + $q).child('type').val() == 'mc' && newData.isString() && newData.val().matches(/^[ABCD]$/)) || (root.child('quizzes/' + $qid + '/questions/' + $q).child('type').val() == 'tf' && newData.isBoolean()) || (root.child('quizzes/' + $qid + '/questions/' + $q).child('type').val() == 'open' && newData.isString() && newData.val().length <= 20000 && (!root.child('quizzes/' + $qid + '/questions/' + $q).child('maxChars').exists() || newData.val().length <= root.child('quizzes/' + $qid + '/questions/' + $q).child('maxChars').val()))"
               }
             },
             "submittedAt": {
               ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && !data.exists() && newData.val() == now && data.parent().child('startedAt').exists()"
+            },
+            "annulled": {
+              ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && !data.exists() && data.parent().child('startedAt').exists() && !data.parent().child('submittedAt').exists()",
+              ".validate": "newData.hasChildren(['reason', 'at']) && newData.child('reason').isString() && newData.child('reason').val().length <= 120 && newData.child('at').isNumber()",
+              "reason": {
+                ".validate": true
+              },
+              "at": {
+                ".validate": true
+              },
+              "$other": {
+                ".validate": false
+              }
             }
           }
         },
