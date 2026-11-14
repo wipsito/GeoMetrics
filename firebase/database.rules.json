@@ -211,7 +211,8 @@
               ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && $s == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && !data.exists() && newData.val() == now && data.parent().child('startedAt').exists()"
             }
           }
-        }
+        },
+        ".write": "(((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co')) && root.child('secure/docentes/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && root.child('quizzes/' + $qid + '/meta').child('ownerKey').val() == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')) && !newData.exists()"
       }
     },
     "grades": {
