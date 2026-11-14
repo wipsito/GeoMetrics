@@ -119,7 +119,7 @@
             publishAt: Q().now(), closeAt: Q().now() + 7 * 864e5, durationMin: s.durationMin != null ? s.durationMin : 30,
             maxAttempts: s.maxAttempts || 1, totalPoints: TOTAL, status: 'draft', version: 1,
             showScore: s.showScore !== false, feedbackAfterClose: !!s.feedbackAfterClose, oneAtATime: !!s.oneAtATime,
-            shuffleOptions: !!s.shuffleOptions, scale: 5
+            shuffleOptions: !!s.shuffleOptions, scale: 5, antiCopia: s.antiCopia !== false
         };
     }
     function nuevaPregunta(type) {
@@ -179,6 +179,7 @@
             chk('gqShuf', 'Orden aleatorio de las opciones A–D', m.shuffleOptions) +
             chk('gqShow', 'El estudiante ve su nota cuando esté calificada', m.showScore) +
             chk('gqFb', 'Mostrar respuestas correctas y explicaciones después del cierre', m.feedbackAfterClose) +
+            chk('gqAnti', '<b>Modo anticopia:</b> anular el intento (nota 0) si el estudiante cambia de pestaña, minimiza, toma captura, imprime, cierra o recarga la página', m.antiCopia !== false) +
             '</div></section>';
         var total = sumPoints(E.qs);
         h += '<section class="gq-panel"><div class="gq-qhead"><h4>Preguntas</h4><span class="gq-meter ' + (total === +m.totalPoints ? 'ok' : 'bad') + '">' + E.qs.length + ' pregunta(s) · ' + pts(total) + ' de ' + pts(m.totalPoints) + ' puntos</span></div>' +
@@ -222,6 +223,7 @@
         m.publishAt = fromLocalInput($('gqP').value); m.closeAt = fromLocalInput($('gqC').value);
         m.maxAttempts = Math.max(1, Math.min(9, parseInt($('gqAt').value, 10) || 1));
         m.oneAtATime = $('gqOne').checked; m.shuffleOptions = $('gqShuf').checked; m.showScore = $('gqShow').checked; m.feedbackAfterClose = $('gqFb').checked;
+        m.antiCopia = $('gqAnti').checked;
         if (!E.locked) {
             m.materia = $('gqMat').value; m.grupo = $('gqGr').value || 'Todos';
             m.durationMin = Math.max(0, Math.min(600, parseInt($('gqDur').value, 10) || 0));
@@ -231,7 +233,7 @@
     }
     function bindEditor() {
         var B = body(), E = S.ed;
-        ['gqT', 'gqU', 'gqD', 'gqI', 'gqP', 'gqC', 'gqDur', 'gqAt', 'gqOne', 'gqShuf', 'gqShow', 'gqFb', 'gqGr'].forEach(function (id) { var x = $(id); if (x) x.addEventListener('change', leerGenerales); });
+        ['gqT', 'gqU', 'gqD', 'gqI', 'gqP', 'gqC', 'gqDur', 'gqAt', 'gqOne', 'gqShuf', 'gqShow', 'gqFb', 'gqAnti', 'gqGr'].forEach(function (id) { var x = $(id); if (x) x.addEventListener('change', leerGenerales); });
         $('gqT').addEventListener('input', function () { E.meta.title = this.value; E.dirty = true; guardarLocal(); });
         var mat = $('gqMat'); if (mat) mat.addEventListener('change', function () { leerGenerales(); E.meta.grupo = 'Todos'; renderEditor(); });
         B.querySelectorAll('[data-add]').forEach(function (b) { b.addEventListener('click', function () { leerGenerales(); E.qs.push(nuevaPregunta(b.getAttribute('data-add'))); renderEditor(); var qs = $('gqQs'); if (qs && qs.lastElementChild) qs.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' }); }); });
@@ -413,13 +415,13 @@
             ns.forEach(function (n) {
                 var a = atts[n], g = (r.grades[s] || {})[n];
                 /* un intento vencido que ya se calificó cuenta como entregado por tiempo */
-                if (a.submittedAt || (g && g.expiredAuto)) { lastSub = n; var sm = Q().summarize(r.meta, r.questions, a, g); pend += sm.openPending; if (sm.final && (best === null || sm.nota > best.nota)) best = { n: n, nota: sm.nota, points: sm.points }; }
+                if (a.submittedAt || a.annulled || (g && g.expiredAuto)) { lastSub = n; var sm = Q().summarize(r.meta, r.questions, a, g); pend += sm.openPending; if (sm.final && (best === null || sm.nota > best.nota)) best = { n: n, nota: sm.nota, points: sm.points }; }
                 else if (!Q().expired(r.meta, a)) prog = true;
             });
             var info = r.roster[s] || {};
             rows.push({ s: s, nombre: info.nombre || (ns.length && atts[ns[0]].name) || s.replace(/_at_.*/, '').replace(/,/g, '.'), codigo: info.codigo || '', email: info.email || '', ns: ns, lastSub: lastSub,
-                submittedAt: lastSub ? (atts[lastSub].submittedAt || Q().deadline(r.meta, atts[lastSub])) : null, best: best, pend: pend,
-                estado: lastSub ? (pend ? 'Pendiente de calificación' : (best ? 'Calificado' : 'Entregado')) : (prog ? 'En progreso' : (ns.length ? 'Sin entregar' : 'No presentó')) });
+                submittedAt: lastSub ? (atts[lastSub].submittedAt || (atts[lastSub].annulled && atts[lastSub].annulled.at) || Q().deadline(r.meta, atts[lastSub])) : null, best: best, pend: pend,
+                estado: lastSub ? (atts[lastSub].annulled ? 'Anulado' : pend ? 'Pendiente de calificación' : (best ? 'Calificado' : 'Entregado')) : (prog ? 'En progreso' : (ns.length ? 'Sin entregar' : 'No presentó')) });
         });
         return rows.sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); });
     }
@@ -463,15 +465,20 @@
         var h = '<section class="gq-panel gq-detail"><div class="gq-qhead"><h4>' + esc(nombre) + '</h4><button type="button" class="gq-btn small" id="gqDetX">Cerrar detalle</button></div>';
         ns.forEach(function (n) {
             var a = atts[n], g = (r.grades[s] || {})[n] || {}, sm = Q().summarize(r.meta, r.questions, a, g);
-            h += '<div class="gq-att"><header><b>Intento ' + (+n.slice(1) + 1) + '</b><span>Inició ' + fmt(a.startedAt) + ' · ' + (a.submittedAt ? 'Entregó ' + fmt(a.submittedAt) + (a.autoSubmitted ? ' (cerrado por tiempo)' : '') : 'Sin entregar') + '</span><em>' + (sm.final ? 'Nota ' + sm.nota + ' · ' + pts(sm.points) + ' pts' : (a.submittedAt ? (g.auto ? 'Pendiente de calificación (' + sm.openPending + ')' : 'Sin calificar: pulsa «Actualizar y calificar»') : 'En curso')) + '</em></header>';
+            h += '<div class="gq-att"><header><b>Intento ' + (+n.slice(1) + 1) + '</b><span>Inició ' + fmt(a.startedAt) + ' · ' + (a.submittedAt ? 'Entregó ' + fmt(a.submittedAt) + (a.autoSubmitted ? ' (cerrado por tiempo)' : '') : 'Sin entregar') + '</span><em>' + (sm.annulled ? 'Anulado · Nota 0' : sm.final ? 'Nota ' + sm.nota + ' · ' + pts(sm.points) + ' pts' : (a.submittedAt ? (g.auto ? 'Pendiente de calificación (' + sm.openPending + ')' : 'Sin calificar: pulsa «Actualizar y calificar»') : 'En curso')) + '</em></header>';
+            if (a.annulled) {
+                h += '<div class="gq-alert">🔒 <b>Intento anulado por el modo anticopia</b> el ' + fmt(a.annulled.at) + '. Motivo: <b>' + esc(a.annulled.reason || '') + '</b>. Nota: <b>0</b>. ' +
+                    'Si fue un error (por ejemplo, se cayó la conexión del estudiante), puedes darle otro intento aumentando «Intentos máximos» en el quiz.</div>';
+            }
             qids.forEach(function (q, i) {
                 var Qn = r.questions[q], k = r.keys[q] || {}, ans = (a.answers || {})[q], has = ans !== undefined && String(ans).trim() !== '', au = (g.auto || {})[q], man = (g.manual || {})[q];
+                if (a.annulled) { au = null; man = null; }
                 h += '<div class="gq-ans"><p><b>' + (i + 1) + '.</b> ' + esc(Qn.text) + ' <small>(' + pts(Qn.points) + ' pt)</small></p>';
                 if (Qn.type === 'mc') h += '<p>Respondió: <b>' + (has ? esc(ans) + ') ' + esc((Qn.options || {})[ans] || '') : 'sin respuesta') + '</b> · Correcta: <b>' + esc(k.correct) + '</b> ' + mark(au) + ' <small class="gq-auto-tag">calificación automática</small></p>';
                 else if (Qn.type === 'tf') h += '<p>Respondió: <b>' + (has ? (ans ? 'Verdadero' : 'Falso') : 'sin respuesta') + '</b> · Correcta: <b>' + (k.correct ? 'Verdadero' : 'Falso') + '</b> ' + mark(au) + ' <small class="gq-auto-tag">calificación automática</small></p>';
                 else {
                     h += '<div class="gq-open-ans">' + (has ? esc(ans) : '<i>Sin respuesta</i>') + '</div>' + (k.criteria ? '<p class="gq-hint">Criterio: ' + esc(k.criteria) + '</p>' : '');
-                    if (has && a.submittedAt) h += '<div class="gq-grade-row" data-n="' + n + '" data-q="' + q + '"><label>Puntaje (máx. ' + pts(Qn.points) + ') <input type="number" min="0" max="' + Qn.points + '" step="any" value="' + (man && typeof man.points === 'number' ? man.points : '') + '"></label><label class="grow">Observación <input maxlength="2000" value="' + esc(man ? man.comment : '') + '" placeholder="Retroalimentación para el estudiante"></label><button type="button" class="gq-btn small primary">Guardar</button>' + (man ? '<em>✓ calificada</em>' : '<em class="warn">pendiente</em>') + '</div>';
+                    if (has && a.submittedAt && !a.annulled) h += '<div class="gq-grade-row" data-n="' + n + '" data-q="' + q + '"><label>Puntaje (máx. ' + pts(Qn.points) + ') <input type="number" min="0" max="' + Qn.points + '" step="any" value="' + (man && typeof man.points === 'number' ? man.points : '') + '"></label><label class="grow">Observación <input maxlength="2000" value="' + esc(man ? man.comment : '') + '" placeholder="Retroalimentación para el estudiante"></label><button type="button" class="gq-btn small primary">Guardar</button>' + (man ? '<em>✓ calificada</em>' : '<em class="warn">pendiente</em>') + '</div>';
                 }
                 h += '</div>';
             });
@@ -509,12 +516,12 @@
             fld('Duración (minutos, 0 = sin límite)', '<input type="number" id="gqcDur" min="0" max="600" value="' + esc(s.durationMin != null ? s.durationMin : 30) + '">') +
             fld('Intentos máximos', '<input type="number" id="gqcAt" min="1" max="9" value="' + esc(s.maxAttempts || 1) + '">') +
             fld('Puntaje de cada quiz', '<input value="5,0 (se reparte por igual entre las preguntas)" disabled>') +
-            '</div><div class="gq-checks">' + chk('gqcOne', 'Mostrar una pregunta a la vez', s.oneAtATime) + chk('gqcShuf', 'Orden aleatorio de las opciones', s.shuffleOptions) + chk('gqcShow', 'El estudiante ve su nota cuando esté calificada', s.showScore !== false) + chk('gqcFb', 'Retroalimentación después del cierre', s.feedbackAfterClose) +
+            '</div><div class="gq-checks">' + chk('gqcOne', 'Mostrar una pregunta a la vez', s.oneAtATime) + chk('gqcShuf', 'Orden aleatorio de las opciones', s.shuffleOptions) + chk('gqcShow', 'El estudiante ve su nota cuando esté calificada', s.showScore !== false) + chk('gqcFb', 'Retroalimentación después del cierre', s.feedbackAfterClose) + chk('gqcAnti', 'Modo anticopia en los quices nuevos', s.antiCopia !== false) +
             '</div><div class="gq-actions"><span id="gqcMsg" class="gq-msg"></span><button type="button" class="gq-btn primary" id="gqcSave">Guardar preferencias</button></div></section>' +
             '<section class="gq-panel"><h4>Estado del sistema</h4><ul class="gq-status"><li id="gqsDoc">Cuenta docente: comprobando…</li><li id="gqsGr">Calificador automático: comprobando…</li><li>Conexión con la base de datos: ' + (Q().isConnected() ? '✓ en línea' : '⚠ sin conexión') + '</li></ul>' +
             '<p class="gq-hint">Seguridad: las respuestas correctas se guardan aparte y los estudiantes solo pueden leerlas después del cierre si activas la retroalimentación. Las reglas de Firebase impiden editar preguntas cuando ya hay intentos, modificar respuestas después de entregar y responder fuera del tiempo.</p></section>';
         $('gqcSave').onclick = function () {
-            var n = { durationMin: Math.max(0, Math.min(600, parseInt($('gqcDur').value, 10) || 0)), maxAttempts: Math.max(1, Math.min(9, parseInt($('gqcAt').value, 10) || 1)), scale: 5, oneAtATime: $('gqcOne').checked, shuffleOptions: $('gqcShuf').checked, showScore: $('gqcShow').checked, feedbackAfterClose: $('gqcFb').checked };
+            var n = { durationMin: Math.max(0, Math.min(600, parseInt($('gqcDur').value, 10) || 0)), maxAttempts: Math.max(1, Math.min(9, parseInt($('gqcAt').value, 10) || 1)), scale: 5, oneAtATime: $('gqcOne').checked, shuffleOptions: $('gqcShuf').checked, showScore: $('gqcShow').checked, feedbackAfterClose: $('gqcFb').checked, antiCopia: $('gqcAnti').checked };
             Q().saveSettings(n).then(function () { S.settings = n; $('gqcMsg').textContent = '✓ Preferencias guardadas.'; }).catch(function (e) { $('gqcMsg').textContent = e.message; });
         };
         GeoSecure.soyDocenteConfirmado().then(function (ok) { var el = $('gqsDoc'); if (el) el.textContent = 'Cuenta docente: ' + (ok ? '✓ confirmada para quices' : '⚠ pendiente de confirmación por un administrador'); });

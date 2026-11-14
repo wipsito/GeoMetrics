@@ -168,6 +168,7 @@
     }
     /** Resumen de la nota con las mismas reglas que el Worker (auto + manual). */
     function summarize(meta, questions, attempt, grade) {
+        if (attempt && attempt.annulled) return { points: 0, nota: 0, openPending: 0, final: true, partial: 0, annulled: true, reason: String(attempt.annulled.reason || '') };
         var auto = (grade && grade.auto) || {}, manual = (grade && grade.manual) || {}, answers = (attempt && attempt.answers) || {};
         var pts = 0, pending = 0;
         Object.keys(questions || {}).forEach(function (q) {
@@ -232,6 +233,13 @@
        Solo el docente dueño del quiz puede leer las claves y escribir en grades/{quiz}
        (reglas de Firebase), así que esto corre en su sesión. */
     function calcular(meta, questions, keys, attempt, prev) {
+        /* intento anulado por el modo anticopia: todo vale 0 y la nota es final */
+        if (attempt && attempt.annulled) {
+            var z = {};
+            Object.keys(questions || {}).forEach(function (qid) { z[qid] = { points: 0, correct: false, answered: false }; });
+            return { auto: z, autoPoints: 0, objective: 0, correct: 0, openPending: 0, final: true, points: 0, nota: 0, scale: Number(meta.scale) || 5,
+                annulled: true, annulReason: String(attempt.annulled.reason || 'Intento anulado') };
+        }
         var auto = {}, manual = (prev && prev.manual) || {}, answers = (attempt && attempt.answers) || {};
         var autoPoints = 0, manualPoints = 0, openPending = 0, objective = 0, correct = 0;
         Object.keys(questions || {}).forEach(function (qid) {
@@ -273,7 +281,7 @@
                     Object.keys(r.attempts[s] || {}).forEach(function (k) {
                         var a = r.attempts[s][k];
                         if (!a || !a.startedAt) return;
-                        if (!a.submittedAt && !expired(r.meta, a)) return;         /* sigue en curso */
+                        if (!a.submittedAt && !a.annulled && !expired(r.meta, a)) return;   /* sigue en curso */
                         var prev = (r.grades[s] || {})[k] || null;
                         var g = calcular(r.meta, r.questions, r.keys, a, prev);
                         if (prev && prev.auto && canon(prev.auto) === canon(g.auto) &&
@@ -282,7 +290,8 @@
                         upd[b + 'auto'] = g.auto; upd[b + 'autoPoints'] = g.autoPoints; upd[b + 'objective'] = g.objective; upd[b + 'correct'] = g.correct;
                         upd[b + 'openPending'] = g.openPending; upd[b + 'final'] = g.final; upd[b + 'points'] = g.points; upd[b + 'nota'] = g.nota;
                         upd[b + 'scale'] = g.scale; upd[b + 'gradedAt'] = firebase.database.ServerValue.TIMESTAMP; upd[b + 'gradedBy'] = 'docente';
-                        if (!a.submittedAt) upd[b + 'expiredAuto'] = true;            /* entregado por tiempo */
+                        if (!a.submittedAt && !a.annulled) upd[b + 'expiredAuto'] = true;   /* entregado por tiempo */
+                        if (g.annulled) { upd[b + 'annulled'] = true; upd[b + 'annulReason'] = g.annulReason; upd[b + 'manual'] = null; }
                         n++;
                     });
                 });
@@ -349,14 +358,14 @@
     }
     function statusFor(item) {
         var m = item.meta, atts = item.attempts || {}, ns = Object.keys(atts).sort(), t = now();
-        var open = ns.filter(function (n) { return !atts[n].submittedAt && !expired(m, atts[n]); });
+        var open = ns.filter(function (n) { return !atts[n].submittedAt && !atts[n].annulled && !expired(m, atts[n]); });
         if (open.length) return { code: 'progress', label: 'En progreso', attempt: open[0] };
-        var graded = ns.filter(function (n) { return item.grades[n] && item.grades[n].final; });
-        var subs = ns.filter(function (n) { return atts[n].submittedAt || expired(m, atts[n]); });
+        var graded = ns.filter(function (n) { return (item.grades[n] && item.grades[n].final) || atts[n].annulled; });
+        var subs = ns.filter(function (n) { return atts[n].submittedAt || atts[n].annulled || expired(m, atts[n]); });
         var left = Math.max(0, (+m.maxAttempts || 1) - ns.length);
         var closed = m.status === 'closed' || t >= m.closeAt;
         if (!closed && left > 0 && t >= m.publishAt) return { code: 'available', label: 'Disponible', next: 'a' + ns.length, left: left, submitted: subs.length };
-        if (graded.length) return { code: 'graded', label: 'Calificado', attempt: graded[graded.length - 1], left: closed ? 0 : left };
+        if (graded.length) { var ult = graded[graded.length - 1]; return { code: 'graded', label: atts[ult].annulled ? 'Anulado' : 'Calificado', attempt: ult, left: closed ? 0 : left }; }
         if (subs.length) return { code: 'submitted', label: 'Entregado', attempt: subs[subs.length - 1], left: closed ? 0 : left };
         if (t < m.publishAt) return { code: 'soon', label: 'Próximamente', left: left };
         return { code: 'expired', label: 'Vencido', left: 0 };
@@ -389,6 +398,27 @@
     function submit(id, n) {
         return db().then(function (d) { return d.ref('attempts/' + id + '/' + myKey() + '/' + n + '/submittedAt').set(firebase.database.ServerValue.TIMESTAMP); });
     }
+
+    /* ---------------- modo anticopia ----------------
+       annulled/{reason, at}: solo lo escribe el propio estudiante, una vez, antes de entregar,
+       y no se puede borrar (reglas). Las reglas también bloquean nuevas respuestas. */
+    function annul(id, n, reason) {
+        return db().then(function (d) {
+            var ref = d.ref('attempts/' + id + '/' + myKey() + '/' + n);
+            return ref.child('annulled').set({ reason: String(reason || 'Salió de la evaluación').slice(0, 120), at: firebase.database.ServerValue.TIMESTAMP })
+                .catch(function () { return null; })                   /* ya estaba anulado */
+                .then(function () { return ref.child('submittedAt').set(firebase.database.ServerValue.TIMESTAMP).catch(function () { return null; }); });
+        });
+    }
+    /** Si se cierra la página, se recarga o se pierde la conexión, el servidor anula el intento por su cuenta. */
+    function armAnnulOnDisconnect(id, n) {
+        var od = null;
+        db().then(function (d) {
+            od = d.ref('attempts/' + id + '/' + myKey() + '/' + n + '/annulled').onDisconnect();
+            return od.set({ reason: 'Cerró o recargó la página, o perdió la conexión', at: firebase.database.ServerValue.TIMESTAMP });
+        }).catch(function () {});
+        return function cancelar() { try { if (od) return od.cancel(); } catch (e) {} return Promise.resolve(); };
+    }
     function feedbackKeys(id) { return readOrNull('quizKeys/' + id); }
 
     /** Vigila en tiempo real los índices de los cursos del estudiante: un quiz recién publicado aparece solo. */
@@ -416,6 +446,7 @@
         grade: grade, gradeLocal: gradeLocal, calcular: calcular, watchTeacher: watchTeacher, graderStatus: graderStatus,
         listForStudent: listForStudent, statusFor: statusFor, expired: expired, deadline: deadline,
         startAttempt: startAttempt, loadForTaking: loadForTaking, saveAnswer: saveAnswer, submit: submit, feedbackKeys: feedbackKeys,
+        annul: annul, armAnnulOnDisconnect: armAnnulOnDisconnect,
         watchStudent: watchStudent, unwatch: unwatch, db: db
     };
 })(window);

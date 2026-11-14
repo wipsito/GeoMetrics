@@ -63,9 +63,10 @@
         }).catch(function (e) { R.innerHTML = '<div class="gq-alert">' + esc(e.message) + '</div>'; });
     }
     function cardHtml(it) {
-        var m = it.meta, st = it.st, colors = { available: '#22d3ee', progress: '#a78bfa', submitted: '#f59e0b', graded: '#22c55e', expired: '#64748b', soon: '#64748b' };
-        var g = st.attempt && it.grades[st.attempt];
-        var score = g && g.final ? '<div class="gq-score"><b>' + esc(g.nota) + '</b><span>' + esc(g.points) + ' / ' + esc(m.totalPoints) + ' pts</span></div>' : '';
+        var m = it.meta, st = it.st, colors = { available: '#22d3ee', progress: '#a78bfa', submitted: '#f59e0b', graded: st.label === 'Anulado' ? '#ef4444' : '#22c55e', expired: '#64748b', soon: '#64748b' };
+        var g = st.attempt && it.grades[st.attempt], anul = st.attempt && it.attempts[st.attempt] && it.attempts[st.attempt].annulled;
+        var score = anul ? '<div class="gq-score bad"><b>0,0</b><span>Anulado</span></div>'
+            : g && g.final ? '<div class="gq-score"><b>' + esc(g.nota) + '</b><span>' + esc(g.points) + ' / ' + esc(m.totalPoints) + ' pts</span></div>' : '';
         var btn = st.code === 'available' ? '<button type="button" class="gq-btn primary" data-go="start" data-id="' + it.id + '">' + (st.submitted ? 'Nuevo intento' : 'Iniciar evaluación') + '</button>'
             : st.code === 'progress' ? '<button type="button" class="gq-btn primary" data-go="continue" data-id="' + it.id + '">Continuar</button>'
             : (st.code === 'submitted' || st.code === 'graded') ? '<button type="button" class="gq-btn" data-go="result" data-id="' + it.id + '">Ver resultado</button>' : '';
@@ -79,13 +80,22 @@
         ov.className = 'gq-modal';
         ov.innerHTML = '<div class="gq-dlg" role="dialog" aria-modal="true"><header><div><small class="gq-k">ANTES DE EMPEZAR</small><h3>' + esc(m.title) + '</h3></div><button type="button" class="gq-x" data-close aria-label="Cerrar">✕</button></header><div class="gq-dlg-body">' +
             (m.instructions ? '<div class="gq-instr"><b>Instrucciones del docente</b><p>' + esc(m.instructions) + '</p></div>' : '') +
-            '<ul class="gq-rules"><li>' + (m.durationMin ? 'Tendrás <b>' + m.durationMin + ' minutos</b> desde que pulses «Comenzar». El tiempo lo controla el servidor: cerrar la página no lo detiene.' : 'No hay límite de tiempo, pero debes entregar antes del ' + fmt(m.closeAt) + '.') + '</li>' +
+            '<ul class="gq-rules"><li>' + (m.durationMin ? 'Tendrás <b>' + m.durationMin + ' minutos</b> desde que pulses «Comenzar». El tiempo lo controla el servidor' + (m.antiCopia !== false ? '.' : ': cerrar la página no lo detiene.') : 'No hay límite de tiempo, pero debes entregar antes del ' + fmt(m.closeAt) + '.') + '</li>' +
             '<li>Tus respuestas se guardan solas mientras avanzas.</li><li>Al entregar ya no podrás cambiar tus respuestas.</li>' +
-            '<li>Te quedan <b>' + it.st.left + '</b> intento(s).</li></ul></div>' +
+            '<li>Te quedan <b>' + it.st.left + '</b> intento(s).</li></ul>' +
+            (m.antiCopia !== false ? '<div class="gq-anticopia"><b>⚠ Modo anticopia activo</b><p>Tu intento se <b>anula con nota 0</b> si durante la evaluación:</p><ul>' +
+                '<li>cambias de pestaña, minimizas la ventana o abres otra aplicación;</li>' +
+                '<li>tomas una captura de pantalla o intentas imprimir;</li>' +
+                '<li>cierras o recargas la página, pulsas «Salir» o pierdes la conexión a internet.</li></ul>' +
+                '<p>Copiar y pegar están desactivados. Asegúrate de tener buena conexión y de no recibir llamadas antes de comenzar.</p>' +
+                '<label class="gq-chk"><input type="checkbox" data-acepto> Entiendo y acepto estas condiciones</label></div>' : '') +
+            '</div>' +
             '<footer><button type="button" class="gq-btn" data-close>Cancelar</button><button type="button" class="gq-btn primary" data-ok>Comenzar</button></footer></div>';
         doc.body.appendChild(ov);
         ov.querySelectorAll('[data-close]').forEach(function (b) { b.onclick = function () { ov.remove(); }; });
-        ov.querySelector('[data-ok]').onclick = function () {
+        var acepto = ov.querySelector('[data-acepto]'), okBtn = ov.querySelector('[data-ok]');
+        if (acepto) { okBtn.disabled = true; acepto.onchange = function () { okBtn.disabled = !acepto.checked; }; }
+        okBtn.onclick = function () {
             var b = this; b.disabled = true; b.textContent = 'Iniciando…';
             var u = sesion() || {};
             Q().startAttempt(it.id, it.st.next, u.nombre || '').then(function () { ov.remove(); abrir(it.id, it.st.next); })
@@ -104,6 +114,7 @@
         Q().loadForTaking(id).then(function (d) {
             var att = d.attempts[n];
             if (!att || !att.startedAt) throw new Error('No se encontró el intento.');
+            if (att.annulled) { avisoAnulado(String(att.annulled.reason || '')); cargar(); return; }
             if (att.submittedAt) { toast('Este intento ya fue entregado.'); cargar(); return; }
             var qids = Object.keys(d.questions).sort(function (a, b) { return d.questions[a].order - d.questions[b].order; });
             T = { id: id, n: n, meta: d.meta, qs: d.questions, qids: qids, att: att, answers: Object.assign({}, att.answers || {}), pending: {}, idx: 0, locked: false, timers: [] };
@@ -112,7 +123,87 @@
             Object.keys(local).forEach(function (q) { if (d.questions[q] && T.answers[q] !== local[q].v) { T.answers[q] = local[q].v; T.pending[q] = true; } });
             pintar();
             sincronizar();
+            vigilar();
         }).catch(function (e) { toast(e.message, true); });
+    }
+
+    /* ======================= Modo anticopia ======================= */
+    function anticopia() { return T && T.meta && T.meta.antiCopia !== false; }
+    function vigilar() {
+        if (!anticopia()) return;
+        T.cancelarDesconexion = Q().armAnnulOnDisconnect(T.id, T.n);   /* cerrar, recargar o perder conexión */
+        var enCampo = function (e) { return e.target && e.target.closest && e.target.closest('textarea.gq-open'); };
+        var h = {
+            vis: function () { if (doc.visibilityState === 'hidden') anular('Cambió de pestaña, minimizó la ventana o abrió otra aplicación'); },
+            blur: function () {
+                if (!T) return;
+                clearTimeout(T.blurT);
+                /* margen corto para notificaciones del sistema; la herramienta de recortes y otras ventanas sí anulan */
+                T.blurT = setTimeout(function () { if (T && !doc.hasFocus()) anular('Salió de la ventana de la evaluación'); }, 1200);
+            },
+            focus: function () { if (T) clearTimeout(T.blurT); },
+            key: function (e) {
+                var k = String(e.key || '').toLowerCase(), mod = e.ctrlKey || e.metaKey;
+                if (k === 'printscreen' || e.keyCode === 44) { e.preventDefault(); anular('Intentó tomar una captura de pantalla'); return; }
+                if (mod && e.shiftKey && /^(s|3|4|5)$/.test(k)) { e.preventDefault(); anular('Intentó tomar una captura de pantalla'); return; }
+                if (mod && k === 'p') { e.preventDefault(); anular('Intentó imprimir la evaluación'); return; }
+                if (mod && (k === 'v' || ((k === 'c' || k === 'x' || k === 'a') && !enCampo(e)) || k === 'u' || k === 's')) e.preventDefault();
+            },
+            keyup: function (e) { if (String(e.key || '').toLowerCase() === 'printscreen' || e.keyCode === 44) anular('Intentó tomar una captura de pantalla'); },
+            bloquear: function (e) { if (e.type === 'copy' && enCampo(e)) return; e.preventDefault(); },
+            imprimir: function () { anular('Intentó imprimir la evaluación'); },
+            salir: function () { anular('Cerró o recargó la página'); }
+        };
+        doc.addEventListener('visibilitychange', h.vis);
+        global.addEventListener('blur', h.blur);
+        global.addEventListener('focus', h.focus);
+        doc.addEventListener('keydown', h.key, true);
+        doc.addEventListener('keyup', h.keyup, true);
+        ['copy', 'cut', 'paste', 'contextmenu', 'dragstart'].forEach(function (ev) { doc.addEventListener(ev, h.bloquear, true); });
+        global.addEventListener('beforeprint', h.imprimir);
+        global.addEventListener('pagehide', h.salir);
+        T.dejarDeVigilar = function () {
+            doc.removeEventListener('visibilitychange', h.vis);
+            global.removeEventListener('blur', h.blur);
+            global.removeEventListener('focus', h.focus);
+            doc.removeEventListener('keydown', h.key, true);
+            doc.removeEventListener('keyup', h.keyup, true);
+            ['copy', 'cut', 'paste', 'contextmenu', 'dragstart'].forEach(function (ev) { doc.removeEventListener(ev, h.bloquear, true); });
+            global.removeEventListener('beforeprint', h.imprimir);
+            global.removeEventListener('pagehide', h.salir);
+        };
+        /* marca de agua con el nombre del estudiante: desalienta las fotos a la pantalla */
+        var u = sesion() || {}, nom = String(u.nombre || Q().myEmail() || '').slice(0, 40);
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="360" height="200"><text x="20" y="110" transform="rotate(-22 180 100)" fill="rgba(148,163,184,0.10)" font-family="Arial" font-size="18">' +
+            nom.replace(/[<&"]/g, '') + ' · ' + new Date().toLocaleDateString('es-CO') + '</text></svg>';
+        var body = $('gqTBody'); if (body) body.style.backgroundImage = 'url("data:image/svg+xml;utf8,' + encodeURIComponent(svg) + '")';
+        var info = doc.querySelector('#gqTake .gq-take-info');
+        if (info && !info.querySelector('.gq-ac-badge')) info.insertAdjacentHTML('afterbegin', '<span class="gq-ac-badge" title="Si sales de la evaluación, el intento se anula">🔒 Anticopia</span>');
+    }
+    function anular(motivo) {
+        if (!T || T.locked || T.anulando || T.entregando) return;
+        T.anulando = true; bloquear();
+        var id = T.id, n = T.n;
+        if (T.dejarDeVigilar) T.dejarDeVigilar();
+        Q().annul(id, n, motivo).then(function () {
+            backupClear(id, n);
+            if (T && T.cancelarDesconexion) T.cancelarDesconexion();
+            cerrarTake();
+            avisoAnulado(motivo);
+            cargar();
+        }).catch(function () { cerrarTake(); avisoAnulado(motivo); cargar(); });
+    }
+    function avisoAnulado(motivo) {
+        if (doc.querySelector('.gq-modal.gq-anulado')) return;
+        var ov = doc.createElement('div');
+        ov.className = 'gq-modal gq-anulado';
+        ov.innerHTML = '<div class="gq-dlg" role="alertdialog" aria-modal="true"><header><h3>Intento anulado</h3></header><div class="gq-dlg-body">' +
+            '<div class="gq-result bad"><b>0,0</b><span>Nota del intento</span></div>' +
+            '<p>El modo anticopia anuló tu intento. Motivo: <b>' + esc(motivo || 'salió de la evaluación') + '</b>.</p>' +
+            '<p class="gq-hint">Tu docente verá el motivo en los resultados. Si fue un error (por ejemplo, se cayó tu internet), comunícate con él.</p></div>' +
+            '<footer><button type="button" class="gq-btn primary" data-close>Entendido</button></footer></div>';
+        doc.body.appendChild(ov);
+        ov.querySelector('[data-close]').onclick = function () { ov.remove(); };
     }
     function pintar() {
         var m = T.meta, old = $('gqTake'); if (old) old.remove();
@@ -257,8 +348,9 @@
         if (!T || T.entregando) return;
         T.entregando = true; bloquear();
         var btn = $('gqSubmit'); if (btn) { btn.disabled = true; btn.textContent = 'Entregando…'; }
-        var id = T.id, n = T.n;
-        sincronizar().then(function () { return Q().submit(id, n); }).catch(function (e) {
+        var id = T.id, n = T.n, cancelar = T.cancelarDesconexion;
+        if (T.dejarDeVigilar) T.dejarDeVigilar();
+        sincronizar().then(function () { return cancelar ? cancelar() : null; }).then(function () { return Q().submit(id, n); }).catch(function (e) {
             // Si el intento ya estaba entregado (otra pestaña o el servidor por tiempo) no es un error
             if (/permission/i.test(String(e.code || e.message))) return null;
             throw e;
@@ -271,17 +363,24 @@
             return Q().listForStudent(sesion()).then(function (l) { var it = l.filter(function (x) { return x.id === id; })[0]; if (it) { it.st = Q().statusFor(it); verResultado(it); } cargar(); });
         }).catch(function (e) {
             T.entregando = false;
+            if (anticopia()) vigilar();   /* la entrega falló: vuelve a vigilar */
             if (btn) { btn.disabled = false; btn.textContent = 'Finalizar y entregar'; }
             toast('No se pudo entregar (' + e.message + '). Tus respuestas siguen guardadas en este equipo: vuelve a intentarlo.', true);
         });
     }
     function salir() {
+        if (anticopia()) {
+            var m2 = 'Este quiz tiene el modo anticopia activo: si sales ahora, tu intento se anula y tu nota será 0. Para terminar sin perder tu trabajo, usa «Finalizar y entregar».';
+            (global.gmConfirm ? global.gmConfirm(m2, { titulo: '¿Salir y anular el intento?', okTexto: 'Salir y anular' }) : Promise.resolve(global.confirm(m2)))
+                .then(function (ok) { if (ok) anular('Salió de la evaluación con el botón «Salir»'); });
+            return;
+        }
         var pend = T && Object.keys(T.pending).length;
         var msg = 'Puedes volver y continuar mientras haya tiempo.' + (T && T.meta.durationMin ? ' El reloj sigue corriendo.' : '') + (pend ? ' Hay respuestas sin sincronizar: quedaron guardadas en este equipo.' : '');
         (global.gmConfirm ? global.gmConfirm(msg, { titulo: '¿Salir de la evaluación?', okTexto: 'Salir' }) : Promise.resolve(global.confirm(msg))).then(function (ok) { if (ok) { cerrarTake(); cargar(); } });
     }
     function cerrarTake() {
-        if (T) T.timers.forEach(clearInterval);
+        if (T) { T.timers.forEach(clearInterval); clearTimeout(T.blurT); if (T.dejarDeVigilar) T.dejarDeVigilar(); }
         T = null;
         var o = $('gqTake'); if (o) o.remove();
         doc.documentElement.classList.remove('gq-noscroll');
@@ -294,7 +393,9 @@
         Promise.all([Q().loadForTaking(it.id), afterClose ? Q().feedbackKeys(it.id) : Promise.resolve(null)]).then(function (r) {
             var qs = r[0].questions, keys = r[1], qids = Object.keys(qs).sort(function (a, b) { return qs[a].order - qs[b].order; });
             var ov = doc.createElement('div'); ov.className = 'gq-modal';
-            var head = g && g.final
+            var head = att.annulled
+                ? '<div class="gq-result bad"><b>0,0</b><span>Intento anulado por el modo anticopia: ' + esc(att.annulled.reason || '') + '</span></div>'
+                : g && g.final
                 ? '<div class="gq-result ok"><b>' + esc(g.nota) + '</b><span>' + esc(g.points) + ' de ' + esc(m.totalPoints) + ' puntos</span></div>'
                 : '<div class="gq-result"><b>Entregado</b><span>' + (m.showScore ? 'Pendiente de calificación: tu docente debe revisar las preguntas abiertas.' : 'Tu docente no publica la nota en este quiz.') + '</span></div>';
             var h = '<div class="gq-dlg wide" role="dialog" aria-modal="true"><header><div><small class="gq-k">RESULTADO · INTENTO ' + (+String(n).slice(1) + 1) + '</small><h3>' + esc(m.title) + '</h3></div><button type="button" class="gq-x" data-close aria-label="Cerrar">✕</button></header><div class="gq-dlg-body">' + head +
@@ -319,7 +420,8 @@
         if (b) setTimeout(render, 0);
     });
     global.addEventListener('beforeunload', function (e) {
-        if (T && Object.keys(T.pending).length) { e.preventDefault(); e.returnValue = ''; }
+        /* con anticopia: el navegador pide confirmación antes de cerrar (cerrar anula el intento) */
+        if (T && !T.locked && (anticopia() || Object.keys(T.pending).length)) { e.preventDefault(); e.returnValue = ''; }
     });
     global.GeoQuizEstudiante = { render: render };
 })(window);
