@@ -132,7 +132,7 @@
                 return { id: duplicar ? Q().uid('p') : k, type: q.type, text: q.text, points: q.points, image: q.image || '', options: q.options || { A: '', B: '', C: '', D: '' }, correct: key.correct !== undefined ? key.correct : (q.type === 'tf' ? true : 'A'), explanation: key.explanation || '', criteria: key.criteria || '', maxChars: q.maxChars || 1500, order: q.order };
             }).sort(function (a, b) { return a.order - b.order; });
             var meta = Object.assign({}, qz.meta);
-            if (duplicar) { meta.title = meta.title + ' (copia)'; meta.status = 'draft'; meta.version = 1; delete meta.createdAt; }
+            if (duplicar) { meta.title = Q().limpiarTitulo(meta.title); meta.status = 'draft'; meta.version = 1; delete meta.createdAt; }
             S.ed = { id: duplicar ? Q().uid('q') : id, meta: meta, qs: qs, locked: !duplicar && qz.hasAttempts, dirty: false };
             go('crear');
         }).catch(function (e) { toast(e.message, true); });
@@ -451,7 +451,7 @@
             '<section class="gq-panel"><h4>Aciertos por pregunta objetiva</h4>' + (perQ.length ? perQ.map(function (p) { return '<div class="gq-bar-row"><span>P' + p.i + '</span><i><b style="width:' + (p.pct || 0) + '%"></b></i><em>' + (p.pct === null ? '—' : p.pct + ' %') + '</em></div>'; }).join('') : '<p class="gq-hint">Este quiz no tiene preguntas objetivas.</p>') + '</section></div>';
         h += '<section class="gq-panel"><h4>Estudiantes</h4><div class="gq-table-wrap"><table class="gq-table"><thead><tr><th>Estudiante</th><th>Estado</th><th>Entrega</th><th>Puntaje</th><th>Nota</th><th>Por calificar</th><th></th></tr></thead><tbody>' +
             (rows.length ? rows.map(function (x) {
-                return '<tr><td><b>' + esc(x.nombre) + '</b>' + (x.codigo ? '<small>' + esc(x.codigo) + '</small>' : '') + '</td><td><span class="gq-st ' + esc(x.estado.split(' ')[0].toLowerCase()) + '">' + esc(x.estado) + '</span></td><td>' + fmt(x.submittedAt) + '</td><td>' + (x.best ? pts(x.best.points) + ' / ' + pts(m.totalPoints) : '—') + '</td><td>' + (x.best ? '<b>' + x.best.nota + '</b>' : '—') + '</td><td>' + (x.pend || '—') + '</td><td>' + (x.ns.length ? '<button type="button" class="gq-btn small" data-det="' + esc(x.s) + '">Ver detalle</button>' : '') + '</td></tr>';
+                return '<tr><td><b>' + esc(x.nombre) + '</b>' + (x.codigo ? '<small>' + esc(x.codigo) + '</small>' : '') + '</td><td><span class="gq-st ' + esc(x.estado.split(' ')[0].toLowerCase()) + '">' + esc(x.estado) + '</span></td><td>' + fmt(x.submittedAt) + '</td><td>' + (x.best ? pts(x.best.points) + ' / ' + pts(m.totalPoints) : '—') + '</td><td>' + (x.best ? '<b class="' + Q().claseNota(x.best.nota, m.scale) + '">' + x.best.nota + '</b>' : '—') + '</td><td>' + (x.pend || '—') + '</td><td>' + (x.ns.length ? '<button type="button" class="gq-btn small" data-det="' + esc(x.s) + '">Ver detalle</button>' : '') + '</td></tr>';
             }).join('') : '<tr><td colspan="7">Aún no hay estudiantes inscritos en este curso.</td></tr>') + '</tbody></table></div></section><div id="gqDet"></div>';
         RB.innerHTML = h;
         RB.querySelectorAll('[data-det]').forEach(function (b) { b.onclick = function () { S.sel = b.getAttribute('data-det'); detalle(); }; });

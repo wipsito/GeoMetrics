@@ -66,7 +66,7 @@
         var m = it.meta, st = it.st, colors = { available: '#22d3ee', progress: '#a78bfa', submitted: '#f59e0b', graded: st.label === 'Anulado' ? '#ef4444' : '#22c55e', expired: '#64748b', soon: '#64748b' };
         var g = st.attempt && it.grades[st.attempt], anul = st.attempt && it.attempts[st.attempt] && it.attempts[st.attempt].annulled;
         var score = anul ? '<div class="gq-score bad"><b>0,0</b><span>Anulado</span></div>'
-            : g && g.final ? '<div class="gq-score"><b>' + esc(g.nota) + '</b><span>' + esc(g.points) + ' / ' + esc(m.totalPoints) + ' pts</span></div>' : '';
+            : g && g.final ? '<div class="gq-score ' + Q().claseNota(g.nota, m.scale) + '"><b>' + esc(g.nota) + '</b><span>' + esc(g.points) + ' / ' + esc(m.totalPoints) + ' pts</span></div>' : '';
         var btn = st.code === 'available' ? '<button type="button" class="gq-btn primary" data-go="start" data-id="' + it.id + '">' + (st.submitted ? 'Nuevo intento' : 'Iniciar evaluación') + '</button>'
             : st.code === 'progress' ? '<button type="button" class="gq-btn primary" data-go="continue" data-id="' + it.id + '">Continuar</button>'
             : (st.code === 'submitted' || st.code === 'graded') ? '<button type="button" class="gq-btn" data-go="result" data-id="' + it.id + '">Ver resultado</button>' : '';
@@ -396,7 +396,7 @@
             var head = att.annulled
                 ? '<div class="gq-result bad"><b>0,0</b><span>Intento anulado por el modo anticopia: ' + esc(att.annulled.reason || '') + '</span></div>'
                 : g && g.final
-                ? '<div class="gq-result ok"><b>' + esc(g.nota) + '</b><span>' + esc(g.points) + ' de ' + esc(m.totalPoints) + ' puntos</span></div>'
+                ? '<div class="gq-result ' + Q().claseNota(g.nota, m.scale) + '"><b>' + esc(g.nota) + '</b><span>' + esc(g.points) + ' de ' + esc(m.totalPoints) + ' puntos</span></div>'
                 : '<div class="gq-result"><b>Entregado</b><span>' + (m.showScore ? 'Pendiente de calificación: tu docente debe revisar las preguntas abiertas.' : 'Tu docente no publica la nota en este quiz.') + '</span></div>';
             var h = '<div class="gq-dlg wide" role="dialog" aria-modal="true"><header><div><small class="gq-k">RESULTADO · INTENTO ' + (+String(n).slice(1) + 1) + '</small><h3>' + esc(m.title) + '</h3></div><button type="button" class="gq-x" data-close aria-label="Cerrar">✕</button></header><div class="gq-dlg-body">' + head +
                 '<p class="gq-hint">Entregado: ' + fmt(att.submittedAt) + (att.autoSubmitted ? ' (cerrado automáticamente por tiempo)' : '') + '</p>';

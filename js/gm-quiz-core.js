@@ -88,6 +88,17 @@
         }).catch(function (e) { console.warn('[GeoQuiz] alIniciarSesion', e && e.message); });
     }
 
+    /* Quita los «(copia)» que se acumulaban al duplicar quices */
+    function limpiarTitulo(t) { var c = String(t || '').replace(/(\s*\((copia|copy)\))+\s*$/i, '').trim(); return c || String(t || ''); }
+    function limpiarMeta(m) { if (m && typeof m.title === 'string') m.title = limpiarTitulo(m.title); return m; }
+    /* Color de la nota (escala 0–5): rojo < 3,0 · amarillo 3,0–3,9 · verde ≥ 4,0 */
+    function claseNota(nota, scale) {
+        var n = Number(nota); if (!isFinite(n)) return '';
+        var s = Number(scale) || 5; if (s !== 5) n = n * 5 / s;
+        n = Math.round(n * 10) / 10;
+        return n < 3 ? 'gq-nota-baja' : n < 4 ? 'gq-nota-media' : 'gq-nota-alta';
+    }
+
     /* ---------------- docente ---------------- */
     function listMine() {
         return db().then(function (d) {
@@ -96,6 +107,7 @@
                 return Promise.all(ids.map(function (id) {
                     return Promise.all([readOrNull('quizzes/' + id + '/meta'), readOrNull('attempts/' + id)]).then(function (r) {
                         if (!r[0]) return null;
+                        limpiarMeta(r[0]);
                         var started = 0, submitted = 0;
                         Object.keys(r[1] || {}).forEach(function (s) {
                             Object.keys(r[1][s] || {}).forEach(function (n) { started++; if (r[1][s][n].submittedAt) submitted++; });
@@ -109,7 +121,7 @@
     function loadQuiz(id) {
         return Promise.all([read('quizzes/' + id), readOrNull('quizKeys/' + id), readOrNull('attempts/' + id)]).then(function (r) {
             if (!r[0]) throw new Error('El quiz no existe o no tienes acceso.');
-            return { id: id, meta: r[0].meta, questions: r[0].questions || {}, keys: r[1] || {}, hasAttempts: !!r[2] };
+            return { id: id, meta: limpiarMeta(r[0].meta), questions: r[0].questions || {}, keys: r[1] || {}, hasAttempts: !!r[2] };
         });
     }
     function attemptMaps(max) {
@@ -160,7 +172,7 @@
     }
     function results(id) {
         return Promise.all([read('quizzes/' + id), readOrNull('quizKeys/' + id), readOrNull('attempts/' + id), readOrNull('grades/' + id)]).then(function (r) {
-            var meta = r[0].meta;
+            var meta = limpiarMeta(r[0].meta);
             return readOrNull('quizEnroll/' + meta.courseKey).then(function (roster) {
                 return { id: id, meta: meta, questions: r[0].questions || {}, keys: r[1] || {}, attempts: r[2] || {}, grades: r[3] || {}, roster: roster || {} };
             });
@@ -342,6 +354,7 @@
             return Promise.all(Object.keys(ids).map(function (id) {
                 return readOrNull('quizzes/' + id + '/meta').then(function (meta) {
                     if (!meta) return null; // borrador, aún no publicado o sin acceso
+                    limpiarMeta(meta);
                     return readOrNull('attempts/' + id + '/' + me).then(function (atts) {
                         atts = atts || {};
                         var ns = Object.keys(atts).sort();
@@ -389,7 +402,7 @@
     }
     function loadForTaking(id) {
         return Promise.all([read('quizzes/' + id), readOrNull('attempts/' + id + '/' + myKey())]).then(function (r) {
-            return { id: id, meta: r[0].meta, questions: r[0].questions || {}, attempts: r[1] || {} };
+            return { id: id, meta: limpiarMeta(r[0].meta), questions: r[0].questions || {}, attempts: r[1] || {} };
         });
     }
     function saveAnswer(id, n, qid, value) {
@@ -441,6 +454,7 @@
         isConnected: function () { return connected; },
         alIniciarSesion: alIniciarSesion,
         alCerrarSesion: function () { unwatch(); stopTeacher(); },
+        limpiarTitulo: limpiarTitulo, claseNota: claseNota,
         listMine: listMine, loadQuiz: loadQuiz, saveQuiz: saveQuiz, removeQuiz: removeQuiz, setMetaFields: setMetaFields,
         results: results, summarize: summarize, saveManual: saveManual, settings: settings, saveSettings: saveSettings,
         grade: grade, gradeLocal: gradeLocal, calcular: calcular, watchTeacher: watchTeacher, graderStatus: graderStatus,
