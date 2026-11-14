@@ -63,7 +63,7 @@
                     '<button type="button" class="gq-btn" data-act="dup" data-id="' + it.id + '">Duplicar</button>' +
                     (m.status === 'published' ? '<button type="button" class="gq-btn" data-act="cerrar" data-id="' + it.id + '">Cerrar</button>' : '') +
                     (m.status === 'closed' ? '<button type="button" class="gq-btn" data-act="reabrir" data-id="' + it.id + '">Reabrir</button>' : '') +
-                    (!it.started ? '<button type="button" class="gq-btn danger" data-act="borrar" data-id="' + it.id + '">Eliminar</button>' : '') +
+                    '<button type="button" class="gq-btn danger" data-act="borrar" data-id="' + it.id + '">Eliminar</button>' +
                     '</footer></article>';
             }).join('') + '</div>';
             B.innerHTML = h;
@@ -83,9 +83,18 @@
             return;
         }
         if (act === 'borrar') {
-            confirmar('¿Eliminar «' + it.meta.title + '»? Esta acción no se puede deshacer.', 'Eliminar').then(function (ok) {
+            /* con intentos: se advierte que también se borran los intentos y las notas de los estudiantes */
+            var msg = it.started
+                ? '¿Eliminar «' + it.meta.title + '»?\n\nYa lo presentaron ' + it.students + ' estudiante(s) (' + it.submitted + ' entrega(s)). Se borrarán también sus intentos, respuestas y notas, y desaparecerán de sus calificaciones. Esta acción no se puede deshacer.\n\nSi solo quieres que nadie más lo presente, usa «Cerrar».'
+                : '¿Eliminar «' + it.meta.title + '»? Esta acción no se puede deshacer.';
+            confirmar(msg, it.started ? 'Eliminar quiz y notas' : 'Eliminar').then(function (ok) {
                 if (!ok) return;
-                Q().removeQuiz(id, it.meta.courseKey).then(function () { toast('Quiz eliminado.'); renderMis(); }).catch(function (e) { toast(e.message, true); });
+                Q().removeQuiz(id, it.meta.courseKey).then(function () {
+                    toast('Quiz eliminado.');
+                    if (S.res === id) { S.res = null; S.R = null; S.sel = null; }
+                    if (Q().watchTeacher) Q().watchTeacher();   /* deja de vigilar las entregas del quiz borrado */
+                    renderMis();
+                }).catch(function (e) { toast(/permission|denied/i.test(e.message) ? 'No tienes permiso para eliminar este quiz. Verifica que las reglas de Firebase estén actualizadas.' : e.message, true); });
             });
         }
     }

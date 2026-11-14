@@ -83,6 +83,8 @@
                 else jobs.push(d.ref('quizEnroll/' + c + '/' + me).set({ nombre: nombre, email: myEmail(), codigo: String(user.codigo || '').slice(0, 30), materia: courses[c].materia, grupo: courses[c].grupo }).catch(function () {}));
             });
             return Promise.all(jobs);
+        }).then(function () {
+            if (user.rol === 'docente' || user.rol === 'admin' || user.rol === 'administrador') watchTeacher();
         }).catch(function (e) { console.warn('[GeoQuiz] alIniciarSesion', e && e.message); });
     }
 
@@ -143,6 +145,9 @@
         // Orden importante: las reglas verifican la propiedad mirando el quiz, así que se borra al final.
         return db().then(function (d) {
             return (courseK ? d.ref('quizIndex/' + courseK + '/' + id).remove() : Promise.resolve())
+                /* intentos y notas de los estudiantes (el docente dueño solo puede borrarlos, no modificarlos) */
+                .then(function () { return d.ref('grades/' + id).remove(); })
+                .then(function () { return d.ref('attempts/' + id).remove(); })
                 .then(function () { return d.ref('quizKeys/' + id).remove(); })
                 .then(function () { return d.ref('quizzes/' + id).remove(); })
                 .then(function () { return d.ref('quizOwner/' + myKey() + '/' + id).remove(); });
@@ -202,7 +207,7 @@
         if (typeof QUIZ_CONFIG !== 'undefined' && QUIZ_CONFIG.graderUrl) return QUIZ_CONFIG.graderUrl;
         try { return new URL(AI_CONFIG.backendUrl).origin; } catch (e) { return ''; }
     }
-    function grade(id) {
+    function gradeWorker(id) {
         var base = graderBase();
         if (!base) return Promise.reject(new Error('No hay calificador configurado.'));
         return GeoAuth.token().then(function (t) {
@@ -217,6 +222,99 @@
             });
         });
     }
+
+    /* ---------------- calificación automática en el navegador del docente ----------------
+       Mismas reglas que el Worker (quiz.js → gradeAttempt):
+       · selección múltiple y falso/verdadero: se califican solas comparando con la clave;
+         cada acierto suma el puntaje de la pregunta (1 por defecto → la nota es
+         proporcional a la cantidad de preguntas acertadas);
+       · abiertas: quedan pendientes hasta que el docente las califica.
+       Solo el docente dueño del quiz puede leer las claves y escribir en grades/{quiz}
+       (reglas de Firebase), así que esto corre en su sesión. */
+    function calcular(meta, questions, keys, attempt, prev) {
+        var auto = {}, manual = (prev && prev.manual) || {}, answers = (attempt && attempt.answers) || {};
+        var autoPoints = 0, manualPoints = 0, openPending = 0, objective = 0, correct = 0;
+        Object.keys(questions || {}).forEach(function (qid) {
+            var q = questions[qid], k = (keys && keys[qid]) || {};
+            var has = Object.prototype.hasOwnProperty.call(answers, qid), ans = answers[qid];
+            if (q.type === 'mc' || q.type === 'tf') {
+                objective++;
+                var ok = has && k.correct !== undefined && ans === k.correct;
+                if (ok) correct++;
+                var pts = ok ? Number(q.points) || 0 : 0;
+                auto[qid] = { points: pts, correct: ok, answered: has };
+                autoPoints += pts;
+            } else if (!has || String(ans).trim() === '') {
+                auto[qid] = { points: 0, answered: false };
+            } else if (manual[qid] && typeof manual[qid].points === 'number') {
+                manualPoints += manual[qid].points;
+            } else {
+                openPending++;
+            }
+        });
+        var scale = Number(meta.scale) || 5, final = openPending === 0, points = Math.round((autoPoints + manualPoints) * 100) / 100;
+        return {
+            auto: auto, autoPoints: Math.round(autoPoints * 100) / 100, objective: objective, correct: correct, openPending: openPending, final: final,
+            points: final ? points : null,
+            nota: final ? Math.round(points / Number(meta.totalPoints) * scale * 10) / 10 : null,
+            scale: scale
+        };
+    }
+    /* JSON con claves ordenadas: Firebase devuelve los objetos con sus claves en orden alfabético */
+    function canon(o) {
+        if (o === null || typeof o !== 'object') return JSON.stringify(o === undefined ? null : o);
+        return '{' + Object.keys(o).sort().map(function (k) { return JSON.stringify(k) + ':' + canon(o[k]); }).join(',') + '}';
+    }
+    function gradeLocal(id) {
+        return results(id).then(function (r) {
+            return db().then(function (d) {
+                var upd = {}, n = 0;
+                Object.keys(r.attempts).forEach(function (s) {
+                    Object.keys(r.attempts[s] || {}).forEach(function (k) {
+                        var a = r.attempts[s][k];
+                        if (!a || !a.startedAt) return;
+                        if (!a.submittedAt && !expired(r.meta, a)) return;         /* sigue en curso */
+                        var prev = (r.grades[s] || {})[k] || null;
+                        var g = calcular(r.meta, r.questions, r.keys, a, prev);
+                        if (prev && prev.auto && canon(prev.auto) === canon(g.auto) &&
+                            prev.final === g.final && (prev.nota == null ? null : prev.nota) === g.nota && (prev.openPending || 0) === g.openPending) return;
+                        var b = 'grades/' + id + '/' + s + '/' + k + '/';
+                        upd[b + 'auto'] = g.auto; upd[b + 'autoPoints'] = g.autoPoints; upd[b + 'objective'] = g.objective; upd[b + 'correct'] = g.correct;
+                        upd[b + 'openPending'] = g.openPending; upd[b + 'final'] = g.final; upd[b + 'points'] = g.points; upd[b + 'nota'] = g.nota;
+                        upd[b + 'scale'] = g.scale; upd[b + 'gradedAt'] = firebase.database.ServerValue.TIMESTAMP; upd[b + 'gradedBy'] = 'docente';
+                        if (!a.submittedAt) upd[b + 'expiredAuto'] = true;            /* entregado por tiempo */
+                        n++;
+                    });
+                });
+                if (!n) return { ok: true, graded: 0, local: true };
+                return d.ref().update(upd).then(function () { return { ok: true, graded: n, local: true }; });
+            });
+        });
+    }
+    /** Califica las preguntas objetivas: con el Worker si está desplegado; si no, en el navegador del docente. */
+    function grade(id) {
+        return gradeWorker(id).catch(function (e) {
+            return gradeLocal(id).then(function (r) { r.workerError = e && e.message; return r; });
+        });
+    }
+
+    /* Mientras el docente tiene GeoMetrics abierto, las entregas nuevas de sus quices se califican solas */
+    var vigilados = [];
+    function watchTeacher() {
+        stopTeacher();
+        listMine().then(function (list) {
+            return db().then(function (d) {
+                list.forEach(function (x) {
+                    if (x.meta.status !== 'published' && x.meta.status !== 'closed') return;
+                    var ref = d.ref('attempts/' + x.id), t = 0;
+                    var h = function () { clearTimeout(t); t = setTimeout(function () { gradeLocal(x.id).catch(function () {}); }, 2500); };
+                    ref.on('value', h, function () {});
+                    vigilados.push(function () { clearTimeout(t); ref.off('value', h); });
+                });
+            });
+        }).catch(function () {});
+    }
+    function stopTeacher() { vigilados.forEach(function (f) { try { f(); } catch (e) {} }); vigilados = []; }
     function graderStatus() {
         var base = graderBase();
         if (!base) return Promise.resolve({ ok: false, configured: false });
@@ -312,10 +410,10 @@
         key: key, myKey: myKey, myEmail: myEmail, now: now, slug: slug, courseKey: courseKey, coursesOf: coursesOf, uid: uid,
         isConnected: function () { return connected; },
         alIniciarSesion: alIniciarSesion,
-        alCerrarSesion: function () { unwatch(); },
+        alCerrarSesion: function () { unwatch(); stopTeacher(); },
         listMine: listMine, loadQuiz: loadQuiz, saveQuiz: saveQuiz, removeQuiz: removeQuiz, setMetaFields: setMetaFields,
         results: results, summarize: summarize, saveManual: saveManual, settings: settings, saveSettings: saveSettings,
-        grade: grade, graderStatus: graderStatus,
+        grade: grade, gradeLocal: gradeLocal, calcular: calcular, watchTeacher: watchTeacher, graderStatus: graderStatus,
         listForStudent: listForStudent, statusFor: statusFor, expired: expired, deadline: deadline,
         startAttempt: startAttempt, loadForTaking: loadForTaking, saveAnswer: saveAnswer, submit: submit, feedbackKeys: feedbackKeys,
         watchStudent: watchStudent, unwatch: unwatch, db: db
