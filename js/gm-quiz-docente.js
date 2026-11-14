@@ -100,14 +100,26 @@
     }
 
     /* ======================= Editor ======================= */
+    /* Puntaje: todo quiz vale 5 y cada pregunta vale 5 ÷ número de preguntas.
+       (Los quices que ya tienen intentos conservan sus puntajes para no alterar notas dadas.) */
+    var TOTAL = 5;
+    function repartir(E) {
+        if (!E || E.locked) return;
+        var n = E.qs.length;
+        E.meta.totalPoints = TOTAL; E.meta.scale = 5;
+        if (!n) return;
+        var base = Math.round(TOTAL / n * 10000) / 10000;
+        E.qs.forEach(function (q, i) { q.points = i < n - 1 ? base : Math.round((TOTAL - base * (n - 1)) * 10000) / 10000; });
+    }
+    function pts(x) { return String(Math.round((Number(x) || 0) * 100) / 100).replace('.', ','); }
     function defaults() {
         var s = S.settings || {};
         return {
             title: '', description: '', materia: '', grupo: 'Todos', unit: '', instructions: '',
             publishAt: Q().now(), closeAt: Q().now() + 7 * 864e5, durationMin: s.durationMin != null ? s.durationMin : 30,
-            maxAttempts: s.maxAttempts || 1, totalPoints: 10, status: 'draft', version: 1,
+            maxAttempts: s.maxAttempts || 1, totalPoints: TOTAL, status: 'draft', version: 1,
             showScore: s.showScore !== false, feedbackAfterClose: !!s.feedbackAfterClose, oneAtATime: !!s.oneAtATime,
-            shuffleOptions: !!s.shuffleOptions, scale: s.scale || 5
+            shuffleOptions: !!s.shuffleOptions, scale: 5
         };
     }
     function nuevaPregunta(type) {
@@ -142,6 +154,7 @@
             S.ed = { id: Q().uid('q'), meta: defaults(), qs: [nuevaPregunta('mc')], locked: false, dirty: false };
         }
         var E = S.ed, m = E.meta, u = sesion() || {};
+        repartir(E);
         var mats = []; try { mats = global.aulaMateriasUsuario(u) || []; } catch (e) {}
         var grupos = ['Todos'];
         mats.forEach(function (x) { if (x.nombre === m.materia) String(x.grupo || '').split(/[,;]/).concat(x.grupos || []).forEach(function (g) { g = String(g).trim().toUpperCase(); if (g && grupos.indexOf(g) < 0) grupos.push(g); }); });
@@ -159,8 +172,8 @@
             fld('Fecha y hora de cierre', '<input type="datetime-local" id="gqC" value="' + toLocalInput(m.closeAt) + '">') +
             fld('Duración (minutos, 0 = sin límite)', '<input type="number" id="gqDur" min="0" max="600" value="' + esc(m.durationMin) + '"' + (L ? ' disabled' : '') + '>') +
             fld('Intentos máximos', '<input type="number" id="gqAt" min="1" max="9" value="' + esc(m.maxAttempts) + '">') +
-            fld('Puntaje total', '<input type="number" id="gqTot" min="0.5" step="0.5" value="' + esc(m.totalPoints) + '"' + (L ? ' disabled' : '') + '>') +
-            fld('Nota sobre', '<select id="gqSc"' + (L ? ' disabled' : '') + '><option value="5"' + (+m.scale === 5 ? ' selected' : '') + '>0,0 – 5,0</option><option value="100"' + (+m.scale === 100 ? ' selected' : '') + '>0 – 100</option></select>') +
+            fld('Puntaje total', '<input value="' + pts(m.totalPoints) + ' (nota de 0,0 a ' + pts(m.scale || 5) + ')" disabled>') +
+            fld('Valor de cada pregunta', '<input value="' + (L ? 'Según el quiz original' : (E.qs.length ? pts(TOTAL / E.qs.length) + ' pt  (5 ÷ ' + E.qs.length + (E.qs.length === 1 ? ' pregunta)' : ' preguntas)') : '—')) + '" disabled>') +
             '</div><div class="gq-checks">' +
             chk('gqOne', 'Mostrar una pregunta a la vez', m.oneAtATime) +
             chk('gqShuf', 'Orden aleatorio de las opciones A–D', m.shuffleOptions) +
@@ -168,7 +181,7 @@
             chk('gqFb', 'Mostrar respuestas correctas y explicaciones después del cierre', m.feedbackAfterClose) +
             '</div></section>';
         var total = sumPoints(E.qs);
-        h += '<section class="gq-panel"><div class="gq-qhead"><h4>Preguntas</h4><span class="gq-meter ' + (total === +m.totalPoints ? 'ok' : 'bad') + '">' + E.qs.length + ' pregunta(s) · ' + total + ' de ' + esc(m.totalPoints) + ' puntos</span></div>' +
+        h += '<section class="gq-panel"><div class="gq-qhead"><h4>Preguntas</h4><span class="gq-meter ' + (total === +m.totalPoints ? 'ok' : 'bad') + '">' + E.qs.length + ' pregunta(s) · ' + pts(total) + ' de ' + pts(m.totalPoints) + ' puntos</span></div>' +
             '<div id="gqQs" class="gq-qs">' + E.qs.map(function (q, i) { return preguntaHtml(q, i, L); }).join('') + '</div>' +
             (L ? '' : '<div class="gq-add"><span>Agregar pregunta:</span><button type="button" class="gq-btn" data-add="mc">＋ Selección múltiple</button><button type="button" class="gq-btn" data-add="tf">＋ Falso / Verdadero</button><button type="button" class="gq-btn" data-add="open">＋ Abierta</button></div>') +
             '</section>';
@@ -183,7 +196,7 @@
         var h = '<article class="gq-q" data-i="' + i + '">' +
             '<header>' + (L ? '' : '<span class="gq-drag" draggable="true" title="Arrastra para reordenar" aria-label="Arrastrar pregunta">⋮⋮</span>') + '<b>Pregunta ' + (i + 1) + '</b>' +
             '<select data-f="type"' + dis + '>' + Object.keys(TYPES).map(function (t) { return '<option value="' + t + '"' + (t === q.type ? ' selected' : '') + '>' + TYPES[t] + '</option>'; }).join('') + '</select>' +
-            '<label class="gq-pts">Puntaje <input type="number" min="0.25" step="0.25" data-f="points" value="' + esc(q.points) + '"' + dis + '></label>' +
+            '<span class="gq-pts" title="El quiz vale 5 y se reparte por igual entre las preguntas">Vale <b>' + pts(q.points) + '</b> pt</span>' +
             (q.type === 'open' ? '<span class="gq-auto-tag manual" title="Aparece en Resultados para que la califiques">La calificas tú</span>' : '<span class="gq-auto-tag" title="Se compara con la respuesta correcta al entregar">Calificación automática</span>') +
             (L ? '' : '<span class="gq-qtools"><button type="button" data-q="up" title="Subir">↑</button><button type="button" data-q="down" title="Bajar">↓</button><button type="button" data-q="dup" title="Duplicar">⧉</button><button type="button" data-q="del" title="Eliminar">✕</button></span>') +
             '</header>' +
@@ -212,17 +225,15 @@
         if (!E.locked) {
             m.materia = $('gqMat').value; m.grupo = $('gqGr').value || 'Todos';
             m.durationMin = Math.max(0, Math.min(600, parseInt($('gqDur').value, 10) || 0));
-            m.totalPoints = Math.max(0.5, Number($('gqTot').value) || 0);
-            m.scale = +$('gqSc').value || 5;
+            repartir(E);
         }
         E.dirty = true; guardarLocal();
     }
     function bindEditor() {
         var B = body(), E = S.ed;
-        ['gqT', 'gqU', 'gqD', 'gqI', 'gqP', 'gqC', 'gqDur', 'gqAt', 'gqTot', 'gqSc', 'gqOne', 'gqShuf', 'gqShow', 'gqFb', 'gqGr'].forEach(function (id) { var x = $(id); if (x) x.addEventListener('change', leerGenerales); });
+        ['gqT', 'gqU', 'gqD', 'gqI', 'gqP', 'gqC', 'gqDur', 'gqAt', 'gqOne', 'gqShuf', 'gqShow', 'gqFb', 'gqGr'].forEach(function (id) { var x = $(id); if (x) x.addEventListener('change', leerGenerales); });
         $('gqT').addEventListener('input', function () { E.meta.title = this.value; E.dirty = true; guardarLocal(); });
         var mat = $('gqMat'); if (mat) mat.addEventListener('change', function () { leerGenerales(); E.meta.grupo = 'Todos'; renderEditor(); });
-        var tot = $('gqTot'); if (tot) tot.addEventListener('change', function () { renderEditor(); });
         B.querySelectorAll('[data-add]').forEach(function (b) { b.addEventListener('click', function () { leerGenerales(); E.qs.push(nuevaPregunta(b.getAttribute('data-add'))); renderEditor(); var qs = $('gqQs'); if (qs && qs.lastElementChild) qs.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' }); }); });
         B.querySelectorAll('.gq-q').forEach(function (card) {
             var i = +card.getAttribute('data-i'), q = E.qs[i];
@@ -271,7 +282,7 @@
     }
     function refreshMeter() {
         var E = S.ed, el = body().querySelector('.gq-meter'), t = sumPoints(E.qs);
-        if (el) { el.textContent = E.qs.length + ' pregunta(s) · ' + t + ' de ' + E.meta.totalPoints + ' puntos'; el.className = 'gq-meter ' + (t === +E.meta.totalPoints ? 'ok' : 'bad'); }
+        if (el) { el.textContent = E.qs.length + ' pregunta(s) · ' + pts(t) + ' de ' + pts(E.meta.totalPoints) + ' puntos'; el.className = 'gq-meter ' + (t === +E.meta.totalPoints ? 'ok' : 'bad'); }
     }
     function cargarImagen(file, cb) {
         if (!file || !/^image\//.test(file.type)) return;
@@ -293,6 +304,7 @@
     }
     function validar(publicar) {
         var E = S.ed, m = E.meta, e = [];
+        repartir(E);
         if (!m.title) e.push('Escribe el título del quiz.');
         if (!m.materia) e.push('Selecciona la asignatura.');
         if (!publicar) return e;
@@ -310,7 +322,7 @@
             if (q.type === 'tf' && typeof q.correct !== 'boolean') e.push(n + 'indica si es verdadera o falsa.');
         });
         var t = sumPoints(E.qs);
-        if (t !== +m.totalPoints) e.push('La suma de puntajes (' + t + ') no coincide con el puntaje total (' + m.totalPoints + ').');
+        if (Math.abs(t - +m.totalPoints) > 0.01) e.push('La suma de puntajes (' + pts(t) + ') no coincide con el puntaje total (' + pts(m.totalPoints) + ').');
         return e;
     }
     function mostrarErrores(errs) {
@@ -321,7 +333,7 @@
     function serializar() {
         var E = S.ed, questions = {}, keys = {};
         E.qs.forEach(function (q, i) {
-            var o = { type: q.type, text: String(q.text || ''), points: Number(q.points) || 0.25, order: i };
+            var o = { type: q.type, text: String(q.text || ''), points: Number(q.points) > 0 ? Number(q.points) : 0.25, order: i };
             if (q.image) o.image = q.image;
             if (q.type === 'mc') o.options = { A: q.options.A || '', B: q.options.B || '', C: q.options.C || '', D: q.options.D || '' };
             if (q.type === 'open') o.maxChars = q.maxChars || 1500;
@@ -358,7 +370,7 @@
             '<div class="gq-dlg-body"><dl class="gq-sum"><div><dt>Asignatura</dt><dd>' + esc(m.materia) + ' · ' + esc(m.grupo === 'Todos' ? 'Todos los grupos' : 'Grupo ' + m.grupo) + '</dd></div><div><dt>Tiempo</dt><dd>' + (m.durationMin ? m.durationMin + ' minutos' : 'Sin límite') + '</dd></div><div><dt>Publicación</dt><dd>' + fmt(m.publishAt) + '</dd></div><div><dt>Cierre</dt><dd>' + fmt(m.closeAt) + '</dd></div><div><dt>Intentos</dt><dd>' + m.maxAttempts + '</dd></div><div><dt>Puntaje</dt><dd>' + sumPoints(E.qs) + ' / ' + m.totalPoints + '</dd></div></dl>' +
             (m.instructions ? '<div class="gq-instr"><b>Instrucciones</b><p>' + esc(m.instructions) + '</p></div>' : '') +
             E.qs.map(function (q, i) {
-                var h = '<div class="gq-pq"><header><b>' + (i + 1) + '. ' + TYPES[q.type] + '</b><span>' + q.points + ' pt</span></header><p>' + esc(q.text) + '</p>' + (q.image ? '<img src="' + esc(q.image) + '" alt="">' : '');
+                var h = '<div class="gq-pq"><header><b>' + (i + 1) + '. ' + TYPES[q.type] + '</b><span>' + pts(q.points) + ' pt</span></header><p>' + esc(q.text) + '</p>' + (q.image ? '<img src="' + esc(q.image) + '" alt="">' : '');
                 if (q.type === 'mc') h += '<ul>' + ['A', 'B', 'C', 'D'].map(function (k) { return '<li class="' + (q.correct === k ? 'right' : '') + '"><b>' + k + '.</b> ' + esc(q.options[k]) + (q.correct === k ? ' <em>✓ correcta</em>' : '') + '</li>'; }).join('') + '</ul>';
                 if (q.type === 'tf') h += '<ul><li class="' + (q.correct === true ? 'right' : '') + '">Verdadero' + (q.correct === true ? ' <em>✓</em>' : '') + '</li><li class="' + (q.correct === false ? 'right' : '') + '">Falso' + (q.correct === false ? ' <em>✓</em>' : '') + '</li></ul>';
                 if (q.type === 'open') h += '<div class="gq-ans-box">Respuesta extensa del estudiante (máx. ' + q.maxChars + ' caracteres)</div>' + (q.criteria ? '<p class="gq-hint">Criterio: ' + esc(q.criteria) + '</p>' : '');
@@ -437,7 +449,7 @@
             '<section class="gq-panel"><h4>Aciertos por pregunta objetiva</h4>' + (perQ.length ? perQ.map(function (p) { return '<div class="gq-bar-row"><span>P' + p.i + '</span><i><b style="width:' + (p.pct || 0) + '%"></b></i><em>' + (p.pct === null ? '—' : p.pct + ' %') + '</em></div>'; }).join('') : '<p class="gq-hint">Este quiz no tiene preguntas objetivas.</p>') + '</section></div>';
         h += '<section class="gq-panel"><h4>Estudiantes</h4><div class="gq-table-wrap"><table class="gq-table"><thead><tr><th>Estudiante</th><th>Estado</th><th>Entrega</th><th>Puntaje</th><th>Nota</th><th>Por calificar</th><th></th></tr></thead><tbody>' +
             (rows.length ? rows.map(function (x) {
-                return '<tr><td><b>' + esc(x.nombre) + '</b>' + (x.codigo ? '<small>' + esc(x.codigo) + '</small>' : '') + '</td><td><span class="gq-st ' + esc(x.estado.split(' ')[0].toLowerCase()) + '">' + esc(x.estado) + '</span></td><td>' + fmt(x.submittedAt) + '</td><td>' + (x.best ? x.best.points + ' / ' + m.totalPoints : '—') + '</td><td>' + (x.best ? '<b>' + x.best.nota + '</b>' : '—') + '</td><td>' + (x.pend || '—') + '</td><td>' + (x.ns.length ? '<button type="button" class="gq-btn small" data-det="' + esc(x.s) + '">Ver detalle</button>' : '') + '</td></tr>';
+                return '<tr><td><b>' + esc(x.nombre) + '</b>' + (x.codigo ? '<small>' + esc(x.codigo) + '</small>' : '') + '</td><td><span class="gq-st ' + esc(x.estado.split(' ')[0].toLowerCase()) + '">' + esc(x.estado) + '</span></td><td>' + fmt(x.submittedAt) + '</td><td>' + (x.best ? pts(x.best.points) + ' / ' + pts(m.totalPoints) : '—') + '</td><td>' + (x.best ? '<b>' + x.best.nota + '</b>' : '—') + '</td><td>' + (x.pend || '—') + '</td><td>' + (x.ns.length ? '<button type="button" class="gq-btn small" data-det="' + esc(x.s) + '">Ver detalle</button>' : '') + '</td></tr>';
             }).join('') : '<tr><td colspan="7">Aún no hay estudiantes inscritos en este curso.</td></tr>') + '</tbody></table></div></section><div id="gqDet"></div>';
         RB.innerHTML = h;
         RB.querySelectorAll('[data-det]').forEach(function (b) { b.onclick = function () { S.sel = b.getAttribute('data-det'); detalle(); }; });
@@ -451,15 +463,15 @@
         var h = '<section class="gq-panel gq-detail"><div class="gq-qhead"><h4>' + esc(nombre) + '</h4><button type="button" class="gq-btn small" id="gqDetX">Cerrar detalle</button></div>';
         ns.forEach(function (n) {
             var a = atts[n], g = (r.grades[s] || {})[n] || {}, sm = Q().summarize(r.meta, r.questions, a, g);
-            h += '<div class="gq-att"><header><b>Intento ' + (+n.slice(1) + 1) + '</b><span>Inició ' + fmt(a.startedAt) + ' · ' + (a.submittedAt ? 'Entregó ' + fmt(a.submittedAt) + (a.autoSubmitted ? ' (cerrado por tiempo)' : '') : 'Sin entregar') + '</span><em>' + (sm.final ? 'Nota ' + sm.nota + ' · ' + sm.points + ' pts' : (a.submittedAt ? (g.auto ? 'Pendiente de calificación (' + sm.openPending + ')' : 'Sin calificar: pulsa «Actualizar y calificar»') : 'En curso')) + '</em></header>';
+            h += '<div class="gq-att"><header><b>Intento ' + (+n.slice(1) + 1) + '</b><span>Inició ' + fmt(a.startedAt) + ' · ' + (a.submittedAt ? 'Entregó ' + fmt(a.submittedAt) + (a.autoSubmitted ? ' (cerrado por tiempo)' : '') : 'Sin entregar') + '</span><em>' + (sm.final ? 'Nota ' + sm.nota + ' · ' + pts(sm.points) + ' pts' : (a.submittedAt ? (g.auto ? 'Pendiente de calificación (' + sm.openPending + ')' : 'Sin calificar: pulsa «Actualizar y calificar»') : 'En curso')) + '</em></header>';
             qids.forEach(function (q, i) {
                 var Qn = r.questions[q], k = r.keys[q] || {}, ans = (a.answers || {})[q], has = ans !== undefined && String(ans).trim() !== '', au = (g.auto || {})[q], man = (g.manual || {})[q];
-                h += '<div class="gq-ans"><p><b>' + (i + 1) + '.</b> ' + esc(Qn.text) + ' <small>(' + Qn.points + ' pt)</small></p>';
+                h += '<div class="gq-ans"><p><b>' + (i + 1) + '.</b> ' + esc(Qn.text) + ' <small>(' + pts(Qn.points) + ' pt)</small></p>';
                 if (Qn.type === 'mc') h += '<p>Respondió: <b>' + (has ? esc(ans) + ') ' + esc((Qn.options || {})[ans] || '') : 'sin respuesta') + '</b> · Correcta: <b>' + esc(k.correct) + '</b> ' + mark(au) + ' <small class="gq-auto-tag">calificación automática</small></p>';
                 else if (Qn.type === 'tf') h += '<p>Respondió: <b>' + (has ? (ans ? 'Verdadero' : 'Falso') : 'sin respuesta') + '</b> · Correcta: <b>' + (k.correct ? 'Verdadero' : 'Falso') + '</b> ' + mark(au) + ' <small class="gq-auto-tag">calificación automática</small></p>';
                 else {
                     h += '<div class="gq-open-ans">' + (has ? esc(ans) : '<i>Sin respuesta</i>') + '</div>' + (k.criteria ? '<p class="gq-hint">Criterio: ' + esc(k.criteria) + '</p>' : '');
-                    if (has && a.submittedAt) h += '<div class="gq-grade-row" data-n="' + n + '" data-q="' + q + '"><label>Puntaje <input type="number" min="0" max="' + Qn.points + '" step="0.25" value="' + (man && typeof man.points === 'number' ? man.points : '') + '"></label><label class="grow">Observación <input maxlength="2000" value="' + esc(man ? man.comment : '') + '" placeholder="Retroalimentación para el estudiante"></label><button type="button" class="gq-btn small primary">Guardar</button>' + (man ? '<em>✓ calificada</em>' : '<em class="warn">pendiente</em>') + '</div>';
+                    if (has && a.submittedAt) h += '<div class="gq-grade-row" data-n="' + n + '" data-q="' + q + '"><label>Puntaje (máx. ' + pts(Qn.points) + ') <input type="number" min="0" max="' + Qn.points + '" step="any" value="' + (man && typeof man.points === 'number' ? man.points : '') + '"></label><label class="grow">Observación <input maxlength="2000" value="' + esc(man ? man.comment : '') + '" placeholder="Retroalimentación para el estudiante"></label><button type="button" class="gq-btn small primary">Guardar</button>' + (man ? '<em>✓ calificada</em>' : '<em class="warn">pendiente</em>') + '</div>';
                 }
                 h += '</div>';
             });
@@ -470,7 +482,9 @@
         D.querySelectorAll('.gq-grade-row').forEach(function (row) {
             row.querySelector('button').onclick = function () {
                 var n = row.getAttribute('data-n'), q = row.getAttribute('data-q'), ins = row.querySelectorAll('input'), pts = Number(ins[0].value), max = Number(r.questions[q].points);
-                if (ins[0].value === '' || !(pts >= 0) || pts > max) { toast('El puntaje debe estar entre 0 y ' + max + '.', true); return; }
+                /* el máximo puede tener decimales (5 ÷ 3 = 1,6667): 1,67 escrito por el docente cuenta como el máximo */
+                if (pts > max && pts - max < 0.01) pts = max;
+                if (ins[0].value === '' || !(pts >= 0) || pts > max) { toast('El puntaje debe estar entre 0 y ' + String(Math.round(max * 100) / 100).replace('.', ',') + '.', true); return; }
                 var g = (r.grades[s] || {})[n];
                 /* si la parte automática (selección múltiple y F/V) aún no está, se califica primero */
                 var listo = (g && g.auto) ? Promise.resolve(g) : Q().gradeLocal(S.res).then(function () { return Q().results(S.res); }).then(function (rr) { S.R = rr; return (rr.grades[s] || {})[n]; });
@@ -485,7 +499,7 @@
         });
         D.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    function mark(au) { return au ? (au.correct ? '<span class="gq-ok">✓ +' + au.points + '</span>' : '<span class="gq-bad">✗ 0</span>') : '<span class="gq-hint">sin calificar</span>'; }
+    function mark(au) { return au ? (au.correct ? '<span class="gq-ok">✓ +' + pts(au.points) + '</span>' : '<span class="gq-bad">✗ 0</span>') : '<span class="gq-hint">sin calificar</span>'; }
 
     /* ======================= Configuración ======================= */
     function renderConfig() {
@@ -494,17 +508,17 @@
             '<section class="gq-panel"><h4>Valores por defecto de tus quices nuevos</h4><div class="gq-form">' +
             fld('Duración (minutos, 0 = sin límite)', '<input type="number" id="gqcDur" min="0" max="600" value="' + esc(s.durationMin != null ? s.durationMin : 30) + '">') +
             fld('Intentos máximos', '<input type="number" id="gqcAt" min="1" max="9" value="' + esc(s.maxAttempts || 1) + '">') +
-            fld('Nota sobre', '<select id="gqcSc"><option value="5"' + ((s.scale || 5) === 5 ? ' selected' : '') + '>0,0 – 5,0</option><option value="100"' + (s.scale === 100 ? ' selected' : '') + '>0 – 100</option></select>') +
+            fld('Puntaje de cada quiz', '<input value="5,0 (se reparte por igual entre las preguntas)" disabled>') +
             '</div><div class="gq-checks">' + chk('gqcOne', 'Mostrar una pregunta a la vez', s.oneAtATime) + chk('gqcShuf', 'Orden aleatorio de las opciones', s.shuffleOptions) + chk('gqcShow', 'El estudiante ve su nota cuando esté calificada', s.showScore !== false) + chk('gqcFb', 'Retroalimentación después del cierre', s.feedbackAfterClose) +
             '</div><div class="gq-actions"><span id="gqcMsg" class="gq-msg"></span><button type="button" class="gq-btn primary" id="gqcSave">Guardar preferencias</button></div></section>' +
             '<section class="gq-panel"><h4>Estado del sistema</h4><ul class="gq-status"><li id="gqsDoc">Cuenta docente: comprobando…</li><li id="gqsGr">Calificador automático: comprobando…</li><li>Conexión con la base de datos: ' + (Q().isConnected() ? '✓ en línea' : '⚠ sin conexión') + '</li></ul>' +
             '<p class="gq-hint">Seguridad: las respuestas correctas se guardan aparte y los estudiantes solo pueden leerlas después del cierre si activas la retroalimentación. Las reglas de Firebase impiden editar preguntas cuando ya hay intentos, modificar respuestas después de entregar y responder fuera del tiempo.</p></section>';
         $('gqcSave').onclick = function () {
-            var n = { durationMin: Math.max(0, Math.min(600, parseInt($('gqcDur').value, 10) || 0)), maxAttempts: Math.max(1, Math.min(9, parseInt($('gqcAt').value, 10) || 1)), scale: +$('gqcSc').value || 5, oneAtATime: $('gqcOne').checked, shuffleOptions: $('gqcShuf').checked, showScore: $('gqcShow').checked, feedbackAfterClose: $('gqcFb').checked };
+            var n = { durationMin: Math.max(0, Math.min(600, parseInt($('gqcDur').value, 10) || 0)), maxAttempts: Math.max(1, Math.min(9, parseInt($('gqcAt').value, 10) || 1)), scale: 5, oneAtATime: $('gqcOne').checked, shuffleOptions: $('gqcShuf').checked, showScore: $('gqcShow').checked, feedbackAfterClose: $('gqcFb').checked };
             Q().saveSettings(n).then(function () { S.settings = n; $('gqcMsg').textContent = '✓ Preferencias guardadas.'; }).catch(function (e) { $('gqcMsg').textContent = e.message; });
         };
         GeoSecure.soyDocenteConfirmado().then(function (ok) { var el = $('gqsDoc'); if (el) el.textContent = 'Cuenta docente: ' + (ok ? '✓ confirmada para quices' : '⚠ pendiente de confirmación por un administrador'); });
-        Q().graderStatus().then(function (st) { var el = $('gqsGr'); if (el) el.textContent = 'Calificador automático: ' + (st.ok && st.configured ? '✓ activo' : st.ok ? '⚠ el Worker responde pero falta configurar la cuenta de servicio' : '⚠ no disponible (las objetivas se califican cuando el Worker esté activo)'); });
+        Q().graderStatus().then(function (st) { var el = $('gqsGr'); if (el) el.textContent = 'Calificador automático: ' + (st.ok && st.configured ? '✓ activo' : st.ok ? '⚠ el Worker responde pero falta configurar la cuenta de servicio' : '⚠ Worker no disponible: las objetivas se califican desde tu panel mientras lo tengas abierto'); });
     }
 
     /* ======================= Recursos (igual que el aula del estudiante) ======================= */
