@@ -175,6 +175,7 @@
             '<header>' + (L ? '' : '<span class="gq-drag" draggable="true" title="Arrastra para reordenar" aria-label="Arrastrar pregunta">⋮⋮</span>') + '<b>Pregunta ' + (i + 1) + '</b>' +
             '<select data-f="type"' + dis + '>' + Object.keys(TYPES).map(function (t) { return '<option value="' + t + '"' + (t === q.type ? ' selected' : '') + '>' + TYPES[t] + '</option>'; }).join('') + '</select>' +
             '<label class="gq-pts">Puntaje <input type="number" min="0.25" step="0.25" data-f="points" value="' + esc(q.points) + '"' + dis + '></label>' +
+            (q.type === 'open' ? '<span class="gq-auto-tag manual" title="Aparece en Resultados para que la califiques">La calificas tú</span>' : '<span class="gq-auto-tag" title="Se compara con la respuesta correcta al entregar">Calificación automática</span>') +
             (L ? '' : '<span class="gq-qtools"><button type="button" data-q="up" title="Subir">↑</button><button type="button" data-q="down" title="Bajar">↓</button><button type="button" data-q="dup" title="Duplicar">⧉</button><button type="button" data-q="del" title="Eliminar">✕</button></span>') +
             '</header>' +
             '<textarea data-f="text" rows="2" maxlength="5000" placeholder="Escribe el enunciado…"' + dis + '>' + esc(q.text) + '</textarea>' +
@@ -390,12 +391,13 @@
             var atts = r.attempts[s] || {}, ns = Object.keys(atts).sort(), best = null, lastSub = null, pend = 0, prog = false;
             ns.forEach(function (n) {
                 var a = atts[n], g = (r.grades[s] || {})[n];
-                if (a.submittedAt) { lastSub = n; var sm = Q().summarize(r.meta, r.questions, a, g); pend += sm.openPending; if (sm.final && (best === null || sm.nota > best.nota)) best = { n: n, nota: sm.nota, points: sm.points }; }
+                /* un intento vencido que ya se calificó cuenta como entregado por tiempo */
+                if (a.submittedAt || (g && g.expiredAuto)) { lastSub = n; var sm = Q().summarize(r.meta, r.questions, a, g); pend += sm.openPending; if (sm.final && (best === null || sm.nota > best.nota)) best = { n: n, nota: sm.nota, points: sm.points }; }
                 else if (!Q().expired(r.meta, a)) prog = true;
             });
             var info = r.roster[s] || {};
             rows.push({ s: s, nombre: info.nombre || (ns.length && atts[ns[0]].name) || s.replace(/_at_.*/, '').replace(/,/g, '.'), codigo: info.codigo || '', email: info.email || '', ns: ns, lastSub: lastSub,
-                submittedAt: lastSub ? atts[lastSub].submittedAt : null, best: best, pend: pend,
+                submittedAt: lastSub ? (atts[lastSub].submittedAt || Q().deadline(r.meta, atts[lastSub])) : null, best: best, pend: pend,
                 estado: lastSub ? (pend ? 'Pendiente de calificación' : (best ? 'Calificado' : 'Entregado')) : (prog ? 'En progreso' : (ns.length ? 'Sin entregar' : 'No presentó')) });
         });
         return rows.sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); });
@@ -444,8 +446,8 @@
             qids.forEach(function (q, i) {
                 var Qn = r.questions[q], k = r.keys[q] || {}, ans = (a.answers || {})[q], has = ans !== undefined && String(ans).trim() !== '', au = (g.auto || {})[q], man = (g.manual || {})[q];
                 h += '<div class="gq-ans"><p><b>' + (i + 1) + '.</b> ' + esc(Qn.text) + ' <small>(' + Qn.points + ' pt)</small></p>';
-                if (Qn.type === 'mc') h += '<p>Respondió: <b>' + (has ? esc(ans) + ') ' + esc((Qn.options || {})[ans] || '') : 'sin respuesta') + '</b> · Correcta: <b>' + esc(k.correct) + '</b> ' + mark(au) + '</p>';
-                else if (Qn.type === 'tf') h += '<p>Respondió: <b>' + (has ? (ans ? 'Verdadero' : 'Falso') : 'sin respuesta') + '</b> · Correcta: <b>' + (k.correct ? 'Verdadero' : 'Falso') + '</b> ' + mark(au) + '</p>';
+                if (Qn.type === 'mc') h += '<p>Respondió: <b>' + (has ? esc(ans) + ') ' + esc((Qn.options || {})[ans] || '') : 'sin respuesta') + '</b> · Correcta: <b>' + esc(k.correct) + '</b> ' + mark(au) + ' <small class="gq-auto-tag">calificación automática</small></p>';
+                else if (Qn.type === 'tf') h += '<p>Respondió: <b>' + (has ? (ans ? 'Verdadero' : 'Falso') : 'sin respuesta') + '</b> · Correcta: <b>' + (k.correct ? 'Verdadero' : 'Falso') + '</b> ' + mark(au) + ' <small class="gq-auto-tag">calificación automática</small></p>';
                 else {
                     h += '<div class="gq-open-ans">' + (has ? esc(ans) : '<i>Sin respuesta</i>') + '</div>' + (k.criteria ? '<p class="gq-hint">Criterio: ' + esc(k.criteria) + '</p>' : '');
                     if (has && a.submittedAt) h += '<div class="gq-grade-row" data-n="' + n + '" data-q="' + q + '"><label>Puntaje <input type="number" min="0" max="' + Qn.points + '" step="0.25" value="' + (man && typeof man.points === 'number' ? man.points : '') + '"></label><label class="grow">Observación <input maxlength="2000" value="' + esc(man ? man.comment : '') + '" placeholder="Retroalimentación para el estudiante"></label><button type="button" class="gq-btn small primary">Guardar</button>' + (man ? '<em>✓ calificada</em>' : '<em class="warn">pendiente</em>') + '</div>';
@@ -461,8 +463,12 @@
                 var n = row.getAttribute('data-n'), q = row.getAttribute('data-q'), ins = row.querySelectorAll('input'), pts = Number(ins[0].value), max = Number(r.questions[q].points);
                 if (ins[0].value === '' || !(pts >= 0) || pts > max) { toast('El puntaje debe estar entre 0 y ' + max + '.', true); return; }
                 var g = (r.grades[s] || {})[n];
-                if (!g || !g.auto) { toast('Primero pulsa «Actualizar y calificar» para la parte automática.', true); return; }
-                Q().saveManual(S.res, s, n, q, pts, ins[1].value, r.meta, r.questions, atts[n], g).then(function (sm) {
+                /* si la parte automática (selección múltiple y F/V) aún no está, se califica primero */
+                var listo = (g && g.auto) ? Promise.resolve(g) : Q().gradeLocal(S.res).then(function () { return Q().results(S.res); }).then(function (rr) { S.R = rr; return (rr.grades[s] || {})[n]; });
+                listo.then(function (g2) {
+                    if (!g2 || !g2.auto) throw new Error('No se pudo calificar la parte automática de este intento.');
+                    return Q().saveManual(S.res, s, n, q, pts, ins[1].value, r.meta, r.questions, atts[n], g2);
+                }).then(function (sm) {
                     toast(sm.final ? 'Calificación final: ' + sm.nota : 'Guardado. Faltan ' + sm.openPending + ' por calificar.');
                     return Q().results(S.res).then(function (rr) { S.R = rr; pintarResultados(); });
                 }).catch(function (e) { toast(e.message, true); });
