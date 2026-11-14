@@ -192,3 +192,7 @@
   .gq-choices.tf { flex-direction: column; }
   .gq-qtools { margin-left: 0; }
 }
+
+/* Tipo de calificación de cada pregunta (editor y detalle de resultados) */
+.gq-root .gq-auto-tag { display: inline-flex; align-items: center; padding: 3px 9px; border: 1px solid rgba(52, 211, 153, .45); border-radius: 999px; background: rgba(52, 211, 153, .08); color: #6EE7B7; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.gq-root .gq-auto-tag.manual { border-color: rgba(251, 191, 36, .45); background: rgba(251, 191, 36, .08); color: #FCD34D; }
