@@ -123,6 +123,13 @@ async function rtdb(env, method, path, body) {
 
 /* ---------------- calificación ---------------- */
 export function gradeAttempt(meta, questions, keys, attempt, prev) {
+  /* modo anticopia: intento anulado → todo en 0, nota final 0 */
+  if (attempt && attempt.annulled) {
+    const z = {};
+    Object.keys(questions || {}).forEach((qid) => { z[qid] = { points: 0, correct: false, answered: false }; });
+    return { auto: z, autoPoints: 0, objective: 0, correct: 0, openPending: 0, final: true, points: 0, nota: 0,
+      scale: Number(meta.scale) || 5, annulled: true, annulReason: String(attempt.annulled.reason || 'Intento anulado') };
+  }
   const auto = {};
   const manual = (prev && prev.manual) || {};
   let autoPoints = 0, manualPoints = 0, openPending = 0, objective = 0, correct = 0;
@@ -191,14 +198,16 @@ async function gradeQuiz(env, caller, quizId) {
         att.submittedAt = now;
         finalized++;
       }
-      if (!att.submittedAt) continue;
+      if (!att.submittedAt && !att.annulled) continue;
       const prev = grades && grades[sKey] && grades[sKey][n];
       const r = gradeAttempt(meta, questions, keys, att, prev);
-      await rtdb(env, 'PATCH', 'grades/' + quizId + '/' + sKey + '/' + n, {
+      const g = {
         auto: r.auto, autoPoints: r.autoPoints, objective: r.objective, correct: r.correct,
         openPending: r.openPending, final: r.final, points: r.points, nota: r.nota, scale: r.scale,
         autoGradedAt: { '.sv': 'timestamp' },
-      });
+      };
+      if (r.annulled) { g.annulled = true; g.annulReason = r.annulReason; g.manual = null; }
+      await rtdb(env, 'PATCH', 'grades/' + quizId + '/' + sKey + '/' + n, g);
       graded++;
       if (sKey === caller.key) mine.push({ attempt: n, final: r.final, openPending: r.openPending });
     }
