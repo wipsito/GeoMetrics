@@ -117,6 +117,31 @@
     return (n[0] || '?').slice(0, 2).toUpperCase();
   }
 
+  /** Foto de perfil cargada en la página para un correo ('' si no tiene). */
+  function photoFor(email) {
+    email = normEmail(email);
+    if (!email) return '';
+    try {
+      var s = (typeof aulaGetSession === 'function') ? aulaGetSession() : null;
+      if (s && normEmail(s.email) === email && (s.foto || s.photo)) return String(s.foto || s.photo);
+    } catch (e0) {}
+    try {
+      var p = listUsers().find(function (x) { return normEmail(x.email) === email; });
+      if (p) return String(p.foto || p.photo || p.photoURL || p.avatarUrl || '');
+    } catch (e1) {}
+    return '';
+  }
+  /** Avatar del chat: foto de perfil si existe; si no (o si falla al cargar), iniciales. */
+  function avatarHtml(email, name) {
+    var ini = esc(initials(name));
+    var foto = photoFor(email);
+    if (!foto) return '<div class="fa-avatar">' + ini + '</div>';
+    return '<div class="fa-avatar fa-avatar-foto" data-ini="' + ini + '">' +
+      '<img src="' + esc(foto) + '" alt="" loading="lazy" ' +
+      'style="width:100%;height:100%;object-fit:cover;display:block" ' +
+      'onerror="var d=this.parentNode;d.classList.remove(\'fa-avatar-foto\');d.textContent=d.getAttribute(\'data-ini\')"></div>';
+  }
+
   function fmtTime(ts) {
     if (!ts) return '';
     var d = new Date(ts);
@@ -974,7 +999,7 @@
       var un = unreadCount(c, u);
       var title = chatTitle(c, u);
       return '<div class="fa-item' + active + '" data-ch-open="' + esc(c.id) + '" role="button" tabindex="0">' +
-        '<div class="fa-avatar">' + esc(initials(title)) + '</div>' +
+        (isGrupoChat(c) ? '<div class="fa-avatar">' + esc(initials(title)) + '</div>' : avatarHtml(peerOtherEmail(c, normEmail(u.email)), title)) +
         '<div class="fa-item-body"><strong>' + esc(title) + '</strong>' +
         '<p>' + esc(lastPreview(c)) + '</p></div>' +
         '<div class="fa-item-meta"><span>' + esc(fmtTime(c.updatedAt)) + '</span>' +
@@ -1011,7 +1036,7 @@
       var contacts = suggestedContacts(u);
       var opts = contacts.map(function (c) {
         return '<div class="fa-item" data-ch-start="' + esc(c.user.email) + '" role="button" tabindex="0">' +
-          '<div class="fa-avatar">' + esc(initials(fullName(c.user))) + '</div>' +
+          avatarHtml(c.user.email, fullName(c.user)) +
           '<div class="fa-item-body"><strong>' + esc(fullName(c.user)) + '</strong>' +
           '<p>' + esc((c.user.rol || '') + ' · ' + c.reason) + '</p></div></div>';
       }).join('') || '<div class="fa-status">No hay contactos. Los docentes y compañeros de tus cursos aparecerán aquí cuando existan en el sistema.</div>';
@@ -1053,7 +1078,7 @@
           esc(String(m.replyTo.text).slice(0, 120)) + '</div>';
       }
       return '<div class="fa-msg' + (mine ? ' mine' : '') + '" data-msg-id="' + esc(mid) + '">' +
-        (mine ? '' : '<div class="fa-avatar">' + esc(initials(authorName)) + '</div>') +
+        (mine ? '' : avatarHtml(fromEmail, authorName)) +
         '<div class="fa-bubble">' +
         '<button type="button" class="fa-msg-menu-btn" data-ch-msg-menu="' + esc(mid) + '" title="Opciones">⋮</button>' +
         (mine ? '' : '<div class="fa-msg-author">' + esc(authorName) + '</div>') +
@@ -1077,7 +1102,7 @@
 
     return '<div class="fa-col-main">' +
       '<div class="fa-thread-head">' +
-      '<div class="fa-avatar">' + esc(initials(title)) + '</div>' +
+      (isGrupoChat(c) ? '<div class="fa-avatar">' + esc(initials(title)) + '</div>' : avatarHtml(peerOtherEmail(c, me), title)) +
       '<div class="fa-thread-head-info"><strong>' + esc(title) + '</strong>' +
       '<span>' + esc(sub) + '</span></div>' +
       '<div class="fa-head-actions">' +
@@ -1659,7 +1684,7 @@
       var un = unreadCount(c, u);
       var title = chatTitle(c, u);
       return '<div class="fa-item' + active + '" data-ch-open="' + esc(c.id) + '" role="button" tabindex="0">' +
-        '<div class="fa-avatar">' + esc(initials(title)) + '</div>' +
+        (isGrupoChat(c) ? '<div class="fa-avatar">' + esc(initials(title)) + '</div>' : avatarHtml(peerOtherEmail(c, normEmail(u.email)), title)) +
         '<div class="fa-item-body"><strong>' + esc(title) + '</strong>' +
         '<p>' + esc(lastPreview(c)) + '</p></div>' +
         '<div class="fa-item-meta"><span>' + esc(fmtTime(c.updatedAt)) + '</span>' +
