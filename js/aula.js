@@ -6281,6 +6281,17 @@ function aulaAbrirAdmin() {
         alert('No tienes permisos de administrador.');
         return;
     }
+    /* El aula del estudiante y el panel docente se superponen a pantalla completa
+       (clases con display !important); hay que cerrarlos o taparían el panel admin. */
+    try {
+        if (window.GeoMetricsAulaVirtual && typeof GeoMetricsAulaVirtual.hide === 'function') GeoMetricsAulaVirtual.hide();
+    } catch (eH) {}
+    try {
+        var pe = document.getElementById('pantallaEstudiante');
+        if (pe) { pe.classList.remove('av-visible', 'av-root'); pe.style.cssText = ''; pe.setAttribute('hidden', ''); }
+        var pd = document.getElementById('pantallaDocente');
+        if (pd) { pd.classList.remove('av-doc-visible', 'av-docente', 'av-doc-pro'); pd.style.cssText = ''; pd.setAttribute('hidden', ''); }
+    } catch (eO) {}
     document.querySelectorAll('main').forEach(function(m) { m.style.display = 'none'; });
     var el = document.getElementById('pantallaAdmin');
     if (el) el.style.display = 'block';
