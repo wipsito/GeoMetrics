@@ -3,7 +3,6 @@
    (perfil, roles, equipo creador) dejando la marca usersDeleted/{correo}, que
    bloquea el reingreso. Una cuenta eliminada se puede volver a permitir. */
 (function (global) {
-    'use strict';
     var SUPER = 'andres.enriquezval@unipamplona.edu.co';
     var estado = { users: [], admins: [], docentes: [], deleted: [], cargando: false };
 
@@ -39,7 +38,6 @@
         var me = yo(), r = rolDe(u);
         if (u.email === me) return { ok: false, why: 'Es tu cuenta' };
         if (r === 'superadmin') return { ok: false, why: 'Superadministrador' };
-        if (r === 'admin' && me !== SUPER) return { ok: false, why: 'Solo el superadministrador elimina administradores' };
         return { ok: true };
     }
 
@@ -76,8 +74,11 @@
             var detalle = [];
             if (u.codigo) detalle.push('Código ' + esc(u.codigo));
             if (mats.length) detalle.push(esc(mats.join(', ')));
-            return '<div class="gm-usr-row" data-email="' + esc(u.email) + '">' +
-                '<div class="gm-usr-av gm-usr-av-' + r + '">' + esc(iniciales(u.nombre, u.email)) + '</div>' +
+            var foto = String(u.foto || u.photo || u.photoURL || u.avatarUrl || '');
+            var av = foto
+                ? '<div class="gm-usr-av gm-usr-av-' + r + ' con-foto" data-ini="' + esc(iniciales(u.nombre, u.email)) + '"><img src="' + esc(foto) + '" alt="" loading="lazy" onerror="var d=this.parentNode;d.classList.remove(\'con-foto\');d.textContent=d.getAttribute(\'data-ini\')"></div>'
+                : '<div class="gm-usr-av gm-usr-av-' + r + '">' + esc(iniciales(u.nombre, u.email)) + '</div>';
+            return '<div class="gm-usr-row" data-email="' + esc(u.email) + '">' + av +
                 '<div class="gm-usr-info"><strong>' + esc(u.nombre || '(sin nombre)') + (u.email === yo() ? ' <em>(tú)</em>' : '') + '</strong>' +
                 '<span class="gm-usr-mail">' + esc(u.email) + '</span>' +
                 (detalle.length ? '<span class="gm-usr-det">' + detalle.join(' · ') + '</span>' : '') + '</div>' +
@@ -204,6 +205,104 @@
         }
     });
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+    /* ---------- Botón «Cantidad de usuarios» + ventana con el conteo ---------- */
+    function esDocente(u) { return u.rol === 'docente' || estado.docentes.indexOf(u.email) >= 0; }
+    function esAdminU(u) { var r = rolDe(u); return r === 'admin' || r === 'superadmin'; }
+    function conteo() {
+        var c = { total: estado.users.length, est: 0, doc: 0, adm: 0, conFoto: 0, porMateria: {} };
+        estado.users.forEach(function (u) {
+            var d = esDocente(u);
+            if (d) c.doc++; else c.est++;
+            if (esAdminU(u)) c.adm++;
+            if (u.foto || u.photo || u.photoURL) c.conFoto++;
+            if (!d) materias(u).forEach(function (m) {
+                var nom = m.split(' · ')[0];
+                c.porMateria[nom] = (c.porMateria[nom] || 0) + 1;
+            });
+        });
+        return c;
+    }
+    function pintarBoton() {
+        var b = $('btnAdminUsrStats');
+        if (!b) return;
+        var n = b.querySelector('[data-usr-total]');
+        if (n) n.textContent = estado.cargando && !estado.users.length ? '…' : estado.users.length;
+    }
+    function asegurarBoton() {
+        var back = $('btnVolverAdmin');
+        if (!back || !back.parentNode) return;
+        var b = $('btnAdminUsrStats');
+        if (!b) {
+            b = document.createElement('button');
+            b.type = 'button'; b.id = 'btnAdminUsrStats'; b.className = 'gm-usr-stats-btn';
+            b.title = 'Ver cuántos docentes y estudiantes están registrados';
+            b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+                '<span>Cantidad de usuarios</span><b data-usr-total>…</b>';
+            b.addEventListener('click', abrirStats);
+        }
+        /* va junto a «Volver al menú», que el rediseño del panel puede mover de sitio */
+        if (b.nextSibling !== back || b.parentNode !== back.parentNode) back.parentNode.insertBefore(b, back);
+        pintarBoton();
+    }
+    function abrirStats() {
+        var ov = $('gmUsrStats');
+        if (!ov) {
+            ov = document.createElement('div');
+            ov.id = 'gmUsrStats'; ov.className = 'gm-usr-stats-ov'; ov.hidden = true;
+            ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Cantidad de usuarios');
+            document.body.appendChild(ov);
+            ov.addEventListener('click', function (ev) {
+                if (ev.target === ov || ev.target.closest('[data-stats-close]')) { ov.hidden = true; return; }
+                var f = ev.target.closest('[data-stats-filtro]');
+                if (f) {
+                    ov.hidden = true;
+                    var sel = $('adminUsrRol'), bus = $('adminUsrBuscar');
+                    if (sel) sel.value = f.getAttribute('data-stats-filtro');
+                    if (bus) bus.value = '';
+                    render();
+                    var card = $('adminUsuariosCard'); if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+            document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !ov.hidden) ov.hidden = true; });
+        }
+        function pintar() {
+            var c = conteo();
+            var pct = function (n) { return c.total ? Math.round(n * 100 / c.total) : 0; };
+            var mats = Object.keys(c.porMateria).sort(function (a, b) { return c.porMateria[b] - c.porMateria[a] || a.localeCompare(b, 'es'); });
+            var maxM = mats.length ? c.porMateria[mats[0]] : 1;
+            ov.innerHTML = '<div class="gm-usr-stats-box">' +
+                '<div class="gm-usr-stats-hd"><div><small>ADMINISTRACIÓN</small><h3>Cantidad de usuarios</h3></div>' +
+                '<button type="button" class="gm-usr-stats-x" data-stats-close aria-label="Cerrar">✕</button></div>' +
+                (estado.cargando && !c.total ? '<p class="gm-usr-vacio">Cargando usuarios…</p>' :
+                '<div class="gm-usr-stats-total"><b>' + c.total + '</b><span>usuarios registrados en total</span></div>' +
+                '<div class="gm-usr-stats-tiles">' +
+                    '<button type="button" class="gm-usr-tile t-est" data-stats-filtro="estudiante"><b>' + c.est + '</b><span>Estudiantes</span><i style="--p:' + pct(c.est) + '%"></i><small>' + pct(c.est) + '% del total</small></button>' +
+                    '<button type="button" class="gm-usr-tile t-doc" data-stats-filtro="docente"><b>' + c.doc + '</b><span>Docentes</span><i style="--p:' + pct(c.doc) + '%"></i><small>' + pct(c.doc) + '% del total</small></button>' +
+                    '<button type="button" class="gm-usr-tile t-adm" data-stats-filtro="admin"><b>' + c.adm + '</b><span>Administradores</span><i style="--p:' + pct(c.adm) + '%"></i><small>incluidos en los anteriores</small></button>' +
+                '</div>' +
+                (mats.length ? '<h4>Estudiantes por materia</h4><div class="gm-usr-stats-mats">' + mats.map(function (m) {
+                    return '<div class="gm-usr-mat"><span>' + esc(m) + '</span><i><em style="width:' + Math.max(4, Math.round(c.porMateria[m] * 100 / maxM)) + '%"></em></i><b>' + c.porMateria[m] + '</b></div>';
+                }).join('') + '</div><p class="gm-usr-stats-nota">Un estudiante inscrito en varias materias cuenta en cada una.</p>' : '') +
+                '<p class="gm-usr-stats-nota">Con foto de perfil: ' + c.conFoto + ' · Cuentas eliminadas: ' + estado.deleted.length + ' · Toca una tarjeta para ver la lista.</p>') +
+                '</div>';
+        }
+        pintar();
+        ov.hidden = false;
+        var x = ov.querySelector('[data-stats-close]'); if (x) x.focus();
+        if (!estado.users.length || estado.cargando) {
+            var p = cargar(); if (p && p.then) p.then(function () { if (!ov.hidden) pintar(); });
+        }
+    }
+    var _render = render;
+    render = function () { _render(); pintarBoton(); };
+
+    function vigilarBoton() {
+        var pant = $('pantallaAdmin');
+        asegurarBoton();
+        if (pant && global.MutationObserver) new MutationObserver(function () { if ($('btnVolverAdmin') && (!$('btnAdminUsrStats') || $('btnAdminUsrStats').nextSibling !== $('btnVolverAdmin'))) asegurarBoton(); })
+            .observe(pant, { childList: true, subtree: true });
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { bind(); vigilarBoton(); }); else { bind(); vigilarBoton(); }
     global.GeoAdminUsuarios = { cargar: cargar };
 })(window);

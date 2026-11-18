@@ -6526,30 +6526,51 @@ function aulaAdminSeguridadRender() {
         box.className = 'aula-card';
         card.parentNode.insertBefore(box, card.nextSibling);
     }
-    box.innerHTML = '<h3>🔐 Seguridad: docentes con acceso a quices</h3><p class="login-hint">Cargando…</p>';
+    if (!box.querySelector('.gm-sec-lista')) box.innerHTML = '<h3>🔐 Seguridad: docentes con acceso a quices</h3><p class="login-hint">Cargando…</p>';
     GeoSecure.docentes().then(function (conf) {
         if (conf === null) { box.innerHTML = '<h3>🔐 Seguridad</h3><p class="login-hint">Tu cuenta no tiene permisos de administrador en las reglas de Firebase.</p>'; return; }
-        var lst = aulaDocentesBase().concat(aulaDocentesExtraLoad().map(function (i) { return typeof i === 'string' ? i : (i && i.email); }))
+        /* docentes: autorizados (lista base + agregados), registrados con rol docente y ya confirmados */
+        var users = aulaLoad(AULA_KEYS.users, []) || [];
+        var lst = aulaDocentesBase()
+            .concat(aulaDocentesExtraLoad().map(function (i) { return typeof i === 'string' ? i : (i && i.email); }))
+            .concat(users.filter(function (u) { return u && u.rol === 'docente'; }).map(function (u) { return u.email; }))
+            .concat(conf)
             .map(aulaNormalizarEmail).filter(function (e, i, a) { return e && a.indexOf(e) === i; });
-        var pend = lst.filter(function (e) { return conf.indexOf(e) < 0; });
+        var filas = lst.map(function (e) {
+            var nombre = aulaNombreRegistro({ email: e });
+            var reg = users.some(function (u) { return u && aulaNormalizarEmail(u.email) === e; });
+            return { email: e, nombre: reg ? nombre : '', foto: aulaFotoUsuario({ email: e }), on: conf.indexOf(e) >= 0, reg: reg };
+        }).sort(function (a, b) { return (b.on - a.on) || (a.nombre || a.email).localeCompare(b.nombre || b.email, 'es'); });
+        var ini = function (f) { var p = String(f.nombre || f.email).split(/[\s.@]+/).filter(Boolean); return ((p[0] || '?')[0] + ((p[1] || '')[0] || '')).toUpperCase(); };
         box.innerHTML = '<h3>🔐 Seguridad: docentes con acceso a quices</h3>' +
-            '<p class="login-hint">Confirmados: <b>' + conf.length + '</b>. Solo los confirmados pueden crear y calificar quices.</p>' +
-            (pend.length
-                ? '<p class="login-hint">Revisa y confirma los docentes de la lista anterior:</p><ul>' + pend.map(function (e) { return '<li><label><input type="checkbox" data-sec-doc="' + aulaEsc(e) + '"> ' + aulaEsc(e) + '</label></li>'; }).join('') + '</ul>' +
-                  '<button type="button" class="btn-calcular" id="btnSecConfirmar">Confirmar seleccionados</button>'
-                : '<p class="login-hint">Todos los docentes autorizados están confirmados.</p>') +
-            '<p class="login-hint" id="adminSecMsg"></p>';
-        var b = document.getElementById('btnSecConfirmar');
-        if (b) b.addEventListener('click', function () {
-            var sel = Array.prototype.map.call(box.querySelectorAll('[data-sec-doc]:checked'), function (c) { return c.getAttribute('data-sec-doc'); });
-            if (!sel.length) return;
-            b.disabled = true;
-            Promise.all(sel.map(function (e) { return GeoSecure.setDocente(e, true); })).then(function (r) {
-                var ok = r.filter(Boolean).length;
-                aulaAdminSeguridadRender();
-                setTimeout(function () { var m = document.getElementById('adminSecMsg'); if (m) m.textContent = ok + ' docente(s) confirmados.'; }, 400);
+            '<p class="login-hint">Con acceso: <b>' + conf.length + '</b> de ' + filas.length + '. Solo los docentes con acceso pueden crear y calificar quices.</p>' +
+            '<p class="login-hint" id="adminSecMsg"></p>' +
+            (filas.length ? '<div class="gm-sec-lista">' + filas.map(function (f) {
+                var av = f.foto
+                    ? '<div class="gm-usr-av gm-usr-av-docente con-foto"><img src="' + aulaEsc(f.foto) + '" alt="" loading="lazy"></div>'
+                    : '<div class="gm-usr-av gm-usr-av-docente">' + aulaEsc(ini(f)) + '</div>';
+                return '<div class="gm-sec-row">' + av +
+                    '<div class="gm-usr-info"><strong>' + aulaEsc(f.nombre || 'Sin registrarse aún') + '</strong><span class="gm-usr-mail">' + aulaEsc(f.email) + '</span></div>' +
+                    '<span class="gm-sec-estado ' + (f.on ? 'on' : 'off') + '">' + (f.on ? 'Con acceso' : 'Sin acceso') + '</span>' +
+                    '<button type="button" class="gm-sec-btn' + (f.on ? ' quitar' : '') + '" data-sec-toggle="' + aulaEsc(f.email) + '" data-sec-on="' + (f.on ? '1' : '0') + '">' + (f.on ? 'Quitar acceso' : 'Otorgar acceso') + '</button>' +
+                    '</div>';
+            }).join('') + '</div>' : '<p class="login-hint">No hay docentes autorizados todavía. Agrégalos en «Agregar correo de docente».</p>');
+        if (!box.__secBound) {
+            box.__secBound = true;
+            box.addEventListener('click', function (ev) {
+                var b = ev.target.closest('[data-sec-toggle]'); if (!b) return;
+                var email = b.getAttribute('data-sec-toggle'), dar = b.getAttribute('data-sec-on') !== '1';
+                if (!dar && !confirm('¿Quitar el acceso a quices de ' + email + '?\nNo podrá crear ni calificar quices hasta que se lo vuelvas a otorgar.')) return;
+                b.disabled = true; b.textContent = dar ? 'Otorgando…' : 'Quitando…';
+                GeoSecure.setDocente(email, dar).then(function (ok) {
+                    aulaAdminSeguridadRender();
+                    setTimeout(function () {
+                        var m = document.getElementById('adminSecMsg');
+                        if (m) m.textContent = ok ? (dar ? 'Acceso otorgado a ' : 'Acceso retirado a ') + email + '.' : 'No se pudo actualizar el acceso (revisa tus permisos).';
+                    }, 400);
+                });
             });
-        });
+        }
     });
 }
 
@@ -7847,8 +7868,8 @@ function aulaAdminEquipoVisibility() {
             var s = typeof aulaGetSession === 'function' ? aulaGetSession() : null;
             email = s && s.email ? String(s.email).toLowerCase() : '';
         } catch (e0) {}
-        var superE = String(typeof AULA_SUPER_ADMIN !== 'undefined' ? AULA_SUPER_ADMIN : 'andres.enriquezval@unipamplona.edu.co').toLowerCase();
-        var show = email === superE;
+        /* superadministrador y administradores designados tienen las mismas funciones */
+        var show = !!email && aulaEsAdminEmail(email);
         if (card) card.hidden = !show;
         if (gallery) gallery.hidden = !show;
         if (!card.hidden && window.GeoMetricsEquipo) {

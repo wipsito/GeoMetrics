@@ -936,7 +936,7 @@ function syncUpUsers() {
                     aplicarEliminados(DELETED);
                     function rm(p) { return d.ref(p).remove().then(function () { return true; }).catch(function () { return false; }); }
                     var jobs = [rm('users/' + k), rm('teamCreators/' + k), rm('secure/docentes/' + k), rm('quizTeach/' + k)];
-                    if (yo === SUPER_ADMIN_EMAIL) jobs.push(rm('secure/admins/' + k));
+                    jobs.push(rm('secure/admins/' + k));
                     /* listas heredadas (arreglos o mapas) */
                     ['docentesExtra', 'admins'].forEach(function (node) {
                         jobs.push(d.ref(node).once('value').then(function (s) {
@@ -1046,7 +1046,11 @@ function syncUpUsers() {
             if (!d) return null;
             return d.ref('secure/' + kind).once('value').then(function (s) {
                 var v = s.val() || {};
-                return Object.keys(v).map(function (k) { return String(v[k]).toLowerCase(); });
+                /* el valor suele ser el correo, pero en datos antiguos puede ser `true`: se usa la clave */
+                return Object.keys(v).map(function (k) {
+                    var val = String(v[k]).toLowerCase();
+                    return val.indexOf('@') > 0 ? val : k.replace(/_at_/g, '@').replace(/,/g, '.');
+                });
             }).catch(function () { return null; });
         });
     }

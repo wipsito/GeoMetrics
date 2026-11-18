@@ -62,10 +62,12 @@
     }
   }
 
+  /** Puede administrar el equipo: superadministrador o cualquier administrador designado. */
   function isSuperAdmin() {
     var u = session();
     if (!u || !u.email) return false;
     var email = normEmail(u.email);
+    try { if (typeof aulaEsAdminEmail === 'function' && aulaEsAdminEmail(email)) return true; } catch (eA) {}
     var superE = normEmail(
       typeof AULA_SUPER_ADMIN !== 'undefined'
         ? AULA_SUPER_ADMIN
