@@ -992,7 +992,13 @@ function aulaBotonesAuth(form, ocupado) {
  */
 function aulaTrasAutenticar(email, errEl) {
     email = aulaNormalizarEmail(email);
-    return GeoCloud.syncDown().then(function () {
+    var eliminada = (GeoCloud.amIDeleted ? GeoCloud.amIDeleted() : Promise.resolve(false));
+    return eliminada.then(function (fue) {
+        if (!fue) return GeoCloud.syncDown();
+        if (errEl) errEl.textContent = 'Tu cuenta fue eliminada por un administrador. Si crees que es un error, comunícate con el equipo de GeoMetrics.';
+        GeoAuth.signOut();
+        throw { gmEliminada: true };
+    }).then(function () {
         var users = aulaLoad(AULA_KEYS.users, []);
         var idx = users.findIndex(function (u) { return u && aulaNormalizarEmail(u.email) === email; });
         var existing = idx >= 0 ? users[idx] : null;
@@ -1047,6 +1053,9 @@ function aulaTrasAutenticar(email, errEl) {
         try { if (window.GeoQuiz && GeoQuiz.alIniciarSesion) GeoQuiz.alIniciarSesion(user); } catch (eQ) {}
         try { if (aulaEsAdminEmail(email) && window.GeoSecure) GeoSecure.stripLegacyPasswords(); } catch (eS) {}
         return user;
+    }).catch(function (ex) {
+        if (ex && ex.gmEliminada) return null;
+        throw ex;
     });
 }
 

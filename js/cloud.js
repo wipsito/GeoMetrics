@@ -120,12 +120,41 @@
         return String(email || '').toLowerCase().replace(/\./g, ',').replace(/@/g, '_at_');
     }
 
+    /* ---- Cuentas eliminadas por un administrador (usersDeleted/{correo}) ----
+       Mientras exista la marca, ningún navegador vuelve a subir ese usuario y las reglas
+       le niegan el acceso a los datos. */
+    var DELETED_KEY = 'geometrics_users_deleted';
+    var DELETED = {};
+    try { DELETED = JSON.parse(localStorage.getItem(DELETED_KEY) || '{}') || {}; } catch (eD) { DELETED = {}; }
+    function isDeletedUser(email) { return !!(email && DELETED[emailKey(email)]); }
+    function sinEliminados(list) { return (list || []).filter(function (u) { return u && u.email && !isDeletedUser(u.email); }); }
+    function aplicarEliminados(map) {
+        DELETED = map || {};
+        try { localStorage.setItem(DELETED_KEY, JSON.stringify(DELETED)); } catch (e) {}
+        /* quita de este navegador los usuarios eliminados */
+        try {
+            var before = localStorage.getItem('geometrics_users') || '[]', arr = JSON.parse(before) || [];
+            var after = JSON.stringify(sinEliminados(arr));
+            if (after !== before) {
+                localStorage.setItem('geometrics_users', after);
+                try { global.dispatchEvent(new CustomEvent('geometrics-users-updated', { detail: { deleted: true } })); } catch (e2) {}
+            }
+        } catch (e3) {}
+        try { global.dispatchEvent(new CustomEvent('geometrics-users-deleted', { detail: { total: Object.keys(DELETED).length } })); } catch (e4) {}
+    }
+    var deletedListening = false;
+    function startDeletedSync() {
+        if (deletedListening || !isOn() || !authed()) return;
+        deletedListening = true;
+        cloudListen('usersDeleted', function (val) { aplicarEliminados(val && typeof val === 'object' ? val : {}); });
+    }
+
     function pullUsers() {
         return cloudGet('users').then(function (val) {
             if (!val || typeof val !== 'object') return null;
             var arr = [];
             Object.keys(val).forEach(function (k) {
-                if (val[k] && val[k].email) arr.push(val[k]);
+                if (val[k] && val[k].email && !isDeletedUser(val[k].email)) arr.push(val[k]);
             });
             return arr;
         });
@@ -133,6 +162,7 @@
 
     function pushUser(user) {
         if (!user || !user.email) return Promise.resolve(false);
+        if (isDeletedUser(user.email)) return Promise.resolve(false);   /* cuenta eliminada: no se vuelve a subir */
         var copy = {};
         Object.keys(user).forEach(function (k) {
             if (k === 'password') return; // la contraseña la custodia Firebase Authentication
@@ -376,7 +406,7 @@ function syncUpUsers() {
         if (!isOn()) return Promise.resolve(false);
         try {
             var users = JSON.parse(localStorage.getItem('geometrics_users') || '[]');
-            return Promise.all((users || []).filter(function (u) { return u && u.email; }).map(function (u) {
+            return Promise.all(sinEliminados(users).map(function (u) {
                 return pushUser(u);
             })).then(function () { return true; });
         } catch (e) { return Promise.resolve(false); }
@@ -396,7 +426,7 @@ function syncUpUsers() {
             try { civix = JSON.parse(localStorage.getItem('geometrics_civix_conversations') || '{}'); } catch (eC) { civix = {}; }
             var umap = {};
             (users || []).forEach(function (u) {
-                if (!u || !u.email) return;
+                if (!u || !u.email || isDeletedUser(u.email)) return;
                 var copy = Object.assign({}, u);
                 delete copy.password;
                 umap[emailKey(u.email)] = copy;
@@ -422,10 +452,10 @@ function syncUpUsers() {
         if (!Array.isArray(localU)) localU = [];
         var byE = {};
         localU.forEach(function (u) {
-            if (u && u.email) byE[String(u.email).toLowerCase()] = u;
+            if (u && u.email && !isDeletedUser(u.email)) byE[String(u.email).toLowerCase()] = u;
         });
         users.forEach(function (u) {
-            if (!u || !u.email) return;
+            if (!u || !u.email || isDeletedUser(u.email)) return;
             var k = String(u.email).toLowerCase();
             var prev = byE[k];
             if (!prev) { byE[k] = u; return; }
@@ -463,6 +493,7 @@ function syncUpUsers() {
         });
     }
     function startUsersSync() {
+        startDeletedSync();
         if (usersListening || !isOn() || !authed()) return;
         usersListening = true;
         listenUsers();
@@ -859,7 +890,99 @@ function syncUpUsers() {
         });
     }
 
+    /* ---- Administración de cuentas registradas ---- */
+    var SUPER_ADMIN_EMAIL = 'andres.enriquezval@unipamplona.edu.co';
+    /** Todos los perfiles guardados en users/ (incluye los que solo existen en la nube). */
+    function listAllUsers() {
+        return cloudGet('users').then(function (val) {
+            var out = [];
+            if (val && typeof val === 'object') Object.keys(val).forEach(function (k) {
+                var u = val[k];
+                if (!u || typeof u !== 'object') return;
+                var email = String(u.email || emailKeyToEmail(k) || '').toLowerCase();
+                if (!email || isDeletedUser(email)) return;
+                var c = Object.assign({}, u); delete c.password;
+                c.email = email; c._key = k;
+                out.push(c);
+            });
+            return out;
+        });
+    }
+    /** Cuentas marcadas como eliminadas: [{key,email,at,by}] */
+    function listDeletedUsers() {
+        return cloudGet('usersDeleted').then(function (val) {
+            if (val && typeof val === 'object') aplicarEliminados(val);
+            return Object.keys(val || {}).map(function (k) { return Object.assign({ key: k }, val[k]); })
+                .sort(function (a, b) { return (b.at || 0) - (a.at || 0); });
+        });
+    }
+    /**
+     * Elimina una cuenta de la base de datos: deja la marca usersDeleted/{correo}
+     * (bloquea el reingreso y la resubida desde otros navegadores) y borra su perfil y roles.
+     */
+    function deleteUser(email) {
+        email = String(email || '').trim().toLowerCase();
+        var yo = String(myEmailSafe() || '').toLowerCase();
+        if (!email) return Promise.reject(new Error('Correo vacío.'));
+        if (email === SUPER_ADMIN_EMAIL) return Promise.reject(new Error('El superadministrador no se puede eliminar.'));
+        if (email === yo) return Promise.reject(new Error('No puedes eliminar tu propia cuenta.'));
+        var k = emailKey(email);
+        return init().then(function (d) {
+            if (!d) throw new Error('Sin conexión con la base de datos.');
+            return d.ref('usersDeleted/' + k).set({ email: email, at: firebase.database.ServerValue.TIMESTAMP, by: yo })
+                .catch(function (e) { throw new Error('No tienes permiso para eliminar esta cuenta (' + (e && e.message || e) + ').'); })
+                .then(function () {
+                    DELETED[k] = { email: email, at: Date.now(), by: yo };
+                    aplicarEliminados(DELETED);
+                    function rm(p) { return d.ref(p).remove().then(function () { return true; }).catch(function () { return false; }); }
+                    var jobs = [rm('users/' + k), rm('teamCreators/' + k), rm('secure/docentes/' + k), rm('quizTeach/' + k)];
+                    if (yo === SUPER_ADMIN_EMAIL) jobs.push(rm('secure/admins/' + k));
+                    /* listas heredadas (arreglos o mapas) */
+                    ['docentesExtra', 'admins'].forEach(function (node) {
+                        jobs.push(d.ref(node).once('value').then(function (s) {
+                            var v = s.val();
+                            if (!v) return false;
+                            var match = function (x) { return String((x && x.email) || x || '').toLowerCase() === email; };
+                            var nuevo, cambio = false;
+                            if (Array.isArray(v)) { nuevo = v.filter(function (x) { if (match(x)) { cambio = true; return false; } return x != null; }); }
+                            else { nuevo = {}; Object.keys(v).forEach(function (kk) { if (match(v[kk]) || kk === k) cambio = true; else nuevo[kk] = v[kk]; }); }
+                            return cambio ? d.ref(node).set(nuevo).then(function () { return true; }) : false;
+                        }).catch(function () { return false; }));
+                    });
+                    return Promise.all(jobs);
+                }).then(function () { return true; });
+        });
+    }
+    /** Quita la marca de eliminada para que la persona pueda registrarse de nuevo. */
+    function restoreUser(email) {
+        var k = emailKey(email);
+        return init().then(function (d) {
+            if (!d) throw new Error('Sin conexión con la base de datos.');
+            return d.ref('usersDeleted/' + k).remove().then(function () {
+                delete DELETED[k];
+                aplicarEliminados(DELETED);
+                return true;
+            });
+        });
+    }
+    /** ¿La cuenta con sesión fue eliminada? (cada persona puede leer solo su propia marca) */
+    function amIDeleted() {
+        var e = myEmailSafe();
+        if (!e) return Promise.resolve(false);
+        return init().then(function (d) {
+            if (!d) return false;
+            return d.ref('usersDeleted/' + emailKey(e)).once('value').then(function (s) { return s.exists(); }).catch(function () { return false; });
+        });
+    }
+    function myEmailSafe() { try { return global.GeoAuth ? GeoAuth.email() : ''; } catch (e) { return ''; } }
+
     global.GeoCloud = {
+        listAllUsers: listAllUsers,
+        listDeletedUsers: listDeletedUsers,
+        deleteUser: deleteUser,
+        restoreUser: restoreUser,
+        amIDeleted: amIDeleted,
+        isDeletedUser: isDeletedUser,
         cloudGet: cloudGet,
         cloudSet: cloudSet,
         purgeLukeSaintDemo: purgeLukeSaintDemo,
@@ -962,7 +1085,7 @@ function syncUpUsers() {
     function bootUsersSync() { try { startUsersSync(); } catch (e) {} }
     global.addEventListener('geometrics-auth-changed', function (ev) {
         if (ev.detail && ev.detail.verified) bootUsersSync();
-        else { usersListening = false; }
+        else { usersListening = false; deletedListening = false; }
     });
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(bootUsersSync, 300); });
     else setTimeout(bootUsersSync, 300);
