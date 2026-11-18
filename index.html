@@ -2298,6 +2298,29 @@
                 <div id="adminTeamList" class="gm-equipo-grid gm-team-admin-gallery"></div>
             </div>
 
+            <div class="aula-card gm-usr-card" id="adminUsuariosCard">
+                <div class="gm-usr-head">
+                    <h3>Usuarios registrados <span id="adminUsrCount" class="gm-team-count-badge">0</span></h3>
+                    <button type="button" class="btn-limpiar" id="btnAdminUsrRefresh">Actualizar</button>
+                </div>
+                <p class="login-hint">Todas las cuentas guardadas en la base de datos. «Eliminar» borra el perfil, sus roles y su lugar en el equipo, y bloquea su ingreso a GeoMetrics.</p>
+                <div class="gm-usr-filtros">
+                    <input type="search" id="adminUsrBuscar" placeholder="Buscar por nombre, correo, código o materia…" autocomplete="off" spellcheck="false">
+                    <select id="adminUsrRol">
+                        <option value="">Todos los roles</option>
+                        <option value="estudiante">Estudiantes</option>
+                        <option value="docente">Docentes</option>
+                        <option value="admin">Administradores</option>
+                    </select>
+                </div>
+                <p id="adminUsrMsg" class="gm-usr-msg" hidden></p>
+                <div id="adminUsrLista" class="gm-usr-lista"></div>
+                <details class="gm-usr-eliminados" id="adminUsrEliminadosBox">
+                    <summary>Cuentas eliminadas <span id="adminUsrDelCount">0</span></summary>
+                    <div id="adminUsrEliminados" class="gm-usr-lista"></div>
+                </details>
+            </div>
+
 </section>
     </main>
 
@@ -2693,6 +2716,7 @@
     <script src="js/foros-avisos.js"></script>
     <script src="js/equipo-creador.js"></script>
     <script src="js/aula-virtual.js"></script>
+    <script src="js/gm-admin-usuarios.js"></script>
     <script src="js/gm-quiz-core.js"></script>
     <script src="js/gm-quiz-docente.js"></script>
     <script src="js/gm-quiz-estudiante.js"></script>
