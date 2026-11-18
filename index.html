@@ -71,6 +71,9 @@
 
     <link rel="stylesheet" href="css/foros-avisos.css">
     <link rel="stylesheet" href="css/equipo-creador.css">
+    <link rel="stylesheet" href="css/gm-verified.css">
+    <link rel="stylesheet" href="css/gm-docente-perfil.css">
+    <link rel="stylesheet" href="css/gm-docente-dash.css">
     <link rel="stylesheet" href="css/geo-intro.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="css/teoria-diseno.css">
@@ -2007,13 +2010,52 @@
                     <!-- Solo docente -->
                     <div id="perfilCamposDocente" hidden>
                         <div class="perfil-grid-2">
-                            <label>Título / cargo
-                                <input type="text" id="perfilTitulo" placeholder="Ej. Ing., MSc., Docente">
+                            <label>Título profesional
+                                <select id="perfilTituloSel" aria-label="Título profesional">
+                                    <option value="">Selecciona tu título…</option>
+                                    <option>Ingeniero Civil</option>
+                                    <option>Ingeniera Civil</option>
+                                    <option>Arquitecto</option>
+                                    <option>Arquitecta</option>
+                                    <option>Ingeniero Ambiental</option>
+                                    <option>Ingeniera Ambiental</option>
+                                    <option>Geólogo</option>
+                                    <option>Geóloga</option>
+                                    <option>Licenciado en Matemáticas</option>
+                                    <option>Licenciada en Matemáticas</option>
+                                    <option>Físico</option>
+                                    <option>Física</option>
+                                    <option value="__otro">Otro (escribir)…</option>
+                                </select>
+                                <input type="text" id="perfilTitulo" placeholder="Escribe tu título profesional" maxlength="80" hidden>
                             </label>
-                            <label>Departamento
-                                <input type="text" id="perfilDepartamento" placeholder="Ingeniería Civil">
+                            <label>Posgrado <span class="perfil-hint-inline">(opcional)</span>
+                                <input type="text" id="perfilPosgrado" list="perfilPosgradoOpciones" maxlength="100" placeholder="Ej. Magíster en Estructuras">
+                                <datalist id="perfilPosgradoOpciones">
+                                    <option value="Especialista en Estructuras">
+                                    <option value="Especialista en Geotecnia">
+                                    <option value="Especialista en Vías y Transporte">
+                                    <option value="Especialista en Gerencia de Proyectos">
+                                    <option value="Magíster en Estructuras">
+                                    <option value="Magíster en Geotecnia">
+                                    <option value="Magíster en Ingeniería Civil">
+                                    <option value="Magíster en Recursos Hidráulicos">
+                                    <option value="Magíster en Vías y Transporte">
+                                    <option value="Doctor en Ingeniería">
+                                    <option value="Doctora en Ingeniería">
+                                </datalist>
                             </label>
                         </div>
+                        <label>Programa académico
+                            <input type="text" id="perfilDepartamento" list="perfilProgramaOpciones" maxlength="100" placeholder="Programa de Ingeniería Civil">
+                            <datalist id="perfilProgramaOpciones">
+                                <option value="Programa de Ingeniería Civil">
+                                <option value="Programa de Arquitectura">
+                                <option value="Programa de Ingeniería Ambiental">
+                                <option value="Departamento de Ciencias Básicas">
+                                <option value="Facultad de Ingenierías y Arquitectura">
+                            </datalist>
+                        </label>
                         <label>Horario de atención
                             <input type="text" id="perfilHorarioAtencion" placeholder="Ej. Lun–Vie 10:00–12:00">
                         </label>
@@ -2716,6 +2758,10 @@
     <script src="js/foros-avisos.js"></script>
     <script src="js/equipo-creador.js"></script>
     <script src="js/aula-virtual.js"></script>
+    <script src="js/gm-verified.js"></script>
+    <script src="js/gm-verified-ui.js"></script>
+    <script src="js/gm-docente-perfil.js"></script>
+    <script src="js/gm-docente-dash.js"></script>
     <script src="js/gm-admin-usuarios.js"></script>
     <script src="js/gm-quiz-core.js"></script>
     <script src="js/gm-quiz-docente.js"></script>
