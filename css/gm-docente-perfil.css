@@ -1,0 +1,31 @@
+/* GeoMetrics — Encabezado profesional del docente (js/gm-docente-perfil.js) */
+.gdp-hero { position: relative; overflow: hidden; margin: 0 0 22px; border-radius: 18px; min-height: 230px; color: #fff; background: #07182F; box-shadow: 0 14px 34px rgba(7, 24, 47, .28); border: 1px solid rgba(73, 198, 245, .25); animation: gdp-in .45s ease-out both; }
+@keyframes gdp-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .gdp-hero { animation: none; } }
+.gdp-bg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.gdp-in { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 26px; padding: 30px 32px; }
+.gdp-foto { width: 128px; height: 128px; border-radius: 50%; overflow: hidden; flex: none; border: 4px solid #fff; box-shadow: 0 0 0 3px #2588F5, 0 10px 24px rgba(0, 0, 0, .35); background: #1264C5; display: grid; place-items: center; }
+.gdp-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gdp-foto span { font: 700 40px/1 system-ui, -apple-system, 'Segoe UI', sans-serif; color: #fff; }
+.gdp-txt { min-width: 0; }
+.gdp-eye { display: block; font: 600 11.5px/1 system-ui, -apple-system, 'Segoe UI', sans-serif; letter-spacing: .16em; text-transform: uppercase; color: #49C6F5; }
+.gdp-hero h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 10px 0 12px; font-size: clamp(22px, 2.4vw, 32px); line-height: 1.15; color: #fff; }
+.gdp-nom { min-width: 0; overflow-wrap: anywhere; }
+.gdp-lis { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.gdp-li { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: #e6f0fb; min-width: 0; overflow-wrap: anywhere; }
+.gdp-li svg { width: 17px; height: 17px; flex: none; fill: none; stroke: #49C6F5; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.gdp-bio { max-width: 720px; margin: 14px 0 0; font-size: 14.5px; line-height: 1.55; color: #d6e4f5; }
+.gdp-falta { margin: 12px 0 0; font-size: 13px; color: #ffd27a; }
+.gdp-edit { align-self: start; display: inline-flex; align-items: center; gap: 8px; padding: 11px 18px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, .55); background: rgba(255, 255, 255, .1); color: #fff; font: 600 14px/1 system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: pointer; backdrop-filter: blur(4px); transition: background .15s, border-color .15s; white-space: nowrap; }
+.gdp-edit:hover { background: #2588F5; border-color: #2588F5; }
+.gdp-edit svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 900px) {
+  .gdp-in { grid-template-columns: auto minmax(0, 1fr); gap: 18px; padding: 24px 20px; }
+  .gdp-edit { grid-column: 1 / -1; justify-self: start; }
+  .gdp-foto { width: 96px; height: 96px; }
+}
+@media (max-width: 560px) {
+  .gdp-in { grid-template-columns: 1fr; justify-items: start; }
+  .gdp-foto { width: 84px; height: 84px; }
+  .gdp-foto span { font-size: 28px; }
+}
