@@ -259,6 +259,104 @@
         ".write": "((auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && $k != 'andres,enriquezval_at_unipamplona,edu,co' && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()))",
         ".validate": "newData.hasChildren(['email', 'at', 'by']) && newData.child('email').isString() && newData.child('at').isNumber() && newData.child('by').isString()"
       }
+    },
+    "verified": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())",
+      "$k": {
+        ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())",
+        ".validate": "newData.hasChildren(['status', 'type', 'email', 'by', 'at']) && newData.child('email').val().toLowerCase().replace('.', ',').replace('@', '_at_') == $k",
+        "status": {
+          ".validate": "newData.val() == 'verified'"
+        },
+        "type": {
+          ".validate": "(newData.val() == 'docente' || newData.val() == 'estudiante')"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "by": {
+          ".validate": "newData.val() == auth.token.email.toLowerCase()"
+        },
+        "at": {
+          ".validate": "newData.isNumber() && newData.val() <= now"
+        },
+        "note": {
+          ".validate": "newData.isString() && newData.val().length <= 300"
+        },
+        "$other": {
+          ".validate": "false"
+        }
+      }
+    },
+    "verifyRequests": {
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())",
+      "$k": {
+        ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && $k == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')",
+        ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && ((auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) || ($k == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && !root.child('verified/' + $k).exists() && (!newData.exists() || newData.child('status').val() == 'pending')))",
+        ".validate": "newData.hasChildren(['email', 'type', 'status', 'at']) && newData.child('email').val().toLowerCase().replace('.', ',').replace('@', '_at_') == $k",
+        "email": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "type": {
+          ".validate": "(newData.val() == 'docente' || newData.val() == 'estudiante')"
+        },
+        "status": {
+          ".validate": "newData.val() == 'pending' || newData.val() == 'rejected'"
+        },
+        "at": {
+          ".validate": "newData.isNumber() && newData.val() <= now"
+        },
+        "nombre": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "info": {
+          ".validate": "newData.isString() && newData.val().length <= 300"
+        },
+        "message": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "reviewedBy": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "reviewedAt": {
+          ".validate": "newData.isNumber() && newData.val() <= now"
+        },
+        "reason": {
+          ".validate": "newData.isString() && newData.val().length <= 300"
+        },
+        "$other": {
+          ".validate": "false"
+        }
+      }
+    },
+    "verifyLog": {
+      ".indexOn": ["at"],
+      ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())",
+      "$id": {
+        ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && !data.exists()",
+        ".validate": "newData.hasChildren(['target', 'action', 'by', 'at'])",
+        "target": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "action": {
+          ".validate": "newData.val() == 'approve' || newData.val() == 'reject' || newData.val() == 'revoke'"
+        },
+        "type": {
+          ".validate": "(newData.val() == 'docente' || newData.val() == 'estudiante')"
+        },
+        "by": {
+          ".validate": "newData.val() == auth.token.email.toLowerCase()"
+        },
+        "at": {
+          ".validate": "newData.isNumber() && newData.val() <= now"
+        },
+        "reason": {
+          ".validate": "newData.isString() && newData.val().length <= 300"
+        },
+        "$other": {
+          ".validate": "false"
+        }
+      }
     }
   }
 }
