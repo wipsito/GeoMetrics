@@ -1689,6 +1689,15 @@ function aulaUpdateMenuUser(user) {
     try { window.dispatchEvent(new CustomEvent('geometrics-perfil-actualizado', { detail: { email: user && user.email } })); } catch (eEv) {}
 }
 
+/** Correo de un usuario a partir de su id interno (entregas antiguas no guardaban el correo). */
+function aulaEmailPorId(id) {
+    if (!id) return '';
+    try {
+        var u = (aulaLoad(AULA_KEYS.users, []) || []).find(function (x) { return x && x.id === id; });
+        return u ? aulaNormalizarEmail(u.email) : '';
+    } catch (e) { return ''; }
+}
+
 /** Registro completo del usuario (sesión + lista de usuarios), para mostrar nombre y foto reales. */
 function aulaRegistroUsuario(u) {
     u = u || aulaGetSession();
@@ -2543,7 +2552,7 @@ function aulaRenderEstudiantes() {
             var foto = (s.foto || s.photo)
                 ? '<img class="tabla-foto" src="' + String(s.foto || s.photo).replace(/"/g, '&quot;') + '" alt="">'
                 : '<span class="tabla-foto tabla-foto-ini">' + aulaEsc(aulaIniciales(s.nombre)) + '</span>';
-            return '<tr><td>' + foto + '</td><td>' + aulaEsc(s.nombre) + '</td><td>' + aulaEsc(s.email) + '</td><td>' +
+            return '<tr><td>' + foto + '</td><td>' + aulaEsc(s.nombre) + (window.GMV ? GMV.slot(s.email, 'xs') : '') + '</td><td>' + aulaEsc(s.email) + '</td><td>' +
                 aulaEsc(matStr) + '</td><td>' + aulaEsc(grpStr) + '</td></tr>';
         }).join('') + '</tbody></table>';
 
@@ -3039,7 +3048,7 @@ function aulaRenderEntregasDocente() {
         return '<div class="aula-item entrega-item' + (calificada ? ' item-calificada' : '') + '">' +
             '<button type="button" class="entrega-toggle" data-toggle-ent="' + e.id + '" aria-expanded="false">' +
             '<span class="entrega-toggle-main">' +
-            '<strong>' + aulaEsc(e.estudianteNombre) + '</strong> — ' + aulaEsc(t.titulo || 'Tarea') +
+            '<strong>' + aulaEsc(e.estudianteNombre) + '</strong>' + (window.GMV ? GMV.slot(e.estudianteEmail || aulaEmailPorId(e.estudianteId), 'xs') : '') + ' — ' + aulaEsc(t.titulo || 'Tarea') +
             (calificada ? ' <span class="badge-ok">Nota: ' + aulaEsc(String(e.nota)) + '</span>' : ' <span class="badge-pend">Sin calificar</span>') +
             '</span>' +
             '<span class="entrega-toggle-meta">' + aulaEsc(plazo.texto || '') + '</span>' +
@@ -3709,6 +3718,7 @@ function aulaEntregar() {
                 id: aulaUid(),
                 tareaId: tareaId,
                 estudianteId: user.id,
+                estudianteEmail: user.email,
                 estudianteNombre: user.nombre,
                 materia: user.materia,
                 grupo: user.grupo,
@@ -6550,7 +6560,7 @@ function aulaAdminSeguridadRender() {
                     ? '<div class="gm-usr-av gm-usr-av-docente con-foto"><img src="' + aulaEsc(f.foto) + '" alt="" loading="lazy"></div>'
                     : '<div class="gm-usr-av gm-usr-av-docente">' + aulaEsc(ini(f)) + '</div>';
                 return '<div class="gm-sec-row">' + av +
-                    '<div class="gm-usr-info"><strong>' + aulaEsc(f.nombre || 'Sin registrarse aún') + '</strong><span class="gm-usr-mail">' + aulaEsc(f.email) + '</span></div>' +
+                    '<div class="gm-usr-info"><strong>' + aulaEsc(f.nombre || 'Sin registrarse aún') + (window.GMV ? GMV.slot(f.email, 'xs') : '') + '</strong><span class="gm-usr-mail">' + aulaEsc(f.email) + '</span></div>' +
                     '<span class="gm-sec-estado ' + (f.on ? 'on' : 'off') + '">' + (f.on ? 'Con acceso' : 'Sin acceso') + '</span>' +
                     '<button type="button" class="gm-sec-btn' + (f.on ? ' quitar' : '') + '" data-sec-toggle="' + aulaEsc(f.email) + '" data-sec-on="' + (f.on ? '1' : '0') + '">' + (f.on ? 'Quitar acceso' : 'Otorgar acceso') + '</button>' +
                     '</div>';

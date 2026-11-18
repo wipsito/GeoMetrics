@@ -1000,7 +1000,7 @@
       var title = chatTitle(c, u);
       return '<div class="fa-item' + active + '" data-ch-open="' + esc(c.id) + '" role="button" tabindex="0">' +
         (isGrupoChat(c) ? '<div class="fa-avatar">' + esc(initials(title)) + '</div>' : avatarHtml(peerOtherEmail(c, normEmail(u.email)), title)) +
-        '<div class="fa-item-body"><strong>' + esc(title) + '</strong>' +
+        '<div class="fa-item-body"><strong>' + esc(title) + (!isGrupoChat(c) && window.GMV ? GMV.slot(peerOtherEmail(c, normEmail(u.email)), 'xs') : '') + '</strong>' +
         '<p>' + esc(lastPreview(c)) + '</p></div>' +
         '<div class="fa-item-meta"><span>' + esc(fmtTime(c.updatedAt)) + '</span>' +
         (un ? '<span class="fa-badge">' + un + '</span>' : '') +
@@ -1037,7 +1037,7 @@
       var opts = contacts.map(function (c) {
         return '<div class="fa-item" data-ch-start="' + esc(c.user.email) + '" role="button" tabindex="0">' +
           avatarHtml(c.user.email, fullName(c.user)) +
-          '<div class="fa-item-body"><strong>' + esc(fullName(c.user)) + '</strong>' +
+          '<div class="fa-item-body"><strong>' + esc(fullName(c.user)) + (window.GMV ? GMV.slot(c.user.email, 'xs') : '') + '</strong>' +
           '<p>' + esc((c.user.rol || '') + ' · ' + c.reason) + '</p></div></div>';
       }).join('') || '<div class="fa-status">No hay contactos. Los docentes y compañeros de tus cursos aparecerán aquí cuando existan en el sistema.</div>';
 
@@ -1081,7 +1081,7 @@
         (mine ? '' : avatarHtml(fromEmail, authorName)) +
         '<div class="fa-bubble">' +
         '<button type="button" class="fa-msg-menu-btn" data-ch-msg-menu="' + esc(mid) + '" title="Opciones">⋮</button>' +
-        (mine ? '' : '<div class="fa-msg-author">' + esc(authorName) + '</div>') +
+        (mine ? '' : '<div class="fa-msg-author">' + esc(authorName) + (window.GMV ? GMV.slot(fromEmail, 'xs') : '') + '</div>') +
         replyHtml +
         '<div class="fa-msg-text">' + esc(m.text || '') + '</div>' +
         '<div class="fa-msg-time">' + esc(fmtTime(m.ts)) + '</div>' +
@@ -1103,7 +1103,7 @@
     return '<div class="fa-col-main">' +
       '<div class="fa-thread-head">' +
       (isGrupoChat(c) ? '<div class="fa-avatar">' + esc(initials(title)) + '</div>' : avatarHtml(peerOtherEmail(c, me), title)) +
-      '<div class="fa-thread-head-info"><strong>' + esc(title) + '</strong>' +
+      '<div class="fa-thread-head-info"><strong>' + esc(title) + (!isGrupoChat(c) && window.GMV ? GMV.slot(peerOtherEmail(c, me), 's') : '') + '</strong>' +
       '<span>' + esc(sub) + '</span></div>' +
       '<div class="fa-head-actions">' +
         '<button type="button" class="fa-icon-btn fa-head-more" data-ch-chat-menu title="Opciones del chat">⋮</button>' +
@@ -1685,7 +1685,7 @@
       var title = chatTitle(c, u);
       return '<div class="fa-item' + active + '" data-ch-open="' + esc(c.id) + '" role="button" tabindex="0">' +
         (isGrupoChat(c) ? '<div class="fa-avatar">' + esc(initials(title)) + '</div>' : avatarHtml(peerOtherEmail(c, normEmail(u.email)), title)) +
-        '<div class="fa-item-body"><strong>' + esc(title) + '</strong>' +
+        '<div class="fa-item-body"><strong>' + esc(title) + (!isGrupoChat(c) && window.GMV ? GMV.slot(peerOtherEmail(c, normEmail(u.email)), 'xs') : '') + '</strong>' +
         '<p>' + esc(lastPreview(c)) + '</p></div>' +
         '<div class="fa-item-meta"><span>' + esc(fmtTime(c.updatedAt)) + '</span>' +
         (un ? '<span class="fa-badge">' + un + '</span>' : '') +

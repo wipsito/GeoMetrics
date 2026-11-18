@@ -79,7 +79,7 @@
                 ? '<div class="gm-usr-av gm-usr-av-' + r + ' con-foto" data-ini="' + esc(iniciales(u.nombre, u.email)) + '"><img src="' + esc(foto) + '" alt="" loading="lazy" onerror="var d=this.parentNode;d.classList.remove(\'con-foto\');d.textContent=d.getAttribute(\'data-ini\')"></div>'
                 : '<div class="gm-usr-av gm-usr-av-' + r + '">' + esc(iniciales(u.nombre, u.email)) + '</div>';
             return '<div class="gm-usr-row" data-email="' + esc(u.email) + '">' + av +
-                '<div class="gm-usr-info"><strong>' + esc(u.nombre || '(sin nombre)') + (u.email === yo() ? ' <em>(tú)</em>' : '') + '</strong>' +
+                '<div class="gm-usr-info"><strong>' + esc(u.nombre || '(sin nombre)') + (global.GMV ? GMV.slot(u.email, 'xs') : '') + (u.email === yo() ? ' <em>(tú)</em>' : '') + '</strong>' +
                 '<span class="gm-usr-mail">' + esc(u.email) + '</span>' +
                 (detalle.length ? '<span class="gm-usr-det">' + detalle.join(' · ') + '</span>' : '') + '</div>' +
                 '<span class="gm-usr-rol gm-usr-rol-' + r + '">' + ROL_TXT[r] + '</span>' +

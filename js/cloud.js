@@ -937,6 +937,8 @@ function syncUpUsers() {
                     function rm(p) { return d.ref(p).remove().then(function () { return true; }).catch(function () { return false; }); }
                     var jobs = [rm('users/' + k), rm('teamCreators/' + k), rm('secure/docentes/' + k), rm('quizTeach/' + k)];
                     jobs.push(rm('secure/admins/' + k));
+                    /* el distintivo GeoMetrics Verified y su solicitud desaparecen con la cuenta */
+                    jobs.push(rm('verified/' + k), rm('verifyRequests/' + k));
                     /* listas heredadas (arreglos o mapas) */
                     ['docentesExtra', 'admins'].forEach(function (node) {
                         jobs.push(d.ref(node).once('value').then(function (s) {
@@ -985,6 +987,7 @@ function syncUpUsers() {
         isDeletedUser: isDeletedUser,
         cloudGet: cloudGet,
         cloudSet: cloudSet,
+        cloudListen: cloudListen,
         purgeLukeSaintDemo: purgeLukeSaintDemo,
         emailKey: emailKey,
         isOn: isOn,
