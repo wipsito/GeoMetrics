@@ -269,7 +269,7 @@
           ".validate": "newData.val() == 'verified'"
         },
         "type": {
-          ".validate": "(newData.val() == 'docente' || newData.val() == 'estudiante')"
+          ".validate": "newData.val() == 'docente'"
         },
         "email": {
           ".validate": "newData.isString() && newData.val().length <= 120"
@@ -292,13 +292,13 @@
       ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())",
       "$k": {
         ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && $k == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')",
-        ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && ((auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) || ($k == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && !root.child('verified/' + $k).exists() && (!newData.exists() || newData.child('status').val() == 'pending')))",
+        ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && ((auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) || ($k == auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_') && (root.child('secure/docentes/' + $k).exists() || root.child('users/' + $k + '/rol').val() == 'docente') && !root.child('verified/' + $k).exists() && (!newData.exists() || newData.child('status').val() == 'pending')))",
         ".validate": "newData.hasChildren(['email', 'type', 'status', 'at']) && newData.child('email').val().toLowerCase().replace('.', ',').replace('@', '_at_') == $k",
         "email": {
           ".validate": "newData.isString() && newData.val().length <= 120"
         },
         "type": {
-          ".validate": "(newData.val() == 'docente' || newData.val() == 'estudiante')"
+          ".validate": "newData.val() == 'docente'"
         },
         "status": {
           ".validate": "newData.val() == 'pending' || newData.val() == 'rejected'"
@@ -330,7 +330,9 @@
       }
     },
     "verifyLog": {
-      ".indexOn": ["at"],
+      ".indexOn": [
+        "at"
+      ],
       ".read": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists())",
       "$id": {
         ".write": "(auth != null && auth.token.email_verified == true && auth.token.email.toLowerCase().endsWith('@unipamplona.edu.co') && !root.child('usersDeleted/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && (auth.token.email.toLowerCase() == 'andres.enriquezval@unipamplona.edu.co' || root.child('secure/admins/' + auth.token.email.toLowerCase().replace('.', ',').replace('@', '_at_')).exists()) && !data.exists()",
@@ -342,7 +344,7 @@
           ".validate": "newData.val() == 'approve' || newData.val() == 'reject' || newData.val() == 'revoke'"
         },
         "type": {
-          ".validate": "(newData.val() == 'docente' || newData.val() == 'estudiante')"
+          ".validate": "newData.val() == 'docente' || newData.val() == 'estudiante'"
         },
         "by": {
           ".validate": "newData.val() == auth.token.email.toLowerCase()"
