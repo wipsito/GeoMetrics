@@ -1716,10 +1716,26 @@
     var nameEl = $('avUserName');
     var roleEl = $('avUserRole');
     var fb = $('avUserFb');
-    if (nameEl) nameEl.textContent = userDisplayName(u);
+    var nombre = (typeof aulaNombreRegistro === 'function' && u) ? aulaNombreRegistro(u) : userDisplayName(u);
+    var foto = (typeof aulaFotoUsuario === 'function' && u) ? aulaFotoUsuario(u) : (u && u.foto) || '';
+    if (nameEl) nameEl.textContent = nombre;
     if (roleEl) roleEl.textContent = (u && u.rol === 'docente') ? 'Docente' : 'Estudiante';
-    if (fb) fb.textContent = userInitials(u);
+    var chip = $('avUserChip');
+    if (chip) { chip.title = 'Mi cuenta · ' + nombre; chip.setAttribute('aria-label', 'Cuenta de ' + nombre); }
+    if (fb) {
+      if (foto) {
+        var img = fb.querySelector('img');
+        if (!img || img.getAttribute('src') !== foto) fb.innerHTML = '<img src="' + String(foto).replace(/"/g, '&quot;') + '" alt="" style="width:100%;height:100%;object-fit:cover;display:block">';
+        fb.classList.add('con-foto');
+      } else {
+        fb.classList.remove('con-foto');
+        var p = nombre.split(/\s+/).filter(Boolean);
+        fb.textContent = ((p[0] || 'E')[0] + (p.length > 1 ? p[p.length >= 4 ? 2 : 1][0] : (p[0] || 'S').slice(1, 2))).toUpperCase();
+      }
+    }
   }
+  window.addEventListener('geometrics-perfil-actualizado', function () { try { renderUser(); } catch (e) {} });
+  window.addEventListener('geometrics-users-updated', function () { try { renderUser(); } catch (e) {} });
 
   function bind() {
     // ===== Estudiante: delegación (siempre funciona, aunque se re-renderice el DOM) =====

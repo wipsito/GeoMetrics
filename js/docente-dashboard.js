@@ -164,6 +164,7 @@
     return 'Docente';
   }
 
+  window.addEventListener('geometrics-perfil-actualizado', function () { try { paintUser(); } catch (e) {} });
   function paintUser() {
     var u = sessionUser();
     var nameEl = $('dpUserName');
@@ -171,7 +172,8 @@
     var sub = $('docenteSubtitulo');
     var welcome = $('dpWelcomeInline');
     if (!u) return;
-    var nom = displayNameNoEmail(u);
+    var nom = (typeof aulaNombreRegistro === 'function') ? aulaNombreRegistro(u) : displayNameNoEmail(u);
+    if (typeof aulaFotoUsuario === 'function') { var fReg = aulaFotoUsuario(u); if (fReg) u = Object.assign({}, u, { foto: fReg }); }
     if (nameEl) nameEl.textContent = nom;
     // Nunca poner el correo en el chip
     var chip = $('dpUserChip');

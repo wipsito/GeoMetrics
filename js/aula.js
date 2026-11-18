@@ -1686,6 +1686,36 @@ function aulaUpdateMenuUser(user) {
             btnAdm.hidden = !isAdm;
         } catch (e) { btnAdm.hidden = true; }
     }
+    try { window.dispatchEvent(new CustomEvent('geometrics-perfil-actualizado', { detail: { email: user && user.email } })); } catch (eEv) {}
+}
+
+/** Registro completo del usuario (sesión + lista de usuarios), para mostrar nombre y foto reales. */
+function aulaRegistroUsuario(u) {
+    u = u || aulaGetSession();
+    if (!u) return null;
+    var reg = null;
+    try {
+        var e = aulaNormalizarEmail(u.email);
+        reg = (aulaLoad(AULA_KEYS.users, []) || []).find(function (x) { return x && aulaNormalizarEmail(x.email) === e; }) || null;
+    } catch (eR) {}
+    return Object.assign({}, reg || {}, u);
+}
+/** Nombre con el que se registró (nombres + apellidos); nunca el correo. */
+function aulaNombreRegistro(u) {
+    var r = aulaRegistroUsuario(u);
+    if (!r) return 'Usuario';
+    var limpio = function (s) { s = String(s || '').replace(/\s+/g, ' ').trim(); return s && s.indexOf('@') < 0 ? s : ''; };
+    var full = limpio((r.nombres || '') + ' ' + (r.apellidos || ''));
+    var nom = limpio(r.nombre);
+    /* si el nombre guardado es más completo que nombres+apellidos, se usa ese */
+    var n = (nom.split(' ').length > full.split(' ').length ? nom : full) || nom || full;
+    if (n) return n;
+    return aulaNombreDesdeEmail(r.email) || 'Usuario';
+}
+/** Foto de perfil cargada en la página (o '' si no tiene). */
+function aulaFotoUsuario(u) {
+    var r = aulaRegistroUsuario(u);
+    return r ? String(r.foto || r.photo || r.photoURL || r.avatarUrl || '') : '';
 }
 
 function aulaLogout() {

@@ -375,7 +375,11 @@
             menu.addEventListener('click', function (e) {
                 var b = e.target.closest('[data-um]'); if (!b) return; var a = b.getAttribute('data-um'); cerrarMenu();
                 if (a === 'perfil') { if (window.aulaAbrirPerfil) window.aulaAbrirPerfil(); }
-                else if (a === 'aula') { var x = $('btnAula'); if (x) x.click(); }
+                else if (a === 'aula') {
+                    var est = $('pantallaEstudiante'), av = window.GeoMetricsAulaVirtual;
+                    if (est && getComputedStyle(est).display !== 'none' && av && av.setView) av.setView('aula');
+                    else { var x = $('btnAula'); if (x) x.click(); }
+                }
                 else if (a === 'admin') { if (window.aulaAbrirAdmin) window.aulaAbrirAdmin(); else { var y = $('btnAdminPanel'); if (y) y.click(); } }
                 else if (a === 'salir') { var z = $('btnCerrarSesion'); if (z) z.click(); }
             });
@@ -384,7 +388,7 @@
             window.addEventListener('resize', cerrarMenu);
         }
         var adm = false; try { adm = !!(window.aulaEsAdminEmail && window.aulaEsAdminEmail(u.email)); } catch (e) { }
-        var nom = u.nombre || ((u.nombres || '') + ' ' + (u.apellidos || '')).trim() || u.email, foto = u.foto || u.photoURL;
+        var nom = (window.aulaNombreRegistro ? aulaNombreRegistro(u) : (u.nombre || ((u.nombres || '') + ' ' + (u.apellidos || '')).trim() || u.email)), foto = (window.aulaFotoUsuario ? aulaFotoUsuario(u) : '') || u.foto || u.photoURL;
         menu.innerHTML = '<div class="h"><i>' + (foto ? '<img src="' + esc(foto) + '" alt="">' : esc(ini(nom))) + '</i><span><b>' + esc(nom) + '</b><small>' + esc(u.email || '') + '</small></span></div>' +
             '<button type="button" data-um="perfil">' + IC.user + 'Editar perfil</button><button type="button" data-um="aula">' + IC.home + 'Mi aula</button>' + (adm ? '<button type="button" class="adm" data-um="admin">' + IC.shield + 'Administrador</button>' : '') + '<hr><button type="button" class="out" data-um="salir">' + IC.out + 'Cerrar sesión</button>';
         var r = chip.getBoundingClientRect();
@@ -428,7 +432,7 @@
     function cabeceraMenu() {
         var D = $('menuUserDropdown'), h = D && D.querySelector('.gum-h'); if (!h) return;
         var u = sesion(); if (!u) { h.style.display = 'none'; return; } h.style.display = '';
-        var nom = u.nombre || ((u.nombres || '') + ' ' + (u.apellidos || '')).trim() || u.email, foto = u.foto || u.photoURL;
+        var nom = (window.aulaNombreRegistro ? aulaNombreRegistro(u) : (u.nombre || ((u.nombres || '') + ' ' + (u.apellidos || '')).trim() || u.email)), foto = (window.aulaFotoUsuario ? aulaFotoUsuario(u) : '') || u.foto || u.photoURL;
         var html = '<i>' + (foto ? '<img src="' + esc(foto) + '" alt="">' : esc(ini(nom))) + '</i><span><b>' + esc(nom) + '</b><small>' + esc(u.email || '') + '</small></span>';
         if (h.__h !== html) { h.__h = html; h.innerHTML = html; }
     }
