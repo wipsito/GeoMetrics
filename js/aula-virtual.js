@@ -2001,7 +2001,8 @@
     root.style.cssText = 'display:grid!important;position:fixed!important;inset:0!important;z-index:9999!important;visibility:visible!important;opacity:1!important;width:100%!important;height:100%!important;';
     try { bind(); } catch (eB) {}
     refreshAll();
-    setView('aula');
+    /* Al entrar, el estudiante llega a su Dashboard; el aula virtual 3D sigue en la barra lateral */
+    setView(document.querySelector('#pantallaEstudiante .av-view[data-av-view="inicio"]') ? 'inicio' : 'aula');
     setTimeout(function () { try { renderNextClass(); } catch (e) {} }, 100);
     setTimeout(function () { try { renderNextClass(); } catch (e) {} }, 600);
     // Sincronizar horario desde la nube (útil en otro PC)

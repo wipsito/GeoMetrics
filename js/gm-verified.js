@@ -1,7 +1,7 @@
 /* GeoMetrics Verified — distintivo de verificación académica.
  *
  * Datos (Firebase Realtime Database; ver firebase/database.rules.json):
- *   verified/{correo}        distintivo vigente {status:'verified', type:'docente'|'estudiante', email, by, at, note?}
+ *   verified/{correo}        distintivo vigente {status:'verified', type:'docente', email, by, at, note?} (exclusivo de docentes)
  *                            → solo administradores escriben; lo leen todos los usuarios con sesión.
  *   verifyRequests/{correo}  solicitud {email, type, status:'pending'|'rejected', at, nombre?, info?, message?,
  *                            reviewedBy?, reviewedAt?, reason?} → la persona crea/cancela la suya; el admin la revisa.
@@ -59,7 +59,8 @@
     /** HTML del distintivo para un correo; '' si la cuenta no está verificada en Firebase. */
     function badge(email, size) {
         var v = S.verified[ME_KEY(email)];
-        if (!v || v.status !== 'verified') return '';
+        /* el distintivo es exclusivo de docentes: registros antiguos de otro tipo no se muestran */
+        if (!v || v.status !== 'verified' || v.type !== 'docente') return '';
         var t = tituloDe(v);
         return '<span class="gmv-badge gmv-' + (size || 's') + '" tabindex="0" role="img" title="' + esc(t) + '" aria-label="' + esc(t) + '" data-gmv-tip="' + esc(t) + '">' + icono(size, t) + '</span>';
     }
@@ -144,7 +145,7 @@
     /** Estado de la cuenta con sesión: 'verified' | 'pending' | 'rejected' | 'none'. */
     function miEstado() {
         var e = yo(), v = S.verified[ME_KEY(e)];
-        if (v && v.status === 'verified') return { estado: 'verified', tipo: v.type, por: v.by, en: v.at };
+        if (v && v.status === 'verified' && v.type === 'docente') return { estado: 'verified', tipo: v.type, por: v.by, en: v.at };
         if (S.mine && S.mine.status === 'pending') return { estado: 'pending', tipo: S.mine.type, en: S.mine.at };
         if (S.mine && S.mine.status === 'rejected') return { estado: 'rejected', tipo: S.mine.type, motivo: S.mine.reason || '', en: S.mine.reviewedAt };
         return { estado: 'none' };
@@ -155,7 +156,7 @@
         var u = (typeof aulaGetSession === 'function' && aulaGetSession()) || {};
         var nombre = (typeof aulaNombreRegistro === 'function') ? aulaNombreRegistro(u) : (u.nombre || '');
         var req = {
-            email: e, type: datos.type === 'docente' ? 'docente' : 'estudiante', status: 'pending',
+            email: e, type: 'docente', status: 'pending',
             at: firebase.database.ServerValue.TIMESTAMP, nombre: String(nombre || '').slice(0, 120)
         };
         if (datos.info) req.info = String(datos.info).slice(0, 300);
@@ -177,7 +178,7 @@
     function aprobar(email, type, note) {
         var d = db(); email = norm(email);
         if (!d || !email) return Promise.reject(new Error('Sin conexión con la base de datos.'));
-        type = type === 'docente' ? 'docente' : 'estudiante';
+        type = 'docente';
         var k = ME_KEY(email), up = {}, v = { status: 'verified', type: type, email: email, by: yo(), at: firebase.database.ServerValue.TIMESTAMP };
         if (note) v.note = String(note).slice(0, 300);
         up['verified/' + k] = v;
@@ -250,7 +251,7 @@
     global.GMV = {
         TIPO: TIPO,
         icono: icono, badge: badge, slot: slot, after: after, decorar: decorar,
-        isVerified: function (email) { var v = S.verified[ME_KEY(email)]; return v && v.status === 'verified' ? v : null; },
+        isVerified: function (email) { var v = S.verified[ME_KEY(email)]; return v && v.status === 'verified' && v.type === 'docente' ? v : null; },
         miEstado: miEstado, solicitar: solicitar, cancelar: cancelar,
         admin: { aprobar: aprobar, rechazar: rechazar, revocar: revocar, solicitudes: solicitudes, historial: historial, verificados: verificados }
     };

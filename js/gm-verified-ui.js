@@ -12,6 +12,11 @@
     var norm = function (e) { return String(e || '').trim().toLowerCase(); };
     function yo() { try { return norm(global.GeoAuth ? GeoAuth.email() : ''); } catch (e) { return ''; } }
     function sesion() { try { return typeof aulaGetSession === 'function' ? aulaGetSession() : null; } catch (e) { return null; } }
+    function esDocente() {
+        var u = sesion() || {};
+        if (u.rol === 'docente') return true;
+        try { return typeof aulaEsDocenteEmail === 'function' && aulaEsDocenteEmail(u.email); } catch (e) { return false; }
+    }
     function esAdmin() { try { return typeof aulaEsAdminEmail === 'function' && aulaEsAdminEmail(yo()); } catch (e) { return false; } }
     function fecha(ms) {
         if (!ms) return '—';
@@ -35,6 +40,14 @@
         /* La insignia «✓ Institucional» anterior era fija: ahora muestra el estado real */
         var old = $('perfilBadgeVerificado');
         var st = GMV.miEstado();
+        /* GeoMetrics Verified es exclusivo de docentes: los estudiantes no ven el bloque ni la insignia */
+        if (!esDocente()) {
+            if (old) old.style.display = 'none';
+            var vb = $('gmvPerfil'); if (vb) vb.style.display = 'none';
+            return;
+        }
+        if (old) old.style.display = '';
+        if ($('gmvPerfil')) $('gmvPerfil').style.display = '';
         if (old) {
             var txt = st.estado === 'verified' ? (GMV.TIPO[st.tipo] || 'Verificado') : st.estado === 'pending' ? 'Verificación pendiente' : 'Sin verificar';
             old.textContent = txt;
@@ -46,7 +59,7 @@
             row.parentNode.insertBefore(box, row.nextSibling);
             box.addEventListener('click', accionPerfil);
         }
-        var u = sesion() || {}, tipo = u.rol === 'docente' ? 'docente' : 'estudiante', h;
+        var h;
         if (st.estado === 'verified') {
             h = '<div class="gmv-perfil-h">' + GMV.icono('l') + '<div><b>' + esc(GMV.TIPO[st.tipo] || 'Cuenta verificada') + '</b>' +
                 '<span>Cuenta verificada por GeoMetrics · desde el ' + esc(fecha(st.en)) + '</span></div></div>';
@@ -60,8 +73,7 @@
                     ? 'Motivo: ' + esc(st.motivo || 'no indicado') + '. Puedes corregir los datos y enviarla de nuevo.'
                     : 'El distintivo GeoMetrics Verified confirma tu vinculación académica. Lo otorga un administrador después de revisar tu solicitud.') + '</span></div></div>' +
                 '<div class="gmv-form" hidden>' +
-                    '<label>Tipo de verificación<select data-gmv-f="type"><option value="estudiante"' + (tipo === 'estudiante' ? ' selected' : '') + '>Estudiante</option><option value="docente"' + (tipo === 'docente' ? ' selected' : '') + '>Docente</option></select></label>' +
-                    '<label>Información institucional<input type="text" data-gmv-f="info" maxlength="300" placeholder="' + (tipo === 'docente' ? 'Cargo, dependencia o vinculación docente' : 'Código estudiantil, programa y semestre') + '"></label>' +
+                    '<label>Información institucional<input type="text" data-gmv-f="info" maxlength="300" placeholder="Cargo, dependencia o vinculación docente"></label>' +
                     '<label>Mensaje para el administrador (opcional)<textarea data-gmv-f="message" rows="2" maxlength="500"></textarea></label>' +
                     '<div class="gmv-form-act"><button type="button" class="gmv-btn" data-gmv-act="enviar">Enviar solicitud</button><button type="button" class="gmv-btn ghost" data-gmv-act="cerrar">Cancelar</button></div>' +
                 '</div>' +
@@ -94,19 +106,19 @@
     }
 
     /* =================== 2) Panel de administración =================== */
-    var A = { tab: 'pend', reqs: [], log: [], users: [], cargando: false, q: '' };
+    var A = { tab: 'pend', reqs: [], log: [], users: [], docentes: [], cargando: false, q: '' };
     function tarjetaAdmin() {
         var grid = doc.querySelector('#pantallaAdmin .aula-grid'); if (!grid) return null;
         var c = $('adminVerifiedCard');
         if (!c) {
             c = doc.createElement('div'); c.id = 'adminVerifiedCard'; c.className = 'aula-card gmv-admin';
             c.innerHTML = '<div class="gmv-admin-hd">' + (global.GMV ? GMV.icono('l') : '') +
-                '<div><small>IDENTIDAD ACADÉMICA</small><h3>GeoMetrics Verified</h3><p class="login-hint">Aprueba, rechaza o revoca el distintivo. Cada acción queda registrada con su autor, fecha y hora.</p></div>' +
+                '<div><small>IDENTIDAD ACADÉMICA</small><h3>GeoMetrics Verified</h3><p class="login-hint">Distintivo exclusivo para docentes. Aprueba, rechaza o revoca la verificación. Cada acción queda registrada con su autor, fecha y hora.</p></div>' +
                 '<button type="button" class="btn-limpiar" data-gmva="refrescar">Actualizar</button></div>' +
                 '<div class="gmv-tabs" role="tablist">' +
                     '<button type="button" data-gmva-tab="pend" role="tab">Pendientes <span data-gmva-n="pend">0</span></button>' +
                     '<button type="button" data-gmva-tab="ver" role="tab">Verificados <span data-gmva-n="ver">0</span></button>' +
-                    '<button type="button" data-gmva-tab="nuevo" role="tab">Verificar usuario</button>' +
+                    '<button type="button" data-gmva-tab="nuevo" role="tab">Verificar docente</button>' +
                     '<button type="button" data-gmva-tab="hist" role="tab">Historial</button>' +
                 '</div><p class="gm-usr-msg" data-gmva-msg hidden></p><div class="gmv-admin-body"></div>';
             var ref = $('adminUsuariosCard');
@@ -126,11 +138,12 @@
         return Promise.all([
             GMV.admin.solicitudes().catch(function () { return null; }),
             GMV.admin.historial(200).catch(function () { return null; }),
-            global.GeoCloud && GeoCloud.listAllUsers ? GeoCloud.listAllUsers().catch(function () { return []; }) : []
+            global.GeoCloud && GeoCloud.listAllUsers ? GeoCloud.listAllUsers().catch(function () { return []; }) : [],
+            global.GeoSecure ? GeoSecure.docentes().catch(function () { return []; }) : []
         ]).then(function (r) {
             A.cargando = false;
             if (r[0] === null) msgAdmin('No se pudieron leer las solicitudes. Publica las reglas nuevas de Firebase (verifyRequests, verified, verifyLog).', 'error');
-            A.reqs = r[0] || []; A.log = r[1] || []; A.users = r[2] || [];
+            A.reqs = r[0] || []; A.log = r[1] || []; A.users = r[2] || []; A.docentes = r[3] || [];
             pintarAdmin();
         });
     }
@@ -154,7 +167,6 @@
                 var extra = esc(GMV.TIPO[r.type] ? 'Solicita: ' + GMV.TIPO[r.type] : '') + ' · ' + esc(fecha(r.at)) +
                     (r.info ? '<br><b>Información institucional:</b> ' + esc(r.info) : '') + (r.message ? '<br><b>Mensaje:</b> ' + esc(r.message) : '');
                 return filaUsuario(r.email, r.nombre || nombreDe(r.email), extra,
-                    '<select data-gmva-type="' + esc(r.email) + '"><option value="estudiante"' + (r.type === 'estudiante' ? ' selected' : '') + '>Estudiante</option><option value="docente"' + (r.type === 'docente' ? ' selected' : '') + '>Docente</option></select>' +
                     '<button type="button" class="gmv-btn" data-gmva="aprobar" data-email="' + esc(r.email) + '">Aprobar</button>' +
                     '<button type="button" class="gmv-btn danger" data-gmva="rechazar" data-email="' + esc(r.email) + '">Rechazar</button>');
             }).join('') : '<p class="gm-usr-vacio">No hay solicitudes pendientes.</p>';
@@ -168,19 +180,18 @@
             }).join('') : '<p class="gm-usr-vacio">Todavía no hay cuentas verificadas.</p>';
         } else if (A.tab === 'nuevo') {
             var q = norm(A.q);
-            var lista = A.users.filter(function (u) { return !GMV.isVerified(u.email); }).filter(function (u) {
+            /* solo docentes: registrados con rol docente o confirmados en secure/docentes */
+            var lista = A.users.filter(function (u) { return (u.rol === 'docente' || A.docentes.indexOf(u.email) >= 0) && !GMV.isVerified(u.email); }).filter(function (u) {
                 return !q || norm((u.nombre || '') + ' ' + u.email + ' ' + (u.codigo || '')).indexOf(q) >= 0;
             }).slice(0, 60);
             if (!soloLista || !body.querySelector('[data-gmva-q]')) {
-                body.innerHTML = '<input type="search" data-gmva-q placeholder="Buscar usuario registrado por nombre, correo o código…" value="' + esc(A.q) + '" autocomplete="off"><div data-gmva-lista></div>';
+                body.innerHTML = '<input type="search" data-gmva-q placeholder="Buscar docente por nombre o correo…" value="' + esc(A.q) + '" autocomplete="off"><div data-gmva-lista></div>';
             }
             var box = body.querySelector('[data-gmva-lista]');
             box.innerHTML = lista.length ? lista.map(function (u) {
-                var t = u.rol === 'docente' ? 'docente' : 'estudiante';
-                return filaUsuario(u.email, u.nombre || nombreDe(u.email), esc(u.rol === 'docente' ? 'Docente' : 'Estudiante') + (u.codigo ? ' · Código ' + esc(u.codigo) : ''),
-                    '<select data-gmva-type="' + esc(u.email) + '"><option value="estudiante"' + (t === 'estudiante' ? ' selected' : '') + '>Estudiante</option><option value="docente"' + (t === 'docente' ? ' selected' : '') + '>Docente</option></select>' +
+                return filaUsuario(u.email, u.nombre || nombreDe(u.email), 'Docente' + (u.titulo ? ' · ' + esc(u.titulo) : '') + (u.programa || u.departamento ? ' · ' + esc(u.programa || u.departamento) : ''),
                     '<button type="button" class="gmv-btn" data-gmva="aprobar" data-email="' + esc(u.email) + '">Verificar</button>');
-            }).join('') : '<p class="gm-usr-vacio">' + (A.users.length ? 'Ningún usuario sin verificar coincide con la búsqueda.' : 'No hay usuarios registrados para mostrar.') + '</p>';
+            }).join('') : '<p class="gm-usr-vacio">' + (A.users.length ? 'No hay docentes sin verificar que coincidan con la búsqueda.' : 'No hay usuarios registrados para mostrar.') + '</p>';
             return;
         } else {
             var ACC = { approve: ['Aprobó', 'ok'], reject: ['Rechazó', 'warn'], revoke: ['Revocó', 'bad'] };
@@ -203,7 +214,7 @@
         var fin = function (texto) { msgAdmin(texto, 'ok'); return cargarAdmin(); };
         var fallo = function (ex) { b.disabled = false; msgAdmin('No se pudo completar: ' + (ex && ex.message || ex), 'error'); };
         if (a === 'aprobar') {
-            var sel = doc.querySelector('#adminVerifiedCard [data-gmva-type="' + email + '"]'), tipo = sel ? sel.value : 'estudiante';
+            var tipo = 'docente';
             if (!confirm('¿Otorgar el distintivo GeoMetrics Verified (' + GMV.TIPO[tipo] + ') a ' + nombreDe(email) + ' (' + email + ')?')) return;
             b.disabled = true;
             GMV.admin.aprobar(email, tipo).then(function () { return fin('Distintivo otorgado a ' + email + '.'); }).catch(fallo);
