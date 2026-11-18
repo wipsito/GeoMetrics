@@ -1693,3 +1693,45 @@ body.gm-crop-open { overflow: hidden !important; }
 }
 /* El rótulo «// EQUIPO CREADOR» ya está en la insignia: se quita el duplicado de gm-tema.js */
 #gmEquipoModal .gm-equipo-modal-head::before { content: none !important; display: none !important; }
+
+/* ===== Panel admin: usuarios registrados ===== */
+#pantallaAdmin .aula-grid > .gm-usr-card { grid-column: 1 / -1 !important; }
+.gm-usr-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.gm-usr-head h3 { margin: 0; display: flex; align-items: center; gap: 8px; }
+.gm-usr-filtros { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 10px; }
+.gm-usr-filtros input { flex: 1 1 260px; min-width: 0; margin: 0; }
+.gm-usr-filtros select { flex: 0 0 auto; margin: 0; }
+.gm-usr-lista { display: flex; flex-direction: column; gap: 6px; max-height: 520px; overflow-y: auto; padding-right: 4px; }
+.gm-usr-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); }
+.gm-usr-row:hover { background: rgba(255, 255, 255, 0.07); }
+.gm-usr-av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; color: #0b1626; background: #8fb3c9; }
+.gm-usr-av-docente { background: #ffd27a; }
+.gm-usr-av-admin, .gm-usr-av-superadmin { background: #ff9d9d; }
+.gm-usr-av-estudiante { background: #7fe3c4; }
+.gm-usr-info { display: flex; flex-direction: column; min-width: 0; }
+.gm-usr-info strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-usr-info em { font-style: normal; opacity: .65; font-weight: 400; }
+.gm-usr-mail, .gm-usr-det { font-size: 12px; opacity: .75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-usr-det { opacity: .6; }
+.gm-usr-rol { font-size: 11px; font-weight: 700; letter-spacing: .02em; padding: 3px 9px; border-radius: 999px; background: rgba(127, 227, 196, .15); color: #7fe3c4; white-space: nowrap; }
+.gm-usr-rol-docente { background: rgba(255, 210, 122, .15); color: #ffd27a; }
+.gm-usr-rol-admin, .gm-usr-rol-superadmin { background: rgba(255, 157, 157, .15); color: #ff9d9d; }
+.gm-usr-del, .gm-usr-restore { border: 1px solid rgba(255, 99, 99, .55); background: rgba(255, 99, 99, .12); color: #ff8a8a; font-weight: 700; font-size: 12px; padding: 7px 12px; border-radius: 9px; cursor: pointer; white-space: nowrap; }
+.gm-usr-del:hover { background: #e04848; color: #fff; }
+.gm-usr-del:disabled, .gm-usr-restore:disabled { opacity: .5; cursor: wait; }
+.gm-usr-restore { border-color: rgba(127, 227, 196, .55); background: rgba(127, 227, 196, .12); color: #7fe3c4; }
+.gm-usr-restore:hover { background: #2fae88; color: #fff; }
+.gm-usr-lock { width: 74px; text-align: center; opacity: .55; cursor: help; }
+.gm-usr-row.is-del { grid-template-columns: 40px minmax(0, 1fr) auto; opacity: .85; }
+.gm-usr-vacio { opacity: .65; font-size: 13px; padding: 10px 2px; margin: 0; }
+.gm-usr-msg { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; font-size: 13px; background: rgba(0, 217, 255, .1); }
+.gm-usr-msg.is-ok { background: rgba(127, 227, 196, .14); color: #9dffc0; }
+.gm-usr-msg.is-error { background: rgba(255, 99, 99, .14); color: #ff9d9d; }
+.gm-usr-eliminados { margin-top: 14px; }
+.gm-usr-eliminados summary { cursor: pointer; font-weight: 700; font-size: 13px; opacity: .85; padding: 6px 0; }
+.gm-usr-eliminados summary span { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: rgba(255, 255, 255, .12); text-align: center; font-size: 11px; }
+@media (max-width: 640px) {
+  .gm-usr-row { grid-template-columns: 36px minmax(0, 1fr) auto; }
+  .gm-usr-rol { grid-column: 2; justify-self: start; }
+  .gm-usr-av { width: 36px; height: 36px; }
+}
