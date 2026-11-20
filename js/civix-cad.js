@@ -512,7 +512,10 @@
         }
         buildLayers();
         var acts = el('span', 'cx-acts'); bar.appendChild(acts);
-        function abtn(t, title, fn) { var b = el('button', 'cx-btn cx-dl', t); b.type = 'button'; b.title = title; b.addEventListener('click', fn); acts.appendChild(b); }
+        function abtn(t, title, fn) { var b = el('button', 'cx-btn cx-dl', t); b.type = 'button'; b.title = title; b.addEventListener('click', fn); acts.appendChild(b); return b; }
+        /* Modo cine (js/civix-planos.js): el plano se dibuja solo, por etapas, en pantalla completa */
+        var bc = abtn('🎬 Modo cine', 'Ver cómo se dibuja el plano paso a paso', function () { if (CAD.cine) CAD.cine(model, { titulo: opts.titulo, name: opts.name, dark: dark }); });
+        bc.classList.add('cx-cine-btn');
         abtn('⬇ DXF', 'Descargar DXF limpio (AutoCAD / Civil 3D / QGIS)', function () { dl((opts.name || 'plano_civix') + '.dxf', new Blob([writeDXF(model)], { type: 'application/dxf' })); });
         abtn('⬇ PNG', 'Descargar imagen', function () { paint(); cv.toBlob(function (b) { dl((opts.name || 'plano_civix') + '.png', b); }); });
         abtn('⬇ SVG', 'Descargar vectorial', function () { dl((opts.name || 'plano_civix') + '.svg', new Blob([toSVG(model, { bg: dark ? 'dark' : 'light' })], { type: 'image/svg+xml' })); });

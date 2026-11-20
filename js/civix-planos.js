@@ -901,17 +901,21 @@
     var EJEMPLOS = [
         'Hazme un edificio de 4 pisos en un lote de 10 x 20 m. Primer piso: cochera doble y un departamento. Del 2.º al 4.º piso: un departamento de 3 dormitorios.',
         'Casa de 2 pisos con 3 habitaciones y estudio en un lote de 7 x 15 m.',
-        'Edificio de 3 pisos en lote de 8 x 18: primer piso local comercial; 2.º y 3.º piso apartamento de 2 alcobas.',
-        'Vivienda de 1 piso con 2 dormitorios y cochera en lote de 9 x 16 m.'
+        'Zapata aislada para una carga de 800 kN, columna de 40 x 40 cm y capacidad portante de 150 kPa.',
+        'Columna de 30 x 40 cm con carga axial de 1200 kN y altura libre de 3 m.',
+        'Viga de 6 m de luz, sección 30 x 50 cm, carga muerta de 20 kN/m y carga viva de 10 kN/m.',
+        'Muro de contención de 3 m de altura con sobrecarga de 10 kPa.'
     ];
     function enModoPlanos() { return global.__civixModo === 'planos'; }
     var sinBienvenida = false;
     function activarModo() { var b = doc.querySelector('#civixModos [data-modo="planos"]'); if (b && !b.classList.contains('active')) { sinBienvenida = true; b.click(); sinBienvenida = false; } }
     function bienvenida() {
-        var c = tarjeta('<div class="civix-md">📐 <b>Modo Planos</b> — describe tu proyecto y te propongo la distribución, la vista previa de cada planta y el dibujo en <b>modo cine</b>, con descarga en DXF, PDF y PNG.<br>' +
-            '<small>Indica: número de pisos, medidas del lote (frente × fondo) y qué va en cada piso (cochera, local, departamento, dormitorios, baños, estudio).</small></div>' +
+        var c = tarjeta('<div class="civix-md">📐 <b>Modo Planos</b> — pide cualquier diseño:<br>' +
+            '• <b>Edificios y casas:</b> te propongo la distribución, la vista previa de cada planta y el dibujo en <b>modo cine</b>. Indica pisos, lote (frente × fondo) y qué va en cada piso.<br>' +
+            '• <b>Elementos y obras:</b> zapatas, columnas, vigas, losas, muros, escaleras, cerchas, pilotes, perfiles de acero, puentes, pórticos y curvas de nivel, con cálculo, armado, cotas y cantidades.<br>' +
+            '<small>Todo se descarga en DXF y PDF.</small></div>' +
             '<div class="cxpl-ejemplos">' + EJEMPLOS.map(function (t) { return '<button type="button" class="cxpl-ej" data-cxpl-ej>' + esc(t) + '</button>'; }).join('') + '</div>' +
-            '<p class="cxpl-nota">En este modo Civix solo genera planos. Para dudas de teoría vuelve a «Explicar».</p>');
+            '<p class="cxpl-nota">En este modo Civix genera planos y diseños. Para dudas de teoría vuelve a «Explicar».</p>');
         if (c) c.addEventListener('click', function (e) {
             var b = e.target.closest('[data-cxpl-ej]'); if (!b) return;
             var i = doc.getElementById('inputAsistente'); if (i) { i.value = b.textContent; i.focus(); try { i.dispatchEvent(new Event('input', { bubbles: true })); } catch (ex) { } }
@@ -946,9 +950,31 @@
         } catch (e) { try { console.warn('Civix planos arquitectónicos', e); } catch (e2) { } }
         return prevSend ? prevSend.apply(this, arguments) : false;
     };
-    /* Atiende un mensaje en modo Planos. Siempre devuelve true: en este modo nada va a la IA. */
+    /* ¿Es un elemento o una obra que ya resuelven los generadores de Civix CAD (sin IA)?
+       zapatas, columnas, vigas, losas, muros, escaleras, cerchas, pilotes, perfiles de acero, puentes, pórticos, curvas de nivel. */
+    var ELEMENTO = /\b(zapatas?|cimentaci|cimientos?|vigas?|vigueta|columnas?|losas?|muros?|escaleras? de concreto|gradas|cerchas?|armadura de techo|pilotes?|pilotaje|dado de cimentacion|perfil(?:es)? (?:w|de acero)|puentes?|porticos?|curvas de nivel|topografi|terreno aleatorio|despiece)\b/;
+    var PROGRAMA_ARQ = /(dormitorio|habitacion|alcoba|recamara|cochera|garaje|sala|comedor|cocina|recepcion|oficinas? administrativ|aulas?\b|sala de lectura|consultorio|apartamento|departamento|vivienda|\bcasa\b|biblioteca|escuela|colegio|clinica|distribucion|planta arquitect)/;
+    function esElemento(q) {
+        if (!ELEMENTO.test(q)) return false;
+        /* «escaleras» dentro de la lista de espacios de un edificio es arquitectura, no un elemento estructural */
+        if (PROGRAMA_ARQ.test(q) && !/^(dise|dibuj|calcul|haz|hazme|genera|crea|predimension|necesito|quiero)?\s*\w*\s*(una?\s+)?(zapata|viga|columna|losa|muro|cercha|pilote|puente|portico)/.test(q)) return false;
+        return true;
+    }
+    /* En modo Planos, un elemento estructural va a los generadores de Civix CAD (agregando el verbo si falta,
+       para que lo reconozcan: «zapata para 800 kN» → «diseña zapata para 800 kN»). */
+    function elementoCAD(texto, q) {
+        var t = /^(dise|dibuj|calcul|haz|hazme|genera|crea|elabora|predimension|dame|quiero|necesito|muestra)/.test(q) ? texto : 'Diseña ' + texto;
+        return prevSend ? prevSend.call(CAD, t, null) : false;
+    }
+
+    /* Atiende un mensaje en modo Planos: arquitectura con este módulo; elementos y obras con Civix CAD.
+       Solo lo que ningún generador local resuelve se deja pasar a la IA (con instrucciones de plano CAD). */
     function modoPlanos(texto, q) {
         try {
+            if (esElemento(q) && !(actual && /^(dibujalo|si|ok|apruebo|aprobado)\b/.test(q))) {
+                if (elementoCAD(texto, q)) return true;
+                return false;   /* sin generador local: la IA lo dibuja en formato DXF (modo Planos) */
+            }
             if (actual && actual.estado === 'aprobado' && /^(dibujalo|dibujala|dibuja(?:lo)?|modo cine|efecto (?:de )?cine|dibuja el plano|hazlo|dale)\b/.test(q)) {
                 tarjeta('<div class="civix-md">🎬 Dibujando las ' + actual.Pl.n + ' plantas en modo cine…</div>');
                 return cine(actual.Pl);
@@ -965,11 +991,121 @@
                 if (P.error) return guia(texto, P.error);
                 return propuesta(texto, P);
             }
-            return guia(texto, 'En el modo Planos describo el proyecto que quieres dibujar. Cuéntame cuántos pisos, las medidas del lote (frente × fondo) y qué va en cada piso.');
+            /* otros diseños (detalles, instalaciones, mobiliario, cubiertas…): los dibuja la IA en formato DXF */
+            if (/(dise|dibuj|plano|detalle|planta|corte|elevacion|esquema|haz|hazme|genera|crea|dxf|cad)/.test(q)) return false;
+            return guia(texto, 'En el modo Planos dibujo proyectos y elementos: un edificio o una casa (pisos, lote y qué va en cada piso), o un elemento como una zapata, columna, viga, losa, muro, escalera, cercha, puente o pórtico.');
         } catch (e) {
             try { console.warn('Civix planos arquitectónicos', e); } catch (e2) { }
             return guia(texto, 'No pude interpretar el pedido. Intenta con el formato del ejemplo.');
         }
     }
+    /* =================================================================== 9. MODO CINE PARA CUALQUIER PLANO CAD
+       Lo usa el botón «🎬 Modo cine» del visor de Civix CAD (Planos y CAD: curvas de nivel, diseño estructural,
+       planos con IA, conversiones, DXF adjuntos y tarjetas del chat). Las etapas se deducen del nombre de la capa. */
+    var ETAPAS_G = ['Marco y rótulo', 'Ejes', 'Contornos', 'Rellenos y secciones', 'Armadura', 'Detalles', 'Cotas', 'Textos'];
+    function etapaDe(e) {
+        var L = String(e.layer || '').toUpperCase();
+        if (/MARCO|CAJETIN|ROTULO|TITLE|BORDER|FRAME|LAMINA/.test(L)) return 0;
+        if (/EJE|AXIS|GRID|REJILLA/.test(L)) return 1;
+        if (/COTA|DIM|ACOT/.test(L)) return 6;
+        if (/TEXT|TXT|ETIQ|LABEL|NOTA|LEYENDA/.test(L) || e.t === 'text') return 7;
+        if (/ARMAD|ACERO|REFUER|ESTRIB|VARILL|BARRA|REBAR|STEEL/.test(L)) return 4;
+        if (e.fill || e.hatch || /HATCH|RELLENO|ACHUR|SECC/.test(L)) return 3;
+        if (/CONTORNO|CONCRET|MURO|WALL|OUTLINE|PERFIL|TERRENO|CURVA|MAESTRA|COLUMN|VIGA|LOSA|ZAPATA|ESTRUC|PUENTE|CERCHA|BORDE|LIMITE/.test(L)) return 2;
+        return 5;
+    }
+    function colorDe(model, e, oscuro) {
+        var rgb = e.rgb, aci = e.aci, Lr = model.layers && model.layers[e.layer];
+        if (!rgb && !aci && Lr) { rgb = Lr.rgb; aci = Lr.aci; }
+        if (!rgb && aci && aci !== 7 && CAD.aciRGB) rgb = CAD.aciRGB(aci);
+        if (!rgb) return oscuro ? '#e2e8f0' : '#111827';
+        if (!oscuro && rgb[0] > 225 && rgb[1] > 225 && rgb[2] > 225) return '#111827';   /* blanco sobre fondo claro */
+        return 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')';
+    }
+    function svgModelo(model, oscuro) {
+        var ents = model.ents.filter(function (e) { var L = model.layers && model.layers[e.layer]; return !(L && L.off); });
+        var bb = model.bbox || CAD.bboxOf(ents) || [0, 0, 10, 10], span = Math.max(bb[2] - bb[0], bb[3] - bb[1]) || 1, pad = span * 0.03;
+        var w = bb[2] - bb[0] + 2 * pad, h = bb[3] - bb[1] + 2 * pad;
+        function X(x) { return (x - bb[0] + pad).toFixed(4); } function Y(y) { return (bb[3] - y + pad).toFixed(4); }
+        var orden = ents.map(function (e, i) { return { e: e, i: i, s: etapaDe(e) }; }).sort(function (a, b) { return a.s - b.s || a.i - b.i; });
+        var out = ['<svg class="cxpl-svg" viewBox="0 0 ' + w.toFixed(3) + ' ' + h.toFixed(3) + '" xmlns="http://www.w3.org/2000/svg" role="img">'];
+        orden.forEach(function (o, k) {
+            /* grosor en unidades del dibujo (no «non-scaling-stroke»: rompe el trazo animado con pathLength) */
+            var sw = span * (o.s === 0 ? 0.0024 : o.s === 1 || o.s === 6 ? 0.0019 : o.s === 4 ? 0.0042 : 0.0031);
+            var e = o.e, c = colorDe(model, e, oscuro), at = ' data-k="' + k + '" data-e="' + o.s + '" class="cxpl-e"', st = ' stroke="' + c + '" stroke-width="' + sw.toFixed(5) + '" pathLength="1"';
+            if (e.t === 'poly' && e.pts && e.pts.length) {
+                var pts = e.pts.map(function (p) { return X(p[0]) + ',' + Y(p[1]); }).join(' ');
+                var fill = e.fill ? ' fill="' + (e.fillRgb ? 'rgb(' + e.fillRgb.join(',') + ')' : c) + '" fill-opacity="' + (e.alpha != null ? e.alpha : 0.18) + '"' : ' fill="none"';
+                out.push('<' + (e.closed ? 'polygon' : 'polyline') + at + ' points="' + pts + '"' + (e.noStroke ? ' stroke="none"' : st) + fill + ' stroke-linejoin="round"/>');
+            } else if (e.t === 'circle') {
+                out.push('<circle' + at + ' cx="' + X(e.c[0]) + '" cy="' + Y(e.c[1]) + '" r="' + e.r.toFixed(4) + '"' + st + ' fill="none"/>');
+            } else if (e.t === 'point') {
+                out.push('<circle' + at + ' cx="' + X(e.p[0]) + '" cy="' + Y(e.p[1]) + '" r="' + (span * 0.002).toFixed(4) + '" fill="' + c + '"/>');
+            } else if (e.t === 'text' && e.s && e.h > 0) {
+                var anc = e.ha === 1 ? 'middle' : e.ha === 2 ? 'end' : 'start', dy = e.va === 3 ? e.h * 0.9 : e.va === 2 ? e.h * 0.35 : 0;
+                var rot = e.rot ? ' transform="rotate(' + (-e.rot * 180 / Math.PI).toFixed(2) + ' ' + X(e.p[0]) + ' ' + Y(e.p[1]) + ')"' : '';
+                e.s.forEach(function (ln, j) {
+                    out.push('<text' + at + ' x="' + X(e.p[0]) + '" y="' + (parseFloat(Y(e.p[1])) + dy + j * e.h * 1.4).toFixed(4) + '" font-size="' + e.h.toFixed(4) + '" fill="' + c + '" text-anchor="' + anc + '" font-family="Arial,sans-serif"' + rot + '>' + esc(ln) + '</text>');
+                });
+            }
+        });
+        out.push('</svg>');
+        return out.join('');
+    }
+    function cineModelo(model, o) {
+        o = o || {};
+        if (!model || !model.ents || !model.ents.length) return false;
+        var oscuro = o.dark !== false;
+        var reducido = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var nombre = String(o.titulo || o.name || 'Plano Civix').replace(/_/g, ' ').replace(/\bcivix\b/i, '').trim() || 'Plano';
+        var ov = el('div', 'cxpl-cine' + (oscuro ? '' : ' claro'));
+        ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Modo cine: dibujo del plano');
+        ov.innerHTML = '<div class="cxpl-cine-top"><div><small>CIVIX · PLANOS Y CAD</small><b>' + esc(nombre.charAt(0).toUpperCase() + nombre.slice(1)) + '</b></div>' +
+            '<span class="cxpl-etapa">Preparando…</span><div class="cxpl-cine-acts">' +
+            '<button type="button" data-c="vel" title="Velocidad">1×</button><button type="button" data-c="rep" title="Repetir">↺ Repetir</button>' +
+            '<button type="button" data-c="dxf">⬇ DXF</button><button type="button" data-c="pdf">⬇ PDF</button><button type="button" data-c="x" aria-label="Cerrar">✕</button></div></div>' +
+            '<div class="cxpl-cine-bar"><i></i></div><div class="cxpl-cine-g cxpl-cine-uno" style="--n:1"></div>';
+        doc.body.appendChild(ov);
+        var grid = ov.querySelector('.cxpl-cine-g'), etq = ov.querySelector('.cxpl-etapa'), barra = ov.querySelector('.cxpl-cine-bar i');
+        var fig = el('figure', 'cxpl-cine-f', svgModelo(model, oscuro) + '<span class="cxpl-cur" style="--c:#3b82f6"><i></i><b>Civix</b></span>');
+        grid.appendChild(fig);
+        var svg = fig.querySelector('svg'), nodos = [].slice.call(fig.querySelectorAll('.cxpl-e')), cur = fig.querySelector('.cxpl-cur');
+        var DUR = Math.max(9000, Math.min(22000, 6000 + nodos.length * 12)), vel = 1, t0 = 0, timer = null;
+        function ocultar() { nodos.forEach(function (n) { n.classList.remove('on'); }); cur.style.opacity = 0; }
+        function terminar() { nodos.forEach(function (n) { n.classList.add('on'); }); cur.style.opacity = 0; etq.textContent = 'Plano terminado'; barra.style.width = '100%'; }
+        function paso() {
+            var frac = Math.min(1, (Date.now() - t0) * vel / DUR), k = Math.floor(frac * nodos.length), ult = null;
+            barra.style.width = (frac * 100).toFixed(1) + '%';
+            for (var i = 0; i < k; i++) if (!nodos[i].classList.contains('on')) { nodos[i].classList.add('on'); ult = nodos[i]; }
+            var n = ult || nodos[Math.max(0, k - 1)];
+            if (n) {
+                etq.textContent = 'Dibujando: ' + ETAPAS_G[+n.getAttribute('data-e')];
+                try {
+                    var bb = n.getBBox(), m = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal, fr = fig.getBoundingClientRect();
+                    var s = Math.min(m.width / vb.width, m.height / vb.height), ox = m.left + (m.width - vb.width * s) / 2, oy = m.top + (m.height - vb.height * s) / 2;
+                    cur.style.left = (ox - fr.left + (bb.x + bb.width) * s) + 'px'; cur.style.top = (oy - fr.top + (bb.y + bb.height) * s) + 'px'; cur.style.opacity = 1;
+                } catch (e) { }
+            }
+            if (frac >= 1) { terminar(); return; }
+            timer = setTimeout(paso, 40);
+        }
+        function iniciar() { clearTimeout(timer); ocultar(); t0 = Date.now(); if (reducido) { terminar(); etq.textContent = 'Plano terminado (animación reducida)'; return; } paso(); }
+        function cerrar() { clearTimeout(timer); ov.remove(); doc.removeEventListener('keydown', tecla); }
+        function tecla(e) { if (e.key === 'Escape') cerrar(); }
+        doc.addEventListener('keydown', tecla);
+        ov.addEventListener('click', function (e) {
+            var b = e.target.closest('[data-c]'); if (!b) return;
+            var c = b.getAttribute('data-c'), arch = (o.name || 'plano_civix');
+            if (c === 'x') cerrar();
+            else if (c === 'rep') iniciar();
+            else if (c === 'vel') { var t = (Date.now() - t0) * vel; vel = vel === 1 ? 2 : vel === 2 ? 4 : 1; t0 = Date.now() - t / vel; b.textContent = vel + '×'; }
+            else if (c === 'dxf') CAD.download(arch + '.dxf', new Blob([CAD.writeDXF(model)], { type: 'application/dxf' }));
+            else if (c === 'pdf' && CAD.exportRaster) CAD.exportRaster(model, 'pdf', arch);
+        });
+        setTimeout(iniciar, 350);
+        return true;
+    }
+    CAD.cine = cineModelo;
+
     CAD.planosArq = { leer: leer, plan: plan, modelo: modelo, tabla: tabla, cine: function () { return actual && cine(actual.Pl); }, actual: function () { return actual; } };
 })(typeof window !== 'undefined' ? window : globalThis);
