@@ -1,63 +1,64 @@
 /* Civix — planos arquitectónicos desde el chat (js/civix-planos.js) */
-.cxa-card { max-width: 100%; }
-.cxa-tbl-wrap { overflow-x: auto; margin: 10px 0; }
-.cxa-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-.cxa-tbl th { text-align: left; padding: 7px 10px; font: 700 11px/1 "JetBrains Mono", Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; color: #fbbf24; background: rgba(15, 23, 42, .85); border-bottom: 1px solid rgba(148, 163, 184, .25); }
-.cxa-tbl td { padding: 6px 10px; border-bottom: 1px solid rgba(148, 163, 184, .12); color: #e2e8f0; white-space: nowrap; }
-.cxa-tbl td:first-child { font-weight: 600; text-transform: uppercase; }
-.cxa-tbl td:last-child { color: #94a3b8; }
-.cxa-tbl tbody tr { animation: cxa-fila .3s ease-out both; animation-delay: calc(var(--i) * 90ms); }
-@keyframes cxa-fila { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
-.cxa-q { margin: 10px 0 6px; font-size: 13.5px; }
-.cxa-acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
-.cxa-btn { padding: 8px 14px; border: 1px solid rgba(96, 165, 250, .55); background: rgba(37, 99, 235, .14); color: #dbeafe; font: 600 13px/1 system-ui, -apple-system, "Segoe UI", sans-serif; border-radius: 9px; cursor: pointer; }
-.cxa-btn:hover { background: rgba(37, 99, 235, .3); }
-.cxa-btn.ok { background: #2563eb; border-color: #2563eb; color: #fff; }
-.cxa-btn.ok:hover { background: #1d4ed8; }
-.cxa-btn:disabled { opacity: .55; cursor: default; }
-.cxa-nota { margin: 8px 0 0; font-size: 11.5px; line-height: 1.45; color: #94a3b8; }
-.cxa-ok { color: #4ade80; font-weight: 600; font-size: 13px; }
-.cxa-prev-h { margin: 10px 0 8px; font: 800 13px/1 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: .08em; color: #f8fafc; text-align: center; }
-.cxa-prev { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.cxa-prev figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.cxa-prev .cxa-svg { width: 100%; height: auto; max-height: 340px; background: #fff; border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
-.cxa-prev figcaption { padding: 4px 12px; border-radius: 6px; background: #2563eb; color: #fff; font: 800 11.5px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; }
-.cxa-cambio { margin: 12px auto 0; padding: 10px 14px; max-width: 360px; text-align: center; border: 1px solid #f59e0b; border-radius: 10px; }
-.cxa-cambio b { display: block; color: #fbbf24; font-size: 13.5px; }
-.cxa-cambio span { display: block; margin-top: 2px; font-size: 12.5px; color: #e2e8f0; }
+/* el chat de Civix es una columna flex: sin esto la tarjeta se encoge y su contenido queda recortado */
+.civix-chat .cxpl-card, .cxpl-card { flex: 0 0 auto !important; max-height: none !important; overflow: visible !important; max-width: 100%; }
+.cxpl-tbl-wrap { overflow-x: auto; margin: 10px 0; }
+.cxpl-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cxpl-tbl th { text-align: left; padding: 7px 10px; font: 700 11px/1 "JetBrains Mono", Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; color: #fbbf24; background: rgba(15, 23, 42, .85); border-bottom: 1px solid rgba(148, 163, 184, .25); }
+.cxpl-tbl td { padding: 6px 10px; border-bottom: 1px solid rgba(148, 163, 184, .12); color: #e2e8f0; white-space: nowrap; }
+.cxpl-tbl td:first-child { font-weight: 600; text-transform: uppercase; }
+.cxpl-tbl td:last-child { color: #94a3b8; }
+.cxpl-tbl tbody tr { animation: cxpl-fila .3s ease-out both; animation-delay: calc(var(--i) * 90ms); }
+@keyframes cxpl-fila { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+.cxpl-q { margin: 10px 0 6px; font-size: 13.5px; }
+.cxpl-acts { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+.cxpl-btn { padding: 8px 14px; border: 1px solid rgba(96, 165, 250, .55); background: rgba(37, 99, 235, .14); color: #dbeafe; font: 600 13px/1 system-ui, -apple-system, "Segoe UI", sans-serif; border-radius: 9px; cursor: pointer; }
+.cxpl-btn:hover { background: rgba(37, 99, 235, .3); }
+.cxpl-btn.ok { background: #2563eb; border-color: #2563eb; color: #fff; }
+.cxpl-btn.ok:hover { background: #1d4ed8; }
+.cxpl-btn:disabled { opacity: .55; cursor: default; }
+.cxpl-nota { margin: 8px 0 0; font-size: 11.5px; line-height: 1.45; color: #94a3b8; }
+.cxpl-ok { color: #4ade80; font-weight: 600; font-size: 13px; }
+.cxpl-prev-h { margin: 10px 0 8px; font: 800 13px/1 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: .08em; color: #f8fafc; text-align: center; }
+.cxpl-prev { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.cxpl-prev figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.cxpl-prev .cxpl-svg { width: 100%; height: auto; max-height: 340px; background: #fff; border-radius: 6px; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
+.cxpl-prev figcaption { padding: 4px 12px; border-radius: 6px; background: #2563eb; color: #fff; font: 800 11.5px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.cxpl-cambio { margin: 12px auto 0; padding: 10px 14px; max-width: 360px; text-align: center; border: 1px solid #f59e0b; border-radius: 10px; }
+.cxpl-cambio b { display: block; color: #fbbf24; font-size: 13.5px; }
+.cxpl-cambio span { display: block; margin-top: 2px; font-size: 12.5px; color: #e2e8f0; }
 
 /* ---------- Modo cine ---------- */
-.cxa-cine { position: fixed; inset: 0; z-index: 10070; display: flex; flex-direction: column; background: #0b1220; color: #e2e8f0; }
-.cxa-cine-top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 18px; border-bottom: 1px solid #1e293b; background: #070c16; }
-.cxa-cine-top small { display: block; font: 700 11px/1 "JetBrains Mono", Consolas, monospace; letter-spacing: .2em; color: #60a5fa; }
-.cxa-cine-top b { display: block; margin-top: 4px; font-size: 15px; color: #f8fafc; }
-.cxa-etapa { margin-left: auto; padding: 6px 12px; border: 1px solid rgba(250, 204, 21, .45); color: #facc15; font: 600 12.5px/1 "JetBrains Mono", Consolas, monospace; border-radius: 999px; }
-.cxa-cine-acts { display: flex; gap: 6px; flex-wrap: wrap; }
-.cxa-cine-acts button { padding: 8px 12px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font: 600 12.5px/1 system-ui, -apple-system, "Segoe UI", sans-serif; border-radius: 8px; cursor: pointer; }
-.cxa-cine-acts button:hover { border-color: #60a5fa; }
-.cxa-cine-bar { height: 3px; background: #1e293b; }
-.cxa-cine-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #3b82f6, #22d3ee); }
-.cxa-cine-g { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: 14px; padding: 14px; overflow: auto; }
-.cxa-cine-f { position: relative; margin: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; background: #111a2b; border: 1px solid #1e293b; border-radius: 10px; padding: 34px 8px 8px; }
-.cxa-cine-f figcaption { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); padding: 4px 12px; border-radius: 6px; background: var(--c); color: #fff; font: 800 11.5px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: .04em; white-space: nowrap; }
-.cxa-cine-f .cxa-svg { width: 100%; height: 100%; max-height: calc(100vh - 150px); }
+.cxpl-cine { position: fixed; inset: 0; z-index: 10070; display: flex; flex-direction: column; background: #0b1220; color: #e2e8f0; }
+.cxpl-cine-top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 18px; border-bottom: 1px solid #1e293b; background: #070c16; }
+.cxpl-cine-top small { display: block; font: 700 11px/1 "JetBrains Mono", Consolas, monospace; letter-spacing: .2em; color: #60a5fa; }
+.cxpl-cine-top b { display: block; margin-top: 4px; font-size: 15px; color: #f8fafc; }
+.cxpl-etapa { margin-left: auto; padding: 6px 12px; border: 1px solid rgba(250, 204, 21, .45); color: #facc15; font: 600 12.5px/1 "JetBrains Mono", Consolas, monospace; border-radius: 999px; }
+.cxpl-cine-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.cxpl-cine-acts button { padding: 8px 12px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font: 600 12.5px/1 system-ui, -apple-system, "Segoe UI", sans-serif; border-radius: 8px; cursor: pointer; }
+.cxpl-cine-acts button:hover { border-color: #60a5fa; }
+.cxpl-cine-bar { height: 3px; background: #1e293b; }
+.cxpl-cine-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #3b82f6, #22d3ee); }
+.cxpl-cine-g { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: 14px; padding: 14px; overflow: auto; }
+.cxpl-cine-f { position: relative; margin: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; background: #111a2b; border: 1px solid #1e293b; border-radius: 10px; padding: 34px 8px 8px; }
+.cxpl-cine-f figcaption { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); padding: 4px 12px; border-radius: 6px; background: var(--c); color: #fff; font: 800 11.5px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: .04em; white-space: nowrap; }
+.cxpl-cine-f .cxpl-svg { width: 100%; height: 100%; max-height: calc(100vh - 150px); }
 /* aparición de cada entidad: trazo que se dibuja (líneas) o fundido (textos, rellenos y líneas punteadas) */
-.cxa-cine .cxa-e { opacity: 0; transition: opacity .25s ease; }
-.cxa-cine .cxa-e.on { opacity: 1; }
-.cxa-cine polyline.cxa-e:not([stroke-dasharray]), .cxa-cine polygon.cxa-e:not([stroke-dasharray]), .cxa-cine circle.cxa-e { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .45s ease, opacity .1s; }
-.cxa-cine polyline.cxa-e.on:not([stroke-dasharray]), .cxa-cine polygon.cxa-e.on:not([stroke-dasharray]), .cxa-cine circle.cxa-e.on { stroke-dashoffset: 0; }
-.cxa-cur { position: absolute; left: 0; top: 0; opacity: 0; pointer-events: none; display: flex; align-items: flex-start; gap: 2px; transition: left .12s linear, top .12s linear, opacity .2s; }
-.cxa-cur i { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 14px solid #fff; transform: rotate(-35deg); filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .6)); }
-.cxa-cur b { margin-top: 10px; padding: 2px 6px; border-radius: 4px; background: var(--c); color: #fff; font: 700 10px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap; }
-@media (max-width: 900px) { .cxa-cine-g { grid-template-columns: repeat(min(var(--n, 2), 2), minmax(0, 1fr)); } }
-@media (max-width: 560px) { .cxa-cine-g { grid-template-columns: minmax(0, 1fr); } .cxa-etapa { margin-left: 0; } }
+.cxpl-cine .cxpl-e { opacity: 0; transition: opacity .25s ease; }
+.cxpl-cine .cxpl-e.on { opacity: 1; }
+.cxpl-cine polyline.cxpl-e:not([stroke-dasharray]), .cxpl-cine polygon.cxpl-e:not([stroke-dasharray]), .cxpl-cine circle.cxpl-e { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset .45s ease, opacity .1s; }
+.cxpl-cine polyline.cxpl-e.on:not([stroke-dasharray]), .cxpl-cine polygon.cxpl-e.on:not([stroke-dasharray]), .cxpl-cine circle.cxpl-e.on { stroke-dashoffset: 0; }
+.cxpl-cur { position: absolute; left: 0; top: 0; opacity: 0; pointer-events: none; display: flex; align-items: flex-start; gap: 2px; transition: left .12s linear, top .12s linear, opacity .2s; }
+.cxpl-cur i { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 14px solid #fff; transform: rotate(-35deg); filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .6)); }
+.cxpl-cur b { margin-top: 10px; padding: 2px 6px; border-radius: 4px; background: var(--c); color: #fff; font: 700 10px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; white-space: nowrap; }
+@media (max-width: 900px) { .cxpl-cine-g { grid-template-columns: repeat(min(var(--n, 2), 2), minmax(0, 1fr)); } }
+@media (max-width: 560px) { .cxpl-cine-g { grid-template-columns: minmax(0, 1fr); } .cxpl-etapa { margin-left: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .cxa-tbl tbody tr { animation: none; }
-  .cxa-cine .cxa-e { transition: none; }
+  .cxpl-tbl tbody tr { animation: none; }
+  .cxpl-cine .cxpl-e { transition: none; }
 }
 
 /* Modo Planos: ejemplos de pedido */
-.cxa-ejemplos { display: grid; gap: 8px; margin: 10px 0 4px; }
-.cxa-ej { text-align: left; padding: 10px 12px; border: 1px solid rgba(96, 165, 250, .4); background: rgba(15, 23, 42, .6); color: #dbeafe; font: 500 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; border-radius: 10px; cursor: pointer; }
-.cxa-ej:hover { border-color: #60a5fa; background: rgba(37, 99, 235, .18); }
-.cxa-ej::before { content: "📐 "; }
+.cxpl-ejemplos { display: grid; gap: 8px; margin: 10px 0 4px; }
+.cxpl-ej { text-align: left; padding: 10px 12px; border: 1px solid rgba(96, 165, 250, .4); background: rgba(15, 23, 42, .6); color: #dbeafe; font: 500 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; border-radius: 10px; cursor: pointer; }
+.cxpl-ej:hover { border-color: #60a5fa; background: rgba(37, 99, 235, .18); }
+.cxpl-ej::before { content: "📐 "; }
