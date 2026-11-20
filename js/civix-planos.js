@@ -888,8 +888,10 @@
         });
 
         /* --- puertas (hoja + arco de giro); cada una abre su vano en el muro --- */
+        var barridos = [];   /* área que barre cada hoja de puerta: ahí no puede quedar ningún mueble */
         function puerta(x, y, ancho, dir) { /* dir: 'up','down','left','right' = hacia dónde abre; bisagra en (x,y) */
             var e_ = 0.34;
+            barridos.push(dir === 'up' || dir === 'right' ? [x, y, x + ancho, y + ancho] : dir === 'down' ? [x, y - ancho, x + ancho, y] : [x - ancho, y, x, y + ancho]);
             if (dir === 'up') { ln('PUERTAS', x, y, x, y + ancho); arco('PUERTAS', x, y, ancho, 0, Math.PI / 2); vanos.push([x, y - e_, x + ancho, y + e_ * 0.5]); }
             else if (dir === 'down') { ln('PUERTAS', x, y, x, y - ancho); arco('PUERTAS', x, y, ancho, -Math.PI / 2, 0); vanos.push([x, y - e_ * 0.5, x + ancho, y + e_]); }
             else if (dir === 'right') { ln('PUERTAS', x, y, x + ancho, y); arco('PUERTAS', x, y, ancho, 0, Math.PI / 2); vanos.push([x - e_, y, x + e_ * 0.5, y + ancho]); }
@@ -897,6 +899,8 @@
         }
         pi.rooms.forEach(function (r) {
             var dw = r.tipo === 'bano' ? 0.75 : 0.9;
+            /* separación de la bisagra al muro de abajo: si es la fachada (muro más grueso), la hoja arranca después de él */
+            var yP = r.y < 0.01 ? MURO_EXT + 0.1 : 0.2;
             /* planta abierta: el vestíbulo tiene acceso doble por el frente; la franja del frente abre hacia la nave */
             if (r.banda) {
                 if (r.tipo === 'escalera') return;
@@ -911,13 +915,13 @@
             if (Pl.generico && r.tipo !== 'pasillo' && !ABIERTO.test(r.tipo) && !/^(escalera|ascensor|libre)$/.test(r.tipo)) {
                 var izG = r.lado ? r.lado === 'der' : r.x < Pl.a - 0.01; r._puertaDer = izG;   /* puerta en el muro que da al corredor */
                 if (r.tipo === 'banos') dw = 0.9; else if (r.h > 6) dw = 1.0;
-                if (izG) puerta(r.x + r.w - 0.12, r.y + 0.2, dw, 'left'); else puerta(r.x + 0.12, r.y + 0.2 + dw, dw, 'right');
+                if (izG) puerta(r.x + r.w - 0.12, r.y + yP, dw, 'left'); else puerta(r.x + 0.12, r.y + yP + dw, dw, 'right');
                 return;
             }
             /* ambientes de la zona de cuartos (incluye los pedidos adicionales): puerta hacia el pasillo central */
             if (r.zona && r.tipo !== 'closet' && r.tipo !== 'ascensor') {
                 var iz = r.x < Pl.a - 0.01; r._puertaDer = iz;
-                if (iz) puerta(r.x + r.w - 0.12, r.y + 0.2, dw, 'left'); else puerta(r.x + 0.12, r.y + 0.2 + dw, dw, 'right');
+                if (iz) puerta(r.x + r.w - 0.12, r.y + yP, dw, 'left'); else puerta(r.x + 0.12, r.y + yP + dw, dw, 'right');
                 return;
             }
             switch (r.tipo) {
@@ -930,7 +934,7 @@
                     break;
                 case 'ingreso': if (r.y < 0.01) puerta(r.x + 0.5, 0.12, 1.0, 'up'); break;
                 case 'local': if (r.y < 0.01) { vanos.push([r.x + 0.6, -0.05, r.x + r.w - 0.6, MURO_EXT + 0.05]); ln('PUERTAS', r.x + 0.6, 0.1, r.x + r.w - 0.6, 0.1); } break;
-                case 'sala': if (r.y < 0.01) puerta(r.x + r.w - 0.12, r.y + r.h - 1.05, 0.9, 'left'); else puerta(r.x + r.w - 0.12, r.y + 0.2, 0.9, 'left'); break;
+                case 'sala': if (r.y < 0.01) puerta(r.x + r.w - 0.12, r.y + r.h - 1.05, 0.9, 'left'); else puerta(r.x + r.w - 0.12, r.y + yP, 0.9, 'left'); break;
                 case 'estudio': puerta(r.x + 0.12, r.y + r.h - 1.05, 0.85, 'right'); break;
                 case 'cocina': puerta(r.x + r.w - 1.15, r.y + r.h - 0.12, 0.9, 'down'); break;
                 case 'lav': puerta(r.x + 0.25, r.y + r.h - 0.12, 0.75, 'down'); break;
@@ -945,7 +949,7 @@
                     if (Pl.generico && r.tipo !== 'bano') dw = r.h > 6 ? 1.0 : 0.9;
                     var izq = r.x < Pl.a - 0.01;
                     r._puertaDer = izq;   /* puerta en el muro derecho del ambiente */
-                    if (izq) puerta(r.x + r.w - 0.12, r.y + 0.2, dw, 'left'); else puerta(r.x + 0.12, r.y + 0.2 + dw, dw, 'right');
+                    if (izq) puerta(r.x + r.w - 0.12, r.y + yP, dw, 'left'); else puerta(r.x + 0.12, r.y + yP + dw, dw, 'right');
                     break;
                 }
             }
@@ -962,26 +966,83 @@
         /* --- escalera: dos tramos con huellas de 0.28 m --- */
         pi.rooms.forEach(function (r) {
             if (r.tipo !== 'escalera') return;
-            var x0 = r.x + 0.2, x1 = r.x + r.w - 0.2, xm = (x0 + x1) / 2, y0 = r.y + 0.2, y1 = r.y + r.h - 0.2;
+            /* dentro del espacio libre: junto a la fachada el muro es más grueso */
+            var mx0 = r.x < 0.01 ? MURO_EXT + 0.08 : 0.2, mx1 = r.x + r.w > W - 0.01 ? MURO_EXT + 0.08 : 0.2, my0 = r.y < 0.01 ? MURO_EXT + 0.08 : 0.2, my1 = Math.abs(r.y + r.h - DB) < 0.01 ? MURO_EXT + 0.08 : 0.2;
+            var x0 = r.x + mx0, x1 = r.x + r.w - mx1, xm = (x0 + x1) / 2, y0 = r.y + my0, y1 = r.y + r.h - my1;
+            /* huellas interrumpidas donde pasa la flecha de subida: ninguna línea cruza a otra */
+            var axe = (x0 + xm) / 2;
             ln('ESCALERA', xm, y0 + 0.9, xm, y1);
-            for (var yy = y0 + 0.9; yy <= y1 + 0.001; yy += 0.28) { ln('ESCALERA', x0, yy, xm - 0.05, yy); ln('ESCALERA', xm + 0.05, yy, x1, yy); }
-            ln('ESCALERA', (x0 + xm) / 2, y1 - 0.2, (x0 + xm) / 2, y0 + 1.1); ln('ESCALERA', (x0 + xm) / 2, y0 + 1.1, (x0 + xm) / 2 - 0.12, y0 + 1.3); ln('ESCALERA', (x0 + xm) / 2, y0 + 1.1, (x0 + xm) / 2 + 0.12, y0 + 1.3);
+            for (var yy = y0 + 0.9; yy <= y1 + 0.001; yy += 0.28) {
+                if (yy > y0 + 0.95 && yy < y1 - 0.15) { ln('ESCALERA', x0, yy, axe - 0.16, yy); ln('ESCALERA', axe + 0.16, yy, xm - 0.05, yy); }
+                else ln('ESCALERA', x0, yy, xm - 0.05, yy);
+                ln('ESCALERA', xm + 0.05, yy, x1, yy);
+            }
+            ln('ESCALERA', axe, y1 - 0.2, axe, y0 + 1.1); ln('ESCALERA', axe, y0 + 1.1, axe - 0.12, y0 + 1.3); ln('ESCALERA', axe, y0 + 1.1, axe + 0.12, y0 + 1.3);
             txt('TEXTO', (xm + x1) / 2, y0 + 0.5, 0.12, 'SUBE');
         });
 
         /* --- mobiliario --- */
         /* el mobiliario se ubica en el espacio libre interior: junto a la fachada el muro es más grueso (MURO_EXT),
            así que ningún mueble queda dentro del muro ni cruzado por su línea */
-        var extra_ = MURO_EXT - MURO / 2;
+        var extra_ = MURO_EXT - MURO / 2, limites = {};
         pi.rooms.forEach(function (r) {
             delete r._ly;
             var a0 = r.x < 0.01 ? extra_ : 0, a1 = r.x + r.w > W - 0.01 ? extra_ : 0, b0 = r.y < 0.01 ? extra_ : 0, b1 = Math.abs(r.y + r.h - DB) < 0.01 ? extra_ : 0;
             if (ABIERTO.test(r.tipo)) { a0 = a1 = b0 = b1 = 0; }
             var ri = {}; for (var k in r) ri[k] = r[k];
             ri.x = r.x + a0; ri.y = r.y + b0; ri.w = r.w - a0 - a1; ri.h = r.h - b0 - b1;
+            var g0 = PIEZA;
             mobiliario(ri, pl);
+            /* cada pieza recuerda el espacio libre de su recinto (para no cruzar muros ni ventanas) */
+            for (var gq = g0 + 1; gq <= PIEZA; gq++) limites[gq] = ABIERTO.test(r.tipo) ? [r.x - 0.01, r.y - 0.01, r.x + r.w + 0.01, r.y + r.h + 0.01] : [ri.x + MURO / 2 - 0.01, ri.y + MURO / 2 - 0.01, ri.x + ri.w - MURO / 2 + 0.01, ri.y + ri.h - MURO / 2 + 0.01];
             if (ri._ly != null) r._ly = ri._ly;
         });
+        /* muebles que caerían en el barrido de una puerta o sobre una columna: se retira la pieza completa
+           (las piezas que se tocan, como un mesón y su estufa, se tratan como una sola) */
+        (function () {
+            var cajas = {}, padre = {};
+            function raiz(g) { while (padre[g] !== g) { padre[g] = padre[padre[g]]; g = padre[g]; } return g; }
+            ents.forEach(function (e) {
+                if (e.layer !== 'MOBILIARIO' || e._g == null) return;
+                var b = cajas[e._g] || (cajas[e._g] = [Infinity, Infinity, -Infinity, -Infinity]); padre[e._g] = e._g;
+                var pts = e.t === 'circle' ? [[e.c[0] - e.r, e.c[1] - e.r], [e.c[0] + e.r, e.c[1] + e.r]] : e.pts;
+                pts.forEach(function (q) { var X = q[0] - ox; b[0] = Math.min(b[0], X); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], X); b[3] = Math.max(b[3], q[1]); });
+            });
+            var ids = Object.keys(cajas);
+            function corta(a, b, m) { return Math.min(a[2], b[2]) - Math.max(a[0], b[0]) > m && Math.min(a[3], b[3]) - Math.max(a[1], b[1]) > m; }
+            function dentro(a, b) { return a[0] >= b[0] - 1e-3 && a[1] >= b[1] - 1e-3 && a[2] <= b[2] + 1e-3 && a[3] <= b[3] + 1e-3; }
+            function area(b) { return (b[2] - b[0]) * (b[3] - b[1]); }
+            /* trazos de cada pieza, para saber si dos muebles distintos se cruzan de verdad */
+            var trazos = {};
+            ents.forEach(function (e) {
+                if (e.layer !== 'MOBILIARIO' || e._g == null || e.noStroke || !e.pts) return;
+                var L = trazos[e._g] || (trazos[e._g] = []), p = e.pts, n = p.length;
+                for (var s = 0; s < n - (e.closed ? 0 : 1); s++) L.push([p[s], p[(s + 1) % n]]);
+            });
+            function orient(a, b, c) { return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]); }
+            function seCruzan(g1, g2) {
+                var A = trazos[g1] || [], B = trazos[g2] || [];
+                for (var a = 0; a < A.length; a++) for (var b = 0; b < B.length; b++) {
+                    var p = A[a][0], q = A[a][1], r_ = B[b][0], s_ = B[b][1];
+                    if (orient(r_, s_, p) * orient(r_, s_, q) < -1e-10 && orient(p, q, r_) * orient(p, q, s_) < -1e-10) return true;
+                }
+                return false;
+            }
+            var fuera = {}, obst = barridos.concat(colRects), quitar = {};
+            for (var i = 0; i < ids.length; i++) for (var j = i + 1; j < ids.length; j++) {
+                var bi = cajas[ids[i]], bj = cajas[ids[j]];
+                if (!corta(bi, bj, 0.001)) continue;
+                /* una pieza dentro de otra (estufa sobre el mesón) se trata como un solo mueble */
+                if (dentro(bi, bj) || dentro(bj, bi)) { if (!seCruzan(ids[i], ids[j])) { padre[raiz(ids[j])] = raiz(ids[i]); continue; } }
+                /* dos muebles que se cruzan: se retira el más pequeño */
+                if (seCruzan(ids[i], ids[j])) quitar[area(bi) < area(bj) ? ids[i] : ids[j]] = true;
+            }
+            ids.forEach(function (g) {
+                var lim = limites[g], fueraDeSala = lim && !dentro(cajas[g], lim);   /* se sale de su recinto: tocaría un muro o una ventana */
+                if (quitar[g] || fueraDeSala || obst.some(function (o) { return corta(cajas[g], o, 0.02); })) fuera[raiz(g)] = true;
+            });
+            if (Object.keys(fuera).length) ents = ents.filter(function (e) { return !(e.layer === 'MOBILIARIO' && e._g != null && fuera[raiz(String(e._g))]); });
+        })();
 
         /* --- textos de ambientes: en el punto libre más cercano al centro (sin tapar muebles, puertas ni escalera) --- */
         var obst = [];
@@ -1015,12 +1076,13 @@
 
         /* --- cotas generales y rótulo --- */
         /* cotas con marcas a 45° (una marca recta quedaría encima del eje que pasa por el mismo punto) */
-        ln('COTAS', 0, -0.7, W, -0.7); ln('COTAS', -0.1, -0.8, 0.1, -0.6); ln('COTAS', W - 0.1, -0.8, W + 0.1, -0.6);
-        txt('COTAS', W / 2, -0.95, 0.2, f2(W) + ' m');
-        ln('COTAS', -0.7, 0, -0.7, D); ln('COTAS', -0.8, -0.1, -0.6, 0.1); ln('COTAS', -0.8, D - 0.1, -0.6, D + 0.1);
-        txt('COTAS', -1.0, D / 2, 0.2, f2(D) + ' m', { rot: Math.PI / 2 });
-        txt('TEXTO', W / 2, -2.6, 0.38, 'PLANTA ' + (NOMBRE_PISO[pi.n] || pi.n + '.º') + ' PISO', { titulo: true });
-        txt('TEXTO', W / 2, -3.05, 0.17, 'NPT ' + (pi.n === 1 ? '±0.00' : '+' + f2((pi.n - 1) * (Pl.generico ? 3.2 : 2.7))) + ' · ESC. ' + (Pl.escala || '1:75') + ' · ANTEPROYECTO');
+        /* cotas generales por fuera de los círculos de los ejes: así ningún eje cruza la línea de cota */
+        ln('COTAS', 0, -2.55, W, -2.55); ln('COTAS', -0.1, -2.65, 0.1, -2.45); ln('COTAS', W - 0.1, -2.65, W + 0.1, -2.45);
+        txt('COTAS', W / 2, -2.8, 0.2, f2(W) + ' m');
+        ln('COTAS', -2.55, 0, -2.55, D); ln('COTAS', -2.65, -0.1, -2.45, 0.1); ln('COTAS', -2.65, D - 0.1, -2.45, D + 0.1);
+        txt('COTAS', -2.85, D / 2, 0.2, f2(D) + ' m', { rot: Math.PI / 2 });
+        txt('TEXTO', W / 2, -3.5, 0.38, 'PLANTA ' + (NOMBRE_PISO[pi.n] || pi.n + '.º') + ' PISO', { titulo: true });
+        txt('TEXTO', W / 2, -3.95, 0.17, 'NPT ' + (pi.n === 1 ? '±0.00' : '+' + f2((pi.n - 1) * (Pl.generico ? 3.2 : 2.7))) + ' · ESC. ' + (Pl.escala || '1:75') + ' · ANTEPROYECTO');
         return limpiarSolapes(ents, 0.004);   /* ninguna línea encima de otra */
     }
     /* ------------------------------------------------------------------ MOBILIARIO DETALLADO
@@ -1036,10 +1098,17 @@
     };
     function F(col, a) { return { col: col, fill: true, alpha: a }; }
     function Dl(col, sw) { return sw ? { col: col, sw: sw } : { col: col }; }
-    function lapiz(pl, ox, oy, rot) {
-        var c = [1, 0, -1, 0][rot & 3], s = [0, 1, 0, -1][rot & 3];
+    /* cada símbolo (cama, silla, mesa…) es una «pieza»: si choca con el barrido de una puerta o una columna,
+       se retira completa (nunca queda un mueble a medias ni una línea cruzando otra) */
+    var PIEZA = 0;
+    function lapiz(pl, ox, oy, rot, porPieza) {
+        var c = [1, 0, -1, 0][rot & 3], s = [0, 1, 0, -1][rot & 3], gid = ++PIEZA;
         function T(p) { return [ox + p[0] * c - p[1] * s, oy + p[0] * s + p[1] * c]; }
-        function poly(pts, closed, ex) { return pl('MOBILIARIO', pts.map(T), closed, ex); }
+        function poly(pts, closed, ex) {
+            var e2 = {}; if (ex) for (var k in ex) e2[k] = ex[k];
+            e2._g = porPieza ? ++PIEZA : gid;
+            return pl('MOBILIARIO', pts.map(T), closed, e2);
+        }
         var S = {
             poly: poly,
             ln: function (u1, v1, u2, v2, ex) { return poly([[u1, v1], [u2, v2]], false, ex); },
@@ -1080,13 +1149,11 @@
         },
         mesaNoche: function (S, s) {
             S.rr(-s / 2, 0, s, s * 0.9, 0.04, F('madera', 0.3));
-            S.circ(0, s * 0.45, s * 0.27, F('cama', 0.25)); S.circ(0, s * 0.45, s * 0.08, F('cama', 0.9));
-            S.ln(-s * 0.27, s * 0.45, s * 0.27, s * 0.45, Dl('cama', 0.006)); S.ln(0, s * 0.18, 0, s * 0.72, Dl('cama', 0.006));
+            S.circ(0, s * 0.45, s * 0.27, F('cama', 0.25)); S.circ(0, s * 0.45, s * 0.08, F('cama', 0.9));   /* lámpara (pantalla y bombillo) */
         },
         closet: function (S, L, d) {
             S.rect(-L / 2, 0, L, d, F('madera', 0.14));
-            S.ln(-L / 2 + 0.06, d * 0.45, L / 2 - 0.06, d * 0.45, Dl('metal', 0.012));          /* tubo */
-            for (var u = -L / 2 + 0.12; u < L / 2 - 0.08; u += 0.11) S.ln(u - 0.03, d * 0.45 - 0.19, u + 0.03, d * 0.45 + 0.19, Dl('tela', 0.009)); /* ganchos */
+            for (var u = -L / 2 + 0.12; u < L / 2 - 0.08; u += 0.11) S.ln(u - 0.03, d * 0.45 - 0.19, u + 0.03, d * 0.45 + 0.19, Dl('tela', 0.009)); /* ropa colgada (sin tubo que la cruce) */
             S.ln(-L / 2, d - 0.03, 0.06, d - 0.03, Dl('madera', 0.02)); S.ln(-0.06, d - 0.08, L / 2, d - 0.08, Dl('madera', 0.02)); /* puertas corredizas */
         },
         sofa: function (S, L, d, n) {
@@ -1099,7 +1166,7 @@
         },
         mesaCentro: function (S, w, h) {
             S.rr(-w / 2, 0, w, h, 0.1, F('vidrio', 0.15)); S.rr(-w / 2 + 0.06, 0.06, w - 0.12, h - 0.12, 0.07, Dl('vidrio', 0.006));
-            for (var k = 0; k < 5; k++) S.hoja(w * 0.25, h / 2, k * 1.26 + 0.4, 0.13, F('verde', 0.45));
+            for (var k = 0; k < 5; k++) { var ak = k * 1.26 + 0.4; S.hoja(w * 0.25 + 0.056 * Math.cos(ak), h / 2 + 0.056 * Math.sin(ak), ak, 0.11, F('verde', 0.45)); }   /* hojas desde el borde de la matera */
             S.circ(w * 0.25, h / 2, 0.05, F('madera', 0.8));
         },
         silla: function (S) { S.rr(-0.21, 0.1, 0.42, 0.37, 0.07, F('tela', 0.3)); S.rr(-0.22, 0, 0.44, 0.07, 0.03, F('madera', 0.75)); },
@@ -1151,12 +1218,12 @@
             S.circ(-L / 2 + 0.15, 0.22, 0.07, Dl('metal')); S.circ(L / 2 - 0.15, 0.22, 0.07, Dl('metal'));
         },
         alfombra: function (S, u, v, w, h) { S.rect(u, v, w, h, F('tela', 0.07)); S.rect(u + 0.08, v + 0.08, w - 0.16, h - 0.16, Dl('tela', 0.005)); },
-        maceta: function (S, r) { S.circ(0, 0, r, F('madera', 0.3)); for (var k = 0; k < 7; k++) S.hoja(0, 0, k * 0.9 + 0.3, r * 1.6, F('verde', 0.35)); },
+        maceta: function (S, r) { S.circ(0, 0, r, F('madera', 0.3)); for (var k = 0; k < 7; k++) { var a = k * 0.9 + 0.3; S.hoja(r * 1.06 * Math.cos(a), r * 1.06 * Math.sin(a), a, r * 1.1, F('verde', 0.35)); } },   /* hojas que salen del borde (no cruzan la matera) */
         arbol: function (S, R) {
             var p = [], q = [], i, a;
             for (i = 0; i < 40; i++) { a = 2 * Math.PI * i / 40; p.push([R * (1 + 0.07 * Math.sin(9 * a)) * Math.cos(a), R * (1 + 0.07 * Math.sin(9 * a)) * Math.sin(a)]); q.push([0.6 * R * (1 + 0.09 * Math.sin(7 * a + 1)) * Math.cos(a), 0.6 * R * (1 + 0.09 * Math.sin(7 * a + 1)) * Math.sin(a)]); }
             S.poly(p, true, F('verde', 0.22)); S.poly(q, true, F('verde', 0.2));
-            for (i = 0; i < 6; i++) { a = i * 1.05 + 0.3; S.ln(0, 0, 0.55 * R * Math.cos(a), 0.55 * R * Math.sin(a), Dl('madera', 0.012)); }
+            for (i = 0; i < 6; i++) { a = i * 1.05 + 0.3; S.ln(0.13 * R * Math.cos(a), 0.13 * R * Math.sin(a), 0.48 * R * Math.cos(a), 0.48 * R * Math.sin(a), Dl('madera', 0.012)); }   /* ramas entre el tronco y la copa interior */
             S.circ(0, 0, R * 0.1, F('madera', 0.85));
         }
     };
@@ -1165,15 +1232,15 @@
         var S = lapiz(pl, cx, py, rot || 0), k = Lc / 4.4; function q(v) { return v * k; }
         S.rr(-Wc / 2, 0, Wc, Lc, 0.45, F('carro', 0.18));                                                   /* carrocería */
         S.rr(-0.3, q(0.04), 0.6, 0.08, 0.03, F('metal', 0.5));                                               /* parrilla */
-        S.rr(-Wc / 2 + 0.15, q(0.08), 0.38, 0.13, 0.05, F('cama', 0.75)); S.rr(Wc / 2 - 0.53, q(0.08), 0.38, 0.13, 0.05, F('cama', 0.75)); /* farolas */
-        S.ln(-Wc * 0.22, q(0.3), -Wc * 0.18, q(1.15), Dl('carro', 0.008)); S.ln(Wc * 0.22, q(0.3), Wc * 0.18, q(1.15), Dl('carro', 0.008)); /* capó */
+        S.rr(-Wc / 2 + 0.3, 0.15, 0.3, 0.11, 0.04, F('cama', 0.75)); S.rr(Wc / 2 - 0.6, 0.15, 0.3, 0.11, 0.04, F('cama', 0.75)); /* farolas (dentro de la curva del frente) */
+        S.ln(-Wc * 0.13, 0.34, -Wc * 0.11, q(1.15), Dl('carro', 0.008)); S.ln(Wc * 0.13, 0.34, Wc * 0.11, q(1.15), Dl('carro', 0.008)); /* capó (entre las farolas, sin tocarlas) */
         S.poly([[-Wc / 2 + 0.17, q(1.25)], [Wc / 2 - 0.17, q(1.25)], [Wc / 2 - 0.27, q(1.85)], [-Wc / 2 + 0.27, q(1.85)]], true, F('vidrio', 0.35)); /* parabrisas */
         S.rr(-Wc / 2 + 0.27, q(1.88), Wc - 0.54, q(1.25), 0.12, F('carro', 0.32));                           /* techo */
         [-1, 1].forEach(function (sg) {
             S.poly([[sg * (Wc / 2 - 0.1), q(1.35)], [sg * (Wc / 2 - 0.25), q(1.9)], [sg * (Wc / 2 - 0.25), q(3.1)], [sg * (Wc / 2 - 0.1), q(3.3)]], true, F('vidrio', 0.3)); /* ventanas */
             S.poly([[sg * (Wc / 2 + 0.02), q(1.35)], [sg * (Wc / 2 + 0.18), q(1.42)], [sg * (Wc / 2 + 0.16), q(1.56)], [sg * (Wc / 2 + 0.02), q(1.56)]], true, F('carro', 0.55)); /* espejos (separados de la carrocería) */
-            [q(0.6), Lc - q(1.25)].forEach(function (v) { S.rr(sg > 0 ? Wc / 2 - 0.19 : -Wc / 2 - 0.05, v, 0.24, q(0.66), 0.08, F('metal', 0.85)); }); /* llantas */
-            S.rr(sg > 0 ? Wc / 2 - 0.47 : -Wc / 2 + 0.12, Lc - 0.16, 0.35, 0.1, 0.04, F('carro', 0.85));          /* stops */
+            [q(0.6), Lc - q(1.05)].forEach(function (v) { S.rr(sg > 0 ? Wc / 2 - 0.13 : -Wc / 2 + 0.03, v, 0.1, q(0.62), 0.04, F('metal', 0.85)); }); /* llantas (dentro de la carrocería) */
+            S.rr(sg > 0 ? Wc / 2 - 0.62 : -Wc / 2 + 0.32, Lc - 0.26, 0.3, 0.1, 0.04, F('carro', 0.85));          /* stops (dentro de la curva trasera) */
         });
         S.poly([[-Wc / 2 + 0.27, q(3.16)], [Wc / 2 - 0.27, q(3.16)], [Wc / 2 - 0.2, q(3.55)], [-Wc / 2 + 0.2, q(3.55)]], true, F('vidrio', 0.35)); /* vidrio trasero */
         S.ln(-Wc / 2 + 0.15, q(3.75), Wc / 2 - 0.15, q(3.75), Dl('carro', 0.008));                          /* baúl */
@@ -1199,7 +1266,7 @@
         }
     }
     function mobiliario(r, pl) {
-        var x = r.x, y = r.y, w = r.w, h = r.h, cx = x + w / 2, cy = y + h / 2, G = lapiz(pl, 0, 0, 0), k, i;
+        var x = r.x, y = r.y, w = r.w, h = r.h, cx = x + w / 2, cy = y + h / 2, G = lapiz(pl, 0, 0, 0, true), k, i;
         /* mesas de trabajo con sillas a ambos lados, en retícula, dejando circulación junto a la puerta */
         function mesas(tw, th, gap) {
             for (var my = y + 1.0; my + th + 0.55 < y + h - 0.4; my += th + gap + 0.6)
@@ -1228,7 +1295,8 @@
                 G.rr(px, py, pw, ph, 0.15, F('sanit', 0.42));
                 for (k = 1; k <= 3; k++) {
                     var vy = py + ph * k / 4, ond = [];
-                    for (var ux = px + 0.25; ux <= px + pw - 0.25; ux += 0.12) ond.push([ux, vy + 0.05 * Math.sin((ux - px) * 7 + k)]);
+                    /* ondas entre los escalones (izquierda) y la escalerilla (derecha), sin cruzarlos */
+                    for (var ux = px + 1.2; ux <= px + pw - 0.55; ux += 0.12) ond.push([ux, vy + 0.05 * Math.sin((ux - px) * 7 + k)]);
                     if (ond.length > 1) G.poly(ond, false, Dl('vidrio', 0.008));
                 }
                 for (k = 0; k < 3; k++) G.ln(px + 0.25 + k * 0.28, py + 0.08, px + 0.25 + k * 0.28, py + ph - 0.08, Dl('sanit', 0.012));   /* escalones */
@@ -1251,16 +1319,18 @@
                 if (!vert) largo = w - 2.0;
                 var filas_ = 0;
                 for (var rp = (vert ? x : y) + 1.0; rp + 1.0 < (vert ? x + w : y + h) - 0.6 && filas_ < 18; rp += 2.6, filas_++) {
-                    if (vert) { G.rect(rp, y + 1.0, 1.0, largo, F('madera', 0.14)); for (var bq = y + 1.0 + 2.7; bq < y + h - 1.0; bq += 2.7) G.ln(rp, bq, rp + 1.0, bq, Dl('madera', 0.008)); G.ln(rp + 0.5, y + 1.0, rp + 0.5, y + 1.0 + largo, Dl('madera', 0.005)); }
-                    else { G.rect(x + 1.0, rp, largo, 1.0, F('madera', 0.14)); for (var bq2 = x + 1.0 + 2.7; bq2 < x + w - 1.0; bq2 += 2.7) G.ln(bq2, rp, bq2, rp + 1.0, Dl('madera', 0.008)); G.ln(x + 1.0, rp + 0.5, x + 1.0 + largo, rp + 0.5, Dl('madera', 0.005)); }
+                    if (vert) { G.rect(rp, y + 1.0, 1.0, largo, F('madera', 0.14)); for (var bq = y + 1.0 + 2.7; bq < y + h - 1.0; bq += 2.7) G.ln(rp, bq, rp + 1.0, bq, Dl('madera', 0.008)); }   /* rack con sus módulos */
+                    else { G.rect(x + 1.0, rp, largo, 1.0, F('madera', 0.14)); for (var bq2 = x + 1.0 + 2.7; bq2 < x + w - 1.0; bq2 += 2.7) G.ln(bq2, rp, bq2, rp + 1.0, Dl('madera', 0.008)); }
                 }
                 break;
             }
             case 'cancha': {                                                          /* cancha múltiple con líneas reglamentarias simplificadas */
                 var lc = Math.min(Math.max(w, h) - 2, 28), ac = Math.min(Math.min(w, h) - 2, 15), C_ = lapiz(pl, cx, cy, h >= w ? 1 : 0);
                 if (lc < 6 || ac < 4) break;
-                C_.rect(-lc / 2, -ac / 2, lc, ac, F('verde', 0.1)); C_.ln(0, -ac / 2, 0, ac / 2, Dl('cama', 0.02));
-                C_.circ(0, 0, Math.min(1.8, ac * 0.15), Dl('cama', 0.02));
+                var rcc = Math.min(1.8, ac * 0.15);
+                C_.rect(-lc / 2, -ac / 2, lc, ac, F('verde', 0.1));
+                C_.ln(0, -ac / 2, 0, -rcc, Dl('cama', 0.02)); C_.ln(0, rcc, 0, ac / 2, Dl('cama', 0.02));   /* línea central interrumpida por el círculo */
+                C_.circ(0, 0, rcc, Dl('cama', 0.02));
                 [-1, 1].forEach(function (sg) {
                     /* zona restringida: tres lados (el cuarto es la línea final de la cancha) */
                     var kl = Math.min(5.8, lc * 0.2), kw = Math.min(2.45, ac * 0.18), xe = sg * lc / 2, xk = sg * (lc / 2 - kl);
@@ -1296,7 +1366,8 @@
                 if (h > 3.4) {                                                                       /* banco con barra y colchoneta */
                     var bcx = x + w - 0.9, bcy = y + h - 1.2;
                     G.rr(bcx - 0.18, bcy - 0.6, 0.36, 1.2, 0.06, F('tela', 0.4));
-                    G.ln(bcx - 0.75, bcy + 0.45, bcx + 0.75, bcy + 0.45, Dl('metal', 0.03));
+                    /* barra en dos tramos: del disco al banco, sin cruzar ninguno de los dos */
+                    G.ln(bcx - 0.64, bcy + 0.45, bcx - 0.2, bcy + 0.45, Dl('metal', 0.03)); G.ln(bcx + 0.2, bcy + 0.45, bcx + 0.64, bcy + 0.45, Dl('metal', 0.03));
                     G.rr(bcx - 0.72, bcy + 0.3, 0.08, 0.3, 0.02, F('metal', 0.85)); G.rr(bcx + 0.64, bcy + 0.3, 0.08, 0.3, 0.02, F('metal', 0.85));
                     if (w > 3.2) G.rr(x + 0.3, y + h - 0.95, Math.min(1.8, w - 2.2), 0.7, 0.05, F('tela', 0.22));
                 }
@@ -1469,7 +1540,7 @@
                 SIM.maceta(lapiz(pl, x + 0.45, y + 0.45, 0), 0.2); SIM.maceta(lapiz(pl, x + w - 0.45, y + 0.45, 0), 0.2);
                 break;
             }
-            case 'ascensor': G.rect(x + 0.3, y + 0.3, w - 0.6, h - 0.6, F('metal', 0.15)); G.ln(x + 0.3, y + 0.3, x + w - 0.3, y + h - 0.3, Dl('metal')); G.ln(x + w - 0.3, y + 0.3, x + 0.3, y + h - 0.3, Dl('metal')); break;
+            case 'ascensor': G.rect(x + 0.3, y + 0.3, w - 0.6, h - 0.6, F('metal', 0.15)); G.ln(x + 0.3, y + 0.3, x + w - 0.3, y + h - 0.3, Dl('metal')); break;   /* cabina con una diagonal (sin X que se cruce) */
         }
     }
     /* acabado de piso: tono suave por ambiente + baldosa (zonas húmedas) o listones de madera (zonas secas) */
@@ -1808,6 +1879,43 @@
             velocidad: function () { var t = (performance.now() - t0) * vel; vel = vel === 1 ? 2 : vel === 2 ? 4 : 1; t0 = performance.now() - t / vel; return vel; }
         };
     }
+    /* Zoom y desplazamiento en el modo cine: rueda del ratón = zoom hacia el puntero; arrastrar = mover;
+       doble clic = volver a la vista completa. Se hace con el viewBox del SVG (el trazo sigue siendo vectorial
+       y los cursores de los agentes siguen ubicándose bien porque leen la matriz de pantalla en cada cuadro). */
+    function zoomCine(ov) {
+        var top = ov.querySelector('.cxpl-cine-top > div');
+        if (top && !ov.querySelector('.cxpl-zoom-ayuda')) top.insertAdjacentHTML('beforeend', '<small class="cxpl-zoom-ayuda">🖱 Rueda: zoom · arrastrar: mover · doble clic: vista completa</small>');
+        [].forEach.call(ov.querySelectorAll('.cxpl-cine-f'), function (fig) {
+            var svg = fig.querySelector('svg'); if (!svg) return;
+            var vb0 = svg.viewBox.baseVal, ORIG = [vb0.x, vb0.y, vb0.width, vb0.height], arr = null;
+            function poner(x, y, w, h) { svg.setAttribute('viewBox', x + ' ' + y + ' ' + w + ' ' + h); fig.classList.toggle('cxpl-zoom', w < ORIG[2] * 0.999); }
+            function aSvg(cx, cy) { var m = svg.getScreenCTM(); if (!m) return null; var p = svg.createSVGPoint(); p.x = cx; p.y = cy; return p.matrixTransform(m.inverse()); }
+            fig.addEventListener('wheel', function (e) {
+                e.preventDefault();
+                var vb = svg.viewBox.baseVal, p = aSvg(e.clientX, e.clientY); if (!p) return;
+                var f = Math.pow(1.0015, e.deltaY);   /* suave con ratón y con panel táctil */
+                var w = Math.max(ORIG[2] * 0.04, Math.min(ORIG[2], vb.width * f)), h = w * ORIG[3] / ORIG[2], k = w / vb.width;
+                var x = p.x - (p.x - vb.x) * k, y = p.y - (p.y - vb.y) * k;
+                if (w >= ORIG[2] * 0.999) { x = ORIG[0]; y = ORIG[1]; }
+                poner(x, y, w, h);
+            }, { passive: false });
+            fig.addEventListener('pointerdown', function (e) {
+                if (e.button !== 0 || !fig.classList.contains('cxpl-zoom')) return;
+                arr = { x: e.clientX, y: e.clientY, vb: [svg.viewBox.baseVal.x, svg.viewBox.baseVal.y] };
+                try { fig.setPointerCapture(e.pointerId); } catch (eP) { }
+                fig.classList.add('cxpl-arrastrando');
+            });
+            fig.addEventListener('pointermove', function (e) {
+                if (!arr) return;
+                var m = svg.getScreenCTM(); if (!m) return;
+                var vb = svg.viewBox.baseVal;
+                poner(arr.vb[0] - (e.clientX - arr.x) / m.a, arr.vb[1] - (e.clientY - arr.y) / m.d, vb.width, vb.height);
+            });
+            function soltar() { arr = null; fig.classList.remove('cxpl-arrastrando'); }
+            fig.addEventListener('pointerup', soltar); fig.addEventListener('pointercancel', soltar);
+            fig.addEventListener('dblclick', function () { poner(ORIG[0], ORIG[1], ORIG[2], ORIG[3]); });
+        });
+    }
     var CURSOR = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#a855f7', '#06b6d4', '#ec4899', '#84cc16'];
     function cine(Pl) {
         var reducido = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1827,6 +1935,7 @@
             return { fig: fig, svg: fig.querySelector('svg'), etiqueta: ordinal(pi.n) };
         });
         var motor = motorAgentes(ov, vistas, { dur: 15000 + 1500 * Math.min(Pl.n, 4) });
+        zoomCine(ov);
         function cerrar() { motor.detener(); ov.remove(); doc.removeEventListener('keydown', tecla); }
         function tecla(e) { if (e.key === 'Escape') cerrar(); }
         doc.addEventListener('keydown', tecla);
@@ -2361,6 +2470,7 @@
         var nN = fig.querySelectorAll('.cxpl-e').length, cerrado = false;
         /* como transición (al pulsar Calcular / Generar): al terminar de dibujar, el cine se desvanece solo
            y deja al usuario en el apartado del resultado (visor con el plano, memorias, descargas…) */
+        zoomCine(ov);
         var motor = motorAgentes(ov, [{ fig: fig, svg: fig.querySelector('svg'), etiqueta: '' }], {
             dur: Math.max(o.transicion ? 9000 : 11000, Math.min(o.transicion ? 15000 : 20000, 8000 + nN * 6)),
             alTerminar: o.transicion ? function () { setTimeout(cerrar, 1100); } : null
