@@ -1215,6 +1215,9 @@
             motor.detener(); doc.removeEventListener('keydown', tecla);
             if (!o.transicion) { ov.remove(); return; }
             ov.classList.add('saliendo');
+            /* ahora sí se muestra el resultado (estaba oculto durante el dibujo) */
+            doc.body.classList.remove('cxpl-transicion');
+            [].forEach.call(doc.querySelectorAll('.cxpl-oculto'), function (n) { n.classList.remove('cxpl-oculto'); n.classList.add('cxpl-aparece'); setTimeout(function () { n.classList.remove('cxpl-aparece'); }, 700); });
             var destino = o.volverA && o.volverA.isConnected ? o.volverA : null;
             if (destino) {
                 /* el bloque «VISTA PREVIA // PLANO GENERADO» (.cxp-out) con sus descargas y el visor */

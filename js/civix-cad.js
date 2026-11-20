@@ -538,8 +538,17 @@
         var auto = global.__cxCineAuto;
         if (auto && Date.now() < auto.hasta && model.ents && model.ents.length) {
             global.__cxCineAuto = null;
-            /* modo cine como transición: al terminar se cierra solo y deja al usuario en este visor */
-            setTimeout(function () { if (CAD.cine && root.isConnected) CAD.cine(model, { titulo: opts.titulo, name: opts.name, dark: dark, transicion: true, volverA: root }); }, 450);
+            /* modo cine como transición: el resultado queda oculto mientras los agentes dibujan; al terminar el cine
+               se cierra solo y entonces aparece este visor con sus descargas */
+            if (CAD.cine) {
+                document.body.classList.add('cxpl-transicion');
+                setTimeout(function () {
+                    if (!root.isConnected) { document.body.classList.remove('cxpl-transicion'); return; }
+                    var bloque = root.closest('.cxp-out') || root.closest('.mensaje') || root;
+                    bloque.classList.add('cxpl-oculto');
+                    if (!CAD.cine(model, { titulo: opts.titulo, name: opts.name, dark: dark, transicion: true, volverA: root })) { bloque.classList.remove('cxpl-oculto'); document.body.classList.remove('cxpl-transicion'); }
+                }, 0);
+            }
         }
         return api;
     }
