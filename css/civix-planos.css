@@ -62,7 +62,11 @@
 @keyframes cxpl-sale { to { opacity: 0; transform: scale(.96); filter: blur(2px); } }
 .cxpl-llegada { animation: cxpl-llegada 1.5s ease-out; }
 @keyframes cxpl-llegada { 0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, .7); } 100% { box-shadow: 0 0 0 14px rgba(34, 211, 238, 0); } }
-@media (prefers-reduced-motion: reduce) { .cxpl-cine, .cxpl-cine.saliendo, .cxpl-llegada { animation: none; } }
+/* el resultado no se ve hasta que termina el modo cine */
+body.cxpl-transicion .cxp-out, .cxpl-oculto { visibility: hidden !important; }
+.cxpl-aparece { animation: cxpl-aparece .6s ease-out; }
+@keyframes cxpl-aparece { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cxpl-cine, .cxpl-cine.saliendo, .cxpl-llegada, .cxpl-aparece { animation: none; } }
 @media (max-width: 900px) { .cxpl-cine-g { grid-template-columns: repeat(min(var(--n, 2), 2), minmax(0, 1fr)); } }
 @media (max-width: 560px) { .cxpl-cine-g { grid-template-columns: minmax(0, 1fr); } .cxpl-etapa { margin-left: 0; } }
 @media (prefers-reduced-motion: reduce) {
