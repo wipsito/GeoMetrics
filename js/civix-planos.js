@@ -80,6 +80,76 @@
         });
         return { lista: out, escalera: conEscalera };
     }
+    /* Espacios residenciales adicionales que el usuario puede pedir (además de cochera, sala, cocina, dormitorios y baños).
+       [clave, patrón, nombre, área típica m², tipo de mobiliario, zona] — zona: 'int' dentro de la vivienda,
+       'ext' en el patio del primer piso, 'terr' terraza (piso alto; en una casa de un piso va al patio). */
+    var EXTRAS = [
+        ['piscina', /piscina|alberca|pileta/, 'PISCINA', 24, 'piscina', 'ext'],
+        ['jacuzzi', /jacuzzi|hidromasaje|tina de hidro/, 'JACUZZI', 6, 'jacuzzi', 'ext'],
+        ['bbq', /\bbbq\b|barbacoa|asador|parrilla|zona de asados?|quincho/, 'ZONA BBQ', 10, 'bbq', 'ext'],
+        ['jardin', /jardin|zona verde|huerta/, 'JARDÍN', 12, 'patio', 'ext'],
+        ['terraza', /terrazas?|balcon(?:es)?|azotea|mirador/, 'TERRAZA', 12, 'terraza', 'terr'],
+        ['gimnasio', /gimnasio|\bgym\b/, 'GIMNASIO', 14, 'gimnasio', 'int'],
+        ['tv', /sala de (?:tv|television|cine|entretenimiento)|cuarto de (?:tv|television)|home theater|sala de estar familiar|family room/, 'SALA DE TV', 12, 'sala', 'int'],
+        ['juegos', /(?:sala|cuarto|zona) de juegos|ludoteca|cuarto de (?:los )?ninos/, 'SALA DE JUEGOS', 12, 'infantil', 'int'],
+        ['servicio', /(?:cuarto|habitacion|alcoba|dormitorio) de servicio|cuarto de (?:la )?empleada/, 'CUARTO DE SERVICIO', 8, 'dorm', 'int'],
+        ['vestier', /vestier|vestidor|walk[- ]?in/, 'VESTIER', 5, 'vestier', 'int'],
+        ['biblio', /biblioteca/, 'BIBLIOTECA', 10, 'estudio', 'int'],
+        ['despensa', /despensa|alacena/, 'DESPENSA', 3, 'deposito', 'int'],
+        ['bodega', /bodega|deposito|cuarto util|cuarto de herramientas/, 'DEPÓSITO', 5, 'deposito2', 'int'],
+        ['bsocial', /bano social|medio bano|bano de (?:visitas|invitados)|toilette/, 'BAÑO SOCIAL', 3, 'bano', 'int'],
+        ['ascensor', /ascensor|elevador/, 'ASCENSOR', 4, 'ascensor', 'int']
+    ];
+    function extrasDe(t) {
+        /* «sin piscina», «sin terraza»: lo negado no se agrega */
+        var limpio = t.replace(/\bsin\s+(?:el |la |los |las |un |una )?[a-z]+(?:\s+(?:de|social)\s+[a-z]+)?/g, ' ');
+        var out = [];
+        EXTRAS.forEach(function (x) {
+            var m = x[1].exec(limpio); if (!m) return;
+            /* cantidad justo antes («2 terrazas», «dos amplias terrazas»), sin confundirla con medidas («de 4 x 5 con vestier») */
+            var antes = limpio.slice(Math.max(0, m.index - 16), m.index), c = antes.match(/(\d+|un|una|dos|tres|cuatro)\s+(?:([a-z]+)\s+)?$/);
+            if (c && c[2] && /^(con|de|del|y|e|por|x|en|a|al|para|sin|o)$/.test(c[2])) c = null;
+            if (c && /(?:x|×|por)\s*$/.test(antes.slice(0, antes.length - c[0].length))) c = null;
+            var n = c ? num(c[1]) : 1;
+            out.push({ clave: x[0], nombre: x[2], area: x[3], tipo: x[4], zona: x[5], n: Math.max(1, Math.min(4, n || 1)) });
+        });
+        return out;
+    }
+    /* medidas pedidas por ambiente: «dormitorio principal de 4 x 5», «sala de 30 m2», «piscina de 3 por 8» */
+    var MED_RE = [
+        ['principal', '(?:dormitorio|habitacion|alcoba|cuarto|recamara)\\s+principal|master'],
+        ['servicio', '(?:cuarto|habitacion|alcoba|dormitorio) de servicio'],
+        ['dorm', '(?:dormitorios?|habitaciones?|alcobas?|recamaras?)(?!\\s+(?:principal|de servicio))'],
+        ['tv', 'sala de (?:tv|television|cine)'], ['juegos', '(?:sala|cuarto|zona) de juegos'],
+        ['sala', '\\bsala(?!\\s+de\\s+(?:tv|television|cine|juegos|estar familiar))(?:[- ]comedor)?'],
+        ['cocina', 'cocina'], ['comedor', '\\bcomedor'], ['bsocial', 'bano social|medio bano'], ['bano', 'banos?(?!\\s+social)'],
+        ['cochera', 'cochera|garaje|parqueadero'], ['patio', 'patio'], ['estudio', 'estudio|oficina'],
+        ['piscina', 'piscina|alberca'], ['jacuzzi', 'jacuzzi'], ['bbq', 'bbq|zona de asados?|asador|parrilla'], ['jardin', 'jardin'],
+        ['terraza', 'terrazas?|balcon(?:es)?'], ['gimnasio', 'gimnasio'], ['vestier', 'vestier|vestidor'], ['biblio', 'biblioteca'], ['bodega', 'bodega|deposito']
+    ];
+    function medidasDe(q) {
+        var out = {}, usados = [];
+        MED_RE.forEach(function (k) {
+            var res = [
+                new RegExp('(?:' + k[1] + ')([^,.;]{0,26}?)\\b(?:de|con|que mida|mide|:)\\s*' + N_ + '\\s*(?:m|mts|metros)?\\s*(?:x|×|por)\\s*' + N_ + '(?!\\s*(?:pisos|niveles))', 'g'),
+                new RegExp('(?:' + k[1] + ')([^,.;]{0,26}?)\\b(?:de|con)\\s*' + N_ + '\\s*(?:m2|m²|mts2|metros cuadrados|metros2)', 'g')
+            ];
+            res.forEach(function (re, cual) {
+                var m;
+                while ((m = re.exec(q))) {
+                    var i0 = m.index, i1 = re.lastIndex;
+                    if (/lote|terreno|predio/.test(m[1]) || usados.some(function (u) { return i0 < u[1] && i1 > u[0]; })) continue;
+                    if (out[k[0]]) continue;
+                    var w = num(m[2]), h = cual === 0 ? num(m[3]) : 0;
+                    if (cual === 0 && w > 0 && h > 0 && w * h >= 1.5 && w <= 40 && h <= 40) out[k[0]] = { w: Math.min(w, h), h: Math.max(w, h), A: w * h };
+                    else if (cual === 1 && w >= 1.5 && w <= 400) out[k[0]] = { A: w };
+                    else continue;
+                    usados.push([i0, i1]);
+                }
+            });
+        });
+        return out;
+    }
     function esPedido(q) {
         if (/^(que es|que son|como funciona|cual es|por que|explica|define)\b/.test(q.trim())) return false;
         var arq = /(edificio|casa|vivienda|apartamento|departamento|apartaestudio|multifamiliar|bifamiliar|unifamiliar)/.test(q);
@@ -92,9 +162,14 @@
         if (/cochera|garaje|garage|parqueadero|estacionamiento/.test(t)) p.cochera = /doble|dos (?:carros|autos|vehiculos|puestos)|2 (?:carros|autos|vehiculos|puestos)/.test(t) ? 2 : 1;
         if (/local|comercio|tienda/.test(t)) p.local = true;
         if (/departamento|apartamento|vivienda|apartaestudio|casa/.test(t)) p.apto = true;
-        var m = t.match(/(\d+|un|uno|una|dos|tres|cuatro|cinco|seis)\s*(?:dormitorios?|habitaciones?|alcobas?|cuartos?|recamaras?)/);
-        if (m) { p.dorm = num(m[1]); p.apto = true; }
-        m = t.match(/(\d+|un|uno|una|dos|tres|cuatro)\s*banos?/); if (m) p.banos = num(m[1]);
+        /* conteos explícitos (no cuentan «cuarto de servicio», «cuarto de juegos», «baño social»…) */
+        var m = t.match(/(\d+|un|uno|una|dos|tres|cuatro|cinco|seis)\s*(?:dormitorios?|habitaciones?|alcobas?|cuartos?|recamaras?)(?!\s+(?:de\s+(?:servicio|juegos|tv|television|maquinas|herramientas|ropas?|la empleada|los ninos|ninos)|util|principal\b))/);
+        if (m) { p.dorm = num(m[1]); p.apto = true; p.dormExpl = true; }
+        m = t.match(/(\d+|un|uno|una|dos|tres|cuatro)\s*banos?(?!\s+(?:social|de visitas|de invitados))/); if (m) { p.banos = num(m[1]); p.banosExpl = true; }
+        if (residencial) {
+            p.extras = extrasDe(t);
+            if (/cocina (?:abierta|americana|integral abierta|tipo isla|con isla)/.test(t)) p.cocinaAbierta = true;
+        }
         if (/estudio|oficina/.test(t) && !/apartaestudio/.test(t)) p.estudio = true;
         if (/sin lavanderia/.test(t)) p.lav = false;
         /* vivienda: un piso con sala, comedor o cocina y sin dormitorios es la zona social de la casa */
@@ -145,6 +220,8 @@
         m = q.match(/(\d+|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho)\s*(?:pisos|niveles|plantas)/); if (m) n = num(m[1]);
         else if (/(de un piso|una planta|un nivel)/.test(q)) n = 1;
         n = Math.max(1, Math.min(8, n || 1));
+        /* «casa de 1 piso» es la cantidad de pisos, no el inicio de la descripción de un piso */
+        q = q.replace(/\b(de|en)\s+(?:1|un|una)\s+(?:piso|nivel|planta)\b/g, '$1 una sola altura');
         var pisos = []; for (var i = 1; i <= n; i++) pisos[i] = null;
         /* segmentos «primer piso: …», «del 2.º al 4.º piso: …», «pisos 2 a 4: …» */
         var reRango = new RegExp('(?:del?\\s+)?' + RE_PISO + '\\s*(?:piso\\s*)?(?:al|a|-|hasta(?: el)?)\\s*' + RE_PISO + '\\s*pisos?', 'g');
@@ -173,26 +250,57 @@
         marca(reBaja, 1); marca(reAlta, n); marca(reNum, null);
         marcas.sort(function (a, b) { return a.i - b.i; });
         var residencial = RESIDENCIAL.test(q) || (/\bsala\b|comedor|cocina|alcoba/.test(q) && !/(biblioteca|escuela|colegio|oficinas|centro|clinica|auditorio|aula|consultorio)/.test(q));
-        /* se quitan las frases de un piso concreto («el segundo piso tendrá…»), pero no «de 2 pisos», que es solo la cantidad */
-        var general = programa(q.replace(/(?:del?\s+)?(?:primer|segundo|tercer|cuarto|quinto|\d)[^.;]*?piso(?!s)[^.;]*[.;]?/g, ' '), null, residencial);
+        /* tramo de texto de cada piso indicado («primer piso: …»); un tramo vacío («un gimnasio en el primer piso»)
+           no describe el piso, solo ubica lo que se nombró antes */
+        marcas.forEach(function (k, j) {
+            var fin = j + 1 < marcas.length ? marcas[j + 1].i : q.length, txt = q.slice(k.fin, fin), corte = txt.search(/\.\s+|\.$|\n\s*\n|;\s*(?=planta|piso|nivel)/);
+            k.txt = corte >= 0 ? txt.slice(0, corte) : txt; k.segFin = k.fin + k.txt.length;
+            k.vacio = k.txt.replace(/[\s,.;:]|\b(?:y|e|con|el|la|del|de)\b/g, '').length < 3;
+        });
+        /* programa general: el pedido sin los tramos de pisos concretos (no se borra «de 2 pisos», que es solo la cantidad) */
+        var qGen = q;
+        marcas.slice().sort(function (a, b) { return b.i - a.i; }).forEach(function (k) { if (!k.vacio) qGen = qGen.slice(0, k.i) + ' ' + qGen.slice(k.segFin); });
+        var general = programa(qGen, null, residencial);
         /* lo que se pide para «el resto» (p. ej. «apartamentos de 2 habitaciones arriba») vale para los pisos sin indicación */
         var todo = programa(q, null, residencial);
         if (!general.dorm && todo.dorm) { general.dorm = todo.dorm; general.apto = true; }
         if (!general.banos && todo.banos) general.banos = todo.banos;
-        marcas.forEach(function (k, j) {
-            var txt = q.slice(k.fin, j + 1 < marcas.length ? marcas[j + 1].i : q.length);
-            txt = txt.split(/\.\s+|\.$|\n\s*\n|;\s*(?=planta|piso|nivel)/)[0];   /* el programa del piso termina con la frase */
-            var p = programa(txt, null, residencial);
-            for (var f = Math.max(1, k.a); f <= Math.min(n, k.b); f++) pisos[f] = p;
+        marcas.forEach(function (k) {
+            if (k.vacio) return;
+            var p = programa(k.txt, null, residencial); p._propio = true;
+            for (var f = Math.max(1, k.a); f <= Math.min(n, k.b); f++) pisos[f] = JSON.parse(JSON.stringify(p));
         });
         var esCasa = /\bcasa\b|unifamiliar/.test(q) && !/edificio|multifamiliar/.test(q);
         for (var f2_ = 1; f2_ <= n; f2_++) {
             if (pisos[f2_]) continue;
             var p = JSON.parse(JSON.stringify(general));
-            if (esCasa && n > 1) { p.casa = true; if (f2_ > 1) p.cochera = 0; }
+            if (esCasa && n > 1) { p.casa = true; if (f2_ > 1) { p.cochera = 0; p.estudio = false; } }   /* una sola casa: el estudio no se repite */
             if (f2_ > 1) { p.cochera = 0; p.local = false; }
+            /* espacios adicionales pedidos sin piso: cada uno va a donde corresponde (no se repite en todos los pisos) */
+            p.extras = (p.extras || []).filter(function (e) {
+                if (e.zona === 'ext') return f2_ === 1;
+                if (e.zona === 'terr') return n === 1 || (esCasa ? f2_ === n : true);
+                if (e.clave === 'ascensor') return true;
+                if (esCasa && n > 1) return e.clave === 'vestier' ? f2_ === n : f2_ === 1;
+                if (!esCasa && n > 1) return /gimnasio|bodega|bbq/.test(e.clave) ? f2_ === 1 : true;
+                return true;
+            });
             pisos[f2_] = p;
         }
+        /* «un gimnasio en el primer piso», «la terraza en el último piso»: el espacio va solo a ese piso */
+        EXTRAS.forEach(function (x) {
+            var re = new RegExp('(?:' + x[1].source + ')[^.;,]{0,25}?\\b(?:en|para|sobre)\\s+(?:el\\s+|la\\s+)?(?:' + RE_PISO + '\\s*(?:piso|nivel|planta)|(planta baja)|(ultimo piso|planta alta|azotea|cubierta))', 'g'), mx;
+            while ((mx = re.exec(q))) {
+                var fx = mx[2] ? 1 : mx[3] ? n : num(mx[1]); if (!(fx >= 1 && fx <= n)) continue;
+                var tpl = null;
+                for (var ff = 1; ff <= n; ff++) { var ex = (pisos[ff].extras || []).filter(function (e) { return e.clave === x[0]; })[0]; if (ex && !tpl) tpl = ex; pisos[ff].extras = (pisos[ff].extras || []).filter(function (e) { return e.clave !== x[0]; }); }
+                pisos[fx].extras = pisos[fx].extras || [];
+                pisos[fx].extras.push(tpl || { clave: x[0], nombre: x[2], area: x[3], tipo: x[4], zona: x[5], n: 1 });
+            }
+        });
+        /* medidas pedidas: se aplican a los espacios adicionales (las de los ambientes base las usa la distribución) */
+        var med = medidasDe(q);
+        pisos.forEach(function (pp) { if (pp && pp.extras) pp.extras.forEach(function (e) { if (med[e.clave]) { e.area = med[e.clave].A; e.med = med[e.clave]; } }); });
         /* «local comercial / cochera en el primer piso (o planta baja)» escrito antes del piso */
         var enPrimero = /(local(?: comercial)?|comercio|tienda|cochera|garaje|parqueadero)[^.;]{0,30}?(?:en el |en la )?(?:primer piso|planta baja|primer nivel)/.exec(q);
         if (enPrimero && pisos[1] && !residencialPiso1(pisos[1])) {
@@ -235,11 +343,19 @@
             if (pp.apto && !pp.dorm && !pp.sinDorm) pp.dorm = (pp.cochera || pp.local) ? 2 : 3;
             if (pp.apto && !pp.banos) pp.banos = pp.dorm >= 3 ? 2 : 1;
             if (esCasa && n > 1) { /* casa: social abajo, dormitorios arriba (una sola vivienda: la cocina va solo en el primer piso) */
-                if (k2 === 1) { pp.casaSocial = true; pp.dorm = pp.sinDorm ? 0 : Math.min(pp.dorm, 1); pp.banos = 1; }
+                if (general.dormExpl && !pp._propio) {
+                    /* «casa de 2 pisos con 4 habitaciones»: el número pedido es el TOTAL de la casa, repartido entre pisos */
+                    var tot = general.dorm, abajo = tot >= 4 ? 1 : 0, arriba = tot - abajo, cadaUno = Math.floor(arriba / (n - 1)), resto = arriba - cadaUno * (n - 1);
+                    if (k2 === 1) { pp.casaSocial = true; pp.dorm = abajo; pp.sinDorm = !abajo; pp.banos = 1; }
+                    else { pp.casaUp = true; pp.casaSocial = false; pp.apto = true; pp.dorm = Math.max(1, cadaUno + (k2 - 2 < resto ? 1 : 0)); }
+                    if (k2 > 1) pp.banos = general.banosExpl ? Math.max(1, Math.round((general.banos - 1) / (n - 1))) : (pp.dorm >= 3 ? 2 : 1);
+                    pp.dormExpl = true;
+                }
+                else if (k2 === 1) { pp.casaSocial = true; pp.dorm = pp.sinDorm ? 0 : Math.min(pp.dorm, 1); pp.banos = 1; }
                 else { pp.casaUp = true; pp.casaSocial = false; pp.apto = true; if (!pp.dorm) pp.dorm = 3; }
             }
         }
-        return { W: W, L: L, n: n, pisos: pisos, texto: texto, esCasa: esCasa, escala: escala ? '1:' + escala : null, supuesto: supuesto };
+        return { W: W, L: L, n: n, pisos: pisos, texto: texto, esCasa: esCasa, escala: escala ? '1:' + escala : null, supuesto: supuesto, med: med };
     }
 
     /* =================================================================== 2. DISTRIBUCIÓN */
@@ -327,16 +443,31 @@
         var ws = W >= 7 ? ESC_W : 2.4;          /* franja de circulación (escalera / ingreso / estudio) a la derecha */
         var wl = W - ws;
         var a = Math.max(2.6, (W - PASILLO) * 0.55), b = W - PASILLO - a; /* columnas de cuartos a cada lado del pasillo */
-        /* celdas de la zona de cuartos para cada piso */
-        function celdas(p) {
+        var aw = (a + b) / 2, MD = P.med || {};
+        function prof(A, def, min, max) { return A ? Math.max(min, Math.min(max, A / aw)) : def; }   /* área pedida → profundidad en la columna */
+        /* celdas de la zona de cuartos para cada piso: [nombre, profundidad, tipo] */
+        function celdas(p, f) {
             var izq = [], der = [];
             var lista = [];
-            if (p.casaSocial) { if (p.cochera) lista.push(['SALA', 4.0]); lista.push(['COMEDOR', 3.4]); if (p.estudio) lista.push(['ESTUDIO', 3.0]); }
-            else if (p.apto && (p.cochera || p.local)) lista.push(['SALA-COMEDOR', 4.2]);
+            if (p.casaSocial) { if (p.cochera) lista.push(['SALA', prof(MD.sala && MD.sala.A, 4.0, 3, 8), 'sala']); lista.push(['COMEDOR', prof(MD.comedor && MD.comedor.A, 3.4, 2.6, 7), 'comedor']); if (p.estudio) lista.push(['ESTUDIO', prof(MD.estudio && MD.estudio.A, 3.0, 2.4, 6), 'otro']); }
+            else if (p.apto && (p.cochera || p.local)) lista.push(['SALA-COMEDOR', prof(MD.sala && MD.sala.A, 4.2, 3, 8), 'sala']);
+            /* el vestier pedido va junto al dormitorio principal (en el ancho que le sobra a la columna) */
+            var vest = p.apto && p.dorm ? (p.extras || []).filter(function (e) { return e.clave === 'vestier'; })[0] : null;
             if (p.apto) {
-                for (var d = 1; d <= p.dorm; d++) lista.push([d === 1 ? 'DORM. PRINCIPAL' : 'DORMITORIO ' + d, d === 1 ? 4.0 : 3.6]);
-                for (var k = 1; k <= p.banos; k++) lista.push([p.banos > 1 ? 'BAÑO ' + k : 'BAÑO', 2.4]);
+                for (var d = 1; d <= p.dorm; d++) {
+                    var mdD = d === 1 ? MD.principal : MD.dorm;
+                    /* con medidas «a × b»: el ambiente toma el lado corto de ancho y el largo de fondo (c[3] = ancho pedido) */
+                    var cel = [d === 1 ? 'DORM. PRINCIPAL' : 'DORMITORIO ' + d, mdD && mdD.w ? Math.max(2.6, Math.min(8, mdD.h)) : (d === 1 ? prof(mdD && mdD.A, 4.0, 2.8, 8) : prof(mdD && mdD.A, 3.6, 2.6, 7)), null, mdD && mdD.w ? mdD.w : 0];
+                    if (d === 1 && vest) cel[4] = vest;
+                    lista.push(cel);
+                }
+                for (var k = 1; k <= p.banos; k++) lista.push([p.banos > 1 ? 'BAÑO ' + k : 'BAÑO', prof(MD.bano && MD.bano.A, 2.4, 1.6, 5)]);
             }
+            /* espacios adicionales pedidos (gimnasio, sala de TV, terraza en piso alto…) */
+            (p.extras || []).forEach(function (e) {
+                if (vest && e === vest) return;
+                if (e.zona === 'int' || f > 1) for (var j = 1; j <= e.n; j++) lista.push([e.n > 1 ? e.nombre + ' ' + j : e.nombre, prof(e.area, 3, e.tipo === 'bano' || e.tipo === 'deposito' || e.tipo === 'ascensor' ? 1.6 : 2.4, 9), e.tipo]);
+            });
             /* reparto equilibrado: cada ambiente va a la columna más corta (la izquierda es la más ancha);
                así las dos columnas terminan con profundidades parecidas */
             lista.forEach(function (c) { if (sum(izq) <= sum(der)) izq.push(c); else der.push(c); });
@@ -344,30 +475,45 @@
         }
         function sum(col) { return col.reduce(function (s, c) { return s + c[1]; }, 0); }
         var C = [], maxZona = 0, f;
-        function medir() { maxZona = 0; for (f = 1; f <= P.n; f++) { var c = celdas(P.pisos[f]); C[f] = c; maxZona = Math.max(maxZona, sum(c.izq), sum(c.der)); } }
+        function medir() { maxZona = 0; for (f = 1; f <= P.n; f++) { var c = celdas(P.pisos[f], f); C[f] = c; maxZona = Math.max(maxZona, sum(c.izq), sum(c.der)); } }
         medir();
-        var hA = 5.0, hB = P.n > 1 ? ESC_D : 2.8, patioMin = 2.0, esc = 1;
+        /* patio del primer piso: si se pidieron piscina, BBQ, jardín… necesita fondo suficiente para ellos */
+        var ext1 = [];
+        ((P.pisos[1] && P.pisos[1].extras) || []).forEach(function (e) { if (e.zona === 'ext' || e.zona === 'terr') for (var j = 1; j <= e.n; j++) ext1.push({ nombre: e.n > 1 ? e.nombre + ' ' + j : e.nombre, area: e.area, tipo: e.tipo, med: e.med }); });
+        var patioReq = 0;
+        if (ext1.length) {
+            var sumA = ext1.reduce(function (s, e) { return s + e.area; }, 0);
+            patioReq = Math.max(2.6, Math.min(9, sumA / (W * 0.85)));
+            ext1.forEach(function (e) { if (e.med && e.med.w) patioReq = Math.max(patioReq, Math.min(e.med.w, e.med.h) + (e.tipo === 'piscina' ? 1.2 : 0.4)); else if (e.tipo === 'piscina') patioReq = Math.max(patioReq, 4.2); });
+        }
+        if (MD.patio) patioReq = Math.max(patioReq, MD.patio.w ? Math.min(MD.patio.w, MD.patio.h) : MD.patio.A / W);
+        var hA = 5.0, hB = P.n > 1 ? ESC_D : 2.8, patioMin = Math.max(2.0, patioReq), esc = 1;
         /* Ajuste al fondo del lote: primero se compactan franjas y patio (sin bajar de medidas mínimas);
-           si aun así no cabe, se quitan baños extra y luego dormitorios, y se avisa qué se quitó. */
-        var pasos = [function () { hA = 4.5; }, function () { patioMin = 1.5; }, function () { hA = 4.0; hB = Math.min(hB, 2.8); }, function () { patioMin = 1.0; hA = 3.6; }];
+           si aun así no cabe, se quitan baños extra y luego dormitorios NO pedidos explícitamente, y se avisa. */
+        var pasos = [function () { hA = 4.5; }, function () { patioMin = Math.max(patioReq, 1.5); }, function () { hA = 4.0; hB = Math.min(hB, 2.8); }, function () { patioMin = Math.max(patioReq, 1.0); hA = 3.6; }];
         var quitados = [];
         function cabe() { return hA + hB + PAS_H + maxZona * 0.85 <= L - patioMin; }
         for (var s = 0; s < pasos.length && !cabe(); s++) pasos[s]();
         var guarda = 0;
         while (!cabe() && guarda++ < 20) {
             var hizo = false;
-            for (f = P.n; f >= 1 && !hizo; f--) { var pf = P.pisos[f]; if (pf.banos > 1) { pf.banos--; quitados.push('quité un baño del ' + ordinal(f) + ' piso'); hizo = true; } }
+            for (f = P.n; f >= 1 && !hizo; f--) { var pf = P.pisos[f]; if (pf.banos > 1 && !pf.banosExpl) { pf.banos--; quitados.push('quité un baño del ' + ordinal(f) + ' piso'); hizo = true; } }
             /* casa: antes de quitar un dormitorio del piso alto se intenta bajarlo al primer piso (una sola vivienda) */
             var p1 = P.pisos[1];
             if (!hizo && p1 && p1.casaSocial && P.n > 1 && !p1._bajados) {
                 for (f = P.n; f >= 2 && !hizo; f--) { var pa = P.pisos[f]; if (pa.dorm > 1 && (p1.dorm || 0) < 1) { pa.dorm--; p1.dorm = (p1.dorm || 0) + 1; p1.apto = true; p1._bajados = true; quitados.push('bajé un dormitorio del ' + ordinal(f) + ' piso al 1.er piso'); hizo = true; } }
             }
-            for (f = P.n; f >= 1 && !hizo; f--) { var pg = P.pisos[f]; if (pg.dorm > 1) { pg.dorm--; quitados.push('quité un dormitorio del ' + ordinal(f) + ' piso'); hizo = true; } }
+            for (f = P.n; f >= 1 && !hizo; f--) { var pg = P.pisos[f]; if (pg.dorm > 1 && !pg.dormExpl) { pg.dorm--; quitados.push('quité un dormitorio del ' + ordinal(f) + ' piso'); hizo = true; } }
             if (!hizo) break;
             medir();
         }
         if (quitados.length) warns.push('Para respetar medidas mínimas en un fondo de ' + f2(L) + ' m ' + quitados.join(', ') + '. Si lo necesitas, pide un lote más profundo o más pisos.');
-        if (!cabe()) warns.push('El programa queda muy justo para un lote de ' + f2(W) + ' × ' + f2(L) + ' m: revisa las medidas antes de aprobar.');
+        if (!cabe()) warns.push('Todo lo que pediste queda muy justo para un lote de ' + f2(W) + ' × ' + f2(L) + ' m: los ambientes se ajustaron para que quepan; revisa las medidas antes de aprobar.');
+        /* medidas pedidas para la sala/cochera (franja del frente) y la cocina (franja central) */
+        var p1 = P.pisos[1] || {};
+        var frenteMed = (p1.cochera ? MD.cochera : null) || (!p1.cochera && !p1.local ? MD.sala : null);
+        if (frenteMed) hA = Math.max(3.2, Math.min(8, frenteMed.w ? (frenteMed.w <= wl + 0.3 ? frenteMed.h : frenteMed.w) : frenteMed.A / wl));
+        if (MD.cocina) hB = Math.max(P.n > 1 ? ESC_D : 2.4, Math.min(6, MD.cocina.A / Math.max(2.4, wl - 1.4)));
         var D = hA + hB + PAS_H + maxZona;
         var disp = L - patioMin;
         if (D > disp) {
@@ -376,8 +522,9 @@
             var extra = Math.min((disp - 1.5) - D, maxZona * 0.22);
             esc = (maxZona + extra) / maxZona; D = hA + hB + PAS_H + maxZona * esc;
         }
-        D = Math.min(D, L - 1.2);
+        D = Math.min(D, L - Math.max(1.2, patioReq));
         var patio = L - D;
+        if (patioReq && patio < patioReq - 0.05) warns.push('El patio quedó de ' + f2(patio) + ' m de fondo (pediste espacios que necesitan ~' + f2(patioReq) + ' m).');
         /* construir los ambientes de cada piso */
         var pisos = [];
         for (f = 1; f <= P.n; f++) {
@@ -408,7 +555,7 @@
                 R.push(rm('BAÑO SOCIAL', 0, y0, Math.min(2.6, wl * 0.45), hB, 'bano'));
                 R.push(rm('ROPERÍA', Math.min(2.6, wl * 0.45), y0, wl - Math.min(2.6, wl * 0.45), hB, 'deposito'));
             } else if (p.apto || p.casaSocial) {
-                R.push(rm('COCINA', 0, y0, wl - lavW, hB, 'cocina'));
+                R.push(rm(p.cocinaAbierta ? 'COCINA ABIERTA' : 'COCINA', 0, y0, wl - lavW, hB, 'cocina'));
                 if (lavW) R.push(rm('LAVANDERÍA', wl - lavW, y0, lavW, hB, 'lav'));
             } else R.push(rm(f === 1 && p.local ? 'BODEGA' : 'DEPÓSITO', 0, y0, wl, hB, 'deposito'));
             if (P.n > 1) R.push(rm('ESCALERA', wl, y0, ws, hB, 'escalera'));
@@ -426,8 +573,21 @@
             } else {
                 R.push(rm(f === 1 && p.local ? 'ÁREA DE VENTAS' : 'ÁREA LIBRE', 0, y0, W, zonaH, 'libre'));
             }
-            if (f === 1) R.push(rm('PATIO POSTERIOR', 0, D, W, patio, 'patio'));
+            if (f === 1) patioPosterior(R);
             pisos.push({ n: f, rooms: R, p: p });
+        }
+        /* patio posterior: piscina, BBQ, jardín… lado a lado a lo ancho; lo que sobra queda como patio */
+        function patioPosterior(R) {
+            if (!ext1.length) { R.push(rm('PATIO POSTERIOR', 0, D, W, patio, 'patio')); return; }
+            var ws_ = ext1.map(function (e) {
+                if (e.med && e.med.w) return Math.min(W, Math.max(e.med.w, e.med.h) + (e.tipo === 'piscina' ? 1.2 : 0.4));
+                return Math.max(2.2, e.area / patio);
+            });
+            var tot = ws_.reduce(function (s, v) { return s + v; }, 0), k = tot > W ? W / tot : 1, x = 0;
+            ext1.forEach(function (e, i) { var w = ws_[i] * k; var r = rm(e.nombre, x, D, w, patio, e.tipo); r.med = e.med; R.push(r); x += w; });
+            if (W - x >= 1.2) R.push(rm(ext1.some(function (e) { return e.tipo === 'patio'; }) ? 'PATIO' : 'JARDÍN', x, D, W - x, patio, 'patio'));
+            else if (R.length) R[R.length - 1].w += W - x;
+            if (k < 0.97) warns.push('Los espacios del patio (' + ext1.map(function (e) { return e.nombre.toLowerCase(); }).join(', ') + ') se ajustaron al ancho del lote.');
         }
         function colocar(col, x, w, y, H, R) {
             if (!col.length) { R.push(rm('DEPÓSITO', x, y, w, H, 'deposito')); return; }
@@ -442,12 +602,22 @@
                 /* un baño en una columna ancha no ocupa todo el ancho: 2.40 m de baño y el resto como clóset */
                 if (/BAÑO/.test(c[0]) && w > 3.4) {
                     var bw = 2.4, bx = x === 0 ? x + w - bw : x;
-                    R.push(rm(c[0], bx, yy, bw, h, 'bano'));
+                    var rb = rm(c[0], bx, yy, bw, h, 'bano'); rb.zona = true; R.push(rb);
                     R.push(rm('CLÓSET', x === 0 ? x : x + bw, yy, w - bw, h, 'closet'));
                     yy += h; return;
                 }
-                var tipo = /BAÑO/.test(c[0]) ? 'bano' : /DORM/.test(c[0]) ? (/PRINCIPAL/.test(c[0]) ? 'dormp' : 'dorm') : /SALA|ESTAR/.test(c[0]) ? 'sala' : /COMEDOR/.test(c[0]) ? 'comedor' : /DEPÓSITO/.test(c[0]) ? 'deposito2' : 'otro';
-                R.push(rm(c[0], x, yy, w, h, tipo)); yy += h;
+                /* dormitorio con ancho pedido o con vestier: se parte la columna (dormitorio junto al pasillo, el resto al otro lado) */
+                var anchoD = 0;
+                if (c[3] && w - c[3] >= 1.2) anchoD = c[3];
+                else if (c[4] && w >= 3.8) anchoD = w - Math.min(2.0, Math.max(1.3, w * 0.33));
+                if (anchoD) {
+                    var dx = x === 0 ? x + w - anchoD : x, rx = x === 0 ? x : x + anchoD;
+                    var rd = rm(c[0], dx, yy, anchoD, h, /PRINCIPAL/.test(c[0]) ? 'dormp' : 'dorm'); rd.zona = true; R.push(rd);
+                    R.push(rm(c[4] ? 'VESTIER' : 'CLÓSET', rx, yy, w - anchoD, h, c[4] ? 'vestier' : 'closet'));
+                    yy += h; return;
+                }
+                var tipo = c[2] || (/BAÑO/.test(c[0]) ? 'bano' : /DORM/.test(c[0]) ? (/PRINCIPAL/.test(c[0]) ? 'dormp' : 'dorm') : /SALA|ESTAR/.test(c[0]) ? 'sala' : /COMEDOR/.test(c[0]) ? 'comedor' : /DEPÓSITO/.test(c[0]) ? 'deposito2' : 'otro');
+                var rr_ = rm(c[0], x, yy, w, h, tipo); rr_.zona = true; R.push(rr_); yy += h;
             });
         }
         return { W: W, L: L, D: D, patio: patio, ws: ws, wl: wl, a: a, b: b, hA: hA, hB: hB, pisos: pisos, warns: warns, n: P.n, escala: P.escala };
@@ -524,14 +694,15 @@
         rect('MUROS', 0, 0, W, Pl.D, { ext: true });
         rect('MUROS', MURO_EXT, MURO_EXT, W - 2 * MURO_EXT, Pl.D - 2 * MURO_EXT, { ext: true });
         if (pi.n === 1 && Pl.patio > 0.5) { ln('MUROS', 0, Pl.D, 0, Pl.L); ln('MUROS', W, Pl.D, W, Pl.L); ln('MUROS', 0, Pl.L, W, Pl.L); }
+        var ABIERTO = /^(patio|pasillo|piscina|jacuzzi|bbq)$/;   /* espacios exteriores o de circulación: sin muros propios */
         pi.rooms.forEach(function (r) {
-            if (r.tipo === 'patio' || r.tipo === 'pasillo') return;
+            if (ABIERTO.test(r.tipo)) return;
             rect('MUROS', r.x + MURO / 2, r.y + MURO / 2, r.w - MURO, r.h - MURO);
         });
 
         /* --- ventanas en fachada (frente y fondo) --- */
         pi.rooms.forEach(function (r) {
-            if (r.tipo === 'patio' || r.tipo === 'pasillo' || r.tipo === 'escalera') return;
+            if (ABIERTO.test(r.tipo) || r.tipo === 'escalera') return;
             var ww = Math.min(1.6, r.w * 0.5);
             if (r.y < 0.01 && !(pi.n === 1 && r.tipo === 'cochera')) { var cx = r.x + r.w / 2; [0.05, 0.125, 0.2].forEach(function (o) { ln('VENTANAS', cx - ww / 2, o, cx + ww / 2, o); }); }
             if (Math.abs(r.y + r.h - Pl.D) < 0.01) { var cx2 = r.x + r.w / 2; [Pl.D - 0.05, Pl.D - 0.125, Pl.D - 0.2].forEach(function (o) { ln('VENTANAS', cx2 - ww / 2, o, cx2 + ww / 2, o); }); }
@@ -547,6 +718,12 @@
         }
         pi.rooms.forEach(function (r) {
             var dw = r.tipo === 'bano' ? 0.75 : 0.9;
+            /* ambientes de la zona de cuartos (incluye los pedidos adicionales): puerta hacia el pasillo central */
+            if (r.zona && r.tipo !== 'closet' && r.tipo !== 'ascensor') {
+                var iz = r.x < Pl.a - 0.01; r._puertaDer = iz;
+                if (iz) puerta(r.x + r.w - 0.12, r.y + 0.2, dw, 'left'); else puerta(r.x + 0.12, r.y + 0.2 + dw, dw, 'right');
+                return;
+            }
             switch (r.tipo) {
                 case 'cochera': /* portón */
                     for (var g = 0; g < 3; g++) ln('PUERTAS', r.x + 0.4 + g * (r.w - 0.8) / 3, 0.12, r.x + 0.4 + (g + 1) * (r.w - 0.8) / 3 - 0.08, 0.12);
@@ -795,7 +972,79 @@
                 for (k = 0; k < Math.floor((w - 1.2) / 1.6); k++) SIM.estanteria(lapiz(pl, x + 1.2 + k * 1.6, y + 0.1 + MURO, 0), 1.3, 0.4);
                 break;
             }
+            case 'piscina': {
+                /* piscina con borde (coping), agua, escalera de acceso, escalones y camastros con parasol en la playa */
+                var md = r.med, pw = md && md.w ? Math.min(w - 0.5, Math.max(md.w, md.h)) : Math.max(1.8, w - (w > 5 ? 2.0 : 0.8)), ph = md && md.w ? Math.min(h - 0.5, Math.min(md.w, md.h)) : Math.max(1.6, h - 1.0);
+                var px = x + 0.4, py = y + (h - ph) / 2;
+                G.rr(px - 0.15, py - 0.15, pw + 0.3, ph + 0.3, 0.25, F('metal', 0.18));
+                G.rr(px, py, pw, ph, 0.15, F('sanit', 0.42));
+                for (k = 1; k <= 3; k++) {
+                    var vy = py + ph * k / 4, ond = [];
+                    for (var ux = px + 0.25; ux <= px + pw - 0.25; ux += 0.12) ond.push([ux, vy + 0.05 * Math.sin((ux - px) * 7 + k)]);
+                    if (ond.length > 1) G.poly(ond, false, Dl('vidrio', 0.008));
+                }
+                for (k = 0; k < 3; k++) G.ln(px + 0.25 + k * 0.28, py + 0.08, px + 0.25 + k * 0.28, py + ph - 0.08, Dl('sanit', 0.012));   /* escalones */
+                G.ln(px + pw - 0.35, py + ph - 0.05, px + pw - 0.35, py + ph - 0.55, Dl('metal', 0.02)); G.ln(px + pw - 0.15, py + ph - 0.05, px + pw - 0.15, py + ph - 0.55, Dl('metal', 0.02));
+                for (k = 1; k <= 2; k++) G.ln(px + pw - 0.35, py + ph - 0.05 - k * 0.17, px + pw - 0.15, py + ph - 0.05 - k * 0.17, Dl('metal', 0.012));   /* escalerilla */
+                var libreX = x + w - (px + pw + 0.15);
+                if (libreX >= 0.9) {                                                                 /* camastros y parasol */
+                    var nL = Math.max(1, Math.min(2, Math.floor(libreX / 0.75))), lL = Math.min(1.8, h - 1.4), x0L = px + pw + 0.15 + (libreX - nL * 0.75 + 0.15) / 2;
+                    for (k = 0; k < nL && lL > 0.9; k++) {
+                        var lx = x0L + k * 0.75, ly = y + 0.25;
+                        G.rr(lx, ly, 0.6, lL, 0.1, F('tela', 0.28)); G.rr(lx + 0.05, ly + lL - 0.3, 0.5, 0.25, 0.07, F('tela', 0.5));   /* camastro + cabecera */
+                    }
+                    var um = lapiz(pl, x0L + nL * 0.375 - 0.1, y + h - 0.6, 0); um.circ(0, 0, 0.5, F('cama', 0.25));
+                    for (k = 0; k < 8; k++) um.ln(0, 0, 0.5 * Math.cos(k * Math.PI / 4), 0.5 * Math.sin(k * Math.PI / 4), Dl('cama', 0.006));
+                }
+                break;
+            }
+            case 'jacuzzi': {
+                var jr = Math.max(0.6, Math.min(1.1, Math.min(w, h) / 2 - 0.35)), J = lapiz(pl, cx, cy, 0);
+                J.rr(-jr - 0.15, -jr - 0.15, 2 * jr + 0.3, 2 * jr + 0.3, 0.3, F('madera', 0.25));
+                J.circ(0, 0, jr, F('sanit', 0.45)); J.circ(0, 0, jr * 0.62, Dl('vidrio', 0.008));
+                for (k = 0; k < 8; k++) J.circ(jr * 0.82 * Math.cos(k * Math.PI / 4), jr * 0.82 * Math.sin(k * Math.PI / 4), 0.04, F('metal', 0.8));
+                break;
+            }
+            case 'bbq': {
+                var bl_ = Math.min(2.6, w - 0.4);
+                G.rect(x + 0.2, y + h - 0.8, bl_, 0.6, F('madera', 0.2));                            /* mesón contra el muro */
+                G.rr(x + 0.35, y + h - 0.75, 0.85, 0.5, 0.04, F('metal', 0.4));                     /* parrilla */
+                for (var gx_ = x + 0.43; gx_ < x + 1.15; gx_ += 0.08) G.ln(gx_, y + h - 0.7, gx_, y + h - 0.3, Dl('metal', 0.006));
+                if (bl_ > 1.9) { G.rr(x + 1.4, y + h - 0.72, 0.6, 0.42, 0.04, F('metal', 0.15)); G.circ(x + 1.7, y + h - 0.51, 0.03, Dl('metal')); }   /* lavaplatos */
+                if (h > 2.6 && w > 1.9) mesaRedonda(pl, cx, y + (h - 0.8) / 2, Math.min(0.5, (h - 0.8) / 2 - 0.5), 4);
+                break;
+            }
+            case 'gimnasio': {
+                var nT = Math.max(1, Math.min(3, Math.floor((w - 0.4) / 1.0)));
+                for (i = 0; i < nT && h >= 2.3; i++) {                                               /* caminadoras */
+                    var T_ = lapiz(pl, x + 0.65 + i * 1.0, y + 0.2, 0);
+                    T_.rr(-0.4, 0, 0.8, 1.8, 0.1, F('metal', 0.2)); T_.rr(-0.28, 0.35, 0.56, 1.3, 0.05, F('metal', 0.45));
+                    for (var bv = 0.45; bv < 1.6; bv += 0.12) T_.ln(-0.28, bv, 0.28, bv, Dl('metal', 0.004));
+                    T_.rr(-0.35, 0.05, 0.7, 0.2, 0.05, F('vidrio', 0.4));
+                }
+                if (h > 3.4) {                                                                       /* banco con barra y colchoneta */
+                    var bcx = x + w - 0.9, bcy = y + h - 1.2;
+                    G.rr(bcx - 0.18, bcy - 0.6, 0.36, 1.2, 0.06, F('tela', 0.4));
+                    G.ln(bcx - 0.75, bcy + 0.45, bcx + 0.75, bcy + 0.45, Dl('metal', 0.03));
+                    G.rr(bcx - 0.72, bcy + 0.3, 0.08, 0.3, 0.02, F('metal', 0.85)); G.rr(bcx + 0.64, bcy + 0.3, 0.08, 0.3, 0.02, F('metal', 0.85));
+                    if (w > 3.2) G.rr(x + 0.3, y + h - 0.95, Math.min(1.8, w - 2.2), 0.7, 0.05, F('tela', 0.22));
+                }
+                break;
+            }
+            case 'vestier': {
+                SIM.closet(lapiz(pl, x + 0.15, cy, 3), h - 0.4, Math.min(0.55, w * 0.35));
+                if (w > 1.7) SIM.closet(lapiz(pl, x + w - 0.15, cy, 1), h - 0.4, Math.min(0.55, w * 0.35));
+                if (w > 2.2 && h > 2) G.rr(cx - 0.3, cy - 0.3, 0.6, 0.6, 0.12, F('tela', 0.35));   /* puf */
+                break;
+            }
             case 'sala': {
+                if (/TV|CINE/.test(r.nombre)) {                                                     /* sala de TV: sofá frente a la pantalla */
+                    var Lt = Math.min(2.3, w - 0.8);
+                    SIM.alfombra(G, cx - Lt / 2, y + 1.05, Lt, Math.max(0.8, h - 2.0));
+                    SIM.sofa(lapiz(pl, cx, y + 0.2, 0), Lt, 0.9, Lt > 1.9 ? 3 : 2);
+                    SIM.tv(lapiz(pl, cx, y + h - 0.12, 2), Math.min(1.8, Lt));
+                    break;
+                }
                 var L = Math.min(2.3, w * 0.45), sx = x + 0.35 + L / 2;
                 SIM.alfombra(G, sx - L / 2 - 0.1, y + 1.0, L + 0.6, 1.7);
                 SIM.sofa(lapiz(pl, sx, y + 0.22, 0), L, 0.9, L > 1.9 ? 3 : 2);                 /* sofá contra el muro */
@@ -947,7 +1196,8 @@
         var m = MURO / 2 + 0.03, x0 = r.x + m, y0 = r.y + m, x1 = r.x + r.w - m, y1 = r.y + r.h - m, t = r.tipo;
         if (x1 - x0 < 0.4 || y1 - y0 < 0.4) return;
         var humedo = /^(bano|banos|cocina|lav)$/.test(t), madera = /^(dorm|dormp|sala|comedor|estudio|ingreso|oficina|lectura|estudio2|reuniones|infantil|recepcion|auditorio|aula|informatica|closet)$/.test(t);
-        var tono = humedo ? 'sanit' : madera ? 'madera' : t === 'patio' ? 'verde' : t === 'cochera' ? 'metal' : 'piso';
+        if (t === 'vestier') madera = true;
+        var tono = humedo ? 'sanit' : madera ? 'madera' : t === 'patio' ? 'verde' : t === 'cochera' ? 'metal' : t === 'piscina' || t === 'jacuzzi' ? 'verde' : 'piso';
         pl('ACABADOS', [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], true, { col: tono, fill: true, alpha: t === 'patio' ? 0.1 : 0.06, noStroke: true, soloVista: true });
         var o = { col: 'piso', sw: 0.006 }, v;
         if (humedo) {
@@ -1019,15 +1269,57 @@
             if (p.casaSocial) t.push('zona social');
             if (p.apto) t.push((p.casaSocial ? '' : 'departamento ') + p.dorm + ' dorm. y ' + p.banos + ' baño' + (p.banos > 1 ? 's' : ''));
             if (p.estudio) t.push('estudio');
+            (p.extras || []).forEach(function (e) { t.push((e.n > 1 ? e.n + ' × ' : '') + e.nombre.toLowerCase()); });
             out.push(ordinal(f) + ' piso: ' + t.join(', '));
         }
         return out.join(' · ');
+    }
+    /* «Lo que pediste»: cada especificación del usuario contra lo que quedó en la distribución */
+    var BUSCA_MED = { principal: /^DORM\. PRINCIPAL/, dorm: /^DORMITORIO/, sala: /^SALA(?:-COMEDOR)?$/, cocina: /^COCINA/, comedor: /^COMEDOR/, bano: /^BAÑO(?! SOCIAL)/, cochera: /^COCHERA/, patio: /PATIO/, estudio: /^ESTUDIO/ };
+    var NOMBRE_MED = { principal: 'Dormitorio principal', dorm: 'Dormitorios', sala: 'Sala', cocina: 'Cocina', comedor: 'Comedor', bano: 'Baño', cochera: 'Cochera', patio: 'Patio', estudio: 'Estudio' };
+    function cumplimiento(P, Pl) {
+        if (P.generico) return '';
+        var it = [];
+        function cuarto(f, re) { var pi = Pl.pisos[f - 1]; return pi ? pi.rooms.filter(function (r) { return re.test(r.nombre); }) : []; }
+        function dims(r) { return f2(r.w) + ' × ' + f2(r.h) + ' m (' + (r.w * r.h).toFixed(1) + ' m²)'; }
+        /* casa de varios pisos: los dormitorios pedidos son el total de la casa */
+        var casaVarios = P.esCasa && P.n > 1 && P.pisos.some(function (p) { return p && p.dormExpl; });
+        if (casaVarios) {
+            var pedidoT = 0, hayT = 0;
+            for (var fc = 1; fc <= P.n; fc++) { pedidoT += (P.pisos[fc].dorm || 0); hayT += cuarto(fc, /^(?:DORM\. PRINCIPAL|DORMITORIO)/).length; }
+            it.push([hayT === pedidoT, hayT + ' dormitorios en total' + (hayT === pedidoT ? '' : ' (pediste ' + pedidoT + ')')]);
+        }
+        for (var f = 1; f <= P.n; f++) {
+            var p = P.pisos[f] || {};
+            if (p.dormExpl && !casaVarios) { var nd = cuarto(f, /^(?:DORM\. PRINCIPAL|DORMITORIO)/).length; it.push([nd === p.dorm, nd + ' dormitorio' + (nd === 1 ? '' : 's') + ' en el ' + ordinal(f) + ' piso' + (nd === p.dorm ? '' : ' (pediste ' + p.dorm + ')')]); }
+            if (p.banosExpl) { var nb = cuarto(f, /^BAÑO(?! SOCIAL)/).length; if (nb) it.push([nb === p.banos, nb + ' baño' + (nb === 1 ? '' : 's') + ' en el ' + ordinal(f) + ' piso']); }
+            if (f === 1 && p.cochera) { var co = cuarto(1, /^COCHERA/)[0]; it.push([!!co, (p.cochera === 2 ? 'Cochera doble' : 'Cochera') + (co ? ': ' + dims(co) : ' — no cupo')]); }
+            if (p.cocinaAbierta) it.push([cuarto(f, /COCINA ABIERTA/).length > 0, 'Cocina abierta']);
+            (p.extras || []).forEach(function (e) {
+                var esc_ = e.nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), rs = cuarto(f, new RegExp('^' + esc_ + '(?: \\d+)?$'));
+                it.push([rs.length >= e.n, (e.n > 1 ? e.n + ' × ' : '') + e.nombre.charAt(0) + e.nombre.slice(1).toLowerCase() + ' (' + ordinal(f) + ' piso)' + (rs.length ? ': ' + dims(rs[0]) : ' — no cupo')]);
+            });
+        }
+        Object.keys(P.med || {}).forEach(function (k) {
+            var m = P.med[k], re = BUSCA_MED[k];
+            if (!re) { var ex = EXTRAS.filter(function (x) { return x[0] === k; })[0]; if (!ex) return; re = new RegExp('^' + ex[2]); }
+            var r = null; for (var f3 = 1; f3 <= P.n && !r; f3++) r = cuarto(f3, re)[0];
+            var pedido = m.w ? f2(m.w) + ' × ' + f2(m.h) + ' m (' + m.A.toFixed(1) + ' m²)' : m.A.toFixed(1) + ' m²';
+            var nom = NOMBRE_MED[k] || (EXTRAS.filter(function (x) { return x[0] === k; })[0] || [0, 0, k])[2];
+            nom = nom.charAt(0) + nom.slice(1).toLowerCase();
+            if (!r) { it.push([false, nom + ' de ' + pedido + ' — no encontré ese ambiente en la distribución']); return; }
+            var A = k === 'piscina' && r.med ? m.A : r.w * r.h, ok = Math.abs(A - m.A) / m.A <= 0.2;
+            it.push([ok, nom + ': pediste ' + pedido + ' → ' + (k === 'piscina' ? 'vaso de ' + pedido + ' en un espacio de ' + dims(r) : dims(r))]);
+        });
+        if (!it.length) return '';
+        return '<div class="cxpl-cumple"><b>Lo que pediste</b><ul>' + it.map(function (x) { return '<li class="' + (x[0] ? 'si' : 'aj') + '">' + (x[0] ? '✓ ' : '≈ ') + esc(x[1]) + '</li>'; }).join('') + '</ul></div>';
     }
     function propuesta(texto, P) {
         var Pl = plan(P); actual = { P: P, Pl: Pl, estado: 'propuesta', texto: texto };
         var filas = tabla(Pl);
         var c = tarjeta(
             '<div class="civix-md">🏗️ Te propongo esta distribución (lote ' + f2(P.W) + ' × ' + f2(P.L) + ' m, ' + P.n + ' piso' + (P.n > 1 ? 's' : '') + '):<br><small>' + esc(resumenPisos(P)) + '</small></div>' +
+            cumplimiento(P, Pl) +
             '<div class="cxpl-tbl-wrap"><table class="cxpl-tbl"><thead><tr><th>Ambiente</th><th>Medidas (m)</th><th>Piso</th></tr></thead><tbody>' +
             filas.map(function (r, i) { return '<tr style="--i:' + i + '"><td>' + esc(r.nombre) + '</td><td>' + f2(r.w) + ' × ' + f2(r.h) + '</td><td>' + esc(r.txt) + '</td></tr>'; }).join('') +
             '</tbody></table></div>' +
@@ -1270,7 +1562,7 @@
         var m;
         if (/sin estudio|quita(?:r)? (?:el )?estudio|elimina(?:r)? (?:el )?estudio/.test(q)) todos(function (p) { p.estudio = false; });
         else if (/(agrega|anade|con|pon)\w* (?:un )?estudio/.test(q)) todos(function (p, f) { if (f > 1 || !p.cochera) p.estudio = true; });
-        if ((m = q.match(/(\d+|un|uno|una|dos|tres|cuatro|cinco|seis)\s*(?:dormitorios?|habitaciones?|alcobas?|cuartos?)/))) { var d = num(m[1]); todos(function (p, f) { if (f > 1 || P.n === 1) p.dorm = d; }); }
+        if ((m = q.match(/(\d+|un|uno|una|dos|tres|cuatro|cinco|seis)\s*(?:dormitorios?|habitaciones?|alcobas?|cuartos?)(?!\s+(?:de\s+(?:servicio|juegos|tv|television|maquinas|herramientas)|util|principal\b))/))) { var d = num(m[1]); todos(function (p, f) { if (f > 1 || P.n === 1) { p.dorm = d; p.dormExpl = true; } }); }
         if (/(agrega|anade|otro|un)\w* (?:dormitorio|habitacion|alcoba|cuarto) (?:mas|adicional)|mas dormitorios/.test(q)) todos(function (p) { p.dorm++; });
         if (/(quita|elimina|menos)\w* (?:un )?(?:dormitorio|habitacion|alcoba|cuarto)/.test(q)) todos(function (p) { p.dorm = Math.max(1, p.dorm - 1); });
         if ((m = q.match(/(\d+|un|uno|una|dos|tres|cuatro)\s*banos?/))) { var nb = num(m[1]); todos(function (p) { p.banos = nb; }); }
@@ -1280,6 +1572,32 @@
         if (/cochera doble|dos (?:carros|autos|puestos)/.test(q)) { P.pisos[1].cochera = 2; hubo = true; }
         if (/sin cochera|quita(?:r)? la cochera/.test(q)) { P.pisos[1].cochera = 0; P.pisos[1].apto = true; hubo = true; }
         if (/sin lavanderia/.test(q)) todos(function (p) { p.lav = false; });
+        /* espacios adicionales: «agrega una piscina», «pon un gimnasio en el segundo piso», «quita la terraza» */
+        /* cada cláusula tiene su verbo: «agrega un jacuzzi y quita el gimnasio» (sin verbo, hereda el anterior) */
+        var VQ = /\b(quita|quitar|elimina|eliminar|saca|sacar|borra|borrar|sin)\b/, VA = /\b(agrega|agregar|anade|anadir|pon|poner|incluye|incluir|suma|mete|quiero|con|haz|crea)\b/;
+        var verboQ = false, clQ = [];
+        q.split(/,|;|\s+y\s+|\s+e\s+|\s+tambien\s+/).forEach(function (cl) { if (VQ.test(cl)) verboQ = true; else if (VA.test(cl)) verboQ = false; clQ.push([cl, verboQ]); });
+        var quitar = clQ.some(function (c) { return c[1]; });
+        EXTRAS.forEach(function (x) {
+            var cl = clQ.filter(function (c) { return x[1].test(c[0]); })[0]; if (!cl) return;
+            var quitar = cl[1];
+            var mp = cl[0].match(new RegExp('(?:en el |en la |al )' + RE_PISO + '\\s*(?:piso|nivel|planta)'));
+            var pisoPedido = mp ? Math.max(1, Math.min(P.n, num(mp[1]))) : 0;
+            if (quitar) { for (var f = 1; f <= P.n; f++) P.pisos[f].extras = (P.pisos[f].extras || []).filter(function (e) { return e.clave !== x[0]; }); hubo = true; return; }
+            var dest = pisoPedido || (x[5] === 'ext' ? 1 : x[5] === 'terr' ? P.n : (P.esCasa && x[0] === 'vestier' ? P.n : 1));
+            var pd = P.pisos[dest]; pd.extras = pd.extras || [];
+            var ya = pd.extras.filter(function (e) { return e.clave === x[0]; })[0];
+            if (ya) { if (/otr[oa]|mas|adicional/.test(q)) ya.n = Math.min(4, ya.n + 1); }
+            else pd.extras.push({ clave: x[0], nombre: x[2], area: x[3], tipo: x[4], zona: x[5], n: 1 });
+            hubo = true;
+        });
+        if (/cocina (?:abierta|americana)/.test(q)) { P.pisos[1].cocinaAbierta = !quitar; hubo = true; }
+        /* medidas: «el dormitorio principal de 4 x 5», «la piscina de 3 x 8», «sala de 30 m2» */
+        var md = medidasDe(q);
+        Object.keys(md).forEach(function (k) {
+            P.med = P.med || {}; P.med[k] = md[k]; hubo = true;
+            for (var f = 1; f <= P.n; f++) (P.pisos[f].extras || []).forEach(function (e) { if (e.clave === k) { e.area = md[k].A; e.med = md[k]; } });
+        });
         if ((m = q.match(/(\d+|dos|tres|cuatro|cinco|seis)\s*pisos/))) {
             var n = Math.max(1, Math.min(8, num(m[1])));
             for (var f = P.n + 1; f <= n; f++) P.pisos[f] = JSON.parse(JSON.stringify(P.pisos[Math.max(1, P.n)]));
