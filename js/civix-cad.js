@@ -538,7 +538,8 @@
         var auto = global.__cxCineAuto;
         if (auto && Date.now() < auto.hasta && model.ents && model.ents.length) {
             global.__cxCineAuto = null;
-            setTimeout(function () { if (CAD.cine && root.isConnected) CAD.cine(model, { titulo: opts.titulo, name: opts.name, dark: dark }); }, 450);
+            /* modo cine como transición: al terminar se cierra solo y deja al usuario en este visor */
+            setTimeout(function () { if (CAD.cine && root.isConnected) CAD.cine(model, { titulo: opts.titulo, name: opts.name, dark: dark, transicion: true, volverA: root }); }, 450);
         }
         return api;
     }

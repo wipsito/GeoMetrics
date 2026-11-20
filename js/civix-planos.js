@@ -908,6 +908,7 @@
             agentes.forEach(function (a) { a.nodos.forEach(function (x) { poner(x, 1); if (x.g.tipo === 'linea') x.n.style.strokeDasharray = ''; }); a.cur.style.opacity = 0; a.i = a.nodos.length; });
             if (leyenda) leyenda.querySelectorAll('[data-ag]').forEach(function (b) { b.textContent = '✓'; });
             etq.textContent = 'Plano terminado'; barra.style.width = '100%';
+            if (op.alTerminar) op.alTerminar();
         }
         function cuadro() {
             raf = 0; tmr = 0;
@@ -1193,16 +1194,37 @@
         ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Modo cine: dibujo del plano');
         ov.innerHTML = '<div class="cxpl-cine-top"><div><small>CIVIX · PLANOS Y CAD</small><b>' + esc(nombre.charAt(0).toUpperCase() + nombre.slice(1)) + '</b></div>' +
             '<span class="cxpl-etapa">Preparando…</span><div class="cxpl-cine-acts">' +
-            '<button type="button" data-c="vel" title="Velocidad">1×</button><button type="button" data-c="rep" title="Repetir">↺ Repetir</button>' +
-            '<button type="button" data-c="dxf">⬇ DXF</button><button type="button" data-c="pdf">⬇ PDF</button><button type="button" data-c="x" aria-label="Cerrar">✕</button></div></div>' +
+            '<button type="button" data-c="vel" title="Velocidad">1×</button>' +
+            (o.transicion ? '<button type="button" data-c="x" title="Ir directo al resultado">⏭ Saltar</button>' : '<button type="button" data-c="rep" title="Repetir">↺ Repetir</button>' +
+            '<button type="button" data-c="dxf">⬇ DXF</button><button type="button" data-c="pdf">⬇ PDF</button>') +
+            '<button type="button" data-c="x" aria-label="Cerrar">✕</button></div></div>' +
             '<div class="cxpl-cine-bar"><i></i></div><div class="cxpl-agentes" aria-live="off"></div><div class="cxpl-cine-g cxpl-cine-uno" style="--n:1"></div>';
         doc.body.appendChild(ov);
         var grid = ov.querySelector('.cxpl-cine-g');
         var fig = el('figure', 'cxpl-cine-f', svgModelo(model, oscuro));
         grid.appendChild(fig);
-        var nN = fig.querySelectorAll('.cxpl-e').length;
-        var motor = motorAgentes(ov, [{ fig: fig, svg: fig.querySelector('svg'), etiqueta: '' }], { dur: Math.max(11000, Math.min(20000, 8000 + nN * 6)) });
-        function cerrar() { motor.detener(); ov.remove(); doc.removeEventListener('keydown', tecla); }
+        var nN = fig.querySelectorAll('.cxpl-e').length, cerrado = false;
+        /* como transición (al pulsar Calcular / Generar): al terminar de dibujar, el cine se desvanece solo
+           y deja al usuario en el apartado del resultado (visor con el plano, memorias, descargas…) */
+        var motor = motorAgentes(ov, [{ fig: fig, svg: fig.querySelector('svg'), etiqueta: '' }], {
+            dur: Math.max(o.transicion ? 9000 : 11000, Math.min(o.transicion ? 15000 : 20000, 8000 + nN * 6)),
+            alTerminar: o.transicion ? function () { setTimeout(cerrar, 1100); } : null
+        });
+        function cerrar() {
+            if (cerrado) return; cerrado = true;
+            motor.detener(); doc.removeEventListener('keydown', tecla);
+            if (!o.transicion) { ov.remove(); return; }
+            ov.classList.add('saliendo');
+            var destino = o.volverA && o.volverA.isConnected ? o.volverA : null;
+            if (destino) {
+                /* el bloque «VISTA PREVIA // PLANO GENERADO» (.cxp-out) con sus descargas y el visor */
+                var sec = destino.closest('.cxp-out') || destino.closest('.mensaje') || destino;
+                try { sec.scrollIntoView({ block: 'start', behavior: 'auto' }); } catch (e) { }
+                destino.classList.add('cxpl-llegada');
+                setTimeout(function () { destino.classList.remove('cxpl-llegada'); }, 1600);
+            }
+            setTimeout(function () { ov.remove(); }, 520);
+        }
         function tecla(e) { if (e.key === 'Escape') cerrar(); }
         doc.addEventListener('keydown', tecla);
         ov.addEventListener('click', function (e) {
