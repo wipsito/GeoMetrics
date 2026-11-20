@@ -397,7 +397,8 @@
                 var fondo = todos.filter(function (e) { return e !== big && e.fondo; });
                 var banda = todos.filter(function (e) { return e !== big && !e.fondo; });
                 var fk = fondo.length ? Math.max(3.4, Math.min(8, fondo.reduce(function (s, e) { return s + e.area; }, 0) / W)) : 0;
-                if (f === 1) banda.splice(Math.floor(banda.length / 2), 0, { nombre: 'VESTÍBULO', area: 0, tipo: 'recepcion', acceso: true });
+                /* acceso: solo una circulación (no un recinto inventado) si hay espacios al frente que lo tapen */
+                if (f === 1 && banda.length) banda.splice(Math.floor(banda.length / 2), 0, { nombre: 'ACCESO', area: 0, tipo: 'pasillo', acceso: true });
                 if (conEsc) banda.push({ nombre: 'ESCALERA', area: 0, tipo: 'escalera' });
                 var areaB = banda.reduce(function (s, e) { return s + e.area; }, 0);
                 var fb = banda.length ? Math.max(3.4, Math.min(7, (areaB + 9 * banda.filter(function (e) { return !e.area; }).length) / W)) : 0;
@@ -413,14 +414,16 @@
             var rec = items.filter(function (e) { return e.tipo === 'recepcion'; }), ter = items.filter(function (e) { return e.tipo === 'terraza'; });
             items = items.filter(function (e) { return e.tipo !== 'recepcion' && e.tipo !== 'terraza'; }).sort(function (x, y) { return y.area - x.area; });
             /* cada espacio va a la crujía que quede menos profunda (la recepción, al frente de la primera) */
-            var listas = CRU.map(function () { return []; }), sums = CRU.map(function (c_, i) { return i === 1 ? fijo : 0; });
+            var fijoP = (conEsc ? ESC_H : 0) + (hayBanos(p) ? BAN_H : 0);   /* punto fijo de este piso */
+            var listas = CRU.map(function () { return []; }), sums = CRU.map(function (c_, i) { return i === 1 ? fijoP : 0; });
             rec.forEach(function (e) { e.h = Math.max(2.6, e.area / CRU[0].w); listas[0].push(e); sums[0] += e.h; });
             items.concat(ter).forEach(function (e) {
                 var mejor = 0, val = Infinity;
                 CRU.forEach(function (c_, i) { var h_ = Math.max(2.6, e.area / c_.w), v_ = sums[i] + h_; if (v_ < val - 1e-6) { val = v_; mejor = i; } });
                 e.h = Math.max(2.6, e.area / CRU[mejor].w); listas[mejor].push(e); sums[mejor] += e.h;
             });
-            cols[f] = { listas: listas, sums: sums, banos: hayBanos(p) };
+            var eBan = p.gen.filter(function (e) { return e.tipo === 'banos'; })[0];
+            cols[f] = { listas: listas, sums: sums, banos: hayBanos(p), banosNombre: eBan ? eBan.nombre : 'BAÑOS' };
             maxD = Math.max.apply(null, [maxD].concat(sums));
         }
         var D = maxD;
@@ -448,7 +451,7 @@
                     var aF = c.fondo.reduce(function (s, e) { return s + e.area; }, 0) || 1, xf = 0;
                     c.fondo.forEach(function (e, i) { var w = i === c.fondo.length - 1 ? W - xf : W * e.area / aF; var r = rm(e.nombre, xf, D - fk_, w, fk_, e.tipo); r.fondo = true; R.push(r); xf += w; });
                 }
-                if (f === 1 && L - D >= 1) R.push(rm('ZONA VERDE / RETIRO', 0, D, W, L - D, 'patio'));
+                if (f === 1 && L - D >= 1) R.push(rm('RETIRO (LOTE LIBRE)', 0, D, W, L - D, 'retiro'));
                 pisos.push({ n: f, rooms: R, p: P.pisos[f] });
                 continue;
             }
@@ -458,11 +461,12 @@
                 var y = 0;
                 if (i === 1) {
                     if (conEsc) { R.push(rm('ESCALERA', cr.x, y, cr.w, ESC_H, 'escalera')); y += ESC_H; }
-                    if (algunBano) { var rbn = rm(c.banos ? 'BAÑOS' : 'DEPÓSITO', cr.x, y, cr.w, BAN_H, c.banos ? 'banos' : 'deposito2'); rbn.lado = cr.lado; R.push(rbn); y += BAN_H; }
+                    /* baños solo en los pisos donde se pidieron (antes se rellenaba con un depósito no pedido) */
+                    if (c.banos) { var rbn = rm(c.banosNombre, cr.x, y, cr.w, BAN_H, 'banos'); rbn.lado = cr.lado; R.push(rbn); y += BAN_H; }
                 }
                 llenar(c.listas[i], cr.x, cr.w, y, D - y, R, cr.lado);
             });
-            if (f === 1 && L - D >= 1) R.push(rm('ZONA VERDE / RETIRO', 0, D, W, L - D, 'patio'));
+            if (f === 1 && L - D >= 1) R.push(rm('RETIRO (LOTE LIBRE)', 0, D, W, L - D, 'retiro'));
             pisos.push({ n: f, rooms: R, p: P.pisos[f] });
         }
         function llenar(lista, x, w, y0, H, R, lado) {
@@ -471,8 +475,9 @@
             for (var i = n0; i < R.length; i++) R[i].lado = lado;
         }
         function llenar0(lista, x, w, y0, H, R) {
-            if (!lista.length) { if (H > 0.5) R.push(rm('ÁREA LIBRE', x, y0, w, H, 'libre')); return; }
-            var tot = lista.reduce(function (s, e) { return s + e.h; }, 0), k = Math.min(H / tot, 1.3), yy = y0;
+            if (!lista.length) { if (H > 0.5) R.push(P.ia ? rm('SIN CONSTRUIR', x, y0, w, H, 'retiro') : rm('ÁREA LIBRE', x, y0, w, H, 'libre')); return; }
+            /* los espacios conservan el área pedida (crecen a lo sumo un 20 %); lo que sobra no es un ambiente inventado */
+            var tot = lista.reduce(function (s, e) { return s + e.h; }, 0), k = Math.min(H / tot, P.ia ? 1.2 : 1.3), yy = y0;
             var hs = lista.map(function (e) { return e.h * k; });
             if (tot > H) {
                 /* falta fondo: se recorta primero a los espacios grandes, sin bajar de 2.60 m */
@@ -480,7 +485,7 @@
                 hs = holgura > falta ? lista.map(function (e) { return e.h - Math.max(0, e.h - 2.6) / holgura * falta; }) : lista.map(function (e) { return e.h * H / tot; });
             }
             lista.forEach(function (e, i) { var h = hs[i]; R.push(rm(e.nombre, x, yy, w, h, e.tipo)); yy += h; });
-            if (y0 + H - yy > 0.5) R.push(rm('ÁREA LIBRE', x, yy, w, y0 + H - yy, 'libre'));
+            if (y0 + H - yy > 0.5) R.push(P.ia ? rm('SIN CONSTRUIR', x, yy, w, y0 + H - yy, 'retiro') : rm('ÁREA LIBRE', x, yy, w, y0 + H - yy, 'libre'));
             else if (R.length) R[R.length - 1].h += y0 + H - yy;
         }
         return { W: W, L: L, D: D, patio: L - D, a: a, b: b, cw: cw, wl: a, ws: b, hA: 0, hB: 0, pisos: pisos, warns: warns, n: P.n, generico: true, escala: P.escala, ejesX: ejesX };
@@ -679,7 +684,7 @@
         var filas = [], idx = {};
         Pl.pisos.forEach(function (pi) {
             pi.rooms.forEach(function (r) {
-                if (r.tipo === 'pasillo') return;
+                if (r.tipo === 'pasillo' || r.tipo === 'retiro') return;   /* circulación y lote libre no son ambientes */
                 var k = r.nombre + '|' + f2(r.w) + '|' + f2(r.h);
                 if (!idx[k]) { idx[k] = { nombre: r.nombre, w: r.w, h: r.h, pisos: [], cant: {} }; filas.push(idx[k]); }
                 if (idx[k].pisos.indexOf(pi.n) < 0) idx[k].pisos.push(pi.n);
@@ -700,6 +705,126 @@
     /* =================================================================== 3. DIBUJO (modelo CAD) */
     var LAYERS = { ACABADOS: 8, EJES: 1, COLUMNAS: 4, MUROS: 4, PUERTAS: 3, VENTANAS: 5, ESCALERA: 6, MOBILIARIO: 2, TEXTO: 7, COTAS: 5, MARCO: 8 };
     var ETAPA = { ACABADOS: 2, EJES: 0, COLUMNAS: 1, MUROS: 2, VENTANAS: 3, PUERTAS: 3, ESCALERA: 4, MOBILIARIO: 5, TEXTO: 6, COTAS: 6, MARCO: 6 };
+    /* ------------------------------------------------------------------ SIN LÍNEAS SUPERPUESTAS
+       Recorre todos los trazos rectos de un dibujo y, si un tramo queda encima de otro ya dibujado (misma recta,
+       intervalos que se cruzan), lo recorta. Las entidades que no se tocan quedan intactas; las que tenían un tramo
+       repetido se rehacen con los tramos que quedan (un relleno conserva su color sin borde). Sirve para los planos
+       de Planos, los de la IA y los generadores de Civix CAD (zapatas, vigas, curvas…). */
+    function limpiarSolapes(ents, tolIn) {
+        if (!ents || !ents.length) return ents;
+        var bb = CAD.bboxOf ? CAD.bboxOf(ents) : null, span = bb ? Math.max(bb[2] - bb[0], bb[3] - bb[1]) : 10;
+        var tol = tolIn || Math.max(1e-4, span * 2.5e-4), ANG = 0.0015;
+        var cubos = {}, cambio = false;
+        function claves(th, c) { var a = Math.round(th / ANG), o = Math.round(c / tol), out = []; for (var da = -1; da <= 1; da++) for (var dc = -1; dc <= 1; dc++) out.push((a + da) + ':' + (o + dc)); return out; }
+        var res = ents.map(function (e) {
+            if (!e || e.t !== 'poly' || e.noStroke || !e.pts || e.pts.length < 2) return null;
+            var pts = e.pts, n = pts.length, segs = [], tocado = false;
+            for (var i = 0; i < n - (e.closed ? 0 : 1); i++) {
+                var A = pts[i], B = pts[(i + 1) % n], dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy);
+                if (!(L > tol)) { segs.push({ A: A, B: B, piezas: [[A, B]] }); continue; }
+                var th = Math.atan2(dy, dx); if (th < 0) th += Math.PI; if (th >= Math.PI - ANG) th -= Math.PI;
+                var ux = Math.cos(th), uy = Math.sin(th), c = -uy * A[0] + ux * A[1];
+                var s0 = ux * A[0] + uy * A[1], s1 = ux * B[0] + uy * B[1], lo = Math.min(s0, s1), hi = Math.max(s0, s1);
+                /* intervalos ya ocupados en esta recta */
+                var ocup = [];
+                claves(th, c).forEach(function (k) { (cubos[k] || []).forEach(function (q) { if (Math.abs(q.c - c) <= tol && Math.abs(q.th - th) <= ANG * 1.5 && q.hi > lo + tol && q.lo < hi - tol) ocup.push([q.lo, q.hi]); }); });
+                var libres = [[lo, hi]];
+                ocup.forEach(function (o) {
+                    var nuevos = [];
+                    libres.forEach(function (l) {
+                        if (o[1] <= l[0] + tol || o[0] >= l[1] - tol) { nuevos.push(l); return; }
+                        if (o[0] > l[0] + tol) nuevos.push([l[0], o[0]]);
+                        if (o[1] < l[1] - tol) nuevos.push([o[1], l[1]]);
+                    });
+                    libres = nuevos;
+                });
+                libres = libres.filter(function (l) { return l[1] - l[0] > tol * 2; });
+                var entero = libres.length === 1 && Math.abs(libres[0][0] - lo) <= tol && Math.abs(libres[0][1] - hi) <= tol;
+                if (!entero) tocado = true;
+                var k0 = Math.round(th / ANG) + ':' + Math.round(c / tol);
+                libres.forEach(function (l) { (cubos[k0] = cubos[k0] || []).push({ th: th, c: c, lo: l[0], hi: l[1] }); });
+                var z = A[2] || 0;
+                function P_(s) { return [ux * s - uy * c, uy * s + ux * c, z]; }
+                segs.push({ A: A, B: B, piezas: entero ? [[A, B]] : libres.map(function (l) { var p = P_(l[0]), q = P_(l[1]); return s0 <= s1 ? [p, q] : [q, p]; }) });
+            }
+            if (!tocado) return null;
+            cambio = true;
+            return segs;
+        });
+        if (!cambio) return ents;
+        var out = [];
+        ents.forEach(function (e, idx) {
+            var segs = res[idx];
+            if (!segs) { out.push(e); return; }
+            if (e.fill) { var f = {}; for (var k in e) f[k] = e[k]; f.noStroke = true; out.push(f); }
+            /* se rehacen polilíneas con los tramos consecutivos que quedaron enteros */
+            var actual = null;
+            function cerrar() { if (actual && actual.length > 1) { var l = {}; for (var k2 in e) if (k2 !== 'pts' && k2 !== 'closed' && k2 !== 'fill' && k2 !== 'alpha') l[k2] = e[k2]; l.pts = actual; l.closed = false; out.push(l); } actual = null; }
+            segs.forEach(function (s) {
+                if (s.piezas.length === 1 && s.piezas[0][0] === s.A && s.piezas[0][1] === s.B) { if (!actual) actual = [s.A]; actual.push(s.B); }
+                else { cerrar(); s.piezas.forEach(function (pz) { actual = [pz[0], pz[1]]; cerrar(); }); }
+            });
+            cerrar();
+        });
+        return out;
+    }
+    CAD.limpiarSolapes = limpiarSolapes;
+
+    /* Unión de rectángulos alineados a los ejes (muros, columnas) menos los vanos (puertas, ventanas):
+       se discretiza en una malla con las coordenadas de todos los bordes, se marcan las celdas ocupadas y se
+       extrae el contorno. Resultado: un único contorno sin tramos repetidos y el relleno por franjas. */
+    function unirRects(rects, quitar) {
+        var R6 = function (v) { return Math.round(v * 10000) / 10000; };
+        var xs = {}, ys = {};
+        rects.concat(quitar).forEach(function (r) { xs[R6(r[0])] = 1; xs[R6(r[2])] = 1; ys[R6(r[1])] = 1; ys[R6(r[3])] = 1; });
+        xs = Object.keys(xs).map(Number).sort(function (a, b) { return a - b; }); ys = Object.keys(ys).map(Number).sort(function (a, b) { return a - b; });
+        var nx = xs.length - 1, ny = ys.length - 1; if (nx < 1 || ny < 1) return { lineas: [], filas: [] };
+        var ix = {}, iy = {}; xs.forEach(function (v, i) { ix[v] = i; }); ys.forEach(function (v, i) { iy[v] = i; });
+        var g = new Uint8Array(nx * ny);
+        function marcar(r, val) {
+            var i0 = ix[R6(r[0])], i1 = ix[R6(r[2])], j0 = iy[R6(r[1])], j1 = iy[R6(r[3])];
+            if (i0 == null || i1 == null || j0 == null || j1 == null) return;
+            for (var j = Math.min(j0, j1); j < Math.max(j0, j1); j++) for (var i = Math.min(i0, i1); i < Math.max(i0, i1); i++) g[j * nx + i] = val;
+        }
+        rects.forEach(function (r) { marcar(r, 1); });
+        quitar.forEach(function (r) { marcar(r, 0); });
+        function c(i, j) { return i >= 0 && j >= 0 && i < nx && j < ny ? g[j * nx + i] : 0; }
+        var lineas = [], i, j, ini;
+        for (j = 0; j <= ny; j++) {            /* bordes horizontales */
+            ini = -1;
+            for (i = 0; i <= nx; i++) {
+                var b = i < nx && c(i, j - 1) !== c(i, j);
+                if (b && ini < 0) ini = i;
+                if (!b && ini >= 0) { lineas.push([[xs[ini], ys[j]], [xs[i], ys[j]]]); ini = -1; }
+            }
+        }
+        for (i = 0; i <= nx; i++) {            /* bordes verticales */
+            ini = -1;
+            for (j = 0; j <= ny; j++) {
+                var b2 = j < ny && c(i - 1, j) !== c(i, j);
+                if (b2 && ini < 0) ini = j;
+                if (!b2 && ini >= 0) { lineas.push([[xs[i], ys[ini]], [xs[i], ys[j]]]); ini = -1; }
+            }
+        }
+        var filas = [];                        /* relleno: tramos ocupados por fila, fundidos con la fila anterior si coinciden */
+        var abiertos = {};
+        for (j = 0; j < ny; j++) {
+            var nuevos = {};
+            ini = -1;
+            for (i = 0; i <= nx; i++) {
+                var o = i < nx && c(i, j);
+                if (o && ini < 0) ini = i;
+                if (!o && ini >= 0) {
+                    var k = ini + ':' + i;
+                    if (abiertos[k]) { abiertos[k][3] = ys[j + 1]; nuevos[k] = abiertos[k]; }
+                    else { var f = [xs[ini], ys[j], xs[i], ys[j + 1]]; filas.push(f); nuevos[k] = f; }
+                    ini = -1;
+                }
+            }
+            abiertos = nuevos;
+        }
+        return { lineas: lineas, filas: filas };
+    }
     function dibujarPiso(Pl, pi, ox) {
         var ents = [], W = Pl.W, D = pi.n === 1 ? Pl.L : Pl.D;
         function P(x, y) { return [ox + x, y, 0]; }
@@ -729,44 +854,46 @@
             while (Pl.D - y > 4.6) { y += Math.min(4.2, (Pl.D - y) / Math.ceil((Pl.D - y) / 4.2)); ey.push(y); }
             if (Math.abs(ey[ey.length - 1] - Pl.D) > 0.05) ey.push(Pl.D);
         }
-        var LET = 'ABCDEFGHIJ';
+        var LET = 'ABCDEFGHIJ', Dtop = pi.n === 1 ? Pl.L : Pl.D;
+        /* ejes solo por fuera de la planta (del círculo al borde), para que no pasen por encima de muros ni muebles */
         ex.forEach(function (x, i) {
-            ln('EJES', x, -1.4, x, Pl.D + 1.0, { dash: true });
+            ln('EJES', x, -1.4, x, -0.3, { dash: true }); ln('EJES', x, Dtop + 0.3, x, Dtop + 1.0, { dash: true });
             circ('EJES', x, -1.75, 0.35); txt('EJES', x, -1.75, 0.3, String(i + 1));
         });
         ey.forEach(function (yy, i) {
-            ln('EJES', -1.4, yy, W + 1.0, yy, { dash: true });
+            ln('EJES', -1.4, yy, -0.3, yy, { dash: true }); ln('EJES', W + 0.3, yy, W + 1.0, yy, { dash: true });
             circ('EJES', -1.75, yy, 0.35); txt('EJES', -1.75, yy, 0.3, LET[i] || String(i));
         });
-        ex.forEach(function (x) { ey.forEach(function (yy) { rect('COLUMNAS', x - 0.15, yy - 0.15, 0.3, 0.3, { fill: true, alpha: 0.85 }); }); });
+        var colRects = [];
+        ex.forEach(function (x) { ey.forEach(function (yy) { colRects.push([x - 0.15, yy - 0.15, x + 0.15, yy + 0.15]); }); });
 
-        /* --- muros: perímetro exterior + divisiones de cada ambiente --- */
-        /* muro de fachada relleno (anillo: contorno exterior y luego el interior en sentido contrario) */
-        pl('MUROS', [[0, 0], [W, 0], [W, Pl.D], [0, Pl.D], [0, 0], [MURO_EXT, MURO_EXT], [MURO_EXT, Pl.D - MURO_EXT], [W - MURO_EXT, Pl.D - MURO_EXT], [W - MURO_EXT, MURO_EXT], [MURO_EXT, MURO_EXT]], true, { fill: true, alpha: 0.55, noStroke: true, soloVista: true });
-        rect('MUROS', 0, 0, W, Pl.D, { ext: true });
-        rect('MUROS', MURO_EXT, MURO_EXT, W - 2 * MURO_EXT, Pl.D - 2 * MURO_EXT, { ext: true });
-        if (pi.n === 1 && Pl.patio > 0.5) { ln('MUROS', 0, Pl.D, 0, Pl.L); ln('MUROS', W, Pl.D, W, Pl.L); ln('MUROS', 0, Pl.L, W, Pl.L); }
-        var ABIERTO = /^(patio|pasillo|piscina|jacuzzi|bbq)$/;   /* espacios exteriores o de circulación: sin muros propios */
+        /* --- muros: se reúnen como una sola figura (unión de rectángulos) y se recortan los vanos de puertas y
+           ventanas; así no queda ninguna línea encima de otra (muros vecinos, columnas, puertas y ventanas) --- */
+        var ABIERTO = /^(patio|pasillo|piscina|jacuzzi|bbq|retiro)$/;   /* espacios exteriores o de circulación: sin muros propios */
+        var murosR = [], vanos = [], DB = Pl.D;
+        murosR.push([0, 0, W, MURO_EXT], [0, DB - MURO_EXT, W, DB], [0, 0, MURO_EXT, DB], [W - MURO_EXT, 0, W, DB]);
         pi.rooms.forEach(function (r) {
             if (ABIERTO.test(r.tipo)) return;
-            rect('MUROS', r.x + MURO / 2, r.y + MURO / 2, r.w - MURO, r.h - MURO);
+            var h2 = MURO / 2, x0 = r.x, y0 = r.y, x1 = r.x + r.w, y1 = r.y + r.h;
+            murosR.push([x0 - h2, y0 - h2, x1 + h2, y0 + h2], [x0 - h2, y1 - h2, x1 + h2, y1 + h2], [x0 - h2, y0 - h2, x0 + h2, y1 + h2], [x1 - h2, y0 - h2, x1 + h2, y1 + h2]);
         });
+        colRects.forEach(function (c) { murosR.push(c); });
 
-        /* --- ventanas en fachada (frente y fondo) --- */
+        /* --- ventanas en fachada (frente y fondo): vano en el muro + vidrio dentro del vano --- */
         pi.rooms.forEach(function (r) {
-            if (ABIERTO.test(r.tipo) || r.tipo === 'escalera') return;
+            if (ABIERTO.test(r.tipo) || r.tipo === 'escalera' || r.tipo === 'ingreso' || r.acceso) return;
             var ww = Math.min(1.6, r.w * 0.5);
-            if (r.y < 0.01 && !(pi.n === 1 && r.tipo === 'cochera')) { var cx = r.x + r.w / 2; [0.05, 0.125, 0.2].forEach(function (o) { ln('VENTANAS', cx - ww / 2, o, cx + ww / 2, o); }); }
-            if (Math.abs(r.y + r.h - Pl.D) < 0.01) { var cx2 = r.x + r.w / 2; [Pl.D - 0.05, Pl.D - 0.125, Pl.D - 0.2].forEach(function (o) { ln('VENTANAS', cx2 - ww / 2, o, cx2 + ww / 2, o); }); }
+            if (r.y < 0.01 && !(pi.n === 1 && (r.tipo === 'cochera' || r.tipo === 'local'))) { var cx = r.x + r.w / 2; vanos.push([cx - ww / 2, -0.05, cx + ww / 2, MURO_EXT + 0.05]); [0.06, 0.125, 0.19].forEach(function (o) { ln('VENTANAS', cx - ww / 2, o, cx + ww / 2, o); }); }
+            if (Math.abs(r.y + r.h - DB) < 0.01) { var cx2 = r.x + r.w / 2; vanos.push([cx2 - ww / 2, DB - MURO_EXT - 0.05, cx2 + ww / 2, DB + 0.05]); [DB - 0.06, DB - 0.125, DB - 0.19].forEach(function (o) { ln('VENTANAS', cx2 - ww / 2, o, cx2 + ww / 2, o); }); }
         });
 
-        /* --- puertas (hoja + arco de giro) --- */
+        /* --- puertas (hoja + arco de giro); cada una abre su vano en el muro --- */
         function puerta(x, y, ancho, dir) { /* dir: 'up','down','left','right' = hacia dónde abre; bisagra en (x,y) */
-            var a0, a1, lx, ly;
-            if (dir === 'up') { lx = x; ly = y + ancho; a0 = 0; a1 = Math.PI / 2; ln('PUERTAS', x, y, x, y + ancho); arco('PUERTAS', x, y, ancho, a0, a1); }
-            else if (dir === 'down') { ln('PUERTAS', x, y, x, y - ancho); arco('PUERTAS', x, y, ancho, -Math.PI / 2, 0); }
-            else if (dir === 'right') { ln('PUERTAS', x, y, x + ancho, y); arco('PUERTAS', x, y, ancho, 0, Math.PI / 2); }
-            else { ln('PUERTAS', x, y, x - ancho, y); arco('PUERTAS', x, y, ancho, Math.PI / 2, Math.PI); }
+            var e_ = 0.34;
+            if (dir === 'up') { ln('PUERTAS', x, y, x, y + ancho); arco('PUERTAS', x, y, ancho, 0, Math.PI / 2); vanos.push([x, y - e_, x + ancho, y + e_ * 0.5]); }
+            else if (dir === 'down') { ln('PUERTAS', x, y, x, y - ancho); arco('PUERTAS', x, y, ancho, -Math.PI / 2, 0); vanos.push([x, y - e_ * 0.5, x + ancho, y + e_]); }
+            else if (dir === 'right') { ln('PUERTAS', x, y, x + ancho, y); arco('PUERTAS', x, y, ancho, 0, Math.PI / 2); vanos.push([x - e_, y, x + e_ * 0.5, y + ancho]); }
+            else { ln('PUERTAS', x, y, x - ancho, y); arco('PUERTAS', x, y, ancho, Math.PI / 2, Math.PI); vanos.push([x - e_ * 0.5, y, x + e_, y + ancho]); }
         }
         pi.rooms.forEach(function (r) {
             var dw = r.tipo === 'bano' ? 0.75 : 0.9;
@@ -794,11 +921,15 @@
                 return;
             }
             switch (r.tipo) {
-                case 'cochera': /* portón */
-                    for (var g = 0; g < 3; g++) ln('PUERTAS', r.x + 0.4 + g * (r.w - 0.8) / 3, 0.12, r.x + 0.4 + (g + 1) * (r.w - 0.8) / 3 - 0.08, 0.12);
-                    txt('TEXTO', r.x + r.w / 2, 0.45, 0.13, 'PORTÓN'); break;
+                case 'cochera': /* portón: vano en la fachada y tres hojas dentro del vano */
+                    if (r.y < 0.01) {
+                        vanos.push([r.x + 0.4, -0.05, r.x + r.w - 0.4, MURO_EXT + 0.05]);
+                        for (var g = 0; g < 3; g++) ln('PUERTAS', r.x + 0.4 + g * (r.w - 0.8) / 3 + 0.04, 0.12, r.x + 0.4 + (g + 1) * (r.w - 0.8) / 3 - 0.04, 0.12);
+                        txt('TEXTO', r.x + r.w / 2, -0.3, 0.13, 'PORTÓN');
+                    }
+                    break;
                 case 'ingreso': if (r.y < 0.01) puerta(r.x + 0.5, 0.12, 1.0, 'up'); break;
-                case 'local': ln('PUERTAS', r.x + 0.6, 0.1, r.x + r.w - 0.6, 0.1); break;
+                case 'local': if (r.y < 0.01) { vanos.push([r.x + 0.6, -0.05, r.x + r.w - 0.6, MURO_EXT + 0.05]); ln('PUERTAS', r.x + 0.6, 0.1, r.x + r.w - 0.6, 0.1); } break;
                 case 'sala': if (r.y < 0.01) puerta(r.x + r.w - 0.12, r.y + r.h - 1.05, 0.9, 'left'); else puerta(r.x + r.w - 0.12, r.y + 0.2, 0.9, 'left'); break;
                 case 'estudio': puerta(r.x + 0.12, r.y + r.h - 1.05, 0.85, 'right'); break;
                 case 'cocina': puerta(r.x + r.w - 1.15, r.y + r.h - 0.12, 0.9, 'down'); break;
@@ -820,6 +951,14 @@
             }
         });
 
+        /* --- muros construidos: relleno (solo vista) + contorno único, con columnas y vanos --- */
+        var U = unirRects(murosR.map(function (m) { return [Math.max(0, m[0]), Math.max(0, m[1]), Math.min(W, m[2]), Math.min(DB, m[3])]; }).filter(function (m) { return m[2] - m[0] > 1e-3 && m[3] - m[1] > 1e-3; }), vanos);
+        U.filas.forEach(function (q) { pl('MUROS', [[q[0], q[1]], [q[2], q[1]], [q[2], q[3]], [q[0], q[3]]], true, { fill: true, alpha: 0.55, noStroke: true, soloVista: true }); });
+        U.lineas.forEach(function (s) { pl('MUROS', s, false, { sw: 0.03 }); });
+        colRects.forEach(function (c) { pl('COLUMNAS', [[c[0], c[1]], [c[2], c[1]], [c[2], c[3]], [c[0], c[3]]], true, { fill: true, alpha: 0.85, noStroke: true, soloVista: true }); });
+        /* lindero del lote detrás de la edificación (empieza donde termina el muro: se tocan, no se montan) */
+        if (pi.n === 1 && Pl.L - DB > 0.5) { pl('MUROS', [[0, DB], [0, Pl.L], [W, Pl.L], [W, DB]], false, { sw: 0.02 }); }
+
         /* --- escalera: dos tramos con huellas de 0.28 m --- */
         pi.rooms.forEach(function (r) {
             if (r.tipo !== 'escalera') return;
@@ -831,24 +970,58 @@
         });
 
         /* --- mobiliario --- */
-        pi.rooms.forEach(function (r) { delete r._ly; mobiliario(r, pl); });
+        /* el mobiliario se ubica en el espacio libre interior: junto a la fachada el muro es más grueso (MURO_EXT),
+           así que ningún mueble queda dentro del muro ni cruzado por su línea */
+        var extra_ = MURO_EXT - MURO / 2;
+        pi.rooms.forEach(function (r) {
+            delete r._ly;
+            var a0 = r.x < 0.01 ? extra_ : 0, a1 = r.x + r.w > W - 0.01 ? extra_ : 0, b0 = r.y < 0.01 ? extra_ : 0, b1 = Math.abs(r.y + r.h - DB) < 0.01 ? extra_ : 0;
+            if (ABIERTO.test(r.tipo)) { a0 = a1 = b0 = b1 = 0; }
+            var ri = {}; for (var k in r) ri[k] = r[k];
+            ri.x = r.x + a0; ri.y = r.y + b0; ri.w = r.w - a0 - a1; ri.h = r.h - b0 - b1;
+            mobiliario(ri, pl);
+            if (ri._ly != null) r._ly = ri._ly;
+        });
 
-        /* --- textos de ambientes --- */
+        /* --- textos de ambientes: en el punto libre más cercano al centro (sin tapar muebles, puertas ni escalera) --- */
+        var obst = [];
+        ents.forEach(function (e) {
+            if (!/^(MOBILIARIO|PUERTAS|ESCALERA)$/.test(e.layer)) return;
+            var p = e.t === 'circle' ? [[e.c[0] - e.r, e.c[1] - e.r], [e.c[0] + e.r, e.c[1] + e.r]] : (e.pts || []);
+            if (!p.length) return;
+            var b = [Infinity, Infinity, -Infinity, -Infinity];
+            p.forEach(function (q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); });
+            obst.push([b[0] - 0.05, b[1] - 0.05, b[2] + 0.05, b[3] + 0.05]);   /* margen: una línea recta no tiene alto */
+        });
+        function choque(b) { var s = 0; obst.forEach(function (o) { var ix = Math.min(b[2], o[2]) - Math.max(b[0], o[0]), iy = Math.min(b[3], o[3]) - Math.max(b[1], o[1]); if (ix > 0 && iy > 0) s += ix * iy; }); return s; }
         pi.rooms.forEach(function (r) {
             if (r.tipo === 'pasillo' && r.w < 2) return;
-            var hT = r.w < 2 ? 0.16 : 0.22, cy = r._ly != null ? r._ly : r.y + r.h / 2 + (r.tipo === 'escalera' ? 0.2 : 0);
-            txt('TEXTO', r.x + r.w / 2, cy + 0.18, hT, r.nombre);
-            txt('TEXTO', r.x + r.w / 2, cy - 0.12, 0.14, f2(r.w) + ' × ' + f2(r.h), { sub: true });
+            var hT = r.w < 2 ? 0.16 : 0.22, sub = f2(r.w) + ' × ' + f2(r.h);
+            var anchoT = Math.min(r.w - 0.2, Math.max(r.nombre.length * hT * 0.62, sub.length * 0.14 * 0.62)) / 2 + 0.06;
+            var cx0 = r.x + r.w / 2, cy0 = r._ly != null ? r._ly : r.y + r.h / 2 + (r.tipo === 'escalera' ? 0.2 : 0);
+            var mejor = null;
+            for (var gy = 0; gy <= 8; gy++) for (var gx = 0; gx <= 8; gx++) {
+                var px = r.x + 0.25 + anchoT + (r.w - 0.5 - 2 * anchoT) * gx / 8, py = r.y + 0.45 + (r.h - 0.9) * gy / 8;
+                if (r.w - 0.5 - 2 * anchoT < 0) px = cx0;
+                if (r.h - 0.9 < 0) py = cy0;
+                var caja = [ox + px - anchoT, py - 0.26, ox + px + anchoT, py + 0.36];
+                var v = choque(caja) * 1000 + Math.hypot(px - cx0, py - cy0);
+                if (!mejor || v < mejor.v) mejor = { v: v, x: px, y: py };
+            }
+            var lx = mejor ? mejor.x : cx0, ly = mejor ? mejor.y : cy0;
+            txt('TEXTO', lx, ly + 0.18, hT, r.nombre);
+            txt('TEXTO', lx, ly - 0.12, 0.14, sub, { sub: true });
         });
 
         /* --- cotas generales y rótulo --- */
-        ln('COTAS', 0, -0.7, W, -0.7); ln('COTAS', 0, -0.55, 0, -0.85); ln('COTAS', W, -0.55, W, -0.85);
+        /* cotas con marcas a 45° (una marca recta quedaría encima del eje que pasa por el mismo punto) */
+        ln('COTAS', 0, -0.7, W, -0.7); ln('COTAS', -0.1, -0.8, 0.1, -0.6); ln('COTAS', W - 0.1, -0.8, W + 0.1, -0.6);
         txt('COTAS', W / 2, -0.95, 0.2, f2(W) + ' m');
-        ln('COTAS', -0.7, 0, -0.7, D); ln('COTAS', -0.55, 0, -0.85, 0); ln('COTAS', -0.55, D, -0.85, D);
+        ln('COTAS', -0.7, 0, -0.7, D); ln('COTAS', -0.8, -0.1, -0.6, 0.1); ln('COTAS', -0.8, D - 0.1, -0.6, D + 0.1);
         txt('COTAS', -1.0, D / 2, 0.2, f2(D) + ' m', { rot: Math.PI / 2 });
         txt('TEXTO', W / 2, -2.6, 0.38, 'PLANTA ' + (NOMBRE_PISO[pi.n] || pi.n + '.º') + ' PISO', { titulo: true });
         txt('TEXTO', W / 2, -3.05, 0.17, 'NPT ' + (pi.n === 1 ? '±0.00' : '+' + f2((pi.n - 1) * (Pl.generico ? 3.2 : 2.7))) + ' · ESC. ' + (Pl.escala || '1:75') + ' · ANTEPROYECTO');
-        return ents;
+        return limpiarSolapes(ents, 0.004);   /* ninguna línea encima de otra */
     }
     /* ------------------------------------------------------------------ MOBILIARIO DETALLADO
        Biblioteca de símbolos en planta (vista superior) dibujados como en un plano de arquitectura real:
@@ -892,15 +1065,18 @@
     }
     var SIM = {
         cama: function (S, bw, bl, doble) {
-            S.rr(-bw / 2 - 0.03, 0, bw + 0.06, bl, 0.05, F('madera', 0.22));                     /* estructura */
-            S.rect(-bw / 2 - 0.05, 0, bw + 0.1, 0.07, F('madera', 0.75));                          /* cabecero */
-            S.rr(-bw / 2 + 0.03, 0.09, bw - 0.06, bl - 0.13, 0.06, Dl('cama'));                   /* colchón */
-            var n = doble ? 2 : 1, g = 0.08, pw = (bw - 0.16 - g * (n - 1)) / n;
-            for (var i = 0; i < n; i++) { var u = -bw / 2 + 0.08 + i * (pw + g); S.rr(u, 0.14, pw, 0.36, 0.11, F('tela', 0.4)); S.ln(u + 0.1, 0.32, u + pw - 0.1, 0.32, Dl('tela', 0.007)); }
-            S.rr(-bw / 2 + 0.02, 0.6, bw - 0.04, bl - 0.64, 0.05, F('cama', 0.3));               /* edredón */
-            S.ln(-bw / 2 + 0.02, 0.8, bw / 2 - 0.02, 0.8, Dl('cama'));                           /* doblez de la sábana */
-            S.ln(-bw / 2 + 0.15, 1.15, bw / 2 - 0.45, 1.15, Dl('cama', 0.006)); S.ln(-bw / 2 + 0.15, 1.5, bw / 2 - 0.6, 1.5, Dl('cama', 0.006));
-            S.poly([[bw / 2 - 0.02, bl - 0.78], [bw / 2 - 0.5, bl - 0.04], [bw / 2 - 0.02, bl - 0.04]], true, F('tela', 0.45)); /* esquina doblada */
+            /* cada pieza separada de la vecina (ningún borde compartido) */
+            S.rect(-bw / 2 - 0.05, 0, bw + 0.1, 0.06, F('madera', 0.75));                          /* cabecero */
+            S.rr(-bw / 2 - 0.03, 0.08, bw + 0.06, bl - 0.08, 0.05, F('madera', 0.22));             /* estructura */
+            S.rr(-bw / 2 + 0.02, 0.12, bw - 0.04, bl - 0.17, 0.06, Dl('cama'));                   /* colchón */
+            var n = doble ? 2 : 1, g = 0.08, pw = (bw - 0.2 - g * (n - 1)) / n;
+            for (var i = 0; i < n; i++) { var u = -bw / 2 + 0.1 + i * (pw + g); S.rr(u, 0.17, pw, 0.34, 0.11, F('tela', 0.4)); S.ln(u + 0.1, 0.34, u + pw - 0.1, 0.34, Dl('tela', 0.007)); }
+            S.rr(-bw / 2 + 0.07, 0.6, bw - 0.14, bl - 0.71, 0.05, F('cama', 0.3));               /* edredón */
+            S.ln(-bw / 2 + 0.07, 0.8, bw / 2 - 0.07, 0.8, Dl('cama'));                           /* doblez de la sábana */
+            S.ln(-bw / 2 + 0.18, 1.15, bw / 2 - 0.5, 1.15, Dl('cama', 0.006)); S.ln(-bw / 2 + 0.18, 1.5, bw / 2 - 0.65, 1.5, Dl('cama', 0.006));
+            /* esquina doblada: relleno sin borde + solo la diagonal (los otros lados coincidirían con el edredón) */
+            S.poly([[bw / 2 - 0.07, bl - 0.78], [bw / 2 - 0.5, bl - 0.11], [bw / 2 - 0.07, bl - 0.11]], true, { col: 'tela', fill: true, alpha: 0.45, noStroke: true });
+            S.ln(bw / 2 - 0.07, bl - 0.78, bw / 2 - 0.5, bl - 0.11, Dl('tela', 0.01));
         },
         mesaNoche: function (S, s) {
             S.rr(-s / 2, 0, s, s * 0.9, 0.04, F('madera', 0.3));
@@ -914,38 +1090,41 @@
             S.ln(-L / 2, d - 0.03, 0.06, d - 0.03, Dl('madera', 0.02)); S.ln(-0.06, d - 0.08, L / 2, d - 0.08, Dl('madera', 0.02)); /* puertas corredizas */
         },
         sofa: function (S, L, d, n) {
-            S.rr(-L / 2, 0, L, d, 0.09, F('tela', 0.12));
-            S.rr(-L / 2, 0, L, 0.22, 0.08, F('tela', 0.45));                                      /* espaldar */
-            S.rr(-L / 2, 0, 0.2, d, 0.08, F('tela', 0.45)); S.rr(L / 2 - 0.2, 0, 0.2, d, 0.08, F('tela', 0.45)); /* brazos */
-            var cw = (L - 0.4) / n;
-            for (var i = 0; i < n; i++) S.rr(-L / 2 + 0.2 + i * cw + 0.02, 0.25, cw - 0.04, d - 0.29, 0.08, F('tela', 0.22));
-            if (n > 1) S.rr(-L / 2 + 0.24, 0.24, 0.3, 0.15, 0.06, F('cama', 0.55));               /* cojín decorativo */
+            /* espaldar, brazos y cojines como piezas separadas (sin bordes montados) */
+            S.rr(-L / 2, 0, L, 0.2, 0.08, F('tela', 0.45));                                       /* espaldar */
+            S.rr(-L / 2, 0.23, 0.2, d - 0.23, 0.08, F('tela', 0.45)); S.rr(L / 2 - 0.2, 0.23, 0.2, d - 0.23, 0.08, F('tela', 0.45)); /* brazos */
+            var cw = (L - 0.46) / n;
+            for (var i = 0; i < n; i++) S.rr(-L / 2 + 0.23 + i * cw + 0.02, 0.24, cw - 0.04, d - 0.27, 0.08, F('tela', 0.22));
+            if (n > 1) S.rr(-L / 2 + 0.3, 0.3, 0.26, 0.13, 0.05, F('cama', 0.55));                /* cojín decorativo */
         },
         mesaCentro: function (S, w, h) {
             S.rr(-w / 2, 0, w, h, 0.1, F('vidrio', 0.15)); S.rr(-w / 2 + 0.06, 0.06, w - 0.12, h - 0.12, 0.07, Dl('vidrio', 0.006));
             for (var k = 0; k < 5; k++) S.hoja(w * 0.25, h / 2, k * 1.26 + 0.4, 0.13, F('verde', 0.45));
             S.circ(w * 0.25, h / 2, 0.05, F('madera', 0.8));
         },
-        silla: function (S) { S.rr(-0.21, 0.07, 0.42, 0.4, 0.07, F('tela', 0.3)); S.rr(-0.22, 0, 0.44, 0.08, 0.03, F('madera', 0.75)); },
+        silla: function (S) { S.rr(-0.21, 0.1, 0.42, 0.37, 0.07, F('tela', 0.3)); S.rr(-0.22, 0, 0.44, 0.07, 0.03, F('madera', 0.75)); },
         sillaOficina: function (S) {
-            S.circ(0, 0, 0.24, F('tela', 0.3)); S.rr(-0.22, -0.33, 0.44, 0.1, 0.04, F('tela', 0.6));
-            S.rr(-0.28, -0.18, 0.06, 0.3, 0.03, F('metal', 0.5)); S.rr(0.22, -0.18, 0.06, 0.3, 0.03, F('metal', 0.5));
+            S.circ(0, 0, 0.24, F('tela', 0.3)); S.rr(-0.22, -0.37, 0.44, 0.1, 0.04, F('tela', 0.6));
+            S.rr(-0.31, -0.15, 0.05, 0.27, 0.02, F('metal', 0.5)); S.rr(0.26, -0.15, 0.05, 0.27, 0.02, F('metal', 0.5));
         },
         inodoro: function (S) {
-            S.rr(-0.25, 0, 0.5, 0.2, 0.05, F('sanit', 0.35)); S.circ(0, 0.1, 0.03, F('metal', 0.8));           /* tanque */
-            S.elip(0, 0.46, 0.2, 0.27, F('sanit', 0.14)); S.elip(0, 0.48, 0.13, 0.18, Dl('sanit'));            /* taza y asiento */
+            S.rr(-0.25, 0, 0.5, 0.19, 0.05, F('sanit', 0.35)); S.circ(0, 0.095, 0.03, F('metal', 0.8));        /* tanque */
+            S.elip(0, 0.49, 0.2, 0.27, F('sanit', 0.14)); S.elip(0, 0.51, 0.13, 0.18, Dl('sanit'));            /* taza y asiento */
         },
         lavamanos: function (S, L) {
             S.rr(-L / 2, 0, L, 0.48, 0.04, F('metal', 0.12));
-            S.elip(0, 0.27, Math.min(0.22, L / 2 - 0.08), 0.15, F('sanit', 0.25)); S.circ(0, 0.3, 0.025, Dl('metal'));
-            S.rr(-0.02, 0.03, 0.04, 0.13, 0.015, F('metal', 0.8)); S.circ(-0.08, 0.07, 0.025, F('metal', 0.6)); S.circ(0.08, 0.07, 0.025, F('metal', 0.6));
+            S.elip(0, 0.28, Math.min(0.22, L / 2 - 0.08), 0.14, F('sanit', 0.25)); S.circ(0, 0.3, 0.025, Dl('metal'));
+            S.rr(-0.02, 0.025, 0.04, 0.08, 0.015, F('metal', 0.8)); S.circ(-0.08, 0.065, 0.022, F('metal', 0.6)); S.circ(0.08, 0.065, 0.022, F('metal', 0.6));
         },
         ducha: function (S, a, b) {   /* S en la esquina inferior izquierda del plato; abierta hacia +u y -v */
-            S.rect(0, 0, a, b, F('sanit', 0.1));
-            [[0, 0], [a, 0], [a, b], [0, b]].forEach(function (q) { S.ln(q[0], q[1], a / 2 + (q[0] ? 0.05 : -0.05), b / 2 + (q[1] ? 0.05 : -0.05), Dl('sanit', 0.005)); });
+            /* plato: relleno; bordes de muro (izquierdo y superior) en una sola línea; a la derecha la mampara de vidrio;
+               abajo, la entrada (sin línea que se monte con nada) */
+            S.rect(0, 0, a, b, { col: 'sanit', fill: true, alpha: 0.1, noStroke: true });
+            S.poly([[0, 0.02], [0, b], [a - 0.02, b]], false, Dl('sanit'));
+            S.ln(a, 0, a, b, Dl('vidrio', 0.022)); S.ln(0.02, 0, a * 0.35, 0, Dl('vidrio', 0.022));
+            [[0, 0], [a, 0], [a, b], [0, b]].forEach(function (q) { S.ln(q[0] + (q[0] ? -0.06 : 0.06), q[1] + (q[1] ? -0.06 : 0.06), a / 2 + (q[0] ? 0.06 : -0.06), b / 2 + (q[1] ? 0.06 : -0.06), Dl('sanit', 0.005)); });
             S.circ(a / 2, b / 2, 0.05, Dl('metal')); S.ln(a / 2 - 0.035, b / 2, a / 2 + 0.035, b / 2, Dl('metal', 0.006));
-            S.circ(a * 0.25, b - 0.12, 0.07, F('metal', 0.45)); S.circ(a * 0.25, b - 0.12, 0.03, F('metal', 0.9));   /* regadera */
-            S.ln(a, 0, a, b, Dl('vidrio', 0.022)); S.ln(0, 0, a * 0.35, 0, Dl('vidrio', 0.022)); S.arc(a * 0.35, 0, a * 0.6, Math.PI, Math.PI * 1.5, Dl('vidrio', 0.006));
+            S.circ(a / 2, b - 0.12, 0.07, F('metal', 0.45)); S.circ(a / 2, b - 0.12, 0.03, F('metal', 0.9));   /* regadera (entre las diagonales) */
         },
         lavadora: function (S) {
             S.rr(-0.3, 0, 0.6, 0.6, 0.05, F('metal', 0.2)); S.ln(-0.3, 0.1, 0.3, 0.1, Dl('metal', 0.006));
@@ -954,11 +1133,11 @@
         lavadero: function (S) {
             S.rr(-0.35, 0, 0.7, 0.6, 0.04, F('sanit', 0.15));
             for (var k = 0; k < 5; k++) S.ln(-0.3, 0.12 + k * 0.08, -0.04, 0.12 + k * 0.08, Dl('sanit', 0.005));
-            S.rr(0.0, 0.08, 0.3, 0.44, 0.05, F('sanit', 0.22)); S.circ(0.15, 0.3, 0.025, Dl('metal')); S.rr(0.13, 0.02, 0.04, 0.1, 0.015, F('metal', 0.8));
+            S.rr(0.0, 0.1, 0.3, 0.42, 0.05, F('sanit', 0.22)); S.circ(0.15, 0.31, 0.025, Dl('metal')); S.rr(0.13, 0.02, 0.04, 0.06, 0.015, F('metal', 0.8));
         },
         escritorio: function (S, L) {
             S.rr(-L / 2, 0, L, 0.6, 0.03, F('madera', 0.2));
-            S.rr(-0.28, 0.08, 0.56, 0.06, 0.02, F('metal', 0.85)); S.rr(-0.06, 0.14, 0.12, 0.08, 0.02, F('metal', 0.5));   /* monitor */
+            S.rr(-0.28, 0.08, 0.56, 0.06, 0.02, F('metal', 0.85)); S.rr(-0.06, 0.16, 0.12, 0.07, 0.02, F('metal', 0.5));   /* monitor */
             S.rr(-0.22, 0.3, 0.44, 0.13, 0.02, Dl('metal')); S.elip(0.32, 0.36, 0.035, 0.05, Dl('metal'));               /* teclado y mouse */
             if (L > 1.1) { S.circ(L / 2 - 0.16, 0.16, 0.08, F('cama', 0.4)); S.circ(L / 2 - 0.16, 0.16, 0.025, F('cama', 0.9)); }
         },
@@ -992,7 +1171,7 @@
         S.rr(-Wc / 2 + 0.27, q(1.88), Wc - 0.54, q(1.25), 0.12, F('carro', 0.32));                           /* techo */
         [-1, 1].forEach(function (sg) {
             S.poly([[sg * (Wc / 2 - 0.1), q(1.35)], [sg * (Wc / 2 - 0.25), q(1.9)], [sg * (Wc / 2 - 0.25), q(3.1)], [sg * (Wc / 2 - 0.1), q(3.3)]], true, F('vidrio', 0.3)); /* ventanas */
-            S.poly([[sg * Wc / 2, q(1.35)], [sg * (Wc / 2 + 0.18), q(1.42)], [sg * (Wc / 2 + 0.16), q(1.56)], [sg * Wc / 2, q(1.56)]], true, F('carro', 0.55)); /* espejos */
+            S.poly([[sg * (Wc / 2 + 0.02), q(1.35)], [sg * (Wc / 2 + 0.18), q(1.42)], [sg * (Wc / 2 + 0.16), q(1.56)], [sg * (Wc / 2 + 0.02), q(1.56)]], true, F('carro', 0.55)); /* espejos (separados de la carrocería) */
             [q(0.6), Lc - q(1.25)].forEach(function (v) { S.rr(sg > 0 ? Wc / 2 - 0.19 : -Wc / 2 - 0.05, v, 0.24, q(0.66), 0.08, F('metal', 0.85)); }); /* llantas */
             S.rr(sg > 0 ? Wc / 2 - 0.47 : -Wc / 2 + 0.12, Lc - 0.16, 0.35, 0.1, 0.04, F('carro', 0.85));          /* stops */
         });
@@ -1083,7 +1262,9 @@
                 C_.rect(-lc / 2, -ac / 2, lc, ac, F('verde', 0.1)); C_.ln(0, -ac / 2, 0, ac / 2, Dl('cama', 0.02));
                 C_.circ(0, 0, Math.min(1.8, ac * 0.15), Dl('cama', 0.02));
                 [-1, 1].forEach(function (sg) {
-                    C_.rect(sg > 0 ? lc / 2 - Math.min(5.8, lc * 0.2) : -lc / 2, -Math.min(2.45, ac * 0.18), Math.min(5.8, lc * 0.2), 2 * Math.min(2.45, ac * 0.18), Dl('cama', 0.02));
+                    /* zona restringida: tres lados (el cuarto es la línea final de la cancha) */
+                    var kl = Math.min(5.8, lc * 0.2), kw = Math.min(2.45, ac * 0.18), xe = sg * lc / 2, xk = sg * (lc / 2 - kl);
+                    C_.poly([[xe, -kw], [xk, -kw], [xk, kw], [xe, kw]], false, Dl('cama', 0.02));
                     C_.arc(sg * (lc / 2 - 1.575), 0, Math.min(6.75, ac * 0.45), sg > 0 ? Math.PI / 2 : -Math.PI / 2, sg > 0 ? Math.PI * 1.5 : Math.PI / 2, Dl('cama', 0.015));
                 });
                 break;
@@ -1130,13 +1311,11 @@
             case 'sala': {
                 if (/TV|CINE/.test(r.nombre)) {                                                     /* sala de TV: sofá frente a la pantalla */
                     var Lt = Math.min(2.3, w - 0.8);
-                    SIM.alfombra(G, cx - Lt / 2, y + 1.05, Lt, Math.max(0.8, h - 2.0));
                     SIM.sofa(lapiz(pl, cx, y + 0.2, 0), Lt, 0.9, Lt > 1.9 ? 3 : 2);
                     SIM.tv(lapiz(pl, cx, y + h - 0.12, 2), Math.min(1.8, Lt));
                     break;
                 }
                 var L = Math.min(2.3, w * 0.45), sx = x + 0.35 + L / 2;
-                SIM.alfombra(G, sx - L / 2 - 0.1, y + 1.0, L + 0.6, 1.7);
                 SIM.sofa(lapiz(pl, sx, y + 0.22, 0), L, 0.9, L > 1.9 ? 3 : 2);                 /* sofá contra el muro */
                 SIM.mesaCentro(lapiz(pl, sx, y + 1.35, 0), Math.min(1.1, L * 0.55), 0.55);
                 if (w > 3.6) SIM.sofa(lapiz(pl, sx + L / 2 + 0.75, y + 1.6, 1), 0.95, 0.85, 1);   /* sillón mirando al sofá */
@@ -1173,9 +1352,10 @@
             }
             case 'cocina': {
                 var nev = w > 3.2 ? 0.75 : 0, cw = w - 0.4 - nev;
-                G.rect(x + 0.2, y + 0.2, cw, 0.6, F('madera', 0.16)); G.ln(x + 0.2, y + 0.75, x + 0.2 + cw, y + 0.75, Dl('madera', 0.006));
+                /* mesón: una sola pieza (recto o en L), sin líneas que pasen por debajo de la estufa o el lavaplatos */
                 var leg = Math.min(1.6, h - 1.4);
-                if (leg > 0.6) { G.rect(x + 0.2, y + 0.8, 0.6, leg, F('madera', 0.16)); G.ln(x + 0.75, y + 0.8, x + 0.75, y + 0.8 + leg, Dl('madera', 0.006)); }
+                if (leg > 0.6) G.poly([[x + 0.2, y + 0.2], [x + 0.2 + cw, y + 0.2], [x + 0.2 + cw, y + 0.8], [x + 0.8, y + 0.8], [x + 0.8, y + 0.8 + leg], [x + 0.2, y + 0.8 + leg]], true, F('madera', 0.16));
+                else G.rect(x + 0.2, y + 0.2, cw, 0.6, F('madera', 0.16));
                 var st = x + 1.0;                                                                  /* estufa de 4 puestos */
                 G.rr(st, y + 0.23, 0.6, 0.54, 0.03, F('metal', 0.25));
                 [[0.16, 0.37, 0.1], [0.44, 0.37, 0.07], [0.16, 0.63, 0.07], [0.44, 0.63, 0.1]].forEach(function (q) {
@@ -1226,7 +1406,8 @@
             /* ---- espacios no residenciales ---- */
             case 'recepcion': {
                 var mw = Math.min(2.6, w - 1.2);
-                G.rr(x + 0.5, y + 0.9, mw, 0.6, 0.05, F('madera', 0.22)); G.rr(x + 0.5, y + 1.5, 0.6, 0.9, 0.05, F('madera', 0.22));
+                /* mostrador en L como una sola pieza */
+                G.poly([[x + 0.5, y + 0.9], [x + 0.5 + mw, y + 0.9], [x + 0.5 + mw, y + 1.5], [x + 1.1, y + 1.5], [x + 1.1, y + 2.4], [x + 0.5, y + 2.4]], true, F('madera', 0.22));
                 SIM.sillaOficina(lapiz(pl, x + 0.5 + mw / 2, y + 0.45, 0));
                 for (k = 0; k < Math.min(4, Math.floor((w - 1.4) / 0.6)); k++) SIM.silla(lapiz(pl, x + 0.75 + k * 0.6, y + h - 0.15, 2));
                 SIM.maceta(lapiz(pl, x + w - 0.45, y + h - 0.45, 0), 0.18);
@@ -1236,7 +1417,7 @@
             case 'cafeteria': for (var fy0 = y + 1.2; fy0 < y + h - 0.8; fy0 += 1.9) for (var fx0 = x + 1.0; fx0 < x + w - 0.8; fx0 += 1.9) mesaRedonda(pl, fx0, fy0, 0.4, 4); break;
             case 'infantil': {
                 SIM.alfombra(G, x + 0.4, y + h - 2.2, Math.min(2.4, w - 0.8), 1.8);
-                for (var ix = x + 1.0; ix < x + w - 0.6; ix += 1.7) for (var iy2 = y + 1.0; iy2 < y + h - 2.6; iy2 += 1.7) mesaRedonda(pl, ix, iy2, 0.42, 4);
+                for (var ix = x + 1.0; ix < x + w - 0.6; ix += 1.7) for (var iy2 = y + 1.0; iy2 < y + h - 3.25; iy2 += 1.7) mesaRedonda(pl, ix, iy2, 0.42, 4);   /* sin tocar la alfombra */
                 break;
             }
             case 'informatica': case 'aula': {
@@ -1298,20 +1479,8 @@
         var humedo = /^(bano|banos|cocina|lav)$/.test(t), madera = /^(dorm|dormp|sala|comedor|estudio|ingreso|oficina|lectura|estudio2|reuniones|infantil|recepcion|auditorio|aula|informatica|closet)$/.test(t);
         if (t === 'vestier') madera = true;
         var tono = humedo ? 'sanit' : madera ? 'madera' : t === 'patio' ? 'verde' : t === 'cochera' ? 'metal' : t === 'piscina' || t === 'jacuzzi' ? 'verde' : 'piso';
-        pl('ACABADOS', [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], true, { col: tono, fill: true, alpha: t === 'patio' ? 0.1 : 0.06, noStroke: true, soloVista: true });
-        var o = { col: 'piso', sw: 0.006 }, v;
-        if (humedo) {
-            for (v = x0 + 0.4; v < x1 - 0.05; v += 0.4) pl('ACABADOS', [[v, y0], [v, y1]], false, o);
-            for (v = y0 + 0.4; v < y1 - 0.05; v += 0.4) pl('ACABADOS', [[x0, v], [x1, v]], false, o);
-        } else if (madera) {
-            var j = 0;
-            for (v = y0 + 0.3; v < y1 - 0.05; v += 0.3, j++) {
-                pl('ACABADOS', [[x0, v], [x1, v]], false, o);
-                for (var u = x0 + 0.5 + (j % 3) * 0.5; u < x1 - 0.1; u += 1.5) pl('ACABADOS', [[u, v - 0.3], [u, v]], false, o);   /* juntas trabadas */
-            }
-        } else if (t === 'cochera') {
-            pl('ACABADOS', [[x0 + 0.3, y0 + 0.3], [x1 - 0.3, y0 + 0.3]], false, { col: 'cama', sw: 0.02 });
-        }
+        /* solo el tono del material (sin líneas de baldosa ni de entablado: quedarían debajo de los muebles) */
+        pl('ACABADOS', [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], true, { col: tono, fill: true, alpha: t === 'patio' ? 0.1 : humedo || madera ? 0.09 : 0.06, noStroke: true, soloVista: true });
     }
     function modelo(Pl, soloPiso) {
         var ents = [], gap = Pl.W + 5;
@@ -1378,6 +1547,23 @@
     var BUSCA_MED = { principal: /^DORM\. PRINCIPAL/, dorm: /^DORMITORIO/, sala: /^SALA(?:-COMEDOR)?$/, cocina: /^COCINA/, comedor: /^COMEDOR/, bano: /^BAÑO(?! SOCIAL)/, cochera: /^COCHERA/, patio: /PATIO/, estudio: /^ESTUDIO/ };
     var NOMBRE_MED = { principal: 'Dormitorio principal', dorm: 'Dormitorios', sala: 'Sala', cocina: 'Cocina', comedor: 'Comedor', bano: 'Baño', cochera: 'Cochera', patio: 'Patio', estudio: 'Estudio' };
     function cumplimiento(P, Pl) {
+        if (P.ia) {
+            var it2 = [], necesario = [];
+            for (var fi = 1; fi <= P.n; fi++) {
+                var rooms = (Pl.pisos[fi - 1] || { rooms: [] }).rooms;
+                (P.pisos[fi].gen || []).forEach(function (e) {
+                    var rs = rooms.filter(function (r) { return r.nombre === e.nombre || r.nombre.indexOf(e.nombre + ' ') === 0; });
+                    var nom = e.nombre.charAt(0) + e.nombre.slice(1).toLowerCase();
+                    it2.push([rs.length >= e.n, (e.n > 1 ? e.n + ' × ' : '') + nom + ' (' + ordinal(fi) + ' piso)' + (rs.length ? ': ' + f2(rs[0].w) + ' × ' + f2(rs[0].h) + ' m' : ' — no cupo')]);
+                });
+                if (rooms.some(function (r) { return r.tipo === 'escalera'; }) && necesario.indexOf('escalera') < 0) necesario.push('escalera');
+                if (rooms.some(function (r) { return r.tipo === 'pasillo'; }) && necesario.indexOf('circulación') < 0) necesario.push('circulación');
+            }
+            var html = '<div class="cxpl-cumple"><b>Lo que pediste</b><ul>' + it2.map(function (x) { return '<li class="' + (x[0] ? 'si' : 'aj') + '">' + (x[0] ? '✓ ' : '≈ ') + esc(x[1]) + '</li>'; }).join('') + '</ul>';
+            if (necesario.length) html += '<p class="cxpl-cumple-n">➕ Agregado solo porque la obra no funciona sin ello: ' + esc(necesario.join(' y ')) + (necesario.indexOf('escalera') >= 0 ? ' (hay ' + P.n + ' pisos)' : '') + '.</p>';
+            if (P.quitados && P.quitados.length) html += '<p class="cxpl-cumple-n">✂ Quité lo que no pediste: ' + esc(P.quitados.filter(function (v, i, a) { return a.indexOf(v) === i; }).join(', ')) + '. Si lo quieres, dime «agrega …».</p>';
+            return html + '</div>';
+        }
         if (P.generico) return '';
         var it = [];
         function cuarto(f, re) { var pi = Pl.pisos[f - 1]; return pi ? pi.rooms.filter(function (r) { return re.test(r.nombre); }) : []; }
@@ -1722,7 +1908,8 @@
     var PROMPT_IA = [
         'Eres el motor de diseño del modo Planos de Civix. Conviertes el pedido del usuario en una especificación JSON que un programa dibuja.',
         'Responde SOLO con un objeto JSON válido: sin texto antes ni después, sin markdown, sin comentarios.',
-        'Respeta EXACTAMENTE lo pedido: tipo de obra, cantidades, medidas, número de pisos, espacios, materiales y forma. No lo cambies por otro diseño ni uses uno genérico. Si falta un dato, supón un valor técnico razonable y anótalo en "supuestos".',
+        'Respeta EXACTAMENTE lo pedido: tipo de obra, cantidades, medidas, número de pisos, espacios, materiales y forma. No lo cambies por otro diseño ni uses uno genérico. Si falta un dato numérico, supón un valor técnico razonable y anótalo en "supuestos".',
+        'REGLA ESTRICTA: incluye ÚNICAMENTE lo que el usuario nombró, con las cantidades exactas que dijo. NO agregues espacios ni elementos que no pidió (ni baños, depósitos, recepciones, vestíbulos, cocinas, lavanderías, parqueaderos, zonas verdes, barandas, losas o muros extra). Solo si el pedido no nombra ningún espacio, propón el programa mínimo y explícalo en "supuestos".',
         '',
         'EDIFICACIÓN (cualquier uso: hospital, hotel, iglesia, bodega, colegio, centro comercial, coliseo, oficinas, restaurante, vivienda…):',
         '{"clase":"edificacion","titulo":"…","lote":{"frente":m,"fondo":m},"pisos":[{"piso":1,"esquema":"corredor","espacios":[{"nombre":"…","area":m2,"cantidad":1,"tipo":"…","principal":false}]}],"supuestos":["…"]}',
@@ -1735,6 +1922,7 @@
         '- Coordenadas en metros; x a la derecha, y hacia arriba; cada vista con su propio origen. Dibuja la geometría real a escala con las medidas pedidas, de 2 a 4 vistas (elevación, planta, sección, detalle).',
         '- Entidades: {"t":"linea","capa":"…","p":[[x,y],[x,y]]} | {"t":"poli","capa":"…","p":[[x,y],…],"cerrada":true,"relleno":false} | {"t":"circulo","capa":"…","c":[x,y],"r":r,"relleno":false} | {"t":"arco","capa":"…","c":[x,y],"r":r,"a0":grados,"a1":grados} | {"t":"texto","capa":"TEXTO","p":[x,y],"h":alto,"s":"…"} | {"t":"cota","p1":[x,y],"p2":[x,y],"d":desplazamiento}.',
         '- Capas: ' + Object.keys(CAPAS_IA).join(', ') + '.',
+        '- Dibuja solo las partes que forman lo pedido (las estrictamente necesarias para que exista, como apoyos o cimentación, van anotadas en "supuestos").',
         '- Dibuja con detalle de plano real: cada elemento repetido uno por uno (péndolas, barras, varillas, estribos, pilotes, gradas, montantes), espesores reales (contornos cerrados, no líneas sueltas), terreno o apoyos, ejes y niveles. Entre 80 y 260 entidades.',
         '- Incluye cotas de las medidas principales, nombres de las partes y, si aplica, el refuerzo o los perfiles.'
     ].join('\n');
@@ -1788,6 +1976,22 @@
         [/gimnasio|gym/, 'gimnasio'], [/piscina/, 'piscina'], [/parqueadero|garaje|cochera|estacionamiento/, 'cochera'], [/local|tienda|almacen comercial|farmacia/, 'local'],
         [/terraza|balcon/, 'terraza'], [/jardin|patio|zona verde/, 'patio'], [/lavanderia/, 'lav'], [/sala|estar/, 'sala']
     ];
+    /* ---- control estricto: ¿el usuario nombró este espacio? ---- */
+    var SINONIMOS = [
+        /dormitori|habitacion|alcoba|cuarto|recamara|suite|hospitalizacion/, /bano|sanitari|aseo|toilet|ducha/, /\bsala\b|estar|living/, /cocina|cocineta/,
+        /comedor|restaurante|cafeteria/, /estudio|biblioteca|lectura/, /garaje|cochera|parqueadero|estacionamiento|garage/, /patio|jardin|zona verde/,
+        /lavanderia|zona de ropas/, /terraza|balcon/, /oficina|despacho|administra|gerencia|direccion/, /bodega|almacen|deposito|alacena|despensa/,
+        /nave|templo|iglesia|capilla/, /cancha|coliseo|polideportivo/, /recepcion|lobby|vestibulo|hall|espera/, /aula|salon de clase|laboratorio|taller/,
+        /consultorio|urgencias|quirofano|enfermeria/, /piscina|jacuzzi/, /gimnasio|\bgym\b/, /local|tienda|comercio/, /auditorio|teatro|escenario|tarima/
+    ];
+    function raices(s) { return norm(s).replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter(function (w) { return w.length >= 4 && !/^(para|con|del|las|los|una|unos|unas|cada|piso|nivel|zona|area|espacio|principal|general|publico|publicos|privado)$/.test(w); }).map(function (w) { return w.replace(/(es|s)$/, ''); }); }
+    function pedidoNombra(q, nombre) {
+        var n = norm(nombre);
+        if (raices(nombre).some(function (r) { return r.length >= 4 && q.indexOf(r) >= 0; })) return true;
+        return SINONIMOS.some(function (re) { return re.test(n) && re.test(q); });
+    }
+    /* el pedido detalla espacios (dos o más tipos nombrados): entonces solo va lo que se nombró */
+    function listaExplicita(q) { return SINONIMOS.filter(function (re) { return re.test(q); }).length >= 2; }
     function tipoPorNombre(nombre) { var s = norm(nombre); for (var i = 0; i < POR_NOMBRE.length; i++) if (POR_NOMBRE[i][0].test(s)) return POR_NOMBRE[i][1]; return 'gen'; }
     /* ---- edificación: especificación → programa por piso → propuesta (distribución + vista previa + modo cine) ---- */
     function edificacionIA(spec, texto) {
@@ -1796,7 +2000,14 @@
         var lista = Array.isArray(spec.pisos) ? spec.pisos.slice(0, 10) : [];
         if (!lista.length) throw new Error('La especificación no trae pisos.');
         var n = lista.length, pisos = [];   /* índice 1..n (el 0 queda vacío, como en leer()) */
+        var estricto = listaExplicita(q), quitados = [];
         lista.forEach(function (pi, ip) {
+            /* el gran espacio de una planta abierta y lo que el usuario nombró se quedan; lo que la IA inventó, no */
+            if (estricto && Array.isArray(pi.espacios)) pi.espacios = pi.espacios.filter(function (e) {
+                var ok = e && (pedidoNombra(q, e.nombre) || (e.principal && pedidoNombra(q, (spec.titulo || '') + ' ' + e.nombre)));
+                if (!ok && e) quitados.push(String(e.nombre || '').toLowerCase());
+                return ok;
+            });
             var esp = (Array.isArray(pi.espacios) ? pi.espacios : []).slice(0, 40).map(function (e) {
                 var tipo = TIPOS_IA.indexOf(String(e.tipo || '').toLowerCase()) >= 0 ? String(e.tipo).toLowerCase() : 'gen';
                 if (tipo === 'gen') tipo = tipoPorNombre(e.nombre);
@@ -1807,7 +2018,8 @@
         /* si el usuario dio las medidas del lote, se usan las suyas y se descartan supuestos de la IA sobre el lote */
         var sup = (Array.isArray(spec.supuestos) ? spec.supuestos : []).filter(function (s) { return !(dims && /lote|terreno|frente|fondo/i.test(String(s))); }).slice(0, 6).join(' ');
         if (!dims) sup = 'Lote de ' + f2(W) + ' × ' + f2(L) + ' m (frente × fondo). ' + sup;
-        var P = { W: W, L: L, n: n, pisos: pisos, texto: texto, generico: true, ia: true, spec: spec, titulo: String(spec.titulo || ''), supuesto: sup.trim() };
+        if (!pisos.some(function (p) { return p && p.gen.length; })) throw new Error('no quedó ningún espacio de los que pediste');
+        var P = { W: W, L: L, n: n, pisos: pisos, texto: texto, generico: true, ia: true, estricto: estricto, quitados: quitados, spec: spec, titulo: String(spec.titulo || ''), supuesto: sup.trim() };
         actualIA = null;
         return propuesta(texto, P);
     }
@@ -1883,8 +2095,9 @@
             x0 += w + Math.max(spanG * 0.18, 1);
         });
         var layers = {}; Object.keys(CAPAS_IA).forEach(function (k) { layers[k] = { name: k, aci: CAPAS_IA[k], off: false }; });
+        ents = limpiarSolapes(ents);   /* la IA a veces repite trazos: ninguna línea encima de otra */
         ents.forEach(function (e) { e.aci = CAPAS_IA[e.layer] || 7; });
-        var m = { ents: ents, layers: layers, blocks: {}, units: 6 }; m.bbox = CAD.bboxOf(ents);
+        var m = { ents: ents, layers: layers, blocks: {}, units: 6, __limpio: true }; m.bbox = CAD.bboxOf(ents);
         return m;
     }
     function estructuraIA(spec, texto) {
@@ -2037,8 +2250,12 @@
             }
             /* 2) vivienda (casa, apartamentos): reglas de distribución que respetan lo pedido */
             if (RES_LOCAL.test(q) && !NO_RES.test(q)) {
+                /* si nombraste los espacios, va SOLO lo que nombraste (ruta estricta); la plantilla de vivienda
+                   queda para pedidos sin detalle, y se avisa que es una propuesta típica */
+                if (hayIA && listaExplicita(q)) return disenarIA(texto, null, null);
                 var P = leer(texto);
                 if (P.error) return guia(texto, P.error);
+                if (!listaExplicita(q)) P.supuesto = ((P.supuesto ? P.supuesto + ' ' : '') + 'No nombraste los espacios, así que te propongo un programa típico de vivienda. Escribe cuáles quieres (por ejemplo «3 habitaciones, 2 baños, sala, cocina») y lo hago exactamente así.').trim();
                 return propuesta(texto, P);
             }
             /* 3) cualquier otra edificación u obra: la IA la especifica tal cual la pidió el usuario y aquí se dibuja */

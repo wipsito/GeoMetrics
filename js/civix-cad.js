@@ -426,6 +426,10 @@
 
     function viewer(host, model, opts) {
         opts = opts || {};
+        /* diseños de Civix: ninguna línea encima de otra (no se toca un DXF que adjuntó el usuario) */
+        if (!opts.sinLimpiar && !model.__limpio && CAD.limpiarSolapes && model.ents && model.ents.length) {
+            try { model.ents = CAD.limpiarSolapes(model.ents); model.__limpio = true; } catch (eL) { }
+        }
         var root = el('div', 'cx-view'), bar = el('div', 'cx-bar'), stage = el('div', 'cx-stage'), cv = el('canvas', 'cx-canvas'), co = el('div', 'cx-coord', 'X — · Y —'), lay = el('div', 'cx-layers'), info = el('div', 'cx-info');
         lay.hidden = true; stage.appendChild(cv); stage.appendChild(co); stage.appendChild(lay);
         function btn(t, title, fn) { var b = el('button', 'cx-btn', t); b.type = 'button'; b.title = title; b.addEventListener('click', fn); bar.appendChild(b); return b; }
@@ -794,7 +798,7 @@
     function previewDXF(adj) {
         var model = parseDXF(adj.text || ''), card = botCard();
         if (!model.ents.length) { say(card, '⚠ No pude dibujar <b>' + esc(adj.name) + '</b>: ' + esc(model.warn.join(' ') || 'sin entidades dibujables') + ' Si es un DWG, expórtalo a DXF (Guardar como → DXF R12/2000).'); return; }
-        say(card, '📐 Vista previa de <b>' + esc(adj.name) + '</b> (leída localmente; arrastra para mover, rueda para zoom):'); var box = el('div', 'cx-box'); card.appendChild(box); viewer(box, model, { name: String(adj.name || 'plano').replace(/\.dxf$/i, '') + '_civix' }); scrollEnd();
+        say(card, '📐 Vista previa de <b>' + esc(adj.name) + '</b> (leída localmente; arrastra para mover, rueda para zoom):'); var box = el('div', 'cx-box'); card.appendChild(box); viewer(box, model, { name: String(adj.name || 'plano').replace(/\.dxf$/i, '') + '_civix', sinLimpiar: true }); scrollEnd();
     }
     function onSend(texto, adj) {
         var q = norm(texto), isDxf = adj && !adj.binary && /\.dxf$/i.test(adj.name || '');
