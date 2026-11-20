@@ -24,13 +24,57 @@
     function el(tag, cls, html) { var e = doc.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
     function f2(n) { return (Math.round(n * 100) / 100).toFixed(2); }
     var NUM = { un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8 };
-    var ORD = { primer: 1, primero: 1, segundo: 2, tercer: 3, tercero: 3, cuarto: 4, quinto: 5, sexto: 6, septimo: 7, octavo: 8 };
+    var ORD = { primer: 1, primero: 1, primera: 1, segundo: 2, segunda: 2, tercer: 3, tercero: 3, tercera: 3, cuarto: 4, cuarta: 4, quinto: 5, quinta: 5, sexto: 6, sexta: 6, septimo: 7, septima: 7, octavo: 8, octava: 8 };
     function num(s) { if (s == null) return NaN; s = String(s); return NUM[s] != null ? NUM[s] : (ORD[s] != null ? ORD[s] : parseFloat(s.replace(',', '.'))); }
     function ordinal(n) { return n === 1 ? '1.er' : n === 3 ? '3.er' : n + '.º'; }
     var NOMBRE_PISO = ['', 'PRIMER', 'SEGUNDO', 'TERCER', 'CUARTO', 'QUINTO', 'SEXTO', 'SÉPTIMO', 'OCTAVO'];
 
     /* =================================================================== 1. LECTURA DEL PEDIDO */
-    var RE_PISO = '(primer[o]?|segundo|tercer[o]?|cuarto|quinto|sexto|septimo|octavo|\\d+)\\s*(?:er|ro|do|to|°|º|\\.º|\\.°)?';
+    var RE_PISO = '(primer[oa]?|segund[oa]|tercer[oa]?|cuart[oa]|quint[oa]|sext[oa]|septim[oa]|octav[oa]|\\d+)\\s*(?:er|ro|do|to|°|º|\\.º|\\.°)?';
+
+    /* Catálogo de espacios no residenciales: [patrón, nombre, área típica m², tipo de mobiliario, cantidad si va en plural] */
+    var ESPACIOS = [
+        [/recepcion|lobby|hall de (?:acceso|entrada)|vestibulo/, 'RECEPCIÓN', 16, 'recepcion', 1],
+        [/sala(?:s)? de lectura|lectura/, 'SALA DE LECTURA', 48, 'lectura', 1],
+        [/zona infantil|sala infantil|ludoteca|area infantil/, 'ZONA INFANTIL', 30, 'infantil', 1],
+        [/banos?|sanitarios|servicios sanitarios/, 'BAÑOS', 13, 'banos', 1],
+        [/deposito|bodega|almacen/, 'DEPÓSITO', 9, 'deposito2', 1],
+        [/ascensor/, 'ASCENSOR', 4, 'ascensor', 1],
+        [/salas? de estudio|cubiculos?/, 'SALA DE ESTUDIO', 20, 'estudio2', 2],
+        [/informatica|computo|computadores|sistemas|sala de computadores/, 'SALA DE INFORMÁTICA', 40, 'informatica', 1],
+        [/sala de (?:juntas|reuniones)/, 'SALA DE REUNIONES', 18, 'reuniones', 1],
+        [/oficinas? administrativas?|administracion|oficinas?/, 'OFICINA ADMINISTRATIVA', 13, 'oficina', 2],
+        [/terraza|balcon/, 'TERRAZA', 28, 'terraza', 1],
+        [/auditorio|salon de actos/, 'AUDITORIO', 70, 'auditorio', 1],
+        [/cafeteria|cafe\b|restaurante|comedor/, 'CAFETERÍA', 30, 'cafeteria', 1],
+        [/aulas?|salones? de clase/, 'AULA', 45, 'aula', 2],
+        [/laboratorios?/, 'LABORATORIO', 45, 'aula', 1],
+        [/archivo/, 'ARCHIVO', 10, 'deposito2', 1],
+        [/enfermeria|primeros auxilios/, 'ENFERMERÍA', 12, 'oficina', 1],
+        [/cocina|cocineta/, 'COCINETA', 10, 'cocina', 1],
+        [/porteria|vigilancia/, 'PORTERÍA', 6, 'oficina', 1],
+        [/sala de espera|espera/, 'SALA DE ESPERA', 16, 'recepcion', 1],
+        [/consultorios?/, 'CONSULTORIO', 12, 'oficina', 2],
+        [/sala de exposicion|exposiciones|galeria/, 'SALA DE EXPOSICIONES', 40, 'lectura', 1],
+        [/hemeroteca|videoteca|mediateca/, 'MEDIATECA', 30, 'informatica', 1]
+    ];
+    var RESIDENCIAL = /cochera|garaje|parqueadero|departamento|apartamento|dormitorio|habitacion|alcoba|recamara|vivienda|apartaestudio|\bcasa\b|local comercial/;
+    /* Convierte «recepción, sala de lectura, zona infantil, baños, depósito y escaleras» en espacios */
+    function espacios(t) {
+        var out = [], conEscalera = /escaleras?|punto fijo/.test(t);
+        t = t.replace(/^[^:]*?(contara con|tendra|incluira|llevara|albergara|dispondra de|con|:)\s*/, '');
+        t.split(/,|;|\s+y\s+|\s+e\s+|\s+ademas\s+/).forEach(function (raw) {
+            var s = raw.trim().replace(/^(?:la|el|los|las|un|una|unos|unas)\s+/, ''); if (!s || /escalera|punto fijo/.test(s)) return;
+            var m = s.match(/^(\d+|dos|tres|cuatro|cinco|seis)\s+/), cant = m ? num(m[1]) : 0;
+            var hit = null;
+            for (var i = 0; i < ESPACIOS.length; i++) if (ESPACIOS[i][0].test(s)) { hit = ESPACIOS[i]; break; }
+            if (!hit) { if (s.split(/\s+/).length > 5) return; hit = [null, s.toUpperCase(), 15, 'gen', 1]; }
+            var plural = /s\b/.test(s.split(/\s+de\s+/)[0]) && !/banos/.test(s);
+            var n = cant || (plural ? hit[4] : 1);
+            out.push({ nombre: hit[1], area: hit[2], tipo: hit[3], n: Math.max(1, Math.min(6, n)) });
+        });
+        return { lista: out, escalera: conEscalera };
+    }
     function esPedido(q) {
         if (/^(que es|que son|como funciona|cual es|por que|explica|define)\b/.test(q.trim())) return false;
         var arq = /(edificio|casa|vivienda|apartamento|departamento|apartaestudio|multifamiliar|bifamiliar|unifamiliar)/.test(q);
@@ -48,6 +92,11 @@
         m = t.match(/(\d+|un|uno|una|dos|tres|cuatro)\s*banos?/); if (m) p.banos = num(m[1]);
         if (/estudio|oficina/.test(t) && !/apartaestudio/.test(t)) p.estudio = true;
         if (/sin lavanderia/.test(t)) p.lav = false;
+        /* programa no residencial (biblioteca, oficinas, colegio, centro de salud…): lista de espacios */
+        if (!RESIDENCIAL.test(t)) {
+            var e = espacios(t);
+            if (e.lista.length) { p.gen = e.lista; p.escalera = e.escalera; p.apto = false; p.estudio = false; }
+        }
         return p;
     }
     function leer(texto) {
@@ -71,10 +120,17 @@
             var dentro = marcas.some(function (k) { return mm.index >= k.i && mm.index < k.fin; });
             if (!dentro && !/pisos/.test(mm[0])) marcas.push({ i: mm.index, fin: reUno.lastIndex, a: num(mm[1]), b: num(mm[1]) });
         }
+        /* «la segunda tendrá…», «el tercero contará con…» (sin repetir la palabra piso/planta) */
+        var reLa = /\b(?:la|el)\s+(primer[oa]?|segund[oa]|tercer[oa]?|cuart[oa]|quint[oa])\s+(?=tendra|contara|incluira|llevara|albergara|dispondra)/g;
+        while ((mm = reLa.exec(q))) {
+            var dentro2 = marcas.some(function (k) { return mm.index >= k.i - 3 && mm.index < k.fin; });
+            if (!dentro2) marcas.push({ i: mm.index, fin: reLa.lastIndex, a: num(mm[1]), b: num(mm[1]) });
+        }
         marcas.sort(function (a, b) { return a.i - b.i; });
         var general = programa(q.replace(/(?:del?\s+)?(?:primer|segundo|tercer|cuarto|quinto|\d)[^.;]*?piso[^.;]*[.;]?/g, ' '));
         marcas.forEach(function (k, j) {
             var txt = q.slice(k.fin, j + 1 < marcas.length ? marcas[j + 1].i : q.length);
+            txt = txt.split(/\.\s+|\.$|\n\s*\n/)[0];   /* el programa del piso termina con la frase */
             var p = programa(txt);
             for (var f = Math.max(1, k.a); f <= Math.min(n, k.b); f++) pisos[f] = p;
         });
@@ -86,6 +142,12 @@
             if (f2_ > 1) { p.cochera = 0; p.local = false; }
             pisos[f2_] = p;
         }
+        var escala = (q.match(/escala\s*(?:de\s*)?1\s*[:\/]\s*(\d{2,3})/) || [])[1];
+        var generico = pisos.some(function (p) { return p && p.gen; });
+        if (generico) {
+            for (var g = 1; g <= n; g++) { var pg = pisos[g]; if (!pg.gen) { pg.gen = []; pg.apto = false; pg.cochera = 0; pg.local = false; } }
+            return { W: W, L: L, n: n, pisos: pisos, texto: texto, generico: true, escala: escala ? '1:' + escala : null };
+        }
         /* valores por defecto razonables (todo se puede cambiar antes de aprobar) */
         for (var k2 = 1; k2 <= n; k2++) {
             var pp = pisos[k2];
@@ -96,12 +158,89 @@
                 if (k2 === 1) { pp.casaSocial = true; pp.dorm = Math.min(pp.dorm, 1); pp.banos = 1; }
             }
         }
-        return { W: W, L: L, n: n, pisos: pisos, texto: texto, esCasa: esCasa };
+        return { W: W, L: L, n: n, pisos: pisos, texto: texto, esCasa: esCasa, escala: escala ? '1:' + escala : null };
     }
 
     /* =================================================================== 2. DISTRIBUCIÓN */
     var MURO = 0.15, MURO_EXT = 0.25, ESC_W = 2.6, ESC_D = 3.1, PASILLO = 1.1, PAS_H = 1.2;
+    /* Programa no residencial: corredor central de 1.60 m a lo largo del fondo; a la derecha, escalera y
+       baños en la misma posición en todos los pisos (punto fijo e instalaciones alineadas); el resto de
+       espacios se reparte por área entre las dos crujías. */
+    function planGen(P) {
+        var W = P.W, L = P.L, warns = [], cw = W >= 9 ? 1.6 : 1.3;
+        var a = Math.max(3, (W - cw) * 0.52), b = W - cw - a;
+        var conEsc = P.n > 1 || P.pisos.some(function (p) { return p.escalera; });
+        var ESC_H = 3.6, BAN_H = Math.max(2.6, 13 / b);
+        var hayBanos = function (p) { return p.gen.some(function (e) { return e.tipo === 'banos'; }); };
+        var algunBano = P.pisos.some(function (p, i) { return i && hayBanos(p); });
+        /* profundidad fija del punto fijo (escalera + baños), igual en todos los pisos */
+        var fijo = (conEsc ? ESC_H : 0) + (algunBano ? BAN_H : 0);
+        var cols = [];
+        var maxD = 0;
+        for (var f = 1; f <= P.n; f++) {
+            var p = P.pisos[f], izq = [], der = [], sI = 0, sD = fijo;
+            var items = [];
+            p.gen.forEach(function (e) {
+                if (e.tipo === 'banos') return;
+                for (var k = 1; k <= e.n; k++) items.push({ nombre: e.n > 1 ? e.nombre + ' ' + k : e.nombre, area: e.area, tipo: e.tipo });
+            });
+            var rec = items.filter(function (e) { return e.tipo === 'recepcion'; }), ter = items.filter(function (e) { return e.tipo === 'terraza'; });
+            items = items.filter(function (e) { return e.tipo !== 'recepcion' && e.tipo !== 'terraza'; }).sort(function (x, y) { return y.area - x.area; });
+            rec.forEach(function (e) { e.h = Math.max(2.6, e.area / a); izq.push(e); sI += e.h; });
+            items.concat(ter).forEach(function (e) {
+                var hI = Math.max(2.6, e.area / a), hD = Math.max(2.6, e.area / b);
+                if (sI + hI <= sD + hD) { e.h = hI; izq.push(e); sI += hI; } else { e.h = hD; der.push(e); sD += hD; }
+            });
+            /* reequilibrio: si una crujía no cabe en el fondo y la otra tiene espacio, se mueve el espacio que mejor encaje */
+            for (var it = 0; it < 6 && Math.max(sI, sD) > L; it++) {
+                var deIzq = sI > sD, origen = deIzq ? izq : der, wO = deIzq ? a : b, wD = deIzq ? b : a, libre = L - (deIzq ? sD : sI);
+                var cand = origen.filter(function (e) { return e.tipo !== 'recepcion' && Math.max(2.6, e.area / wD) <= libre; }).sort(function (x, y) { return y.area - x.area; })[0];
+                if (!cand) break;
+                origen.splice(origen.indexOf(cand), 1);
+                var hN = Math.max(2.6, cand.area / wD);
+                if (deIzq) { sI -= cand.h; cand.h = hN; der.push(cand); sD += hN; } else { sD -= cand.h; cand.h = hN; izq.push(cand); sI += hN; }
+            }
+            cols[f] = { izq: izq, der: der, sI: sI, sD: sD, banos: hayBanos(p) };
+            maxD = Math.max(maxD, sI, sD);
+        }
+        var D = maxD;
+        if (D > L) {
+            var k = (L - fijo) / (D - fijo);
+            if (k < 0.8) warns.push('El programa pide más área de la que cabe en ' + f2(W) + ' × ' + f2(L) + ' m: las áreas se redujeron un ' + Math.round((1 - k) * 100) + ' %. Considera otro piso o menos espacios.');
+            D = L;
+        }
+        if (!(D > 0)) D = Math.min(L, 10);
+        var pisos = [];
+        for (f = 1; f <= P.n; f++) {
+            var c = cols[f], R = [];
+            R.push(rm('CIRCULACIÓN', a, 0, cw, D, 'pasillo'));
+            /* crujía derecha: punto fijo arriba (frente) y luego espacios */
+            var y = 0;
+            if (conEsc) { R.push(rm('ESCALERA', a + cw, y, b, ESC_H, 'escalera')); y += ESC_H; }
+            if (algunBano) { R.push(rm(c.banos ? 'BAÑOS' : 'DEPÓSITO', a + cw, y, b, BAN_H, c.banos ? 'banos' : 'deposito2')); y += BAN_H; }
+            llenar(c.der, a + cw, b, y, D - y, R);
+            llenar(c.izq, 0, a, 0, D, R);
+            if (f === 1 && L - D >= 1) R.push(rm('ZONA VERDE / RETIRO', 0, D, W, L - D, 'patio'));
+            pisos.push({ n: f, rooms: R, p: P.pisos[f] });
+        }
+        function llenar(lista, x, w, y0, H, R) {
+            if (!lista.length) { if (H > 0.5) R.push(rm('ÁREA LIBRE', x, y0, w, H, 'libre')); return; }
+            var tot = lista.reduce(function (s, e) { return s + e.h; }, 0), k = Math.min(H / tot, 1.3), yy = y0;
+            var hs = lista.map(function (e) { return e.h * k; });
+            if (tot > H) {
+                /* falta fondo: se recorta primero a los espacios grandes, sin bajar de 2.60 m */
+                var falta = tot - H, holgura = lista.reduce(function (s, e) { return s + Math.max(0, e.h - 2.6); }, 0);
+                hs = holgura > falta ? lista.map(function (e) { return e.h - Math.max(0, e.h - 2.6) / holgura * falta; }) : lista.map(function (e) { return e.h * H / tot; });
+            }
+            lista.forEach(function (e, i) { var h = hs[i]; R.push(rm(e.nombre, x, yy, w, h, e.tipo)); yy += h; });
+            if (y0 + H - yy > 0.5) R.push(rm('ÁREA LIBRE', x, yy, w, y0 + H - yy, 'libre'));
+            else if (R.length) R[R.length - 1].h += y0 + H - yy;
+        }
+        return { W: W, L: L, D: D, patio: L - D, a: a, b: b, cw: cw, wl: a, ws: b, hA: 0, hB: 0, pisos: pisos, warns: warns, n: P.n, generico: true, escala: P.escala };
+    }
+
     function plan(P) {
+        if (P.generico) return planGen(P);
         var W = P.W, L = P.L, warns = [];
         if (W < 5.5) warns.push('Un frente de ' + f2(W) + ' m es muy angosto: la distribución queda muy apretada.');
         var ws = W >= 7 ? ESC_W : 2.4;          /* franja de circulación (escalera / ingreso / estudio) a la derecha */
@@ -217,7 +356,7 @@
                 R.push(rm(c[0], x, yy, w, h, tipo)); yy += h;
             });
         }
-        return { W: W, L: L, D: D, patio: patio, ws: ws, wl: wl, a: a, b: b, hA: hA, hB: hB, pisos: pisos, warns: warns, n: P.n };
+        return { W: W, L: L, D: D, patio: patio, ws: ws, wl: wl, a: a, b: b, hA: hA, hB: hB, pisos: pisos, warns: warns, n: P.n, escala: P.escala };
     }
     function rm(nombre, x, y, w, h, tipo, extra) { return { nombre: nombre, x: x, y: y, w: w, h: h, tipo: tipo, extra: extra }; }
 
@@ -257,11 +396,19 @@
         function txt(layer, x, y, h, s, extra) { var e = { t: 'text', p: P(x, y), h: h, s: [s], rot: 0, ha: 1, va: 2, layer: layer }; if (extra) for (var k in extra) e[k] = extra[k]; ents.push(e); }
 
         /* --- ejes y columnas --- */
-        var ex = [0, W]; if (W >= 7) ex.splice(1, 0, Pl.a + PASILLO / 2 > W - 1.5 ? W / 2 : Pl.wl);
-        if (W >= 12) ex.splice(1, 0, Pl.wl / 2);
-        var ey = [0, Pl.hA, Pl.hA + Pl.hB + PAS_H], y = ey[ey.length - 1];
-        while (Pl.D - y > 4.6) { y += Math.min(4.2, (Pl.D - y) / Math.ceil((Pl.D - y) / 4.2)); ey.push(y); }
-        if (Math.abs(ey[ey.length - 1] - Pl.D) > 0.05) ey.push(Pl.D);
+        var ex, ey, y;
+        if (Pl.generico) {
+            /* ejes en los bordes del corredor; luces de máximo ~5.5 m a lo largo del fondo */
+            ex = [0, Pl.a, Pl.a + Pl.cw, W];
+            var nv = Math.max(2, Math.ceil(Pl.D / 5.5)); ey = [];
+            for (var iy = 0; iy <= nv; iy++) ey.push(Pl.D * iy / nv);
+        } else {
+            ex = [0, W]; if (W >= 7) ex.splice(1, 0, Pl.a + PASILLO / 2 > W - 1.5 ? W / 2 : Pl.wl);
+            if (W >= 12) ex.splice(1, 0, Pl.wl / 2);
+            ey = [0, Pl.hA, Pl.hA + Pl.hB + PAS_H]; y = ey[ey.length - 1];
+            while (Pl.D - y > 4.6) { y += Math.min(4.2, (Pl.D - y) / Math.ceil((Pl.D - y) / 4.2)); ey.push(y); }
+            if (Math.abs(ey[ey.length - 1] - Pl.D) > 0.05) ey.push(Pl.D);
+        }
         var LET = 'ABCDEFGHIJ';
         ex.forEach(function (x, i) {
             ln('EJES', x, -1.4, x, Pl.D + 1.0, { dash: true });
@@ -311,7 +458,14 @@
                 case 'cocina': puerta(r.x + r.w - 1.15, r.y + r.h - 0.12, 0.9, 'down'); break;
                 case 'lav': puerta(r.x + 0.25, r.y + r.h - 0.12, 0.75, 'down'); break;
                 case 'deposito': puerta(r.x + r.w - 1.1, r.y + r.h - 0.12, 0.85, 'down'); break;
+                case 'pasillo':
+                    if (Pl.generico && pi.n === 1 && r.y < 0.01) { var aw = Math.min(1.2, (r.w - 0.3) / 2); puerta(r.x + 0.15, 0.12, aw, 'up'); puerta(r.x + r.w - 0.15 - aw, 0.12, aw, 'up'); txt('TEXTO', r.x + r.w / 2, -0.3, 0.13, 'ACCESO'); }
+                    break;
+                case 'recepcion': case 'lectura': case 'infantil': case 'banos': case 'estudio2': case 'informatica': case 'reuniones': case 'oficina':
+                case 'auditorio': case 'cafeteria': case 'aula': case 'gen': case 'terraza': case 'libre':
                 case 'dorm': case 'dormp': case 'bano': case 'comedor': case 'otro': case 'deposito2': {
+                    if (r.tipo === 'libre' && !Pl.generico) break;
+                    if (Pl.generico && r.tipo !== 'bano') dw = r.h > 6 ? 1.0 : 0.9;
                     var izq = r.x < Pl.a - 0.01;
                     if (izq) puerta(r.x + r.w - 0.12, r.y + 0.2, dw, 'left'); else puerta(r.x + 0.12, r.y + 0.2 + dw, dw, 'right');
                     break;
@@ -346,11 +500,19 @@
         ln('COTAS', -0.7, 0, -0.7, D); ln('COTAS', -0.55, 0, -0.85, 0); ln('COTAS', -0.55, D, -0.85, D);
         txt('COTAS', -1.0, D / 2, 0.2, f2(D) + ' m', { rot: Math.PI / 2 });
         txt('TEXTO', W / 2, -2.6, 0.38, 'PLANTA ' + (NOMBRE_PISO[pi.n] || pi.n + '.º') + ' PISO', { titulo: true });
-        txt('TEXTO', W / 2, -3.05, 0.17, 'NPT ' + (pi.n === 1 ? '±0.00' : '+' + f2((pi.n - 1) * 2.7)) + ' · ESC. 1:75 · ANTEPROYECTO');
+        txt('TEXTO', W / 2, -3.05, 0.17, 'NPT ' + (pi.n === 1 ? '±0.00' : '+' + f2((pi.n - 1) * (Pl.generico ? 3.2 : 2.7))) + ' · ESC. ' + (Pl.escala || '1:75') + ' · ANTEPROYECTO');
         return ents;
     }
     function mobiliario(r, rect, ln, circ, arco) {
         var M = 'MOBILIARIO', x = r.x, y = r.y, w = r.w, h = r.h, cx = x + w / 2, cy = y + h / 2;
+        /* mesas de trabajo con sillas a ambos lados, en retícula, dejando circulación junto a la puerta */
+        function mesas(tw, th, gap) {
+            for (var my = y + 0.9; my + th + 0.45 < y + h - 0.4; my += th + gap + 0.5)
+                for (var mx = x + 0.5; mx + tw < x + w - 0.4; mx += tw + gap) {
+                    rect(M, mx, my, tw, th);
+                    for (var sI = 0; sI < Math.floor(tw / 0.6); sI++) { rect(M, mx + 0.1 + sI * 0.6, my - 0.42, 0.38, 0.32); rect(M, mx + 0.1 + sI * 0.6, my + th + 0.1, 0.38, 0.32); }
+                }
+        }
         switch (r.tipo) {
             case 'cochera': {
                 var n = r.extra === 2 && w >= 5 ? 2 : 1;
@@ -398,6 +560,46 @@
             case 'lav': rect(M, x + 0.2, y + 0.25, 0.65, 0.65); circ(M, x + 0.525, y + 0.575, 0.22); break;
             case 'estudio': rect(M, x + 0.25, y + 0.4, Math.min(1.4, w - 0.5), 0.6); rect(M, x + 0.6, y + 1.15, 0.45, 0.45); break;
             case 'patio': for (var p = 0; p < 4; p++) circ(M, x + w * (p + 0.5) / 4, y + h / 2, Math.min(0.35, h * 0.2)); break;
+            /* ---- espacios no residenciales ---- */
+            case 'recepcion': {                                                      /* mostrador en L y sillas de espera */
+                var mw = Math.min(2.6, w - 1.2); rect(M, x + 0.5, y + 0.9, mw, 0.6); rect(M, x + 0.5, y + 1.5, 0.6, 0.9);
+                for (var s = 0; s < Math.min(4, Math.floor((w - 1) / 0.6)); s++) rect(M, x + 0.5 + s * 0.6, y + h - 0.8, 0.45, 0.45);
+                break;
+            }
+            case 'lectura': case 'estudio2': case 'cafeteria': case 'reuniones': mesas(1.6, 0.8, 1.0); break;
+            case 'infantil': {                                                       /* mesas redondas bajas y alfombra */
+                rect(M, x + 0.4, y + h - 2.2, Math.min(2.4, w - 0.8), 1.8);
+                for (var ix = x + 1.0; ix < x + w - 0.6; ix += 1.6) for (var iy2 = y + 1.0; iy2 < y + h - 2.6; iy2 += 1.6) { circ(M, ix, iy2, 0.45); [0, 1, 2, 3].forEach(function (q) { var an = q * Math.PI / 2; circ(M, ix + 0.68 * Math.cos(an), iy2 + 0.68 * Math.sin(an), 0.14); }); }
+                break;
+            }
+            case 'informatica': case 'aula': {                                       /* filas de puestos y tablero */
+                ln(M, x + w * 0.2, y + h - 0.25, x + w * 0.8, y + h - 0.25);
+                for (var fy = y + 0.6; fy < y + h - 1.6; fy += 1.4) for (var fx = x + 0.4; fx + 1.2 < x + w - 0.3; fx += 1.4) {
+                    rect(M, fx, fy, 1.2, 0.55); circ(M, fx + 0.6, fy - 0.25, 0.18);
+                    if (r.tipo === 'informatica') rect(M, fx + 0.35, fy + 0.25, 0.5, 0.2);
+                }
+                break;
+            }
+            case 'oficina': {
+                rect(M, x + 0.4, y + 0.7, Math.min(1.5, w - 0.8), 0.7); circ(M, x + 0.4 + Math.min(1.5, w - 0.8) / 2, y + 0.4, 0.22);
+                rect(M, x + w - 0.6, y + 0.4, 0.4, Math.min(1.8, h - 0.8)); rect(M, x + 0.4, y + h - 1.0, 0.45, 0.45); rect(M, x + 0.95, y + h - 1.0, 0.45, 0.45);
+                break;
+            }
+            case 'banos': {                                                          /* batería: cabinas con sanitario y mesón de lavamanos */
+                var nc = Math.max(1, Math.min(4, Math.floor((w - 0.6) / 1.0)));
+                for (var cI = 0; cI < nc; cI++) { var cx0 = x + 0.3 + cI * 1.0; rect(M, cx0, y + h - 1.6, 0.95, 1.45); circ(M, cx0 + 0.47, y + h - 0.55, 0.2); }
+                rect(M, x + 0.3, y + 0.3, Math.min(nc * 1.0, w - 0.6), 0.5);
+                for (var lI = 0; lI < nc; lI++) circ(M, x + 0.8 + lI * 1.0, y + 0.55, 0.13);
+                break;
+            }
+            case 'deposito2': rect(M, x + 0.2, y + 0.2, 0.45, h - 0.4); if (w > 2) rect(M, x + w - 0.65, y + 0.2, 0.45, h - 0.4); break;
+            case 'auditorio': for (var ay = y + 1.0; ay < y + h - 1.5; ay += 0.9) ln(M, x + 0.6, ay, x + w - 0.6, ay); rect(M, x + w * 0.2, y + h - 1.2, w * 0.6, 0.9); break;
+            case 'terraza': {
+                for (var tI = 0; tI < 4; tI++) circ(M, x + w * (tI + 0.5) / 4, y + h - 0.5, 0.3);
+                for (var px2 = x + 0.5; px2 < x + w - 0.3; px2 += 0.6) ln(M, px2, y + 0.4, px2, y + h - 1.0);   /* pérgola */
+                break;
+            }
+            case 'ascensor': rect(M, x + 0.3, y + 0.3, w - 0.6, h - 0.6); ln(M, x + 0.3, y + 0.3, x + w - 0.3, y + h - 0.3); ln(M, x + w - 0.3, y + 0.3, x + 0.3, y + h - 0.3); break;
         }
     }
     function modelo(Pl, soloPiso) {
@@ -417,9 +619,9 @@
         var bb = CAD.bboxOf(ents), pad = 0.6, w = bb[2] - bb[0] + 2 * pad, h = bb[3] - bb[1] + 2 * pad;
         var col = claro ? COLOR_CLARO : COLOR;
         function X(x) { return (x - bb[0] + pad).toFixed(3); } function Y(y) { return (bb[3] - y + pad).toFixed(3); }
-        var out = ['<svg class="cxa-svg" viewBox="0 0 ' + w.toFixed(2) + ' ' + h.toFixed(2) + '" xmlns="http://www.w3.org/2000/svg" role="img">'];
+        var out = ['<svg class="cxpl-svg" viewBox="0 0 ' + w.toFixed(2) + ' ' + h.toFixed(2) + '" xmlns="http://www.w3.org/2000/svg" role="img">'];
         ents.forEach(function (e, i) {
-            var c = col[e.layer] || '#94a3b8', at = conIndices ? ' data-k="' + i + '" data-e="' + ETAPA[e.layer] + '" class="cxa-e"' : '';
+            var c = col[e.layer] || '#94a3b8', at = conIndices ? ' data-k="' + i + '" data-e="' + ETAPA[e.layer] + '" class="cxpl-e"' : '';
             var sw = e.layer === 'MUROS' ? (e.ext ? 0.07 : 0.045) : e.layer === 'EJES' ? 0.018 : 0.025;
             if (e.t === 'poly') {
                 var pts = e.pts.map(function (p) { return X(p[0]) + ',' + Y(p[1]); }).join(' ');
@@ -440,11 +642,12 @@
     var actual = null; /* último proyecto: { P, Pl, estado: 'propuesta'|'aprobado' } */
     function chat() { return doc.getElementById('chatMensajes'); }
     function historial(user, bot) { try { if (typeof chatHistory !== 'undefined') { chatHistory.push({ role: 'user', content: user }); chatHistory.push({ role: 'assistant', content: bot }); } if (typeof civixGuardarConversacionActual === 'function') civixGuardarConversacionActual(); } catch (e) { } }
-    function tarjeta(html) { var c = chat(); if (!c) return null; var m = el('div', 'mensaje mensaje-bot mensaje-bot-rich cx-card cxa-card', html); c.appendChild(m); c.scrollTop = c.scrollHeight; return m; }
+    function tarjeta(html) { var c = chat(); if (!c) return null; var m = el('div', 'mensaje mensaje-bot mensaje-bot-rich cx-card cxpl-card', html); c.appendChild(m); c.scrollTop = c.scrollHeight; return m; }
     function resumenPisos(P) {
         var out = [];
         for (var f = 1; f <= P.n; f++) {
             var p = P.pisos[f], t = [];
+            if (p.gen) { out.push(ordinal(f) + ' piso: ' + (p.gen.length ? p.gen.map(function (e) { return (e.n > 1 ? e.n + ' × ' : '') + e.nombre.toLowerCase(); }).join(', ') : 'área libre')); continue; }
             if (p.cochera) t.push(p.cochera === 2 ? 'cochera doble' : 'cochera');
             if (p.local) t.push('local comercial');
             if (p.casaSocial) t.push('zona social');
@@ -459,17 +662,17 @@
         var filas = tabla(Pl);
         var c = tarjeta(
             '<div class="civix-md">🏗️ Te propongo esta distribución (lote ' + f2(P.W) + ' × ' + f2(P.L) + ' m, ' + P.n + ' piso' + (P.n > 1 ? 's' : '') + '):<br><small>' + esc(resumenPisos(P)) + '</small></div>' +
-            '<div class="cxa-tbl-wrap"><table class="cxa-tbl"><thead><tr><th>Ambiente</th><th>Medidas (m)</th><th>Piso</th></tr></thead><tbody>' +
+            '<div class="cxpl-tbl-wrap"><table class="cxpl-tbl"><thead><tr><th>Ambiente</th><th>Medidas (m)</th><th>Piso</th></tr></thead><tbody>' +
             filas.map(function (r, i) { return '<tr style="--i:' + i + '"><td>' + esc(r.nombre) + '</td><td>' + f2(r.w) + ' × ' + f2(r.h) + '</td><td>' + esc(r.txt) + '</td></tr>'; }).join('') +
             '</tbody></table></div>' +
             (Pl.warns.length ? Pl.warns.map(function (w) { return '<p class="cxp-warn">⚠ ' + esc(w) + '</p>'; }).join('') : '') +
-            '<p class="cxa-q">¿Apruebas la distribución? También puedes pedir cambios en el chat: <i>«sin estudio», «agrega un baño», «4 dormitorios», «cochera simple»</i>.</p>' +
-            '<div class="cxa-acts"><button type="button" class="cxa-btn ok" data-cxa="aprobar">Sí, aprobado ✓</button><button type="button" class="cxa-btn" data-cxa="cambiar">Quiero cambiar algo</button></div>' +
-            '<p class="cxa-nota">Anteproyecto orientativo generado por reglas de distribución. No reemplaza el diseño arquitectónico y estructural firmado por un profesional ni la revisión de la norma local (POT, NSR-10).</p>');
+            '<p class="cxpl-q">¿Apruebas la distribución? También puedes pedir cambios en el chat: <i>«sin estudio», «agrega un baño», «4 dormitorios», «cochera simple»</i>.</p>' +
+            '<div class="cxpl-acts"><button type="button" class="cxpl-btn ok" data-cxpl="aprobar">Sí, aprobado ✓</button><button type="button" class="cxpl-btn" data-cxpl="cambiar">Quiero cambiar algo</button></div>' +
+            '<p class="cxpl-nota">Anteproyecto orientativo generado por reglas de distribución. No reemplaza el diseño arquitectónico y estructural firmado por un profesional ni la revisión de la norma local (POT, NSR-10).</p>');
         if (!c) return false;
         c.addEventListener('click', function (e) {
-            var b = e.target.closest('[data-cxa]'); if (!b) return;
-            if (b.getAttribute('data-cxa') === 'aprobar') { c.querySelectorAll('[data-cxa]').forEach(function (x) { x.disabled = true; }); aprobar(); }
+            var b = e.target.closest('[data-cxpl]'); if (!b) return;
+            if (b.getAttribute('data-cxpl') === 'aprobar') { c.querySelectorAll('[data-cxpl]').forEach(function (x) { x.disabled = true; }); aprobar(); }
             else { var i = doc.getElementById('inputAsistente'); if (i) { i.value = 'Cambia: '; i.focus(); } }
         });
         historial(texto, 'Propuse una distribución arquitectónica (anteproyecto) para un lote de ' + f2(P.W) + ' × ' + f2(P.L) + ' m con ' + P.n + ' pisos: ' + filas.map(function (r) { return r.nombre + ' ' + f2(r.w) + '×' + f2(r.h) + ' (' + r.txt + ')'; }).join('; ') + '.');
@@ -480,17 +683,17 @@
         actual.estado = 'aprobado';
         var Pl = actual.Pl, unicos = [];
         Pl.pisos.forEach(function (pi) { var firma = JSON.stringify(pi.rooms.map(function (r) { return [r.nombre, f2(r.w), f2(r.h)]; })); if (!unicos.some(function (u) { return u.firma === firma; })) unicos.push({ firma: firma, pisos: [pi.n], pi: pi }); else unicos.filter(function (u) { return u.firma === firma; })[0].pisos.push(pi.n); });
-        var c = tarjeta('<div class="civix-md"><span class="cxa-ok">Distribución aprobada · vista previa lista</span></div>' +
-            '<div class="cxa-prev-h">VISTA PREVIA DE CADA PLANTA</div>' +
-            '<div class="cxa-prev">' + unicos.map(function (u) {
+        var c = tarjeta('<div class="civix-md"><span class="cxpl-ok">Distribución aprobada · vista previa lista</span></div>' +
+            '<div class="cxpl-prev-h">VISTA PREVIA DE CADA PLANTA</div>' +
+            '<div class="cxpl-prev">' + unicos.map(function (u) {
                 var ents = dibujarPiso(Pl, u.pi, 0);
                 return '<figure>' + svgPiso(ents, true, false) + '<figcaption>' + (u.pisos.length > 1 ? ordinal(u.pisos[0]) + ' a ' + ordinal(u.pisos[u.pisos.length - 1]) : ordinal(u.pisos[0])) + ' PISO</figcaption></figure>';
             }).join('') + '</div>' +
-            '<div class="cxa-cambio"><b>¿Quieres cambiar algo?</b><span>Se corrige antes de dibujar: escríbelo en el chat.</span></div>' +
-            '<div class="cxa-acts"><button type="button" class="cxa-btn ok" data-cxa="cine">🎬 Dibujar en modo cine</button>' +
-            '<button type="button" class="cxa-btn" data-cxa="dxf">⬇ DXF</button><button type="button" class="cxa-btn" data-cxa="pdf">⬇ PDF</button><button type="button" class="cxa-btn" data-cxa="png">⬇ PNG</button></div>' +
-            '<p class="cxa-nota">También puedes escribir «dibújalo».</p>');
-        if (c) c.addEventListener('click', function (e) { var b = e.target.closest('[data-cxa]'); if (b) accion(b.getAttribute('data-cxa'), b); });
+            '<div class="cxpl-cambio"><b>¿Quieres cambiar algo?</b><span>Se corrige antes de dibujar: escríbelo en el chat.</span></div>' +
+            '<div class="cxpl-acts"><button type="button" class="cxpl-btn ok" data-cxpl="cine">🎬 Dibujar en modo cine</button>' +
+            '<button type="button" class="cxpl-btn" data-cxpl="dxf">⬇ DXF</button><button type="button" class="cxpl-btn" data-cxpl="pdf">⬇ PDF</button><button type="button" class="cxpl-btn" data-cxpl="png">⬇ PNG</button></div>' +
+            '<p class="cxpl-nota">También puedes escribir «dibújalo».</p>');
+        if (c) c.addEventListener('click', function (e) { var b = e.target.closest('[data-cxpl]'); if (b) accion(b.getAttribute('data-cxpl'), b); });
         historial('Sí, aprobado', 'Distribución aprobada. Mostré la vista previa de cada planta; el estudiante puede pedir el modo cine («dibújalo») o descargar DXF/PDF/PNG.');
     }
     function nombreArchivo() { var P = actual.P; return 'Civix_anteproyecto_' + P.n + 'pisos_' + f2(P.W).replace('.', '_') + 'x' + f2(P.L).replace('.', '_'); }
@@ -510,21 +713,21 @@
     var CURSOR = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#a855f7', '#06b6d4', '#ec4899', '#84cc16'];
     function cine(Pl) {
         var reducido = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var ov = el('div', 'cxa-cine');
+        var ov = el('div', 'cxpl-cine');
         ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Modo cine: dibujo de las plantas');
-        ov.innerHTML = '<div class="cxa-cine-top"><div><small>CIVIX · PLANOS</small><b>Edificio ' + Pl.n + ' piso' + (Pl.n > 1 ? 's' : '') + ' · lote ' + f2(Pl.W) + ' × ' + f2(Pl.L) + ' m</b></div>' +
-            '<span class="cxa-etapa">Preparando…</span><div class="cxa-cine-acts">' +
+        ov.innerHTML = '<div class="cxpl-cine-top"><div><small>CIVIX · PLANOS</small><b>Edificio ' + Pl.n + ' piso' + (Pl.n > 1 ? 's' : '') + ' · lote ' + f2(Pl.W) + ' × ' + f2(Pl.L) + ' m</b></div>' +
+            '<span class="cxpl-etapa">Preparando…</span><div class="cxpl-cine-acts">' +
             '<button type="button" data-c="vel" title="Velocidad">1×</button><button type="button" data-c="rep" title="Repetir">↺ Repetir</button>' +
             '<button type="button" data-c="dxf">⬇ DXF</button><button type="button" data-c="pdf">⬇ PDF</button><button type="button" data-c="x" aria-label="Cerrar">✕</button></div></div>' +
-            '<div class="cxa-cine-bar"><i></i></div><div class="cxa-cine-g" style="--n:' + Math.min(Pl.n, 4) + '"></div>';
+            '<div class="cxpl-cine-bar"><i></i></div><div class="cxpl-cine-g" style="--n:' + Math.min(Pl.n, 4) + '"></div>';
         doc.body.appendChild(ov);
-        var grid = ov.querySelector('.cxa-cine-g'), etq = ov.querySelector('.cxa-etapa'), barra = ov.querySelector('.cxa-cine-bar i');
+        var grid = ov.querySelector('.cxpl-cine-g'), etq = ov.querySelector('.cxpl-etapa'), barra = ov.querySelector('.cxpl-cine-bar i');
         var vistas = Pl.pisos.map(function (pi, i) {
             var ents = dibujarPiso(Pl, pi, 0);
-            var fig = el('figure', 'cxa-cine-f', '<figcaption style="--c:' + CURSOR[i % CURSOR.length] + '">' + (NOMBRE_PISO[pi.n] || pi.n + '.º') + ' PISO</figcaption>' + svgPiso(ents, false, true) + '<span class="cxa-cur" style="--c:' + CURSOR[i % CURSOR.length] + '"><i></i><b>' + ordinal(pi.n) + '</b></span>');
+            var fig = el('figure', 'cxpl-cine-f', '<figcaption style="--c:' + CURSOR[i % CURSOR.length] + '">' + (NOMBRE_PISO[pi.n] || pi.n + '.º') + ' PISO</figcaption>' + svgPiso(ents, false, true) + '<span class="cxpl-cur" style="--c:' + CURSOR[i % CURSOR.length] + '"><i></i><b>' + ordinal(pi.n) + '</b></span>');
             grid.appendChild(fig);
-            var nodos = [].slice.call(fig.querySelectorAll('.cxa-e')).sort(function (a, b) { return (+a.getAttribute('data-e') - +b.getAttribute('data-e')) || (+a.getAttribute('data-k') - +b.getAttribute('data-k')); });
-            return { fig: fig, svg: fig.querySelector('svg'), nodos: nodos, cur: fig.querySelector('.cxa-cur') };
+            var nodos = [].slice.call(fig.querySelectorAll('.cxpl-e')).sort(function (a, b) { return (+a.getAttribute('data-e') - +b.getAttribute('data-e')) || (+a.getAttribute('data-k') - +b.getAttribute('data-k')); });
+            return { fig: fig, svg: fig.querySelector('svg'), nodos: nodos, cur: fig.querySelector('.cxpl-cur') };
         });
         var vel = 1, t0 = 0, pausa = false, fin = false, timer = null;
         var DUR = 16000; /* duración total a velocidad 1× */
@@ -613,10 +816,10 @@
     function bienvenida() {
         var c = tarjeta('<div class="civix-md">📐 <b>Modo Planos</b> — describe tu proyecto y te propongo la distribución, la vista previa de cada planta y el dibujo en <b>modo cine</b>, con descarga en DXF, PDF y PNG.<br>' +
             '<small>Indica: número de pisos, medidas del lote (frente × fondo) y qué va en cada piso (cochera, local, departamento, dormitorios, baños, estudio).</small></div>' +
-            '<div class="cxa-ejemplos">' + EJEMPLOS.map(function (t) { return '<button type="button" class="cxa-ej" data-cxa-ej>' + esc(t) + '</button>'; }).join('') + '</div>' +
-            '<p class="cxa-nota">En este modo Civix solo genera planos. Para dudas de teoría vuelve a «Explicar».</p>');
+            '<div class="cxpl-ejemplos">' + EJEMPLOS.map(function (t) { return '<button type="button" class="cxpl-ej" data-cxpl-ej>' + esc(t) + '</button>'; }).join('') + '</div>' +
+            '<p class="cxpl-nota">En este modo Civix solo genera planos. Para dudas de teoría vuelve a «Explicar».</p>');
         if (c) c.addEventListener('click', function (e) {
-            var b = e.target.closest('[data-cxa-ej]'); if (!b) return;
+            var b = e.target.closest('[data-cxpl-ej]'); if (!b) return;
             var i = doc.getElementById('inputAsistente'); if (i) { i.value = b.textContent; i.focus(); try { i.dispatchEvent(new Event('input', { bubbles: true })); } catch (ex) { } }
         });
     }
@@ -624,7 +827,7 @@
         var b = e.target.closest && e.target.closest('#civixModos [data-modo]'); if (!b) return;
         if (b.getAttribute('data-modo') === 'planos' && !sinBienvenida) {
             var ult = chat() && chat().lastElementChild;
-            if (!(ult && ult.querySelector && ult.querySelector('.cxa-ejemplos'))) setTimeout(bienvenida, 0);
+            if (!(ult && ult.querySelector && ult.querySelector('.cxpl-ejemplos'))) setTimeout(bienvenida, 0);
         }
     });
     function guia(texto, motivo) {
@@ -641,8 +844,8 @@
             if (q && !adj && esPedido(q)) {
                 /* en otros modos: se sugiere el modo Planos en lugar de que la IA intente dibujar */
                 var c = tarjeta('<div class="civix-md">📐 Esto parece un pedido de <b>planos arquitectónicos</b>. El modo <b>Planos</b> lo resuelve con distribución, vista previa y modo cine.</div>' +
-                    '<div class="cxa-acts"><button type="button" class="cxa-btn ok" data-cxa-ir>Generar en modo Planos</button></div>');
-                if (c) c.addEventListener('click', function (e) { if (!e.target.closest('[data-cxa-ir]')) return; e.target.disabled = true; activarModo(); modoPlanos(texto, q); }, { once: false });
+                    '<div class="cxpl-acts"><button type="button" class="cxpl-btn ok" data-cxpl-ir>Generar en modo Planos</button></div>');
+                if (c) c.addEventListener('click', function (e) { if (!e.target.closest('[data-cxpl-ir]')) return; e.target.disabled = true; activarModo(); modoPlanos(texto, q); }, { once: false });
                 historial(texto, 'Sugerí usar el modo Planos para este pedido.');
                 return true;
             }
