@@ -51,6 +51,8 @@
         [/laboratorios?/, 'LABORATORIO', 45, 'aula', 1],
         [/archivo/, 'ARCHIVO', 10, 'deposito2', 1],
         [/enfermeria|primeros auxilios/, 'ENFERMERÍA', 12, 'oficina', 1],
+        [/direccion|rectoria|coordinacion|secretaria|gerencia/, 'DIRECCIÓN', 14, 'oficina', 1],
+        [/sala de profesores|sala de docentes/, 'SALA DE PROFESORES', 20, 'reuniones', 1],
         [/cocina|cocineta/, 'COCINETA', 10, 'cocina', 1],
         [/porteria|vigilancia/, 'PORTERÍA', 6, 'oficina', 1],
         [/sala de espera|espera/, 'SALA DE ESPERA', 16, 'recepcion', 1],
@@ -63,8 +65,11 @@
     function espacios(t) {
         var out = [], conEscalera = /escaleras?|punto fijo/.test(t);
         t = t.replace(/^[^:]*?(contara con|tendra|incluira|llevara|albergara|dispondra de|con|:)\s*/, '');
+        t = t.replace(/\s+(?:en|sobre)\s+(?:un\s+|el\s+)?(?:lote|terreno|predio)\b.*$/, '');   /* «… y cafetería en un lote de 15 x 30» */
         t.split(/,|;|\s+y\s+|\s+e\s+|\s+ademas\s+/).forEach(function (raw) {
-            var s = raw.trim().replace(/^(?:la|el|los|las|un|una|unos|unas)\s+/, ''); if (!s || /escalera|punto fijo/.test(s)) return;
+            var s = raw.trim().replace(/^(?:la|el|los|las|un|una|unos|unas)\s+/, '');
+            /* se descartan los fragmentos que no son espacios: medidas, número de pisos, verbos del pedido… */
+            if (!s || /escalera|punto fijo/.test(s) || /\blote\b|terreno|predio|\d+\s*(?:m|mts|metros)?\s*(?:x|×|por)\s*\d|\b(?:pisos|niveles|plantas)\b|^(?:dise|dibuj|haz|hazme|quiero|necesito|plano|edificio|edificacion)/.test(s)) return;
             var m = s.match(/^(\d+|dos|tres|cuatro|cinco|seis)\s+/), cant = m ? num(m[1]) : 0;
             var hit = null;
             for (var i = 0; i < ESPACIOS.length; i++) if (ESPACIOS[i][0].test(s)) { hit = ESPACIOS[i]; break; }
@@ -82,7 +87,7 @@
         var verbo = /(hazme|haz|dise[nñ]|dibuj|genera|crea|elabora|plano|planta|distribuci|quiero|necesito|propon)/.test(q);
         return arq && lote && verbo && !/(zapata|viga|columna|losa|muro de contencion|cercha|pilote|escalera de concreto)/.test(q);
     }
-    function programa(t, base) {
+    function programa(t, base, residencial) {
         var p = base ? JSON.parse(JSON.stringify(base)) : { cochera: 0, local: false, apto: false, dorm: 0, banos: 0, estudio: false, lav: true };
         if (/cochera|garaje|garage|parqueadero|estacionamiento/.test(t)) p.cochera = /doble|dos (?:carros|autos|vehiculos|puestos)|2 (?:carros|autos|vehiculos|puestos)/.test(t) ? 2 : 1;
         if (/local|comercio|tienda/.test(t)) p.local = true;
@@ -92,19 +97,50 @@
         m = t.match(/(\d+|un|uno|una|dos|tres|cuatro)\s*banos?/); if (m) p.banos = num(m[1]);
         if (/estudio|oficina/.test(t) && !/apartaestudio/.test(t)) p.estudio = true;
         if (/sin lavanderia/.test(t)) p.lav = false;
+        /* vivienda: un piso con sala, comedor o cocina y sin dormitorios es la zona social de la casa */
+        if (residencial && /\bsala\b|comedor|cocina|estar/.test(t) && !/(dormitorio|habitacion|alcoba|recamara|cuarto)/.test(t)) {
+            p.apto = true; p.casaSocial = true; p.dorm = 0; p.sinDorm = true; if (!p.banos) p.banos = 1;
+        }
         /* programa no residencial (biblioteca, oficinas, colegio, centro de salud…): lista de espacios */
-        if (!RESIDENCIAL.test(t)) {
+        if (!residencial && !RESIDENCIAL.test(t)) {
             var e = espacios(t);
             if (e.lista.length) { p.gen = e.lista; p.escalera = e.escalera; p.apto = false; p.estudio = false; }
         }
         return p;
     }
+    /* números escritos en palabras → cifras («doce por veinte» → «12 por 20»), sin tocar «un/una» */
+    var PALABRAS = ['cero', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciseis', 'diecisiete', 'dieciocho', 'diecinueve', 'veinte',
+        'veintiuno', 'veintidos', 'veintitres', 'veinticuatro', 'veinticinco', 'veintiseis', 'veintisiete', 'veintiocho', 'veintinueve', 'treinta'];
+    function cifras(q) {
+        q = q.replace(/\b(treinta|cuarenta|cincuenta)\s+y\s+(uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve)\b/g, function (s, d, u) { return String({ treinta: 30, cuarenta: 40, cincuenta: 50 }[d] + PALABRAS.indexOf(u)); });
+        q = q.replace(/\b(cuarenta|cincuenta)\b/g, function (s) { return s === 'cuarenta' ? '40' : '50'; });
+        return q.replace(/\b[a-z]+\b/g, function (w) { var i = PALABRAS.indexOf(w); return i > 1 ? String(i) : w; });
+    }
+    var N_ = '(\\d+(?:[.,]\\d+)?)';
+    /* medidas del lote en las formas habituales; si solo hay área, se supone un lote 1:2 */
+    function medidasLote(q) {
+        var m;
+        if ((m = q.match(new RegExp(N_ + '\\s*(?:m|mts|metros)?\\s*(?:de\\s+frente\\s*)?(?:x|×|\\*|por)\\s*' + N_ + '(?!\\s*(?:pisos|niveles|plantas))')))) return { W: num(m[1]), L: num(m[2]) };
+        if ((m = q.match(new RegExp('frente\\s*(?:de|:)?\\s*' + N_ + '[^\\d]{0,40}?fondo\\s*(?:de|:)?\\s*' + N_)))) return { W: num(m[1]), L: num(m[2]) };
+        if ((m = q.match(new RegExp(N_ + '\\s*(?:m|mts|metros)?\\s*de\\s+frente[^\\d]{0,40}?' + N_ + '\\s*(?:m|mts|metros)?\\s*de\\s+fondo')))) return { W: num(m[1]), L: num(m[2]) };
+        if ((m = q.match(new RegExp('fondo\\s*(?:de|:)?\\s*' + N_ + '[^\\d]{0,40}?frente\\s*(?:de|:)?\\s*' + N_)))) return { W: num(m[2]), L: num(m[1]) };
+        if ((m = q.match(new RegExp(N_ + '\\s*(?:m2|m²|mts2|metros cuadrados|metros2)')))) {
+            var A = num(m[1]); if (A > 20) { var w = Math.round(Math.sqrt(A / 2) * 2) / 2; return { W: w, L: Math.round(A / w * 2) / 2, area: A }; }
+        }
+        return null;
+    }
     function leer(texto) {
-        var q = norm(texto);
-        var W, L, m = q.match(/(\d+(?:[.,]\d+)?)\s*(?:m(?:etros)?)?\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(?:m(?:etros)?)?/);
-        if (m) { W = num(m[1]); L = num(m[2]); }
-        if (!(W > 0) || !(L > 0)) return { error: 'Indica las medidas del lote, por ejemplo «lote de 10 x 20 m» (frente × fondo).' };
+        var q = cifras(norm(texto)), supuesto = '';
+        var dims = medidasLote(q), W, L, m;
+        if (dims) { W = dims.W; L = dims.L; if (dims.area) supuesto = 'Con un área de ' + dims.area + ' m² supuse un lote de ' + f2(W) + ' × ' + f2(L) + ' m (frente × fondo). Si tus medidas son otras, escríbelas así: «lote de 8 x 15 m».'; }
+        if (!(W > 0) || !(L > 0)) {
+            /* sin medidas: se propone un lote típico para el tipo de proyecto y se avisa */
+            var publico = !RESIDENCIAL.test(q) && /(biblioteca|escuela|colegio|oficina|centro|clinica|auditorio|aula|recepcion|consultorio|comercial|tienda|laboratorio)/.test(q);
+            W = publico ? 12 : 8; L = publico ? 20 : 16;
+            supuesto = 'No indicaste las medidas del lote, así que supuse un lote de ' + W + ' × ' + L + ' m (frente × fondo). Si es otro, escríbelo así: «lote de 10 x 20 m».';
+        }
         if (W > L) { var tmp = W; W = L; L = tmp; }
+        if (W < 4 || L < 6 || W > 60 || L > 120) return { error: 'Las medidas del lote (' + f2(W) + ' × ' + f2(L) + ' m) no parecen de un lote. Escríbelas así: «lote de 10 x 20 m» (frente × fondo).' };
         var n = 1;
         m = q.match(/(\d+|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho)\s*(?:pisos|niveles|plantas)/); if (m) n = num(m[1]);
         else if (/(de un piso|una planta|un nivel)/.test(q)) n = 1;
@@ -126,12 +162,26 @@
             var dentro2 = marcas.some(function (k) { return mm.index >= k.i - 3 && mm.index < k.fin; });
             if (!dentro2) marcas.push({ i: mm.index, fin: reLa.lastIndex, a: num(mm[1]), b: num(mm[1]) });
         }
+        /* «planta baja / primer nivel», «planta alta / último piso», «nivel 2:», «piso 3:» */
+        var reBaja = /planta baja|primer nivel|\bpb\b|nivel 1\b|piso 1\b/g, reAlta = /planta alta|ultimo piso|ultima planta|ultimo nivel/g, reNum = /\b(?:piso|nivel|planta)\s+(\d)\b\s*:?/g;
+        function marca(re, a) {
+            var x; while ((x = re.exec(q))) {
+                var ini = x.index, fin = re.lastIndex;
+                if (!marcas.some(function (k) { return ini >= k.i - 2 && ini < k.fin + 2; })) { var v = a != null ? a : num(x[1]); marcas.push({ i: ini, fin: fin, a: v, b: v }); }
+            }
+        }
+        marca(reBaja, 1); marca(reAlta, n); marca(reNum, null);
         marcas.sort(function (a, b) { return a.i - b.i; });
-        var general = programa(q.replace(/(?:del?\s+)?(?:primer|segundo|tercer|cuarto|quinto|\d)[^.;]*?piso[^.;]*[.;]?/g, ' '));
+        var residencial = RESIDENCIAL.test(q) || (/\bsala\b|comedor|cocina|alcoba/.test(q) && !/(biblioteca|escuela|colegio|oficinas|centro|clinica|auditorio|aula|consultorio)/.test(q));
+        var general = programa(q.replace(/(?:del?\s+)?(?:primer|segundo|tercer|cuarto|quinto|\d)[^.;]*?piso[^.;]*[.;]?/g, ' '), null, residencial);
+        /* lo que se pide para «el resto» (p. ej. «apartamentos de 2 habitaciones arriba») vale para los pisos sin indicación */
+        var todo = programa(q, null, residencial);
+        if (!general.dorm && todo.dorm) { general.dorm = todo.dorm; general.apto = true; }
+        if (!general.banos && todo.banos) general.banos = todo.banos;
         marcas.forEach(function (k, j) {
             var txt = q.slice(k.fin, j + 1 < marcas.length ? marcas[j + 1].i : q.length);
-            txt = txt.split(/\.\s+|\.$|\n\s*\n/)[0];   /* el programa del piso termina con la frase */
-            var p = programa(txt);
+            txt = txt.split(/\.\s+|\.$|\n\s*\n|;\s*(?=planta|piso|nivel)/)[0];   /* el programa del piso termina con la frase */
+            var p = programa(txt, null, residencial);
             for (var f = Math.max(1, k.a); f <= Math.min(n, k.b); f++) pisos[f] = p;
         });
         var esCasa = /\bcasa\b|unifamiliar/.test(q) && !/edificio|multifamiliar/.test(q);
@@ -142,23 +192,53 @@
             if (f2_ > 1) { p.cochera = 0; p.local = false; }
             pisos[f2_] = p;
         }
+        /* «local comercial / cochera en el primer piso (o planta baja)» escrito antes del piso */
+        var enPrimero = /(local(?: comercial)?|comercio|tienda|cochera|garaje|parqueadero)[^.;]{0,30}?(?:en el |en la )?(?:primer piso|planta baja|primer nivel)/.exec(q);
+        if (enPrimero && pisos[1] && !residencialPiso1(pisos[1])) {
+            if (/cochera|garaje|parqueadero/.test(enPrimero[1])) pisos[1].cochera = pisos[1].cochera || 1;
+            else { pisos[1].local = true; pisos[1].apto = false; pisos[1].dorm = 0; }
+            pisos[1].gen = null;
+        }
+        function residencialPiso1(p) { return p.cochera && p.apto; }
         var escala = (q.match(/escala\s*(?:de\s*)?1\s*[:\/]\s*(\d{2,3})/) || [])[1];
         var generico = pisos.some(function (p) { return p && p.gen; });
+        /* edificio no residencial descrito solo por su uso («edificio de oficinas de 3 niveles»): programa típico */
+        var PLANTILLAS = [
+            [/oficina/, ['recepcion', 'oficina x4', 'sala de reuniones', 'banos', 'cocineta'], ['oficina x5', 'sala de reuniones', 'banos', 'archivo']],
+            [/biblioteca/, ['recepcion', 'sala de lectura', 'zona infantil', 'banos', 'deposito'], ['salas de estudio', 'informatica', 'oficina', 'banos']],
+            [/escuela|colegio/, ['recepcion', 'direccion', 'aula x2', 'banos', 'cafeteria'], ['aula x3', 'laboratorio', 'banos']],
+            [/clinica|centro de salud|consultorio/, ['recepcion', 'sala de espera', 'consultorio x3', 'banos', 'enfermeria'], ['consultorio x4', 'oficina', 'banos']]
+        ];
+        var usoPlantilla = false;
+        if (!residencial) PLANTILLAS.forEach(function (pl) {
+            if (!pl[0].test(q) || usoPlantilla) return;
+            for (var f3 = 1; f3 <= n; f3++) {
+                var pp3 = pisos[f3];
+                if (pp3 && pp3.gen && pp3.gen.length > 1) continue;
+                usoPlantilla = true;
+                var lista = (f3 === 1 ? pl[1] : pl[2]).map(function (t) { var mm2 = t.match(/^(.*) x(\d)$/); return mm2 ? mm2[2] + ' ' + mm2[1] : t; }).join(', ');
+                var e = espacios('con ' + lista);
+                pisos[f3] = { gen: e.lista, escalera: n > 1, apto: false, cochera: 0, local: false, plantilla: true };
+            }
+            generico = true;
+            if (usoPlantilla) supuesto = (supuesto ? supuesto + ' ' : '') + 'Como no detallaste los espacios de cada piso, usé un programa típico para este uso; puedes pedir cambios en el chat.';
+        });
         if (generico) {
             for (var g = 1; g <= n; g++) { var pg = pisos[g]; if (!pg.gen) { pg.gen = []; pg.apto = false; pg.cochera = 0; pg.local = false; } }
-            return { W: W, L: L, n: n, pisos: pisos, texto: texto, generico: true, escala: escala ? '1:' + escala : null };
+            return { W: W, L: L, n: n, pisos: pisos, texto: texto, generico: true, escala: escala ? '1:' + escala : null, supuesto: supuesto };
         }
         /* valores por defecto razonables (todo se puede cambiar antes de aprobar) */
         for (var k2 = 1; k2 <= n; k2++) {
             var pp = pisos[k2];
             if (!pp.apto && !pp.cochera && !pp.local) pp.apto = true;
-            if (pp.apto && !pp.dorm) pp.dorm = (pp.cochera || pp.local) ? 2 : 3;
+            if (pp.apto && !pp.dorm && !pp.sinDorm) pp.dorm = (pp.cochera || pp.local) ? 2 : 3;
             if (pp.apto && !pp.banos) pp.banos = pp.dorm >= 3 ? 2 : 1;
-            if (esCasa && n > 1) { /* casa: social abajo, dormitorios arriba */
-                if (k2 === 1) { pp.casaSocial = true; pp.dorm = Math.min(pp.dorm, 1); pp.banos = 1; }
+            if (esCasa && n > 1) { /* casa: social abajo, dormitorios arriba (una sola vivienda: la cocina va solo en el primer piso) */
+                if (k2 === 1) { pp.casaSocial = true; pp.dorm = pp.sinDorm ? 0 : Math.min(pp.dorm, 1); pp.banos = 1; }
+                else { pp.casaUp = true; pp.casaSocial = false; pp.apto = true; if (!pp.dorm) pp.dorm = 3; }
             }
         }
-        return { W: W, L: L, n: n, pisos: pisos, texto: texto, esCasa: esCasa, escala: escala ? '1:' + escala : null };
+        return { W: W, L: L, n: n, pisos: pisos, texto: texto, esCasa: esCasa, escala: escala ? '1:' + escala : null, supuesto: supuesto };
     }
 
     /* =================================================================== 2. DISTRIBUCIÓN */
@@ -250,7 +330,7 @@
         function celdas(p) {
             var izq = [], der = [];
             var lista = [];
-            if (p.casaSocial) { lista.push(['SALA', 4.0]); lista.push(['COMEDOR', 3.4]); }
+            if (p.casaSocial) { if (p.cochera) lista.push(['SALA', 4.0]); lista.push(['COMEDOR', 3.4]); if (p.estudio) lista.push(['ESTUDIO', 3.0]); }
             else if (p.apto && (p.cochera || p.local)) lista.push(['SALA-COMEDOR', 4.2]);
             if (p.apto) {
                 for (var d = 1; d <= p.dorm; d++) lista.push([d === 1 ? 'DORM. PRINCIPAL' : 'DORMITORIO ' + d, d === 1 ? 4.0 : 3.6]);
@@ -275,12 +355,17 @@
         var guarda = 0;
         while (!cabe() && guarda++ < 20) {
             var hizo = false;
-            for (f = P.n; f >= 1 && !hizo; f--) { var pf = P.pisos[f]; if (pf.banos > 1) { pf.banos--; quitados.push('un baño del ' + ordinal(f) + ' piso'); hizo = true; } }
-            for (f = P.n; f >= 1 && !hizo; f--) { var pg = P.pisos[f]; if (pg.dorm > 1) { pg.dorm--; quitados.push('un dormitorio del ' + ordinal(f) + ' piso'); hizo = true; } }
+            for (f = P.n; f >= 1 && !hizo; f--) { var pf = P.pisos[f]; if (pf.banos > 1) { pf.banos--; quitados.push('quité un baño del ' + ordinal(f) + ' piso'); hizo = true; } }
+            /* casa: antes de quitar un dormitorio del piso alto se intenta bajarlo al primer piso (una sola vivienda) */
+            var p1 = P.pisos[1];
+            if (!hizo && p1 && p1.casaSocial && P.n > 1 && !p1._bajados) {
+                for (f = P.n; f >= 2 && !hizo; f--) { var pa = P.pisos[f]; if (pa.dorm > 1 && (p1.dorm || 0) < 1) { pa.dorm--; p1.dorm = (p1.dorm || 0) + 1; p1.apto = true; p1._bajados = true; quitados.push('bajé un dormitorio del ' + ordinal(f) + ' piso al 1.er piso'); hizo = true; } }
+            }
+            for (f = P.n; f >= 1 && !hizo; f--) { var pg = P.pisos[f]; if (pg.dorm > 1) { pg.dorm--; quitados.push('quité un dormitorio del ' + ordinal(f) + ' piso'); hizo = true; } }
             if (!hizo) break;
             medir();
         }
-        if (quitados.length) warns.push('Para respetar medidas mínimas en un fondo de ' + f2(L) + ' m quité ' + quitados.join(', ') + '. Si lo necesitas, pide un lote más profundo o más pisos.');
+        if (quitados.length) warns.push('Para respetar medidas mínimas en un fondo de ' + f2(L) + ' m ' + quitados.join(', ') + '. Si lo necesitas, pide un lote más profundo o más pisos.');
         if (!cabe()) warns.push('El programa queda muy justo para un lote de ' + f2(W) + ' × ' + f2(L) + ' m: revisa las medidas antes de aprobar.');
         var D = hA + hB + PAS_H + maxZona;
         var disp = L - patioMin;
@@ -305,8 +390,11 @@
                 R.push(rm('LOCAL COMERCIAL', 0, 0, wl, hA, 'local'));
                 R.push(rm('INGRESO', wl, 0, ws, hA, 'ingreso'));
             } else if (p.casaSocial) {
-                R.push(rm(p.cochera ? (p.cochera === 2 ? 'COCHERA DOBLE' : 'COCHERA') : 'ESTAR', 0, 0, wl, hA, p.cochera ? 'cochera' : 'sala', p.cochera));
+                R.push(rm(p.cochera ? (p.cochera === 2 ? 'COCHERA DOBLE' : 'COCHERA') : 'SALA', 0, 0, wl, hA, p.cochera ? 'cochera' : 'sala', p.cochera));
                 R.push(rm('INGRESO', wl, 0, ws, hA, 'ingreso'));
+            } else if (p.casaUp) {
+                R.push(rm('ESTAR FAMILIAR', 0, 0, wl, hA, 'sala'));
+                R.push(rm(p.estudio ? 'ESTUDIO' : 'HALL', wl, 0, ws, hA, p.estudio ? 'estudio' : 'ingreso'));
             } else {
                 R.push(rm('SALA-COMEDOR', 0, 0, wl, hA, 'sala'));
                 R.push(rm(p.estudio ? 'ESTUDIO' : (f === 1 ? 'INGRESO' : 'HALL'), wl, 0, ws, hA, p.estudio ? 'estudio' : 'ingreso'));
@@ -314,7 +402,11 @@
             y0 = hA;
             /* franja B: cocina, lavandería y escalera (se repiten en todos los pisos: instalaciones y escalera alineadas) */
             var lavW = p.lav && wl > 5 ? 1.4 : 0;
-            if (p.apto || p.casaSocial) {
+            if (p.casaUp) {
+                /* piso alto de una casa: sobre la cocina va un baño social y un depósito/ropería (instalaciones alineadas) */
+                R.push(rm('BAÑO SOCIAL', 0, y0, Math.min(2.6, wl * 0.45), hB, 'bano'));
+                R.push(rm('ROPERÍA', Math.min(2.6, wl * 0.45), y0, wl - Math.min(2.6, wl * 0.45), hB, 'deposito'));
+            } else if (p.apto || p.casaSocial) {
                 R.push(rm('COCINA', 0, y0, wl - lavW, hB, 'cocina'));
                 if (lavW) R.push(rm('LAVANDERÍA', wl - lavW, y0, lavW, hB, 'lav'));
             } else R.push(rm(f === 1 && p.local ? 'BODEGA' : 'DEPÓSITO', 0, y0, wl, hB, 'deposito'));
@@ -342,7 +434,8 @@
             /* si la columna es bastante más corta que la zona, no se estiran los ambientes de más:
                se crecen hasta un 25 % y lo que sobra queda como depósito / clóset al fondo */
             var k = Math.min(H / tot, 1.25), sobra = H - tot * k;
-            if (sobra > 0.9) { col = col.concat([['DEPÓSITO', sobra / k]]); tot = sum(col); }
+            /* un sobrante pequeño se reparte entre los ambientes; solo uno amplio (≥ 1.8 m) se vuelve depósito */
+            if (sobra >= 1.8) { col = col.concat([['DEPÓSITO', sobra / k]]); tot = sum(col); }
             col.forEach(function (c, i) {
                 var h = i === col.length - 1 ? (y + H - yy) : c[1] * H / tot;
                 /* un baño en una columna ancha no ocupa todo el ancho: 2.40 m de baño y el resto como clóset */
@@ -665,6 +758,7 @@
             '<div class="cxpl-tbl-wrap"><table class="cxpl-tbl"><thead><tr><th>Ambiente</th><th>Medidas (m)</th><th>Piso</th></tr></thead><tbody>' +
             filas.map(function (r, i) { return '<tr style="--i:' + i + '"><td>' + esc(r.nombre) + '</td><td>' + f2(r.w) + ' × ' + f2(r.h) + '</td><td>' + esc(r.txt) + '</td></tr>'; }).join('') +
             '</tbody></table></div>' +
+            (P.supuesto ? '<p class="cxpl-sup">ℹ️ ' + esc(P.supuesto) + '</p>' : '') +
             (Pl.warns.length ? Pl.warns.map(function (w) { return '<p class="cxp-warn">⚠ ' + esc(w) + '</p>'; }).join('') : '') +
             '<p class="cxpl-q">¿Apruebas la distribución? También puedes pedir cambios en el chat: <i>«sin estudio», «agrega un baño», «4 dormitorios», «cochera simple»</i>.</p>' +
             '<div class="cxpl-acts"><button type="button" class="cxpl-btn ok" data-cxpl="aprobar">Sí, aprobado ✓</button><button type="button" class="cxpl-btn" data-cxpl="cambiar">Quiero cambiar algo</button></div>' +
@@ -715,7 +809,7 @@
         var reducido = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
         var ov = el('div', 'cxpl-cine');
         ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Modo cine: dibujo de las plantas');
-        ov.innerHTML = '<div class="cxpl-cine-top"><div><small>CIVIX · PLANOS</small><b>Edificio ' + Pl.n + ' piso' + (Pl.n > 1 ? 's' : '') + ' · lote ' + f2(Pl.W) + ' × ' + f2(Pl.L) + ' m</b></div>' +
+        ov.innerHTML = '<div class="cxpl-cine-top"><div><small>CIVIX · PLANOS</small><b>' + (actual && actual.P && actual.P.esCasa ? 'Casa ' : 'Edificio ') + Pl.n + ' piso' + (Pl.n > 1 ? 's' : '') + ' · lote ' + f2(Pl.W) + ' × ' + f2(Pl.L) + ' m</b></div>' +
             '<span class="cxpl-etapa">Preparando…</span><div class="cxpl-cine-acts">' +
             '<button type="button" data-c="vel" title="Velocidad">1×</button><button type="button" data-c="rep" title="Repetir">↺ Repetir</button>' +
             '<button type="button" data-c="dxf">⬇ DXF</button><button type="button" data-c="pdf">⬇ PDF</button><button type="button" data-c="x" aria-label="Cerrar">✕</button></div></div>' +
@@ -860,13 +954,13 @@
                 return cine(actual.Pl);
             }
             if (actual && actual.estado === 'propuesta' && /^(si|ok|apruebo|aprobado|de acuerdo|listo|perfecto)\b/.test(q)) { aprobar(); return true; }
-            var tieneLote = /\d+(?:[.,]\d+)?\s*(?:m(?:etros)?\s*)?[x×]\s*\d+(?:[.,]\d+)?/.test(q);
+            var tieneLote = !!medidasLote(cifras(q));
             if (actual && !tieneLote) {
                 var P2 = cambios(q);
                 if (P2) return propuesta(texto, P2);
             }
             /* en este modo basta con describir el proyecto: no hace falta «hazme» ni «plano» */
-            if (tieneLote || /(edificio|casa|vivienda|apartamento|departamento|piso|lote|cochera|dormitorio|habitacion)/.test(q)) {
+            if (tieneLote || /(edificio|edificacion|casa|vivienda|apartamento|departamento|piso|nivel|planta|lote|terreno|cochera|dormitorio|habitacion|alcoba|biblioteca|escuela|colegio|oficina|local|clinica|consultorio|centro|auditorio|plano|distribucion)/.test(q)) {
                 var P = leer(texto);
                 if (P.error) return guia(texto, P.error);
                 return propuesta(texto, P);
