@@ -2054,7 +2054,7 @@ function civixInitUIExtras() {
             modos.querySelectorAll('.civix-modo').forEach(function (b) { b.classList.remove('active'); });
             btn.classList.add('active');
             window.__civixModo = btn.getAttribute('data-modo') || 'explicar';
-            var labels = { explicar: 'Explicar', pistas: 'Solo pistas', corregir: 'Corregir', quiz: 'Preparar quiz' };
+            var labels = { explicar: 'Explicar', pistas: 'Solo pistas', corregir: 'Corregir', quiz: 'Preparar quiz', planos: 'Planos arquitectónicos' };
             var pill = document.getElementById('civixModePill');
             if (pill) pill.innerHTML = 'Modo: <strong>' + (labels[window.__civixModo] || 'Explicar') + '</strong>';
             var input = document.getElementById('inputAsistente');
@@ -2063,7 +2063,8 @@ function civixInitUIExtras() {
                     explicar: '¿Qué tema quieres que te explique?',
                     pistas: 'Describe el problema (solo te daré pistas)…',
                     corregir: 'Pega tu procedimiento o adjunta el archivo a corregir…',
-                    quiz: 'Tema para generar preguntas de práctica…'
+                    quiz: 'Tema para generar preguntas de práctica…',
+                    planos: 'Describe el proyecto: pisos, lote (frente × fondo) y qué va en cada piso…'
                 };
                 input.placeholder = ph[window.__civixModo] || 'Escribe tu duda a Civix…';
             }

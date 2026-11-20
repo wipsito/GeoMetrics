@@ -340,7 +340,9 @@
             if (h.__gcx) return; h.__gcx = 1; h.innerHTML = (i ? IC.tools : IC.bolt) + esc(h.textContent.replace(/^[^A-Za-zÁÉÍÓÚáéíóúÑñ]+/, '').trim());
         });
     }
-    var MODOS = [IC.bulb, IC.help, IC.wrench, IC.check];
+    var MODOS = [IC.bulb, IC.help, IC.wrench, IC.check,
+        /* Planos: planta con muros y una puerta */
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h7M14 12h7M12 3v6M12 15v6"/><path d="M10 12a4 4 0 0 1 4-4"/></svg>'];
     function nombreModo() { var a = doc.querySelector('#civixModos .civix-modo.active'); return a ? a.textContent.trim() : 'Explicar'; }
     function chat() {
         var M = $('asistenteModal');
