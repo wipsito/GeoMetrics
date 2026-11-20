@@ -533,6 +533,13 @@
         var ro = global.ResizeObserver ? new ResizeObserver(function () { resize(); }) : null; if (ro) ro.observe(stage); else global.addEventListener('resize', resize);
         setTimeout(function () { resize(); fit(); }, 30);
         api = { root: root, fit: fit, redraw: draw, setInfo: setInfo, layersChanged: function () { model.bbox = bboxOf(model.ents); buildLayers(); draw(); }, destroy: function () { if (ro) ro.disconnect(); root.remove(); } };
+        /* Modo cine automático: si este plano es el resultado de «Calcular», «Generar curvas de nivel» o de un
+           pedido de plano (la marca la pone js/civix-planos.js al pulsar esos botones), se abre solo. */
+        var auto = global.__cxCineAuto;
+        if (auto && Date.now() < auto.hasta && model.ents && model.ents.length) {
+            global.__cxCineAuto = null;
+            setTimeout(function () { if (CAD.cine && root.isConnected) CAD.cine(model, { titulo: opts.titulo, name: opts.name, dark: dark }); }, 450);
+        }
         return api;
     }
     var UNITS = { 0: 'sin unidades', 1: 'pulgadas', 2: 'pies', 4: 'mm', 5: 'cm', 6: 'm', 7: 'km' };

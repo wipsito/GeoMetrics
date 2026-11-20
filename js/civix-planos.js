@@ -964,6 +964,7 @@
        para que lo reconozcan: «zapata para 800 kN» → «diseña zapata para 800 kN»). */
     function elementoCAD(texto, q) {
         var t = /^(dise|dibuj|calcul|haz|hazme|genera|crea|elabora|predimension|dame|quiero|necesito|muestra)/.test(q) ? texto : 'Diseña ' + texto;
+        global.__cxCineAuto = { hasta: Date.now() + 6000 };   /* el plano que genere se abre en modo cine */
         return prevSend ? prevSend.call(CAD, t, null) : false;
     }
 
@@ -973,6 +974,7 @@
         try {
             if (esElemento(q) && !(actual && /^(dibujalo|si|ok|apruebo|aprobado)\b/.test(q))) {
                 if (elementoCAD(texto, q)) return true;
+                global.__cxCineAuto = { hasta: Date.now() + 180000 };   /* la respuesta de la IA traerá el plano */
                 return false;   /* sin generador local: la IA lo dibuja en formato DXF (modo Planos) */
             }
             if (actual && actual.estado === 'aprobado' && /^(dibujalo|dibujala|dibuja(?:lo)?|modo cine|efecto (?:de )?cine|dibuja el plano|hazlo|dale)\b/.test(q)) {
@@ -992,7 +994,7 @@
                 return propuesta(texto, P);
             }
             /* otros diseños (detalles, instalaciones, mobiliario, cubiertas…): los dibuja la IA en formato DXF */
-            if (/(dise|dibuj|plano|detalle|planta|corte|elevacion|esquema|haz|hazme|genera|crea|dxf|cad)/.test(q)) return false;
+            if (/(dise|dibuj|plano|detalle|planta|corte|elevacion|esquema|haz|hazme|genera|crea|dxf|cad)/.test(q)) { global.__cxCineAuto = { hasta: Date.now() + 180000 }; return false; }
             return guia(texto, 'En el modo Planos dibujo proyectos y elementos: un edificio o una casa (pisos, lote y qué va en cada piso), o un elemento como una zapata, columna, viga, losa, muro, escalera, cercha, puente o pórtico.');
         } catch (e) {
             try { console.warn('Civix planos arquitectónicos', e); } catch (e2) { }
@@ -1057,7 +1059,14 @@
         if (!model || !model.ents || !model.ents.length) return false;
         var oscuro = o.dark !== false;
         var reducido = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var nombre = String(o.titulo || o.name || 'Plano Civix').replace(/_/g, ' ').replace(/\bcivix\b/i, '').trim() || 'Plano';
+        var NOMBRES = { viga: 'Viga simplemente apoyada', vigaapoyos: 'Viga con apoyos', vigacont: 'Viga continua', vigat: 'Viga T / L', despieceviga: 'Despiece de viga',
+            columna: 'Columna rectangular', columnac: 'Columna circular', columnaflex: 'Columna en flexocompresión', despiececolumna: 'Despiece de columna',
+            zapata: 'Zapata aislada', zapatacomb: 'Zapata combinada', zapatacorr: 'Zapata corrida', pilote: 'Pilotes y dado', muro: 'Muro de contención', muroc: 'Muro de contención', murocorte: 'Muro de corte',
+            losa: 'Losa maciza', losa2d: 'Losa en dos direcciones', losanerv: 'Losa nervada', escalera: 'Escalera de concreto', cercha: 'Cercha Warren', cerchaph: 'Cercha Pratt / Howe',
+            aceroviga: 'Viga de acero', acerocolumna: 'Columna de acero', portico: 'Pórtico', puente: 'Puente' };
+        var base = String(o.titulo || o.name || 'plano').replace(/_?civix_?/ig, '').replace(/_lamina$/, '');
+        var mCur = base.match(/^curvas_nivel(?:_aleatorio)?_?(\d+)?/i);
+        var nombre = NOMBRES[base.toLowerCase()] || (mCur ? 'Curvas de nivel' + (mCur[1] ? ' · semilla ' + mCur[1] : '') : base.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').trim()) || 'Plano';
         var ov = el('div', 'cxpl-cine' + (oscuro ? '' : ' claro'));
         ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Modo cine: dibujo del plano');
         ov.innerHTML = '<div class="cxpl-cine-top"><div><small>CIVIX · PLANOS Y CAD</small><b>' + esc(nombre.charAt(0).toUpperCase() + nombre.slice(1)) + '</b></div>' +
@@ -1106,6 +1115,17 @@
         return true;
     }
     CAD.cine = cineModelo;
+
+    /* ---- Modo cine automático ----
+       Al pulsar «▶ Calcular» / «▶ Generar curvas de nivel» (resultado inmediato) o al pedir un plano a la IA
+       («Planos con IA» o modo Planos del chat; la respuesta tarda), el próximo plano que se muestre abre el modo cine solo. */
+    function marcarCine(segundos) { global.__cxCineAuto = { hasta: Date.now() + segundos * 1000 }; }
+    doc.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('#asistenteModal .cxp-sec button'); if (!b) return;
+        var sec = b.closest('.cxp-sec'), t = norm(b.textContent);
+        if (/calcular|generar/.test(t) && b.classList.contains('cxp-go')) marcarCine(6);
+        else if (sec && sec.getAttribute('data-s') === 'ia' && (b.classList.contains('cxp-card') || b.classList.contains('cxp-chip') || /enviar a civix/.test(t))) marcarCine(180);
+    }, true);
 
     CAD.planosArq = { leer: leer, plan: plan, modelo: modelo, tabla: tabla, cine: function () { return actual && cine(actual.Pl); }, actual: function () { return actual; } };
 })(typeof window !== 'undefined' ? window : globalThis);
