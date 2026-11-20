@@ -55,6 +55,14 @@
 .cxpl-agentes i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 25%, transparent); }
 .cxpl-agentes b { min-width: 30px; text-align: right; font: 700 11px/1 "JetBrains Mono", Consolas, monospace; color: #f8fafc; }
 .cxpl-cine.claro .cxpl-cur b { color: #fff; }
+/* modo cine como transición: entra con fundido y al terminar se desvanece hacia el apartado del resultado */
+.cxpl-cine { animation: cxpl-entra .35s ease-out both; }
+.cxpl-cine.saliendo { animation: cxpl-sale .5s ease-in forwards; pointer-events: none; }
+@keyframes cxpl-entra { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cxpl-sale { to { opacity: 0; transform: scale(.96); filter: blur(2px); } }
+.cxpl-llegada { animation: cxpl-llegada 1.5s ease-out; }
+@keyframes cxpl-llegada { 0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, .7); } 100% { box-shadow: 0 0 0 14px rgba(34, 211, 238, 0); } }
+@media (prefers-reduced-motion: reduce) { .cxpl-cine, .cxpl-cine.saliendo, .cxpl-llegada { animation: none; } }
 @media (max-width: 900px) { .cxpl-cine-g { grid-template-columns: repeat(min(var(--n, 2), 2), minmax(0, 1fr)); } }
 @media (max-width: 560px) { .cxpl-cine-g { grid-template-columns: minmax(0, 1fr); } .cxpl-etapa { margin-left: 0; } }
 @media (prefers-reduced-motion: reduce) {
