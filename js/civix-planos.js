@@ -714,7 +714,7 @@
         function X(x) { return (x - bb[0] + pad).toFixed(3); } function Y(y) { return (bb[3] - y + pad).toFixed(3); }
         var out = ['<svg class="cxpl-svg" viewBox="0 0 ' + w.toFixed(2) + ' ' + h.toFixed(2) + '" xmlns="http://www.w3.org/2000/svg" role="img">'];
         ents.forEach(function (e, i) {
-            var c = col[e.layer] || '#94a3b8', at = conIndices ? ' data-k="' + i + '" data-e="' + ETAPA[e.layer] + '" class="cxpl-e"' : '';
+            var c = col[e.layer] || '#94a3b8', at = conIndices ? ' data-k="' + i + '" data-e="' + ETAPA[e.layer] + '" data-l="' + esc(e.layer || '') + '" class="cxpl-e"' : '';
             var sw = e.layer === 'MUROS' ? (e.ext ? 0.07 : 0.045) : e.layer === 'EJES' ? 0.018 : 0.025;
             if (e.t === 'poly') {
                 var pts = e.pts.map(function (p) { return X(p[0]) + ',' + Y(p[1]); }).join(' ');
@@ -802,8 +802,156 @@
         } catch (e) { if (btn) btn.textContent = '⚠ ' + (e.message || 'error'); }
     }
 
-    /* =================================================================== 6. MODO CINE */
-    var NOMBRES_ETAPA = ['Ejes', 'Columnas', 'Muros', 'Puertas y ventanas', 'Escalera', 'Mobiliario', 'Textos y cotas'];
+    /* =================================================================== 6. MODO CINE CON VARIOS AGENTES
+       Cada «agente» es un dibujante con su cursor, color y nombre que se encarga de un apartado del plano
+       (según la capa): puntos topográficos, triangulación, curvas, cuadrícula, concreto, armadura, cotas, rótulos,
+       muros, carpintería, mobiliario… Todos trabajan a la vez; cada línea se traza de forma continua y el cursor
+       la recorre. Animación con requestAnimationFrame (con respaldo por temporizador si la pestaña está oculta). */
+    var ROLES = [
+        /* [nombre del agente, patrón de capa, color, inicio relativo (0–1) dentro de la animación] */
+        ['Marco y rótulo', /MARCO|CAJETIN|ROTULO|TITLE|BORDER|FRAME|LAMINA/, '#94a3b8', 0],
+        ['Topógrafo · puntos', /^PUNTOS|COTAS-PUNTOS/, '#facc15', 0],
+        ['Triangulación', /^TIN|TRIANG/, '#a5b4c8', 0.06],
+        ['Curvas de nivel', /^CURVA|MAESTRA|INDICE/,'#f97316', 0.22],
+        ['Cuadrícula y ejes', /CUADRIC|^EJES?\b|GRID|AXIS|REJILLA/, '#818cf8', 0],
+        ['Columnas', /^COLUMNAS?$/, '#22d3ee', 0.04],
+        ['Muros', /^MUROS?$/, '#2dd4bf', 0.08],
+        ['Carpintería', /PUERTA|VENTANA/, '#4ade80', 0.3],
+        ['Escalera', /ESCALERA/, '#e879f9', 0.3],
+        ['Mobiliario', /MOBILIARIO|EQUIPO|MUEBLE/, '#fbbf24', 0.42],
+        ['Armadura', /ARMAD|ACERO|ESTRIB|REFUER|VARILL|REBAR|STEEL/, '#ef4444', 0.18],
+        ['Concreto y suelo', /CONTORNO|CONCRET|SUELO|ASFALTO|APOYO|SOMBRA|LOSA|VIGA|ZAPATA|PERFIL|OUTLINE|TERRENO|ESTRUC/, '#a3e635', 0.02],
+        ['Cotas', /COTA|DIM|ACOT/, '#38bdf8', 0.4],
+        ['Rotulación', /TEXT|TXT|ETIQ|LABEL|NOTA|LEYENDA/, '#e2e8f0', 0.5]
+    ];
+    function rolDe(capa) {
+        var L = String(capa || '').toUpperCase();
+        for (var i = 0; i < ROLES.length; i++) if (ROLES[i][1].test(L)) return ROLES[i];
+        return ['Detalles', null, '#a78bfa', 0.15];
+    }
+    /* geometría de un nodo SVG en unidades del dibujo, para que el cursor recorra el trazo */
+    function geometria(n) {
+        var tag = n.tagName.toLowerCase(), g = { tipo: 'fade', pts: null, len: 0 };
+        var conTrazo = n.getAttribute('stroke') && n.getAttribute('stroke') !== 'none' && !n.hasAttribute('stroke-dasharray');
+        if ((tag === 'polyline' || tag === 'polygon') && conTrazo) {
+            var p = (n.getAttribute('points') || '').trim().split(/\s+/).map(function (s) { var a = s.split(','); return [+a[0], +a[1]]; }).filter(function (a) { return isFinite(a[0]) && isFinite(a[1]); });
+            if (tag === 'polygon' && p.length) p.push(p[0]);
+            var acc = [0]; for (var i = 1; i < p.length; i++) acc.push(acc[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]));
+            g = { tipo: 'linea', pts: p, acc: acc, len: acc[acc.length - 1] || 0 };
+        } else if (tag === 'circle' && conTrazo && (n.getAttribute('fill') === 'none' || !n.getAttribute('fill'))) {
+            var r = +n.getAttribute('r'); g = { tipo: 'linea', circ: [+n.getAttribute('cx'), +n.getAttribute('cy'), r], len: 2 * Math.PI * r };
+        } else if (tag === 'text') g.pt = [+n.getAttribute('x'), +n.getAttribute('y')];
+        else if (tag === 'circle') g.pt = [+n.getAttribute('cx'), +n.getAttribute('cy')];
+        else if (tag === 'polygon' || tag === 'polyline') { var q = (n.getAttribute('points') || '').trim().split(/\s+/)[0].split(','); g.pt = [+q[0], +q[1]]; }
+        g.fill = n.getAttribute('fill') && n.getAttribute('fill') !== 'none' ? (+n.getAttribute('fill-opacity') || 1) : 0;
+        return g;
+    }
+    function puntoEn(g, p) {
+        if (g.circ) { var a = p * 2 * Math.PI; return [g.circ[0] + g.circ[2] * Math.cos(a), g.circ[1] + g.circ[2] * Math.sin(a)]; }
+        if (g.pts) {
+            if (g.pts.length < 2) return g.pts[0] || [0, 0];
+            var d = p * g.len, i = 1; while (i < g.acc.length - 1 && g.acc[i] < d) i++;
+            var s = g.acc[i] - g.acc[i - 1] || 1, f = (d - g.acc[i - 1]) / s, A = g.pts[i - 1], B = g.pts[i];
+            return [A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f];
+        }
+        return g.pt || [0, 0];
+    }
+    /* vistas: [{ fig, svg, etiqueta }] · devuelve { iniciar, velocidad } */
+    function motorAgentes(ov, vistas, op) {
+        op = op || {};
+        var etq = ov.querySelector('.cxpl-etapa'), barra = ov.querySelector('.cxpl-cine-bar i'), leyenda = ov.querySelector('.cxpl-agentes');
+        var reducido = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var resumen = {}, agentes = [];
+        vistas.forEach(function (v, iv) {
+            v.idx = iv;
+            var span = Math.max(v.svg.viewBox.baseVal.width, v.svg.viewBox.baseVal.height) || 1, porRol = {};
+            [].slice.call(v.svg.querySelectorAll('.cxpl-e')).forEach(function (n) {
+                var rol = rolDe(n.getAttribute('data-l')), k = rol[0];
+                if (!porRol[k]) { porRol[k] = { rol: rol, nodos: [] }; }
+                var g = geometria(n);
+                g.peso = g.tipo === 'linea' ? 0.25 + Math.min(3, g.len / span * 7) : (n.tagName.toLowerCase() === 'text' ? 0.3 : 0.07);
+                porRol[k].nodos.push({ n: n, g: g });
+            });
+            Object.keys(porRol).forEach(function (k) {
+                var a = porRol[k], acc = [0];
+                a.nodos.forEach(function (x, i) { acc.push(acc[i] + x.g.peso); });
+                var cur = el('span', 'cxpl-cur', '<i></i><b>' + esc(k) + '</b>');
+                cur.style.setProperty('--c', a.rol[2]); v.fig.appendChild(cur);
+                agentes.push({ nombre: k, color: a.rol[2], inicio: a.rol[3], nodos: a.nodos, acc: acc, total: acc[acc.length - 1], i: 0, cur: cur, v: v });
+                if (!resumen[k]) resumen[k] = { color: a.rol[2], hechos: 0, total: 0 };
+                resumen[k].total += acc[acc.length - 1];
+            });
+        });
+        /* cada agente termina según su carga: los de poco trabajo (marco, cotas) acaban antes y no se arrastran */
+        var maxT = agentes.reduce(function (m, a) { return Math.max(m, a.total); }, 0) || 1;
+        agentes.forEach(function (a) { a.fin = Math.min(1, a.inicio + (1 - a.inicio) * Math.min(1, 0.35 + 0.65 * Math.sqrt(a.total / maxT))); });
+        /* leyenda de agentes con su avance */
+        var nombres = Object.keys(resumen);
+        if (leyenda) leyenda.innerHTML = nombres.map(function (k) { return '<span style="--c:' + resumen[k].color + '"><i></i>' + esc(k) + ' <b data-ag="' + esc(k) + '">0%</b></span>'; }).join('');
+        var DUR = op.dur || 16000, vel = 1, t0 = 0, raf = 0, tmr = 0, ultimaLeyenda = 0;
+        function poner(x, p) {
+            var s = x.n.style;
+            if (x.g.tipo === 'linea') { s.strokeDashoffset = String(1 - p); if (x.g.fill) s.fillOpacity = String(x.g.fill * p); }
+            else s.opacity = String(p);
+        }
+        function preparar() {
+            agentes.forEach(function (a) {
+                a.i = 0; a.cur.style.opacity = 0;
+                a.nodos.forEach(function (x) {
+                    var s = x.n.style;
+                    if (x.g.tipo === 'linea') { s.opacity = '1'; s.strokeDasharray = '1'; s.strokeDashoffset = '1'; if (x.g.fill) s.fillOpacity = '0'; }
+                    else s.opacity = '0';
+                });
+            });
+        }
+        function acabar() {
+            agentes.forEach(function (a) { a.nodos.forEach(function (x) { poner(x, 1); if (x.g.tipo === 'linea') x.n.style.strokeDasharray = ''; }); a.cur.style.opacity = 0; a.i = a.nodos.length; });
+            if (leyenda) leyenda.querySelectorAll('[data-ag]').forEach(function (b) { b.textContent = '✓'; });
+            etq.textContent = 'Plano terminado'; barra.style.width = '100%';
+        }
+        function cuadro() {
+            raf = 0; tmr = 0;
+            var t = Math.min(1, (performance.now() - t0) * vel / DUR);
+            barra.style.width = (t * 100).toFixed(2) + '%';
+            var activos = 0, ctm = {};
+            agentes.forEach(function (a) {
+                var local = Math.max(0, Math.min(1, (t - a.inicio) / ((a.fin - a.inicio) || 1))), W = local * a.total;
+                a.w = W;
+                while (a.i < a.nodos.length && a.acc[a.i + 1] <= W) { var x0 = a.nodos[a.i]; poner(x0, 1); if (x0.g.tipo === 'linea') x0.n.style.strokeDasharray = ''; a.i++; }
+                var x = a.nodos[a.i];
+                if (x && local > 0 && local < 1) {
+                    var p = Math.max(0, Math.min(1, (W - a.acc[a.i]) / (x.g.peso || 1)));
+                    poner(x, p); activos++;
+                    try {
+                        var v = a.v, M = ctm[v.idx] || (ctm[v.idx] ={ m: v.svg.getScreenCTM(), r: v.fig.getBoundingClientRect() });
+                        var pt = v.svg.createSVGPoint(), q = puntoEn(x.g, p); pt.x = q[0]; pt.y = q[1]; pt = pt.matrixTransform(M.m);
+                        a.cur.style.transform = 'translate(' + (pt.x - M.r.left).toFixed(1) + 'px,' + (pt.y - M.r.top).toFixed(1) + 'px)'; a.cur.style.opacity = 1;
+                    } catch (e) { }
+                } else a.cur.style.opacity = 0;
+            });
+            var ahora = performance.now();
+            if (leyenda && ahora - ultimaLeyenda > 180) {
+                ultimaLeyenda = ahora;
+                var hechos = {}; agentes.forEach(function (a) { hechos[a.nombre] = (hechos[a.nombre] || 0) + (a.i >= a.nodos.length ? a.total : Math.min(a.w || 0, a.total)); });
+                nombres.forEach(function (k) { var b = leyenda.querySelector('[data-ag="' + k.replace(/"/g, '') + '"]'); if (b) { var pc = Math.round(100 * hechos[k] / (resumen[k].total || 1)); b.textContent = pc >= 100 ? '✓' : pc + '%'; } });
+                etq.textContent = activos ? activos + ' agente' + (activos === 1 ? '' : 's') + ' dibujando' : 'Preparando…';
+            }
+            if (t >= 1) { acabar(); return; }
+            programar();
+        }
+        function programar() { if (doc.hidden || !global.requestAnimationFrame) tmr = setTimeout(cuadro, 33); else raf = requestAnimationFrame(cuadro); }
+        function iniciar() {
+            if (raf) cancelAnimationFrame(raf); clearTimeout(tmr);
+            preparar(); t0 = performance.now();
+            if (reducido) { acabar(); etq.textContent = 'Plano terminado (animación reducida)'; return; }
+            programar();
+        }
+        function detener() { if (raf) cancelAnimationFrame(raf); clearTimeout(tmr); }
+        return {
+            iniciar: iniciar, detener: detener,
+            velocidad: function () { var t = (performance.now() - t0) * vel; vel = vel === 1 ? 2 : vel === 2 ? 4 : 1; t0 = performance.now() - t / vel; return vel; }
+        };
+    }
     var CURSOR = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#a855f7', '#06b6d4', '#ec4899', '#84cc16'];
     function cine(Pl) {
         var reducido = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -813,58 +961,29 @@
             '<span class="cxpl-etapa">Preparando…</span><div class="cxpl-cine-acts">' +
             '<button type="button" data-c="vel" title="Velocidad">1×</button><button type="button" data-c="rep" title="Repetir">↺ Repetir</button>' +
             '<button type="button" data-c="dxf">⬇ DXF</button><button type="button" data-c="pdf">⬇ PDF</button><button type="button" data-c="x" aria-label="Cerrar">✕</button></div></div>' +
-            '<div class="cxpl-cine-bar"><i></i></div><div class="cxpl-cine-g" style="--n:' + Math.min(Pl.n, 4) + '"></div>';
+            '<div class="cxpl-cine-bar"><i></i></div><div class="cxpl-agentes" aria-live="off"></div><div class="cxpl-cine-g" style="--n:' + Math.min(Pl.n, 4) + '"></div>';
         doc.body.appendChild(ov);
-        var grid = ov.querySelector('.cxpl-cine-g'), etq = ov.querySelector('.cxpl-etapa'), barra = ov.querySelector('.cxpl-cine-bar i');
+        var grid = ov.querySelector('.cxpl-cine-g');
         var vistas = Pl.pisos.map(function (pi, i) {
             var ents = dibujarPiso(Pl, pi, 0);
-            var fig = el('figure', 'cxpl-cine-f', '<figcaption style="--c:' + CURSOR[i % CURSOR.length] + '">' + (NOMBRE_PISO[pi.n] || pi.n + '.º') + ' PISO</figcaption>' + svgPiso(ents, false, true) + '<span class="cxpl-cur" style="--c:' + CURSOR[i % CURSOR.length] + '"><i></i><b>' + ordinal(pi.n) + '</b></span>');
+            var fig = el('figure', 'cxpl-cine-f', '<figcaption style="--c:' + CURSOR[i % CURSOR.length] + '">' + (NOMBRE_PISO[pi.n] || pi.n + '.º') + ' PISO</figcaption>' + svgPiso(ents, false, true));
             grid.appendChild(fig);
-            var nodos = [].slice.call(fig.querySelectorAll('.cxpl-e')).sort(function (a, b) { return (+a.getAttribute('data-e') - +b.getAttribute('data-e')) || (+a.getAttribute('data-k') - +b.getAttribute('data-k')); });
-            return { fig: fig, svg: fig.querySelector('svg'), nodos: nodos, cur: fig.querySelector('.cxpl-cur') };
+            return { fig: fig, svg: fig.querySelector('svg'), etiqueta: ordinal(pi.n) };
         });
-        var vel = 1, t0 = 0, pausa = false, fin = false, timer = null;
-        var DUR = 16000; /* duración total a velocidad 1× */
-        function ocultar() { vistas.forEach(function (v) { v.nodos.forEach(function (n) { n.classList.remove('on'); }); v.cur.style.opacity = 0; }); }
-        function mostrarTodo() { vistas.forEach(function (v) { v.nodos.forEach(function (n) { n.classList.add('on'); }); v.cur.style.opacity = 0; }); etq.textContent = 'Plano terminado'; barra.style.width = '100%'; fin = true; }
-        function paso() {
-            if (pausa) return;
-            var t = (Date.now() - t0) * vel, frac = Math.min(1, t / DUR);
-            barra.style.width = (frac * 100).toFixed(1) + '%';
-            var etapaMax = 0;
-            vistas.forEach(function (v) {
-                var k = Math.floor(frac * v.nodos.length), ult = null;
-                for (var i = 0; i < k; i++) { if (!v.nodos[i].classList.contains('on')) { v.nodos[i].classList.add('on'); ult = v.nodos[i]; } }
-                if (k > 0) etapaMax = Math.max(etapaMax, +v.nodos[Math.min(k, v.nodos.length) - 1].getAttribute('data-e'));
-                var n = ult || v.nodos[Math.max(0, k - 1)];
-                if (n && frac < 1) {
-                    try {
-                        var bb = n.getBBox(), m = n.getCTM && n.ownerSVGElement ? n.ownerSVGElement.getBoundingClientRect() : null, vb = v.svg.viewBox.baseVal;
-                        if (m && vb && vb.width) {
-                            var sx = m.width / vb.width, sy = m.height / vb.height, fr = v.fig.getBoundingClientRect();
-                            v.cur.style.left = (m.left - fr.left + (bb.x + bb.width) * sx) + 'px'; v.cur.style.top = (m.top - fr.top + (bb.y + bb.height) * sy) + 'px'; v.cur.style.opacity = 1;
-                        }
-                    } catch (e) { }
-                }
-            });
-            etq.textContent = 'Dibujando: ' + NOMBRES_ETAPA[etapaMax];
-            if (frac >= 1) { mostrarTodo(); return; }
-            timer = setTimeout(paso, 40);
-        }
-        function iniciar() { clearTimeout(timer); fin = false; ocultar(); t0 = Date.now(); if (reducido) { mostrarTodo(); etq.textContent = 'Plano terminado (animación reducida)'; return; } paso(); }
-        function cerrar() { clearTimeout(timer); ov.remove(); doc.removeEventListener('keydown', tecla); }
+        var motor = motorAgentes(ov, vistas, { dur: 15000 + 1500 * Math.min(Pl.n, 4) });
+        function cerrar() { motor.detener(); ov.remove(); doc.removeEventListener('keydown', tecla); }
         function tecla(e) { if (e.key === 'Escape') cerrar(); }
         doc.addEventListener('keydown', tecla);
         ov.addEventListener('click', function (e) {
             var b = e.target.closest('[data-c]'); if (!b) return;
             var c = b.getAttribute('data-c');
             if (c === 'x') cerrar();
-            else if (c === 'rep') iniciar();
-            else if (c === 'vel') { var t = (Date.now() - t0) * vel; vel = vel === 1 ? 2 : vel === 2 ? 4 : 1; t0 = Date.now() - t / vel; b.textContent = vel + '×'; }
+            else if (c === 'rep') motor.iniciar();
+            else if (c === 'vel') b.textContent = motor.velocidad() + '×';
             else accion(c, b);
         });
-        setTimeout(iniciar, 350);
-        historial('Dibújalo', 'Dibujé las ' + Pl.n + ' plantas en modo cine (ejes, columnas, muros, puertas y ventanas, escalera, mobiliario, textos y cotas).');
+        setTimeout(motor.iniciar, 350);
+        historial('Dibújalo', 'Dibujé las ' + Pl.n + ' plantas en modo cine con varios agentes a la vez (estructura, muros, carpintería, escalera, mobiliario, cotas y rótulos).');
         return true;
     }
 
@@ -1034,7 +1153,10 @@
         orden.forEach(function (o, k) {
             /* grosor en unidades del dibujo (no «non-scaling-stroke»: rompe el trazo animado con pathLength) */
             var sw = span * (o.s === 0 ? 0.0024 : o.s === 1 || o.s === 6 ? 0.0019 : o.s === 4 ? 0.0042 : 0.0031);
-            var e = o.e, c = colorDe(model, e, oscuro), at = ' data-k="' + k + '" data-e="' + o.s + '" class="cxpl-e"', st = ' stroke="' + c + '" stroke-width="' + sw.toFixed(5) + '" pathLength="1"';
+            /* capa → agente que lo dibuja (un texto suelto en una capa de geometría lo rotula el agente de rótulos) */
+            var capa = String(o.e.layer || '');
+            if (o.e.t === 'text' && !/COTA|DIM|TEXT|TXT|MARCO|CAJETIN|ROTULO|PUNTO|LEYENDA|NOTA/i.test(capa)) capa = 'TEXTO';
+            var e = o.e, c = colorDe(model, e, oscuro), at = ' data-k="' + k + '" data-e="' + o.s + '" data-l="' + esc(capa) + '" class="cxpl-e"', st = ' stroke="' + c + '" stroke-width="' + sw.toFixed(5) + '" pathLength="1"';
             if (e.t === 'poly' && e.pts && e.pts.length) {
                 var pts = e.pts.map(function (p) { return X(p[0]) + ',' + Y(p[1]); }).join(' ');
                 var fill = e.fill ? ' fill="' + (e.fillRgb ? 'rgb(' + e.fillRgb.join(',') + ')' : c) + '" fill-opacity="' + (e.alpha != null ? e.alpha : 0.18) + '"' : ' fill="none"';
@@ -1073,45 +1195,26 @@
             '<span class="cxpl-etapa">Preparando…</span><div class="cxpl-cine-acts">' +
             '<button type="button" data-c="vel" title="Velocidad">1×</button><button type="button" data-c="rep" title="Repetir">↺ Repetir</button>' +
             '<button type="button" data-c="dxf">⬇ DXF</button><button type="button" data-c="pdf">⬇ PDF</button><button type="button" data-c="x" aria-label="Cerrar">✕</button></div></div>' +
-            '<div class="cxpl-cine-bar"><i></i></div><div class="cxpl-cine-g cxpl-cine-uno" style="--n:1"></div>';
+            '<div class="cxpl-cine-bar"><i></i></div><div class="cxpl-agentes" aria-live="off"></div><div class="cxpl-cine-g cxpl-cine-uno" style="--n:1"></div>';
         doc.body.appendChild(ov);
-        var grid = ov.querySelector('.cxpl-cine-g'), etq = ov.querySelector('.cxpl-etapa'), barra = ov.querySelector('.cxpl-cine-bar i');
-        var fig = el('figure', 'cxpl-cine-f', svgModelo(model, oscuro) + '<span class="cxpl-cur" style="--c:#3b82f6"><i></i><b>Civix</b></span>');
+        var grid = ov.querySelector('.cxpl-cine-g');
+        var fig = el('figure', 'cxpl-cine-f', svgModelo(model, oscuro));
         grid.appendChild(fig);
-        var svg = fig.querySelector('svg'), nodos = [].slice.call(fig.querySelectorAll('.cxpl-e')), cur = fig.querySelector('.cxpl-cur');
-        var DUR = Math.max(9000, Math.min(22000, 6000 + nodos.length * 12)), vel = 1, t0 = 0, timer = null;
-        function ocultar() { nodos.forEach(function (n) { n.classList.remove('on'); }); cur.style.opacity = 0; }
-        function terminar() { nodos.forEach(function (n) { n.classList.add('on'); }); cur.style.opacity = 0; etq.textContent = 'Plano terminado'; barra.style.width = '100%'; }
-        function paso() {
-            var frac = Math.min(1, (Date.now() - t0) * vel / DUR), k = Math.floor(frac * nodos.length), ult = null;
-            barra.style.width = (frac * 100).toFixed(1) + '%';
-            for (var i = 0; i < k; i++) if (!nodos[i].classList.contains('on')) { nodos[i].classList.add('on'); ult = nodos[i]; }
-            var n = ult || nodos[Math.max(0, k - 1)];
-            if (n) {
-                etq.textContent = 'Dibujando: ' + ETAPAS_G[+n.getAttribute('data-e')];
-                try {
-                    var bb = n.getBBox(), m = svg.getBoundingClientRect(), vb = svg.viewBox.baseVal, fr = fig.getBoundingClientRect();
-                    var s = Math.min(m.width / vb.width, m.height / vb.height), ox = m.left + (m.width - vb.width * s) / 2, oy = m.top + (m.height - vb.height * s) / 2;
-                    cur.style.left = (ox - fr.left + (bb.x + bb.width) * s) + 'px'; cur.style.top = (oy - fr.top + (bb.y + bb.height) * s) + 'px'; cur.style.opacity = 1;
-                } catch (e) { }
-            }
-            if (frac >= 1) { terminar(); return; }
-            timer = setTimeout(paso, 40);
-        }
-        function iniciar() { clearTimeout(timer); ocultar(); t0 = Date.now(); if (reducido) { terminar(); etq.textContent = 'Plano terminado (animación reducida)'; return; } paso(); }
-        function cerrar() { clearTimeout(timer); ov.remove(); doc.removeEventListener('keydown', tecla); }
+        var nN = fig.querySelectorAll('.cxpl-e').length;
+        var motor = motorAgentes(ov, [{ fig: fig, svg: fig.querySelector('svg'), etiqueta: '' }], { dur: Math.max(11000, Math.min(20000, 8000 + nN * 6)) });
+        function cerrar() { motor.detener(); ov.remove(); doc.removeEventListener('keydown', tecla); }
         function tecla(e) { if (e.key === 'Escape') cerrar(); }
         doc.addEventListener('keydown', tecla);
         ov.addEventListener('click', function (e) {
             var b = e.target.closest('[data-c]'); if (!b) return;
             var c = b.getAttribute('data-c'), arch = (o.name || 'plano_civix');
             if (c === 'x') cerrar();
-            else if (c === 'rep') iniciar();
-            else if (c === 'vel') { var t = (Date.now() - t0) * vel; vel = vel === 1 ? 2 : vel === 2 ? 4 : 1; t0 = Date.now() - t / vel; b.textContent = vel + '×'; }
+            else if (c === 'rep') motor.iniciar();
+            else if (c === 'vel') b.textContent = motor.velocidad() + '×';
             else if (c === 'dxf') CAD.download(arch + '.dxf', new Blob([CAD.writeDXF(model)], { type: 'application/dxf' }));
             else if (c === 'pdf' && CAD.exportRaster) CAD.exportRaster(model, 'pdf', arch);
         });
-        setTimeout(iniciar, 350);
+        setTimeout(motor.iniciar, 350);
         return true;
     }
     CAD.cine = cineModelo;
