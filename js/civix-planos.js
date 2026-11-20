@@ -364,8 +364,19 @@
        baños en la misma posición en todos los pisos (punto fijo e instalaciones alineadas); el resto de
        espacios se reparte por área entre las dos crujías. */
     function planGen(P) {
-        var W = P.W, L = P.L, warns = [], cw = W >= 9 ? 1.6 : 1.3;
-        var a = Math.max(3, (W - cw) * 0.52), b = W - cw - a;
+        var W = P.W, L = P.L, warns = [];
+        /* lotes anchos: varias franjas «crujía | corredor | crujía» para que los recintos tengan proporciones reales
+           (no tiras de 14 m de fondo) y todos abran a un corredor */
+        var m = W >= 20 ? Math.max(2, Math.min(4, Math.round(W / 15))) : 1, Wb = W / m;
+        var cw = Wb >= 9 ? (W >= 20 ? 2.0 : 1.6) : 1.3;
+        var a = Math.max(3, (Wb - cw) * 0.52), b = Wb - cw - a;
+        var CRU = [], CORR = [], ejesX = [];
+        for (var kb = 0; kb < m; kb++) {
+            var xb0 = kb * Wb;
+            CRU.push({ x: xb0, w: a, lado: 'der' }, { x: xb0 + a + cw, w: b, lado: 'izq' });
+            CORR.push(xb0 + a); ejesX.push(xb0, xb0 + a, xb0 + a + cw);
+        }
+        ejesX.push(W);
         var conEsc = P.n > 1 || P.pisos.some(function (p) { return p.escalera; });
         var ESC_H = 3.6, BAN_H = Math.max(2.6, 13 / b);
         var hayBanos = function (p) { return p.gen.some(function (e) { return e.tipo === 'banos'; }); };
@@ -377,28 +388,40 @@
         for (var f = 1; f <= P.n; f++) {
             var p = P.pisos[f], izq = [], der = [], sI = 0, sD = fijo;
             var items = [];
+            if (p.esquema === 'abierto') {
+                /* gran espacio (nave, bodega, cancha, templo…) atrás y una franja de espacios menores al frente,
+                   con vestíbulo de acceso, escalera y baños */
+                var todos = [];
+                p.gen.forEach(function (e) { for (var k = 1; k <= e.n; k++) todos.push({ nombre: e.n > 1 ? e.nombre + ' ' + k : e.nombre, area: e.area, tipo: e.tipo, principal: e.principal, fondo: e.fondo }); });
+                var big = todos.filter(function (e) { return e.principal; })[0] || todos.slice().sort(function (x, y) { return y.area - x.area; })[0];
+                var fondo = todos.filter(function (e) { return e !== big && e.fondo; });
+                var banda = todos.filter(function (e) { return e !== big && !e.fondo; });
+                var fk = fondo.length ? Math.max(3.4, Math.min(8, fondo.reduce(function (s, e) { return s + e.area; }, 0) / W)) : 0;
+                if (f === 1) banda.splice(Math.floor(banda.length / 2), 0, { nombre: 'VESTÍBULO', area: 0, tipo: 'recepcion', acceso: true });
+                if (conEsc) banda.push({ nombre: 'ESCALERA', area: 0, tipo: 'escalera' });
+                var areaB = banda.reduce(function (s, e) { return s + e.area; }, 0);
+                var fb = banda.length ? Math.max(3.4, Math.min(7, (areaB + 9 * banda.filter(function (e) { return !e.area; }).length) / W)) : 0;
+                var bigD = big ? Math.max(6, big.area / W) : 0;
+                cols[f] = { abierto: true, big: big, banda: banda, fb: fb, fondo: fondo, fk: fk };
+                maxD = Math.max(maxD, fb + bigD + fk);
+                continue;
+            }
             p.gen.forEach(function (e) {
                 if (e.tipo === 'banos') return;
                 for (var k = 1; k <= e.n; k++) items.push({ nombre: e.n > 1 ? e.nombre + ' ' + k : e.nombre, area: e.area, tipo: e.tipo });
             });
             var rec = items.filter(function (e) { return e.tipo === 'recepcion'; }), ter = items.filter(function (e) { return e.tipo === 'terraza'; });
             items = items.filter(function (e) { return e.tipo !== 'recepcion' && e.tipo !== 'terraza'; }).sort(function (x, y) { return y.area - x.area; });
-            rec.forEach(function (e) { e.h = Math.max(2.6, e.area / a); izq.push(e); sI += e.h; });
+            /* cada espacio va a la crujía que quede menos profunda (la recepción, al frente de la primera) */
+            var listas = CRU.map(function () { return []; }), sums = CRU.map(function (c_, i) { return i === 1 ? fijo : 0; });
+            rec.forEach(function (e) { e.h = Math.max(2.6, e.area / CRU[0].w); listas[0].push(e); sums[0] += e.h; });
             items.concat(ter).forEach(function (e) {
-                var hI = Math.max(2.6, e.area / a), hD = Math.max(2.6, e.area / b);
-                if (sI + hI <= sD + hD) { e.h = hI; izq.push(e); sI += hI; } else { e.h = hD; der.push(e); sD += hD; }
+                var mejor = 0, val = Infinity;
+                CRU.forEach(function (c_, i) { var h_ = Math.max(2.6, e.area / c_.w), v_ = sums[i] + h_; if (v_ < val - 1e-6) { val = v_; mejor = i; } });
+                e.h = Math.max(2.6, e.area / CRU[mejor].w); listas[mejor].push(e); sums[mejor] += e.h;
             });
-            /* reequilibrio: si una crujía no cabe en el fondo y la otra tiene espacio, se mueve el espacio que mejor encaje */
-            for (var it = 0; it < 6 && Math.max(sI, sD) > L; it++) {
-                var deIzq = sI > sD, origen = deIzq ? izq : der, wO = deIzq ? a : b, wD = deIzq ? b : a, libre = L - (deIzq ? sD : sI);
-                var cand = origen.filter(function (e) { return e.tipo !== 'recepcion' && Math.max(2.6, e.area / wD) <= libre; }).sort(function (x, y) { return y.area - x.area; })[0];
-                if (!cand) break;
-                origen.splice(origen.indexOf(cand), 1);
-                var hN = Math.max(2.6, cand.area / wD);
-                if (deIzq) { sI -= cand.h; cand.h = hN; der.push(cand); sD += hN; } else { sD -= cand.h; cand.h = hN; izq.push(cand); sI += hN; }
-            }
-            cols[f] = { izq: izq, der: der, sI: sI, sD: sD, banos: hayBanos(p) };
-            maxD = Math.max(maxD, sI, sD);
+            cols[f] = { listas: listas, sums: sums, banos: hayBanos(p) };
+            maxD = Math.max.apply(null, [maxD].concat(sums));
         }
         var D = maxD;
         if (D > L) {
@@ -410,17 +433,44 @@
         var pisos = [];
         for (f = 1; f <= P.n; f++) {
             var c = cols[f], R = [];
-            R.push(rm('CIRCULACIÓN', a, 0, cw, D, 'pasillo'));
-            /* crujía derecha: punto fijo arriba (frente) y luego espacios */
-            var y = 0;
-            if (conEsc) { R.push(rm('ESCALERA', a + cw, y, b, ESC_H, 'escalera')); y += ESC_H; }
-            if (algunBano) { R.push(rm(c.banos ? 'BAÑOS' : 'DEPÓSITO', a + cw, y, b, BAN_H, c.banos ? 'banos' : 'deposito2')); y += BAN_H; }
-            llenar(c.der, a + cw, b, y, D - y, R);
-            llenar(c.izq, 0, a, 0, D, R);
+            if (c.abierto) {
+                var fb_ = Math.min(c.fb, D * 0.45), fijos = c.banda.filter(function (e) { return !e.area; }).length;
+                var anchoFijo = Math.min(W * 0.4, fijos * 2.8), resto = W - anchoFijo, aT = c.banda.reduce(function (s, e) { return s + e.area; }, 0) || 1, xb = 0;
+                c.banda.forEach(function (e, i) {
+                    var w = e.area ? resto * e.area / aT : anchoFijo / fijos;
+                    if (i === c.banda.length - 1) w = W - xb;
+                    var r = rm(e.nombre, xb, 0, w, fb_, e.tipo); r.banda = true; r.acceso = !!e.acceso; R.push(r); xb += w;
+                });
+                var fk_ = Math.min(c.fk, D * 0.3);
+                if (c.big) { var rb = rm(c.big.nombre, 0, fb_, W, D - fb_ - fk_, c.big.tipo); rb.nave = true; R.push(rb); }
+                /* espacios detrás del gran espacio (presbiterio, escenario…): franja posterior, abiertos hacia la nave */
+                if (c.fondo.length) {
+                    var aF = c.fondo.reduce(function (s, e) { return s + e.area; }, 0) || 1, xf = 0;
+                    c.fondo.forEach(function (e, i) { var w = i === c.fondo.length - 1 ? W - xf : W * e.area / aF; var r = rm(e.nombre, xf, D - fk_, w, fk_, e.tipo); r.fondo = true; R.push(r); xf += w; });
+                }
+                if (f === 1 && L - D >= 1) R.push(rm('ZONA VERDE / RETIRO', 0, D, W, L - D, 'patio'));
+                pisos.push({ n: f, rooms: R, p: P.pisos[f] });
+                continue;
+            }
+            CORR.forEach(function (xc) { R.push(rm('CIRCULACIÓN', xc, 0, cw, D, 'pasillo')); });
+            CRU.forEach(function (cr, i) {
+                /* la segunda crujía lleva el punto fijo (escalera + baños) al frente, igual en todos los pisos */
+                var y = 0;
+                if (i === 1) {
+                    if (conEsc) { R.push(rm('ESCALERA', cr.x, y, cr.w, ESC_H, 'escalera')); y += ESC_H; }
+                    if (algunBano) { var rbn = rm(c.banos ? 'BAÑOS' : 'DEPÓSITO', cr.x, y, cr.w, BAN_H, c.banos ? 'banos' : 'deposito2'); rbn.lado = cr.lado; R.push(rbn); y += BAN_H; }
+                }
+                llenar(c.listas[i], cr.x, cr.w, y, D - y, R, cr.lado);
+            });
             if (f === 1 && L - D >= 1) R.push(rm('ZONA VERDE / RETIRO', 0, D, W, L - D, 'patio'));
             pisos.push({ n: f, rooms: R, p: P.pisos[f] });
         }
-        function llenar(lista, x, w, y0, H, R) {
+        function llenar(lista, x, w, y0, H, R, lado) {
+            var n0 = R.length;
+            llenar0(lista, x, w, y0, H, R);
+            for (var i = n0; i < R.length; i++) R[i].lado = lado;
+        }
+        function llenar0(lista, x, w, y0, H, R) {
             if (!lista.length) { if (H > 0.5) R.push(rm('ÁREA LIBRE', x, y0, w, H, 'libre')); return; }
             var tot = lista.reduce(function (s, e) { return s + e.h; }, 0), k = Math.min(H / tot, 1.3), yy = y0;
             var hs = lista.map(function (e) { return e.h * k; });
@@ -433,7 +483,7 @@
             if (y0 + H - yy > 0.5) R.push(rm('ÁREA LIBRE', x, yy, w, y0 + H - yy, 'libre'));
             else if (R.length) R[R.length - 1].h += y0 + H - yy;
         }
-        return { W: W, L: L, D: D, patio: L - D, a: a, b: b, cw: cw, wl: a, ws: b, hA: 0, hB: 0, pisos: pisos, warns: warns, n: P.n, generico: true, escala: P.escala };
+        return { W: W, L: L, D: D, patio: L - D, a: a, b: b, cw: cw, wl: a, ws: b, hA: 0, hB: 0, pisos: pisos, warns: warns, n: P.n, generico: true, escala: P.escala, ejesX: ejesX };
     }
 
     function plan(P) {
@@ -667,7 +717,9 @@
         var ex, ey, y;
         if (Pl.generico) {
             /* ejes en los bordes del corredor; luces de máximo ~5.5 m a lo largo del fondo */
-            ex = [0, Pl.a, Pl.a + Pl.cw, W];
+            ex = Pl.ejesX ? Pl.ejesX.slice() : [0, Pl.a, Pl.a + Pl.cw, W];
+            /* planta abierta (nave, bodega, templo): luz libre (cubierta en cercha) hasta 20 m; si es más ancha, ejes a ≤ 20 m */
+            if (pi.rooms.some(function (r) { return r.nave; })) { var nv_ = Math.max(1, Math.ceil(W / 20)); ex = []; for (var ix_ = 0; ix_ <= nv_; ix_++) ex.push(W * ix_ / nv_); }
             var nv = Math.max(2, Math.ceil(Pl.D / 5.5)); ey = [];
             for (var iy = 0; iy <= nv; iy++) ey.push(Pl.D * iy / nv);
         } else {
@@ -718,6 +770,23 @@
         }
         pi.rooms.forEach(function (r) {
             var dw = r.tipo === 'bano' ? 0.75 : 0.9;
+            /* planta abierta: el vestíbulo tiene acceso doble por el frente; la franja del frente abre hacia la nave */
+            if (r.banda) {
+                if (r.tipo === 'escalera') return;
+                if (r.acceso) { var aw2 = Math.min(1.0, (r.w - 0.3) / 2); puerta(r.x + 0.15, 0.12, aw2, 'up'); puerta(r.x + r.w - 0.15 - aw2, 0.12, aw2, 'up'); txt('TEXTO', r.x + r.w / 2, -0.3, 0.13, 'ACCESO'); }
+                var dwb = Math.min(r.acceso ? 1.2 : 0.9, r.w - 0.4);
+                if (dwb > 0.5) puerta(r.x + (r.w - dwb) / 2, r.y + r.h - 0.12, dwb, 'down');
+                return;
+            }
+            if (r.nave) return;
+            if (r.fondo) { var dwf = Math.min(1.2, r.w - 0.4); if (dwf > 0.5) puerta(r.x + (r.w - dwf) / 2, r.y + 0.12, dwf, 'up'); return; }
+            /* edificaciones diseñadas por programa (corredor central): todo recinto abre hacia el corredor */
+            if (Pl.generico && r.tipo !== 'pasillo' && !ABIERTO.test(r.tipo) && !/^(escalera|ascensor|libre)$/.test(r.tipo)) {
+                var izG = r.lado ? r.lado === 'der' : r.x < Pl.a - 0.01; r._puertaDer = izG;   /* puerta en el muro que da al corredor */
+                if (r.tipo === 'banos') dw = 0.9; else if (r.h > 6) dw = 1.0;
+                if (izG) puerta(r.x + r.w - 0.12, r.y + 0.2, dw, 'left'); else puerta(r.x + 0.12, r.y + 0.2 + dw, dw, 'right');
+                return;
+            }
             /* ambientes de la zona de cuartos (incluye los pedidos adicionales): puerta hacia el pasillo central */
             if (r.zona && r.tipo !== 'closet' && r.tipo !== 'ascensor') {
                 var iz = r.x < Pl.a - 0.01; r._puertaDer = iz;
@@ -998,6 +1067,27 @@
                 }
                 break;
             }
+            case 'bodega': {                                                          /* racks en filas con pasillos de 1.60 m */
+                var largo = h - 2.0, vert = h >= w;
+                if (!vert) largo = w - 2.0;
+                var filas_ = 0;
+                for (var rp = (vert ? x : y) + 1.0; rp + 1.0 < (vert ? x + w : y + h) - 0.6 && filas_ < 18; rp += 2.6, filas_++) {
+                    if (vert) { G.rect(rp, y + 1.0, 1.0, largo, F('madera', 0.14)); for (var bq = y + 1.0 + 2.7; bq < y + h - 1.0; bq += 2.7) G.ln(rp, bq, rp + 1.0, bq, Dl('madera', 0.008)); G.ln(rp + 0.5, y + 1.0, rp + 0.5, y + 1.0 + largo, Dl('madera', 0.005)); }
+                    else { G.rect(x + 1.0, rp, largo, 1.0, F('madera', 0.14)); for (var bq2 = x + 1.0 + 2.7; bq2 < x + w - 1.0; bq2 += 2.7) G.ln(bq2, rp, bq2, rp + 1.0, Dl('madera', 0.008)); G.ln(x + 1.0, rp + 0.5, x + 1.0 + largo, rp + 0.5, Dl('madera', 0.005)); }
+                }
+                break;
+            }
+            case 'cancha': {                                                          /* cancha múltiple con líneas reglamentarias simplificadas */
+                var lc = Math.min(Math.max(w, h) - 2, 28), ac = Math.min(Math.min(w, h) - 2, 15), C_ = lapiz(pl, cx, cy, h >= w ? 1 : 0);
+                if (lc < 6 || ac < 4) break;
+                C_.rect(-lc / 2, -ac / 2, lc, ac, F('verde', 0.1)); C_.ln(0, -ac / 2, 0, ac / 2, Dl('cama', 0.02));
+                C_.circ(0, 0, Math.min(1.8, ac * 0.15), Dl('cama', 0.02));
+                [-1, 1].forEach(function (sg) {
+                    C_.rect(sg > 0 ? lc / 2 - Math.min(5.8, lc * 0.2) : -lc / 2, -Math.min(2.45, ac * 0.18), Math.min(5.8, lc * 0.2), 2 * Math.min(2.45, ac * 0.18), Dl('cama', 0.02));
+                    C_.arc(sg * (lc / 2 - 1.575), 0, Math.min(6.75, ac * 0.45), sg > 0 ? Math.PI / 2 : -Math.PI / 2, sg > 0 ? Math.PI * 1.5 : Math.PI / 2, Dl('cama', 0.015));
+                });
+                break;
+            }
             case 'jacuzzi': {
                 var jr = Math.max(0.6, Math.min(1.1, Math.min(w, h) / 2 - 0.35)), J = lapiz(pl, cx, cy, 0);
                 J.rr(-jr - 0.15, -jr - 0.15, 2 * jr + 0.3, 2 * jr + 0.3, 0.3, F('madera', 0.25));
@@ -1176,6 +1266,16 @@
             }
             case 'deposito2': SIM.estanteria(lapiz(pl, x + 0.15, cy, 3), h - 0.4, 0.45); if (w > 2) SIM.estanteria(lapiz(pl, x + w - 0.15, cy, 1), h - 0.4, 0.45); break;
             case 'auditorio': {
+                if (/NAVE|TEMPLO|IGLESIA|CAPILLA|PARROQUIA/.test(r.nombre)) {                     /* bancas en dos bloques con pasillo central */
+                    var pas = Math.min(2.0, w * 0.14), lB = Math.min(4.5, (w - pas) / 2 - 0.9), filasB = 0;
+                    for (var by_ = y + 2.0; by_ < y + h - 1.5 && filasB < 30; by_ += 0.95, filasB++) {
+                        [cx - pas / 2 - lB, cx + pas / 2].forEach(function (bx_) {
+                            G.rr(bx_, by_, lB, 0.42, 0.05, F('madera', 0.28)); G.ln(bx_, by_ + 0.36, bx_ + lB, by_ + 0.36, Dl('madera', 0.012));
+                        });
+                    }
+                    SIM.alfombra(G, cx - pas / 2 + 0.15, y + 0.4, pas - 0.3, h - 0.8);
+                    break;
+                }
                 G.rr(x + w * 0.2, y + h - 1.2, w * 0.6, 0.9, 0.08, F('madera', 0.25));             /* tarima */
                 var filas = 0;
                 for (var ay = y + 1.0; ay < y + h - 1.6 && filas < 14; ay += 0.9, filas++)
@@ -1318,16 +1418,16 @@
         var Pl = plan(P); actual = { P: P, Pl: Pl, estado: 'propuesta', texto: texto };
         var filas = tabla(Pl);
         var c = tarjeta(
-            '<div class="civix-md">🏗️ Te propongo esta distribución (lote ' + f2(P.W) + ' × ' + f2(P.L) + ' m, ' + P.n + ' piso' + (P.n > 1 ? 's' : '') + '):<br><small>' + esc(resumenPisos(P)) + '</small></div>' +
+            '<div class="civix-md">🏗️ ' + (P.titulo ? '<b>' + esc(P.titulo) + '</b> — t' : 'T') + 'e propongo esta distribución (lote ' + f2(P.W) + ' × ' + f2(P.L) + ' m, ' + P.n + ' piso' + (P.n > 1 ? 's' : '') + '):<br><small>' + esc(resumenPisos(P)) + '</small></div>' +
             cumplimiento(P, Pl) +
             '<div class="cxpl-tbl-wrap"><table class="cxpl-tbl"><thead><tr><th>Ambiente</th><th>Medidas (m)</th><th>Piso</th></tr></thead><tbody>' +
             filas.map(function (r, i) { return '<tr style="--i:' + i + '"><td>' + esc(r.nombre) + '</td><td>' + f2(r.w) + ' × ' + f2(r.h) + '</td><td>' + esc(r.txt) + '</td></tr>'; }).join('') +
             '</tbody></table></div>' +
             (P.supuesto ? '<p class="cxpl-sup">ℹ️ ' + esc(P.supuesto) + '</p>' : '') +
             (Pl.warns.length ? Pl.warns.map(function (w) { return '<p class="cxp-warn">⚠ ' + esc(w) + '</p>'; }).join('') : '') +
-            '<p class="cxpl-q">¿Apruebas la distribución? También puedes pedir cambios en el chat: <i>«sin estudio», «agrega un baño», «4 dormitorios», «cochera simple»</i>.</p>' +
+            '<p class="cxpl-q">¿Apruebas la distribución? También puedes pedir cambios en el chat: <i>' + (P.ia ? '«agrega una sala de juntas», «cambia: el salón principal de 300 m²», «que tenga 3 pisos»' : '«sin estudio», «agrega un baño», «4 dormitorios», «cochera simple»') + '</i>.</p>' +
             '<div class="cxpl-acts"><button type="button" class="cxpl-btn ok" data-cxpl="aprobar">Sí, aprobado ✓</button><button type="button" class="cxpl-btn" data-cxpl="cambiar">Quiero cambiar algo</button></div>' +
-            '<p class="cxpl-nota">Anteproyecto orientativo generado por reglas de distribución. No reemplaza el diseño arquitectónico y estructural firmado por un profesional ni la revisión de la norma local (POT, NSR-10).</p>');
+            '<p class="cxpl-nota">Anteproyecto orientativo generado ' + (P.ia ? 'a partir de tu pedido' : 'por reglas de distribución') + '. No reemplaza el diseño arquitectónico y estructural firmado por un profesional ni la revisión de la norma local (POT, NSR-10).</p>');
         if (!c) return false;
         c.addEventListener('click', function (e) {
             var b = e.target.closest('[data-cxpl]'); if (!b) return;
@@ -1387,6 +1487,9 @@
         ['Pisos y acabados', /^ACABADOS/, '#a5b4c8', 0.12],
         ['Armadura', /ARMAD|ACERO|ESTRIB|REFUER|VARILL|REBAR|STEEL/, '#ef4444', 0.18],
         ['Concreto y suelo', /CONTORNO|CONCRET|SUELO|ASFALTO|APOYO|SOMBRA|LOSA|VIGA|ZAPATA|PERFIL|OUTLINE|TERRENO|ESTRUC/, '#a3e635', 0.02],
+        ['Cables y tirantes', /CABLE|TIRANT|TENSOR/, '#e879f9', 0.25],
+        ['Agua', /^AGUA/, '#60a5fa', 0.3],
+        ['Madera y mampostería', /MADERA|MAMPOST/, '#d6a35c', 0.12],
         ['Cotas', /COTA|DIM|ACOT/, '#38bdf8', 0.4],
         ['Rotulación', /TEXT|TXT|ETIQ|LABEL|NOTA|LEYENDA/, '#e2e8f0', 0.5]
     ];
@@ -1607,6 +1710,231 @@
         return P;
     }
 
+    /* =================================================================== 10. CUALQUIER EDIFICACIÓN O ESTRUCTURA
+       Lo que las reglas locales no cubren con seguridad (hospital, iglesia, bodega, hotel, estadio, tanque,
+       torre, puente colgante, cubierta, silo…) se interpreta con la IA, que devuelve una ESPECIFICACIÓN en JSON
+       de exactamente lo pedido; el dibujo lo hace este módulo:
+         · edificación → programa por piso (espacios, áreas, cantidades) → distribución, vista previa y modo cine;
+         · estructura  → geometría real en metros por vistas (capas, cotas, textos) → visor CAD y modo cine. */
+    var TIPOS_IA = ['dorm', 'dormp', 'bano', 'banos', 'cocina', 'sala', 'comedor', 'estudio', 'oficina', 'aula', 'informatica', 'lectura', 'reuniones', 'recepcion', 'cafeteria', 'auditorio', 'infantil', 'deposito2', 'bodega', 'gimnasio', 'cancha', 'terraza', 'piscina', 'patio', 'local', 'cochera', 'ascensor', 'lav', 'gen'];
+    var CAPAS_IA = { CONTORNO: 7, CONCRETO: 8, ACERO: 1, ARMADURA: 1, CABLES: 6, MADERA: 42, MAMPOSTERIA: 30, SUELO: 34, AGUA: 5, EJES: 1, OCULTO: 9, DETALLE: 3, COTAS: 4, TEXTO: 7 };
+    var RELLENO_IA = { CONCRETO: 0.22, SUELO: 0.18, AGUA: 0.3, MAMPOSTERIA: 0.2, MADERA: 0.2, ACERO: 0.35 };
+    var PROMPT_IA = [
+        'Eres el motor de diseño del modo Planos de Civix. Conviertes el pedido del usuario en una especificación JSON que un programa dibuja.',
+        'Responde SOLO con un objeto JSON válido: sin texto antes ni después, sin markdown, sin comentarios.',
+        'Respeta EXACTAMENTE lo pedido: tipo de obra, cantidades, medidas, número de pisos, espacios, materiales y forma. No lo cambies por otro diseño ni uses uno genérico. Si falta un dato, supón un valor técnico razonable y anótalo en "supuestos".',
+        '',
+        'EDIFICACIÓN (cualquier uso: hospital, hotel, iglesia, bodega, colegio, centro comercial, coliseo, oficinas, restaurante, vivienda…):',
+        '{"clase":"edificacion","titulo":"…","lote":{"frente":m,"fondo":m},"pisos":[{"piso":1,"esquema":"corredor","espacios":[{"nombre":"…","area":m2,"cantidad":1,"tipo":"…","principal":false}]}],"supuestos":["…"]}',
+        '- "esquema":"abierto" si el piso es un gran espacio (nave, bodega, cancha, templo, salón, hangar) con espacios menores al frente; marca ese gran espacio con "principal":true y a los espacios que van detrás de él (presbiterio, escenario, muelle de carga posterior…) ponles "ubicacion":"fondo". "corredor" si son recintos a lado y lado de un pasillo.',
+        '- "tipo" es el mobiliario a dibujar, uno de: ' + TIPOS_IA.join(', ') + '. Usa auditorio para naves de templo, teatros y salones con sillas; bodega para bodegas y naves industriales; cancha para coliseos y canchas; dorm para habitaciones de hotel u hospital; oficina para consultorios y oficinas.',
+        '- Un objeto por cada piso pedido. Áreas en m² coherentes con el lote. No incluyas pasillos ni escaleras (se agregan solos). Usa "banos" para baterías sanitarias públicas.',
+        '',
+        'ESTRUCTURA u obra (puente, torre, tanque, muro, cubierta, cercha, silo, presa, alcantarilla, valla, muelle, escalera, elemento estructural…):',
+        '{"clase":"estructura","titulo":"…","descripcion":"…","vistas":[{"nombre":"ELEVACIÓN","entidades":[…]}],"cantidades":[{"item":"…","valor":"…"}],"notas":["…"],"supuestos":["…"]}',
+        '- Coordenadas en metros; x a la derecha, y hacia arriba; cada vista con su propio origen. Dibuja la geometría real a escala con las medidas pedidas, de 2 a 4 vistas (elevación, planta, sección, detalle).',
+        '- Entidades: {"t":"linea","capa":"…","p":[[x,y],[x,y]]} | {"t":"poli","capa":"…","p":[[x,y],…],"cerrada":true,"relleno":false} | {"t":"circulo","capa":"…","c":[x,y],"r":r,"relleno":false} | {"t":"arco","capa":"…","c":[x,y],"r":r,"a0":grados,"a1":grados} | {"t":"texto","capa":"TEXTO","p":[x,y],"h":alto,"s":"…"} | {"t":"cota","p1":[x,y],"p2":[x,y],"d":desplazamiento}.',
+        '- Capas: ' + Object.keys(CAPAS_IA).join(', ') + '.',
+        '- Dibuja con detalle de plano real: cada elemento repetido uno por uno (péndolas, barras, varillas, estribos, pilotes, gradas, montantes), espesores reales (contornos cerrados, no líneas sueltas), terreno o apoyos, ejes y niveles. Entre 80 y 260 entidades.',
+        '- Incluye cotas de las medidas principales, nombres de las partes y, si aplica, el refuerzo o los perfiles.'
+    ].join('\n');
+    var actualIA = null;   /* último diseño de estructura hecho con IA: { spec, texto } */
+    function backendIA() { try { return (typeof AI_CONFIG !== 'undefined' && AI_CONFIG.backendUrl) ? String(AI_CONFIG.backendUrl).trim() : ''; } catch (e) { return ''; } }
+    function extraerJSON(s) {
+        s = String(s || '').replace(/```(?:json)?/gi, '');
+        var i = s.indexOf('{'), j = s.lastIndexOf('}'); if (i < 0 || j <= i) throw new Error('sin JSON');
+        var t = s.slice(i, j + 1);
+        try { return JSON.parse(t); } catch (e) { return JSON.parse(t.replace(/,\s*([}\]])/g, '$1').replace(/\/\/[^\n]*/g, '')); }
+    }
+    function pedirIA(usuario) {
+        var url = backendIA(); if (!url) return Promise.reject(new Error('No hay servidor de IA configurado.'));
+        var modelo = ''; try { modelo = typeof civixGetSelectedModel === 'function' ? civixGetSelectedModel() : ''; } catch (e) { }
+        var cuerpo = { mode: 'chat', provider: 'groq', model: modelo, temperature: 0.2, max_tokens: 6000, messages: [{ role: 'system', content: PROMPT_IA }, { role: 'user', content: usuario }] };
+        function una() {
+            return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) })
+                .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { if (!r.ok) throw new Error(d && d.error ? d.error : 'HTTP ' + r.status); return extraerJSON(d.content); }); });
+        }
+        function esperar(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); }
+        /* límite de tokens por minuto del plan gratuito: se espera lo que indique el proveedor y se reintenta;
+           si la respuesta no trae JSON válido, se pide de nuevo recalcando el formato */
+        function intento(n) {
+            return una().catch(function (e) {
+                var msg = String(e && e.message || e);
+                if (n < 3 && /rate.?limit|tokens per minute|TPM|429|too many/i.test(msg)) {
+                    var s = +((msg.match(/try again in\s*([\d.]+)\s*s/i) || [])[1]) || 20;
+                    if (opciones.onEspera) opciones.onEspera(Math.ceil(s));
+                    return esperar(Math.min(60, s + 1.5) * 1000).then(function () { return intento(n + 1); });
+                }
+                if (n < 2 && /sin JSON|JSON|Unexpected|token/i.test(msg)) { cuerpo.messages[1].content = usuario + '\n\nIMPORTANTE: responde únicamente con el objeto JSON válido, completo y bien cerrado.'; return intento(n + 1); }
+                throw e;
+            });
+        }
+        return intento(0);
+    }
+    var opciones = {};
+    function cl(v, a, b, d) { v = +v; return isFinite(v) ? Math.max(a, Math.min(b, v)) : d; }
+    function slug(s) { return norm(s).replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40) || 'diseno'; }
+    function cargando(texto) { return tarjeta('<div class="civix-md">🛠️ Civix está diseñando lo que pediste: <i>' + esc(texto.length > 140 ? texto.slice(0, 140) + '…' : texto) + '</i><span class="cxpl-cargando"><i></i><i></i><i></i></span></div>'); }
+
+    /* mobiliario según el nombre del espacio cuando la IA no eligió uno */
+    var POR_NOMBRE = [
+        [/nave|templo|capilla|iglesia|parroquia|salon (?:de actos|comunal|social)|teatro|auditorio|sala de (?:conferencias|eventos|cine)/, 'auditorio'],
+        [/bodega|almacen|deposito|nave industrial|hangar|galpon/, 'bodega'], [/cancha|coliseo|polideportivo|gimnasio cubierto|arena/, 'cancha'],
+        [/habitacion|dormitorio|alcoba|suite|hospitalizacion/, 'dorm'], [/bano|sanitario|vestier|ducha/, 'banos'],
+        [/cocina|cocineta/, 'cocina'], [/comedor|restaurante|cafeteria|cafe|plazoleta de comidas/, 'cafeteria'],
+        [/consultorio|oficina|administra|gerencia|direccion|secretaria|coordinacion|enfermeria|estacion/, 'oficina'],
+        [/aula|salon de clase|laboratorio|taller/, 'aula'], [/sistemas|computo|informatica/, 'informatica'], [/biblioteca|lectura/, 'lectura'],
+        [/recepcion|lobby|vestibulo|sala de espera|espera|admision|urgencias|triage/, 'recepcion'], [/reunion|juntas|conferencia/, 'reuniones'],
+        [/gimnasio|gym/, 'gimnasio'], [/piscina/, 'piscina'], [/parqueadero|garaje|cochera|estacionamiento/, 'cochera'], [/local|tienda|almacen comercial|farmacia/, 'local'],
+        [/terraza|balcon/, 'terraza'], [/jardin|patio|zona verde/, 'patio'], [/lavanderia/, 'lav'], [/sala|estar/, 'sala']
+    ];
+    function tipoPorNombre(nombre) { var s = norm(nombre); for (var i = 0; i < POR_NOMBRE.length; i++) if (POR_NOMBRE[i][0].test(s)) return POR_NOMBRE[i][1]; return 'gen'; }
+    /* ---- edificación: especificación → programa por piso → propuesta (distribución + vista previa + modo cine) ---- */
+    function edificacionIA(spec, texto) {
+        var q = cifras(norm(texto)), dims = medidasLote(q), lote = spec.lote || {};
+        var W = dims ? dims.W : cl(lote.frente, 4, 150, 12), L = dims ? dims.L : cl(lote.fondo, 6, 250, 20);
+        var lista = Array.isArray(spec.pisos) ? spec.pisos.slice(0, 10) : [];
+        if (!lista.length) throw new Error('La especificación no trae pisos.');
+        var n = lista.length, pisos = [];   /* índice 1..n (el 0 queda vacío, como en leer()) */
+        lista.forEach(function (pi, ip) {
+            var esp = (Array.isArray(pi.espacios) ? pi.espacios : []).slice(0, 40).map(function (e) {
+                var tipo = TIPOS_IA.indexOf(String(e.tipo || '').toLowerCase()) >= 0 ? String(e.tipo).toLowerCase() : 'gen';
+                if (tipo === 'gen') tipo = tipoPorNombre(e.nombre);
+                return { nombre: String(e.nombre || 'ESPACIO').toUpperCase().slice(0, 30), area: cl(e.area, 2, 20000, 15), tipo: tipo, n: Math.round(cl(e.cantidad, 1, 12, 1)), principal: !!e.principal, fondo: norm(e.ubicacion) === 'fondo' };
+            }).filter(function (e) { return !/^(PASILLO|CIRCULACI[OÓ]N|ESCALERAS?|CORREDOR)$/.test(e.nombre); });
+            pisos[ip + 1] = { gen: esp, escalera: n > 1, esquema: pi.esquema === 'abierto' ? 'abierto' : 'corredor', apto: false, cochera: 0, local: false };
+        });
+        /* si el usuario dio las medidas del lote, se usan las suyas y se descartan supuestos de la IA sobre el lote */
+        var sup = (Array.isArray(spec.supuestos) ? spec.supuestos : []).filter(function (s) { return !(dims && /lote|terreno|frente|fondo/i.test(String(s))); }).slice(0, 6).join(' ');
+        if (!dims) sup = 'Lote de ' + f2(W) + ' × ' + f2(L) + ' m (frente × fondo). ' + sup;
+        var P = { W: W, L: L, n: n, pisos: pisos, texto: texto, generico: true, ia: true, spec: spec, titulo: String(spec.titulo || ''), supuesto: sup.trim() };
+        actualIA = null;
+        return propuesta(texto, P);
+    }
+
+    /* ---- estructura: especificación → modelo CAD (vistas lado a lado, cotas, rótulos) → visor y modo cine ---- */
+    function modeloIA(spec) {
+        var vistas = (Array.isArray(spec.vistas) ? spec.vistas : []).slice(0, 6), ents = [], x0 = 0, total = 0, alturas = [];
+        function P2(p) { return Array.isArray(p) && isFinite(+p[0]) && isFinite(+p[1]) ? [+p[0], +p[1]] : null; }
+        var locales = vistas.map(function (v) {
+            var out = [];
+            (Array.isArray(v.entidades) ? v.entidades : []).forEach(function (e) {
+                if (total > 900 || !e) return;
+                var capa = String(e.capa || 'CONTORNO').toUpperCase(); if (!CAPAS_IA[capa]) capa = e.t === 'texto' ? 'TEXTO' : e.t === 'cota' ? 'COTAS' : 'CONTORNO';
+                if (e.t === 'linea' || e.t === 'poli') {
+                    var pts = (Array.isArray(e.p) ? e.p : []).map(P2).filter(Boolean); if (pts.length < 2) return;
+                    out.push({ t: 'poly', pts: pts, closed: !!e.cerrada && pts.length > 2, layer: capa, fill: !!e.relleno && pts.length > 2 || (!!e.cerrada && RELLENO_IA[capa] > 0 && pts.length > 2), alpha: RELLENO_IA[capa] || 0.2 });
+                } else if (e.t === 'circulo') {
+                    var c = P2(e.c), r = +e.r; if (!c || !(r > 0)) return;
+                    if (e.relleno) { var q = []; for (var k = 0; k < 24; k++) q.push([c[0] + r * Math.cos(k * Math.PI / 12), c[1] + r * Math.sin(k * Math.PI / 12)]); out.push({ t: 'poly', pts: q, closed: true, layer: capa, fill: true, alpha: 0.6 }); }
+                    else out.push({ t: 'circle', c: c, r: r, layer: capa });
+                } else if (e.t === 'arco') {
+                    var c2 = P2(e.c), r2 = +e.r, a0 = (+e.a0 || 0) * Math.PI / 180, a1 = (+e.a1 || 0) * Math.PI / 180; if (!c2 || !(r2 > 0)) return;
+                    if (a1 <= a0) a1 += 2 * Math.PI; var pa = [];
+                    for (var j = 0; j <= 18; j++) { var a = a0 + (a1 - a0) * j / 18; pa.push([c2[0] + r2 * Math.cos(a), c2[1] + r2 * Math.sin(a)]); }
+                    out.push({ t: 'poly', pts: pa, closed: false, layer: capa });
+                } else if (e.t === 'texto') {
+                    var pt = P2(e.p); if (!pt || !e.s) return;
+                    out.push({ t: 'text', p: pt, h: +e.h > 0 ? +e.h : 0, s: [String(e.s).slice(0, 80)], rot: 0, ha: 0, va: 2, layer: 'TEXTO' });
+                } else if (e.t === 'cota') {
+                    var p1 = P2(e.p1), p2 = P2(e.p2); if (!p1 || !p2) return;
+                    out.push({ t: 'cota', p1: p1, p2: p2, d: +e.d || 0, s: e.s });
+                } else return;
+                total++;
+            });
+            return { nombre: String(v.nombre || 'VISTA').toUpperCase().slice(0, 40), ents: out };
+        }).filter(function (v) { return v.ents.length; });
+        if (!locales.length) throw new Error('La especificación no trae geometría.');
+        /* tamaño de referencia para textos y cotas */
+        var spanG = 0;
+        locales.forEach(function (v) { var bb = CAD.bboxOf(v.ents.filter(function (e) { return e.t !== 'cota'; }).map(function (e) { return e.t === 'text' ? { t: 'point', p: e.p } : e; })) || [0, 0, 1, 1]; v.bb = bb; spanG = Math.max(spanG, bb[2] - bb[0], bb[3] - bb[1]); });
+        spanG = spanG || 10;
+        var hT = spanG * 0.022, hTit = spanG * 0.035;
+        /* acomodo de vistas: lado a lado si caben en una lámina razonable; si son muy alargadas (puentes, muros largos)
+           una debajo de otra, para que el dibujo no quede diminuto */
+        var sumW = locales.reduce(function (s, v) { return s + (v.bb[2] - v.bb[0]); }, 0), maxH = Math.max.apply(null, locales.map(function (v) { return v.bb[3] - v.bb[1]; })) || 1;
+        var apilar = locales.length > 1 && sumW / maxH > 3.2, y0 = 0;
+        locales.forEach(function (v, iv) {
+            var bb = v.bb, dx = (apilar ? 0 : x0) - bb[0], dy = (apilar ? y0 : 0) - bb[1];
+            if (apilar) {   /* la vista siguiente va debajo: el desplazamiento vertical se acumula hacia abajo */
+                var hV = bb[3] - bb[1];
+                dy = y0 - bb[3];
+                y0 -= hV + spanG * 0.22;
+            }
+            function T(p) { return [p[0] + dx, p[1] + dy, 0]; }
+            v.ents.forEach(function (e) {
+                if (e.t === 'poly') ents.push({ t: 'poly', pts: e.pts.map(T), closed: e.closed, layer: e.layer, fill: e.fill, alpha: e.alpha });
+                else if (e.t === 'circle') ents.push({ t: 'circle', c: T(e.c), r: e.r, layer: e.layer });
+                else if (e.t === 'text') ents.push({ t: 'text', p: T(e.p), h: e.h > 0 ? Math.min(e.h, spanG * 0.06) : hT, s: e.s, rot: 0, ha: 0, va: 2, layer: 'TEXTO' });
+                else if (e.t === 'cota') {
+                    var a = T(e.p1), b = T(e.p2), L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (!(L > 0)) return;
+                    var ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, nx = -uy, ny = ux, d = e.d || spanG * 0.05;
+                    var A = [a[0] + nx * d, a[1] + ny * d, 0], B = [b[0] + nx * d, b[1] + ny * d, 0], tk = spanG * 0.008;
+                    ents.push({ t: 'poly', pts: [a, A], closed: false, layer: 'COTAS' }, { t: 'poly', pts: [b, B], closed: false, layer: 'COTAS' }, { t: 'poly', pts: [A, B], closed: false, layer: 'COTAS' });
+                    [A, B].forEach(function (P_) { ents.push({ t: 'poly', pts: [[P_[0] - (ux + nx) * tk, P_[1] - (uy + ny) * tk, 0], [P_[0] + (ux + nx) * tk, P_[1] + (uy + ny) * tk, 0]], closed: false, layer: 'COTAS' }); });
+                    var ang = Math.atan2(uy, ux); if (ang > Math.PI / 2 || ang < -Math.PI / 2) ang += Math.PI;
+                    ents.push({ t: 'text', p: [(A[0] + B[0]) / 2 + nx * hT * 0.8, (A[1] + B[1]) / 2 + ny * hT * 0.8, 0], h: hT, s: [e.s ? String(e.s) : f2(L) + ' m'], rot: ang, ha: 1, va: 2, layer: 'COTAS' });
+                }
+            });
+            var w = bb[2] - bb[0], h = bb[3] - bb[1], xt = apilar ? 0 : x0, yt = (apilar ? dy + bb[1] : 0) - spanG * 0.09;
+            ents.push({ t: 'text', p: [xt + w / 2, yt, 0], h: hTit, s: [v.nombre], rot: 0, ha: 1, va: 2, layer: 'TEXTO' });
+            ents.push({ t: 'poly', pts: [[xt, yt - spanG * 0.03, 0], [xt + w, yt - spanG * 0.03, 0]], closed: false, layer: 'TEXTO' });
+            alturas.push(h);
+            x0 += w + Math.max(spanG * 0.18, 1);
+        });
+        var layers = {}; Object.keys(CAPAS_IA).forEach(function (k) { layers[k] = { name: k, aci: CAPAS_IA[k], off: false }; });
+        ents.forEach(function (e) { e.aci = CAPAS_IA[e.layer] || 7; });
+        var m = { ents: ents, layers: layers, blocks: {}, units: 6 }; m.bbox = CAD.bboxOf(ents);
+        return m;
+    }
+    function estructuraIA(spec, texto) {
+        var model = modeloIA(spec), titulo = String(spec.titulo || 'Diseño').slice(0, 80), nombre = slug(titulo);
+        actualIA = { spec: spec, texto: texto }; actual = null;
+        var lista = function (arr) { return (Array.isArray(arr) ? arr : []).slice(0, 10).map(function (s) { return '<li>' + esc(String(s)) + '</li>'; }).join(''); };
+        var cant = (Array.isArray(spec.cantidades) ? spec.cantidades : []).slice(0, 14);
+        var c = tarjeta('<div class="civix-md">📐 <b>' + esc(titulo) + '</b>' + (spec.descripcion ? '<br><small>' + esc(String(spec.descripcion).slice(0, 400)) + '</small>' : '') + '</div>' +
+            '<div class="cx-box cxpl-ia-box"></div>' +
+            (cant.length ? '<div class="cxpl-tbl-wrap"><table class="cxpl-tbl"><thead><tr><th>Cantidad</th><th>Valor</th></tr></thead><tbody>' + cant.map(function (x, i) { return '<tr style="--i:' + i + '"><td>' + esc(String(x.item || '')) + '</td><td>' + esc(String(x.valor || '')) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '') +
+            ((spec.notas && spec.notas.length) ? '<div class="cxpl-cumple"><b>Notas</b><ul>' + lista(spec.notas) + '</ul></div>' : '') +
+            ((spec.supuestos && spec.supuestos.length) ? '<p class="cxpl-sup">ℹ️ Supuestos: ' + esc((spec.supuestos || []).slice(0, 6).join(' · ')) + '</p>' : '') +
+            '<p class="cxpl-q">Puedes pedir cambios en el chat: <i>«hazlo de 3 luces», «cambia la altura a 12 m», «agrega la vista en planta»</i>.</p>' +
+            '<p class="cxpl-nota">Esquema de anteproyecto generado a partir de tu pedido. No reemplaza el diseño y cálculo firmados por un profesional ni la revisión de la norma (NSR-10).</p>');
+        if (!c) return false;
+        global.__cxCineAuto = { hasta: Date.now() + 5000 };   /* el plano se presenta con el modo cine */
+        CAD.viewer(c.querySelector('.cxpl-ia-box'), model, { name: nombre, titulo: nombre });
+        historial(texto, 'Diseñé «' + titulo + '» (' + model.ents.length + ' entidades en ' + (spec.vistas || []).length + ' vistas) según el pedido.');
+        return true;
+    }
+    function despacharIA(spec, texto) {
+        var clase = norm(spec && spec.clase);
+        if (clase === 'edificacion') return edificacionIA(spec, texto);
+        if (clase === 'estructura' || (spec && spec.vistas)) return estructuraIA(spec, texto);
+        if (spec && spec.pisos) return edificacionIA(spec, texto);
+        throw new Error('Respuesta sin clase reconocible.');
+    }
+    /* diseña con IA exactamente lo pedido. Si la IA no responde NO se inventa un diseño genérico: se avisa y se
+       ofrece reintentar (solo un elemento que un generador de Civix calcula puede resolverse localmente). */
+    function disenarIA(texto, previo, respaldo) {
+        var aviso = cargando(texto);
+        opciones.onEspera = function (s) { var m_ = aviso && aviso.querySelector('.civix-md'); if (m_ && !m_.querySelector('.cxpl-espera')) m_.insertAdjacentHTML('beforeend', '<br><small class="cxpl-espera">⏳ La IA llegó a su límite por minuto; reintento en ~' + s + ' s…</small>'); };
+        var usuario = previo ? 'Diseño actual (JSON):\n' + JSON.stringify(previo) + '\n\nModifícalo según este pedido del usuario: ' + texto + '\nDevuelve el JSON completo actualizado, con el mismo formato.' : 'Pedido del usuario: ' + texto;
+        function fallo(motivo) {
+            if (respaldo && respaldo()) return;
+            var c = tarjeta('<div class="civix-md">⚠ No pude diseñar esto con la IA (' + esc(motivo) + '). No te muestro un diseño genérico para no cambiar lo que pediste.</div>' +
+                '<div class="cxpl-acts"><button type="button" class="cxpl-btn ok" data-cxpl-re>↻ Reintentar</button></div>');
+            if (c) c.addEventListener('click', function (e) { var b = e.target.closest('[data-cxpl-re]'); if (!b) return; b.disabled = true; disenarIA(texto, previo, respaldo); });
+        }
+        pedirIA(usuario).then(function (spec) {
+            if (aviso) aviso.remove();
+            try { despacharIA(spec, texto); }
+            catch (e) { fallo('la especificación no se pudo dibujar: ' + e.message); }
+        }).catch(function (e) {
+            if (aviso) aviso.remove();
+            fallo(String(e && e.message || e).slice(0, 200));
+        });
+        return true;
+    }
+
     /* =================================================================== 8. INTEGRACIÓN CON EL CHAT DE CIVIX */
     /* ---- Modo «Planos» (botón propio junto a Explicar, Pistas, Corregir y Quiz) ----
        En este modo Civix solo atiende pedidos de planos: nada se envía a la IA. */
@@ -1682,32 +2010,50 @@
 
     /* Atiende un mensaje en modo Planos: arquitectura con este módulo; elementos y obras con Civix CAD.
        Solo lo que ningún generador local resuelve se deja pasar a la IA (con instrucciones de plano CAD). */
+    /* ¿El pedido es algo que las reglas locales resuelven tal cual? Si no, lo diseña la IA con la especificación del usuario. */
+    var MAS_GRANDE = /(colgante|atirantad|en arco|\barco\b|tanque|torre|silo|presa|represa|alcantarilla|box ?culvert|tunel|galpon|nave|bodega|cubierta|domo|cupula|chimenea|antena|valla|muelle|pasarela|estadio|coliseo|graderia|tribuna|hangar|invernadero|tensoestructura|carpa|marquesina|iglesia|templo|hospital|hotel|colegio|escuela|universidad|centro comercial|planta de tratamiento|canal|acueducto|reservorio|dique|gavion|parqueadero|mercado|teatro|museo|terminal|aeropuerto|fabrica|industrial|cancha|polideportivo|cerramiento|reja|tribuna|caseta|kiosco|pergola|mirador|faro)/;
+    var RES_LOCAL = /(\bcasa\b|vivienda|apartamentos?|departamentos?|apartaestudio|unifamiliar|bifamiliar|multifamiliar|edificio (?:residencial|de (?:apartamentos|departamentos|vivienda)))/;
+    var NO_RES = /(hotel|hostal|motel|hospital|clinica|centro de salud|iglesia|templo|capilla|bodega|galpon|nave industrial|industrial|fabrica|centro comercial|restaurante|colegio|escuela|universidad|oficinas|estadio|coliseo|mercado|teatro|museo|biblioteca|cine\b|auditorio|terminal|aeropuerto|guarderia|jardin infantil|polideportivo|supermercado|banco\b|alcaldia|estacion)/;
+    function esCambio(q) { return /^(cambia|cambiar|modifica|agrega|anade|quita|elimina|saca|hazl[oa]|ponle|pon\b|que sea|que tenga|ahora|aumenta|reduce|disminuye|amplia|mejor|tambien|en vez|sube|baja|alarga|acorta)/.test(q); }
     function modoPlanos(texto, q) {
         try {
-            if (esElemento(q) && !(actual && /^(dibujalo|si|ok|apruebo|aprobado)\b/.test(q))) {
-                if (elementoCAD(texto, q)) return true;
-                global.__cxCineAuto = { hasta: Date.now() + 180000 };   /* la respuesta de la IA traerá el plano */
-                return false;   /* sin generador local: la IA lo dibuja en formato DXF (modo Planos) */
-            }
+            var hayIA = !!backendIA() && typeof fetch === 'function';
             if (actual && actual.estado === 'aprobado' && /^(dibujalo|dibujala|dibuja(?:lo)?|modo cine|efecto (?:de )?cine|dibuja el plano|hazlo|dale)\b/.test(q)) {
                 tarjeta('<div class="civix-md">🎬 Dibujando las ' + actual.Pl.n + ' plantas en modo cine…</div>');
                 return cine(actual.Pl);
             }
             if (actual && actual.estado === 'propuesta' && /^(si|ok|apruebo|aprobado|de acuerdo|listo|perfecto)\b/.test(q)) { aprobar(); return true; }
             var tieneLote = !!medidasLote(cifras(q));
+            /* cambios sobre lo último que se diseñó */
+            if (hayIA && actualIA && esCambio(q)) return disenarIA(texto, actualIA.spec);
             if (actual && !tieneLote) {
-                var P2 = cambios(q);
-                if (P2) return propuesta(texto, P2);
+                if (hayIA && actual.P && actual.P.ia && (esCambio(q) || !MAS_GRANDE.test(q))) return disenarIA(texto, actual.P.spec);
+                if (!(actual.P && actual.P.ia)) { var P2 = cambios(q); if (P2) return propuesta(texto, P2); }
             }
-            /* en este modo basta con describir el proyecto: no hace falta «hazme» ni «plano» */
-            if (tieneLote || /(edificio|edificacion|casa|vivienda|apartamento|departamento|piso|nivel|planta|lote|terreno|cochera|dormitorio|habitacion|alcoba|biblioteca|escuela|colegio|oficina|local|clinica|consultorio|centro|auditorio|plano|distribucion)/.test(q)) {
+            /* 1) elemento estructural simple que un generador de Civix CAD calcula (zapata, viga, columna…) */
+            if (esElemento(q) && !MAS_GRANDE.test(q)) {
+                if (elementoCAD(texto, q)) return true;
+                if (hayIA) return disenarIA(texto, null, null);
+            }
+            /* 2) vivienda (casa, apartamentos): reglas de distribución que respetan lo pedido */
+            if (RES_LOCAL.test(q) && !NO_RES.test(q)) {
                 var P = leer(texto);
                 if (P.error) return guia(texto, P.error);
                 return propuesta(texto, P);
             }
-            /* otros diseños (detalles, instalaciones, mobiliario, cubiertas…): los dibuja la IA en formato DXF */
-            if (/(dise|dibuj|plano|detalle|planta|corte|elevacion|esquema|haz|hazme|genera|crea|dxf|cad)/.test(q)) { global.__cxCineAuto = { hasta: Date.now() + 180000 }; return false; }
-            return guia(texto, 'En el modo Planos dibujo proyectos y elementos: un edificio o una casa (pisos, lote y qué va en cada piso), o un elemento como una zapata, columna, viga, losa, muro, escalera, cercha, puente o pórtico.');
+            /* 3) cualquier otra edificación u obra: la IA la especifica tal cual la pidió el usuario y aquí se dibuja */
+            var pareceDiseno = tieneLote || MAS_GRANDE.test(q) || ELEMENTO.test(q) || /(piso|nivel|planta|lote|terreno|dise|dibuj|plano|detalle|corte|elevacion|esquema|haz|hazme|genera|crea|estructura|obra|construccion|proyecto)/.test(q);
+            if (pareceDiseno && hayIA) {
+                return disenarIA(texto, null, function () {
+                    /* respaldo sin IA: solo un elemento que un generador calcula; nunca una distribución genérica */
+                    return esElemento(q) && elementoCAD(texto, q);
+                });
+            }
+            if (pareceDiseno) {
+                if (esElemento(q) && elementoCAD(texto, q)) return true;
+                var P3 = leer(texto); if (P3.error) return guia(texto, P3.error); return propuesta(texto, P3);
+            }
+            return guia(texto, 'En el modo Planos diseño cualquier edificación u obra: describe qué es, sus medidas principales y qué debe tener (por ejemplo, pisos y espacios de un edificio, o luces y alturas de un puente).');
         } catch (e) {
             try { console.warn('Civix planos arquitectónicos', e); } catch (e2) { }
             return guia(texto, 'No pude interpretar el pedido. Intenta con el formato del ejemplo.');
