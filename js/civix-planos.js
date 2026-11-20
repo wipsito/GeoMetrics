@@ -775,8 +775,10 @@
     }
 
     /* =================================================================== 3. DIBUJO (modelo CAD) */
-    var LAYERS = { ACABADOS: 8, EJES: 1, COLUMNAS: 4, MUROS: 4, PUERTAS: 3, VENTANAS: 5, ESCALERA: 6, MOBILIARIO: 2, TEXTO: 7, COTAS: 5, DETALLES: 7, MARCO: 8 };
-    var ETAPA = { ACABADOS: 2, EJES: 0, COLUMNAS: 1, MUROS: 2, VENTANAS: 3, PUERTAS: 3, ESCALERA: 4, MOBILIARIO: 5, TEXTO: 6, COTAS: 6, DETALLES: 6, MARCO: 6 };
+    var LAYERS = { ACABADOS: 8, EJES: 1, COLUMNAS: 4, MUROS: 4, PUERTAS: 3, VENTANAS: 5, ESCALERA: 6, MOBILIARIO: 2, TEXTO: 7, COTAS: 5, DETALLES: 7, MARCO: 8,
+        VIGAS: 40, CONCRETO: 7, 'ACERO-LONG': 1, ESTRIBOS: 3, TEXTOS: 2, APOYOS: 5, SUELO: 30 };
+    var ETAPA = { ACABADOS: 2, EJES: 0, COLUMNAS: 1, MUROS: 2, VENTANAS: 3, PUERTAS: 3, ESCALERA: 4, MOBILIARIO: 5, TEXTO: 6, COTAS: 6, DETALLES: 6, MARCO: 6,
+        VIGAS: 2, CONCRETO: 1, 'ACERO-LONG': 3, ESTRIBOS: 4, TEXTOS: 6, APOYOS: 2, SUELO: 1 };
     /* ------------------------------------------------------------------ SIN LÍNEAS SUPERPUESTAS
        Recorre todos los trazos rectos de un dibujo y, si un tramo queda encima de otro ya dibujado (misma recta,
        intervalos que se cruzan), lo recorta. Las entidades que no se tocan quedan intactas; las que tenían un tramo
@@ -897,6 +899,154 @@
         }
         return { lineas: lineas, filas: filas };
     }
+    /* =================================================================== ESTRUCTURA (vigas, columnas, detalles)
+       Ejes de la distribución → luces → cargas por área aferente (NSR-10 título B, valores típicos) → diseño de la
+       viga crítica y de la columna más cargada con los generadores de Civix CAD (ACI 318 / NSR-10, educativo).
+       La sección que resulta es la que se dibuja en las plantas, en la planta estructural y en los detalles. */
+    function ejesPlan(Pl, pi) {
+        var W = Pl.W, ex, ey, y;
+        pi = pi || Pl.pisos[0];
+        if (Pl.generico) {
+            ex = Pl.ejesX ? Pl.ejesX.slice() : [0, Pl.a, Pl.a + Pl.cw, W];
+            if (pi && pi.rooms.some(function (r) { return r.nave; })) { var nv_ = Math.max(1, Math.ceil(W / 20)); ex = []; for (var ix_ = 0; ix_ <= nv_; ix_++) ex.push(W * ix_ / nv_); }
+            var nv = Math.max(2, Math.ceil(Pl.D / 5.5)); ey = [];
+            if (Pl.ejesY) ey = Pl.ejesY.slice(); else for (var iy = 0; iy <= nv; iy++) ey.push(Pl.D * iy / nv);
+        } else {
+            ex = [0, W]; if (W >= 7) ex.splice(1, 0, Pl.a + PASILLO / 2 > W - 1.5 ? W / 2 : Pl.wl);
+            if (W >= 12) ex.splice(1, 0, Pl.wl / 2);
+            ey = [0, Pl.hA, Pl.hA + Pl.hB + PAS_H]; y = ey[ey.length - 1];
+            while (Pl.D - y > 4.6) { y += Math.min(4.2, (Pl.D - y) / Math.ceil((Pl.D - y) / 4.2)); ey.push(y); }
+            if (Math.abs(ey[ey.length - 1] - Pl.D) > 0.05) ey.push(Pl.D);
+        }
+        return { ex: ex, ey: ey };
+    }
+    function estructura(Pl) {
+        if (Pl._est) return Pl._est;
+        var EJ = ejesPlan(Pl, Pl.pisos[0]), ex = EJ.ex, ey = EJ.ey, dx = [], dy = [], i;
+        for (i = 0; i < ex.length - 1; i++) if (ex[i + 1] - ex[i] > 0.5) dx.push(ex[i + 1] - ex[i]);
+        for (i = 0; i < ey.length - 1; i++) if (ey[i + 1] - ey[i] > 0.5) dy.push(ey[i + 1] - ey[i]);
+        var mx = Math.max.apply(null, dx.concat([3])), my = Math.max.apply(null, dy.concat([3])), Lmax = Math.max(mx, my);
+        /* cargas de servicio (kN/m²): losa aligerada + acabados + muros divisorios; carga viva según el uso */
+        var nombres = norm((Pl.pisos || []).map(function (pi) { return pi.rooms.map(function (r) { return r.nombre; }).join(' '); }).join(' '));
+        var qD = 5.5, qL = !Pl.generico ? 1.8 : /auditorio|teatro|salon|nave|templo|iglesia|coliseo|cancha|gimnasio/.test(nombres) ? 5.0 : /bodega|almacen|deposito/.test(nombres) ? 6.0 : 2.0;
+        var trib = Lmax === mx ? my : mx;   /* ancho aferente de la viga crítica (paño perpendicular) */
+        var wD = qD * trib, wL = qL * trib, h = Math.max(0.3, Math.ceil(Lmax / 12 / 0.05) * 0.05), b = Math.max(0.25, Math.ceil(h / 2 / 0.05) * 0.05), rv = null, k;
+        var S = CAD.struct;
+        if (S && S.viga) for (k = 0; k < 14; k++) {
+            rv = S.viga({ L: +Lmax.toFixed(2), b: Math.round(b * 1000), h: Math.round(h * 1000), wD: +wD.toFixed(2), wL: +wL.toFixed(2), fc: 21, fy: 420 });
+            if (rv.ok && !rv.warns.some(function (w) { return /NO CUMPLE|< Mu|insuficiente|supera/.test(w); })) break;
+            h = +(h + 0.05).toFixed(2); b = Math.max(b, Math.ceil(h / 2 / 0.05) * 0.05);
+        }
+        /* columna más cargada: área aferente de un paño completo por piso + peso propio */
+        var At = mx * my, n = Pl.n || 1, c = 0.3, rc = null, Pu = 0;
+        if (S && S.columna) for (k = 0; k < 12; k++) {
+            Pu = (1.2 * qD + 1.6 * qL) * At * n + 1.2 * 24 * c * c * 2.7 * n;
+            rc = S.columna({ Pu: Math.round(Pu), b: Math.round(c * 1000), h: Math.round(c * 1000), Lu: +(2.7 - h).toFixed(2), fc: 21, fy: 420 });
+            if (rc.ok && !rc.warns.some(function (w) { return /NO CUMPLE|< Pu|aumenta/.test(w); })) break;
+            c = +(c + 0.05).toFixed(2);
+        }
+        var cv = rv && rv.ok ? rv.calc : null, cc = rc && rc.ok ? rc.calc : null;
+        Pl._est = {
+            ex: ex, ey: ey, Lmax: Lmax, mx: mx, my: my, b: b, h: h, c: c, viga: rv, columna: rc, qD: qD, qL: qL, trib: trib, At: At, Pu: Pu,
+            losa: Math.max(0.25, Math.ceil(Lmax / 18.5 / 0.05) * 0.05),
+            vigaTxt: cv ? cv.nBars + ' Ø#' + cv.bar + ' inf. + 2 Ø#4 sup. · E#3 @' + cv.sEnd + '/' + cv.sMid + ' mm' : 'Refuerzo: ver memoria',
+            colTxt: cc ? cc.nBars + ' Ø#' + cc.bar + ' (ρ ' + cc.rho.toFixed(2) + ' %) · E#3 @' + cc.sConf + '/' + cc.sMid + ' mm' : 'Refuerzo: ver memoria'
+        };
+        return Pl._est;
+    }
+    /* columnas que existen: en una «huella» solo donde hay edificación del primer piso */
+    function columnasPlan(Pl, E) {
+        var out = [], rooms = (Pl.pisos[0] || { rooms: [] }).rooms.filter(function (r) { return r.tipo !== 'retiro' && r.tipo !== 'patio'; });
+        E.ex.forEach(function (x, i) {
+            E.ey.forEach(function (y, j) {
+                if (Pl.huella && !rooms.some(function (r) { return x > r.x - 0.2 && x < r.x + r.w + 0.2 && y > r.y - 0.2 && y < r.y + r.h + 0.2; })) return;
+                out.push({ x: x, y: y, i: i, j: j });
+            });
+        });
+        return out;
+    }
+    /* lámina: PLANTA ESTRUCTURAL (entrepiso tipo) — ejes, columnas C-1, vigas V-1 de cara a cara de columna, cotas */
+    function dibujarEstructural(Pl, ox) {
+        var E = estructura(Pl), ents = [], c = E.c, b = E.b;
+        function P(x, y) { return [ox + x, y, 0]; }
+        function pl(layer, pts, closed, extra) { var e = { t: 'poly', pts: pts.map(function (p) { return P(p[0], p[1]); }), closed: closed, layer: layer }; if (extra) for (var k in extra) e[k] = extra[k]; ents.push(e); return e; }
+        function ln(layer, x1, y1, x2, y2, extra) { return pl(layer, [[x1, y1], [x2, y2]], false, extra); }
+        function txt(layer, x, y, h, s, extra) { var e = { t: 'text', p: P(x, y), h: h, s: [s], rot: 0, ha: 1, va: 2, layer: layer }; if (extra) for (var k in extra) e[k] = extra[k]; ents.push(e); }
+        function circ(layer, x, y, r) { ents.push({ t: 'circle', c: P(x, y), r: r, layer: layer }); }
+        var cols = columnasPlan(Pl, E), hay = {};
+        cols.forEach(function (q) { hay[q.i + ':' + q.j] = q; });
+        var x0 = Math.min.apply(null, E.ex), x1 = Math.max.apply(null, E.ex), y0 = Math.min.apply(null, E.ey), y1 = Math.max.apply(null, E.ey), LET = 'ABCDEFGHIJKLMN';
+        /* ejes: solo por fuera, interrumpidos donde pasa la cadena de cotas */
+        E.ex.forEach(function (x, i) {
+            ln('EJES', x, y0 - 1.4, x, y0 - 1.09, { dash: true }); ln('EJES', x, y0 - 0.91, x, y0 - 0.45, { dash: true }); ln('EJES', x, y1 + 0.45, x, y1 + 1.0, { dash: true });
+            circ('EJES', x, y0 - 1.75, 0.35); txt('EJES', x, y0 - 1.75, 0.3, String(i + 1));
+        });
+        E.ey.forEach(function (y, j) {
+            ln('EJES', x0 - 1.4, y, x0 - 1.09, y, { dash: true }); ln('EJES', x0 - 0.91, y, x0 - 0.45, y, { dash: true }); ln('EJES', x1 + 0.45, y, x1 + 1.0, y, { dash: true });
+            circ('EJES', x0 - 1.75, y, 0.35); txt('EJES', x0 - 1.75, y, 0.3, LET[j] || String(j));
+        });
+        /* vigas de cara a cara de columna (sin pasar por encima de ellas) */
+        function viga(xa, ya, xb, yb, hor) {
+            var p = hor ? [[xa + c / 2, ya - b / 2], [xb - c / 2, ya - b / 2], [xb - c / 2, ya + b / 2], [xa + c / 2, ya + b / 2]] : [[xa - b / 2, ya + c / 2], [xa + b / 2, ya + c / 2], [xa + b / 2, yb - c / 2], [xa - b / 2, yb - c / 2]];
+            pl('VIGAS', p, true, { fill: true, alpha: 0.28 });
+            var L = hor ? xb - xa : yb - ya; if (L - c < 1.0) return;
+            if (hor) txt('VIGAS', (xa + xb) / 2, ya + b / 2 + 0.16, 0.13, 'V-1 (' + f2(b) + '×' + f2(E.h) + ')');
+            else txt('VIGAS', xa - b / 2 - 0.16, (ya + yb) / 2, 0.13, 'V-1 (' + f2(b) + '×' + f2(E.h) + ')', { rot: Math.PI / 2 });
+        }
+        E.ey.forEach(function (y, j) { for (var i = 0; i < E.ex.length - 1; i++) if (hay[i + ':' + j] && hay[(i + 1) + ':' + j]) viga(E.ex[i], y, E.ex[i + 1], y, true); });
+        E.ex.forEach(function (x, i) { for (var j = 0; j < E.ey.length - 1; j++) if (hay[i + ':' + j] && hay[i + ':' + (j + 1)]) viga(x, E.ey[j], x, E.ey[j + 1], false); });
+        /* columnas C-1 */
+        cols.forEach(function (q) {
+            pl('COLUMNAS', [[q.x - c / 2, q.y - c / 2], [q.x + c / 2, q.y - c / 2], [q.x + c / 2, q.y + c / 2], [q.x - c / 2, q.y + c / 2]], true, { fill: true, alpha: 0.85 });
+        });
+        if (cols.length) txt('COLUMNAS', cols[0].x + c / 2 + 0.28, cols[0].y + c / 2 + 0.18, 0.13, 'C-1', { ha: 0 });
+        /* cadenas de luces entre ejes */
+        function marca(x, y) { ln('COTAS', x - 0.08, y - 0.08, x + 0.08, y + 0.08, { sw: 0.02 }); }
+        ln('COTAS', x0, y0 - 1.0, x1, y0 - 1.0); E.ex.forEach(function (x) { marca(x, y0 - 1.0); });
+        for (var i = 0; i < E.ex.length - 1; i++) if (E.ex[i + 1] - E.ex[i] > 0.4) txt('COTAS', (E.ex[i] + E.ex[i + 1]) / 2, y0 - 0.88, 0.14, f2(E.ex[i + 1] - E.ex[i]));
+        ln('COTAS', x0 - 1.0, y0, x0 - 1.0, y1); E.ey.forEach(function (y) { marca(x0 - 1.0, y); });
+        for (var j = 0; j < E.ey.length - 1; j++) if (E.ey[j + 1] - E.ey[j] > 0.4) txt('COTAS', x0 - 1.12, (E.ey[j] + E.ey[j + 1]) / 2, 0.14, f2(E.ey[j + 1] - E.ey[j]), { rot: Math.PI / 2 });
+        /* rótulo y especificaciones */
+        var cx = (x0 + x1) / 2;
+        txt('TEXTO', cx, y0 - 2.6, 0.38, 'PLANTA ESTRUCTURAL · ENTREPISO TIPO', { titulo: true });
+        [
+            'Columnas C-1: ' + f2(c) + ' × ' + f2(c) + ' m · ' + E.colTxt,
+            'Vigas V-1: b × h = ' + f2(b) + ' × ' + f2(E.h) + ' m · ' + E.vigaTxt,
+            'Losa aligerada en una dirección e = ' + f2(E.losa) + ' m (≈ L/18.5) · f′c = 21 MPa · fy = 420 MPa',
+            'Cargas: muerta ' + E.qD + ' kN/m² · viva ' + E.qL + ' kN/m² · luz máx. ' + f2(E.Lmax) + ' m · Pu (columna) ≈ ' + Math.round(E.Pu) + ' kN',
+            'Predimensionamiento educativo (ACI 318 / NSR-10). No reemplaza el diseño estructural firmado.'
+        ].forEach(function (t, k) { txt('TEXTO', cx, y0 - 3.05 - k * 0.3, 0.15, t, { sub: k === 4 }); });
+        return limpiarSolapes(ents, 0.004);
+    }
+    /* lámina: DETALLES — elevación y sección de la viga V-1 y de la columna C-1 con su refuerzo (de Civix CAD) */
+    function dibujarDetalles(Pl, ox) {
+        var E = estructura(Pl), ents = [], x = ox, k = 0.001;
+        function pasar(model, titulo) {
+            if (!model) return;
+            /* sin el marco ni el cuadro de rótulo de la lámina individual (aquí ya hay rótulo): solo el dibujo técnico */
+            model = { ents: model.ents.filter(function (e) { return !/^(MARCO|CAJETIN|ROTULO)$/.test(e.layer); }), units: model.units };
+            var bb = CAD.bboxOf(model.ents) || [0, 0, 1000, 1000];
+            /* el generador puede entregar el dibujo en mm o ya en metros: se detecta por su tamaño */
+            k = (model.units === 6 || Math.max(bb[2] - bb[0], bb[3] - bb[1]) < 200) ? 1 : 0.001;
+            /* los dos detalles a un tamaño parecido (la columna es más corta que la viga): ampliación de lectura */
+            k *= Math.max(1, Math.min(3, 9 / (Math.max(bb[2] - bb[0], bb[3] - bb[1]) * k || 9)));
+            var dx = x - bb[0] * k, dy = -bb[1] * k;
+            model.ents.forEach(function (e) {
+                if (e.t === 'poly') ents.push({ t: 'poly', pts: e.pts.map(function (p) { return [p[0] * k + dx, p[1] * k + dy, 0]; }), closed: !!e.closed, layer: e.layer });
+                else if (e.t === 'circle') ents.push({ t: 'circle', c: [e.c[0] * k + dx, e.c[1] * k + dy, 0], r: e.r * k, layer: e.layer });
+                else if (e.t === 'text') (e.s || []).forEach(function (ln_, j) {
+                    var h = e.h * k, off = j * h * 1.35;
+                    ents.push({ t: 'text', p: [e.p[0] * k + dx + Math.sin(e.rot || 0) * off, e.p[1] * k + dy - Math.cos(e.rot || 0) * off, 0], h: h, s: [ln_], rot: e.rot || 0, ha: e.ha === 1 ? 1 : e.ha === 2 ? 2 : 0, va: 2, layer: e.layer === 'TEXTOS' ? 'TEXTOS' : e.layer });
+                });
+            });
+            ents.push({ t: 'text', p: [x + (bb[2] - bb[0]) * k / 2, -1.2, 0], h: 0.3, s: [titulo], rot: 0, ha: 1, va: 2, layer: 'TEXTO', titulo: true });
+            x += (bb[2] - bb[0]) * k + 2.5;
+        }
+        pasar(E.viga && E.viga.ok ? E.viga.model : null, 'DETALLE VIGA V-1');
+        pasar(E.columna && E.columna.ok ? E.columna.model : null, 'DETALLE COLUMNA C-1');
+        if (!ents.length) ents.push({ t: 'text', p: [ox, 0, 0], h: 0.3, s: ['Diseño estructural no disponible'], rot: 0, ha: 0, va: 2, layer: 'TEXTO' });
+        return limpiarSolapes(ents, 0.002);
+    }
     function dibujarPiso(Pl, pi, ox) {
         var ents = [], W = Pl.W, D = pi.n === 1 ? Pl.L : Pl.D;
         function P(x, y) { return [ox + x, y, 0]; }
@@ -911,22 +1061,7 @@
         pi.rooms.forEach(function (r) { acabado(r, pl); });
 
         /* --- ejes y columnas --- */
-        var ex, ey, y;
-        if (Pl.generico) {
-            /* ejes en los bordes del corredor; luces de máximo ~5.5 m a lo largo del fondo */
-            ex = Pl.ejesX ? Pl.ejesX.slice() : [0, Pl.a, Pl.a + Pl.cw, W];
-            /* planta abierta (nave, bodega, templo): luz libre (cubierta en cercha) hasta 20 m; si es más ancha, ejes a ≤ 20 m */
-            if (pi.rooms.some(function (r) { return r.nave; })) { var nv_ = Math.max(1, Math.ceil(W / 20)); ex = []; for (var ix_ = 0; ix_ <= nv_; ix_++) ex.push(W * ix_ / nv_); }
-            var nv = Math.max(2, Math.ceil(Pl.D / 5.5)); ey = [];
-            if (Pl.ejesY) ey = Pl.ejesY.slice();
-            else for (var iy = 0; iy <= nv; iy++) ey.push(Pl.D * iy / nv);
-        } else {
-            ex = [0, W]; if (W >= 7) ex.splice(1, 0, Pl.a + PASILLO / 2 > W - 1.5 ? W / 2 : Pl.wl);
-            if (W >= 12) ex.splice(1, 0, Pl.wl / 2);
-            ey = [0, Pl.hA, Pl.hA + Pl.hB + PAS_H]; y = ey[ey.length - 1];
-            while (Pl.D - y > 4.6) { y += Math.min(4.2, (Pl.D - y) / Math.ceil((Pl.D - y) / 4.2)); ey.push(y); }
-            if (Math.abs(ey[ey.length - 1] - Pl.D) > 0.05) ey.push(Pl.D);
-        }
+        var EJ = ejesPlan(Pl, pi), ex = EJ.ex, ey = EJ.ey, EST = estructura(Pl), CS = EST.c;
         var LET = 'ABCDEFGHIJ', Dtop = pi.n === 1 ? Pl.L : Pl.D;
         /* ejes solo por fuera de la planta (del círculo al borde), para que no pasen por encima de muros ni muebles */
         /* el eje se interrumpe donde pasan las dos cadenas de cotas (en -0.55 y -1.00): ninguna cota lo cruza */
@@ -941,8 +1076,9 @@
             ln('EJES', W + 0.3, yy, W + 1.0, yy, { dash: true });
             circ('EJES', -1.75, yy, 0.35); txt('EJES', -1.75, yy, 0.3, LET[i] || String(i));
         });
+        /* columnas con la sección que resultó del diseño (C-1) */
         var colRects = [];
-        ex.forEach(function (x) { ey.forEach(function (yy) { colRects.push([x - 0.15, yy - 0.15, x + 0.15, yy + 0.15]); }); });
+        ex.forEach(function (x) { ey.forEach(function (yy) { colRects.push([x - CS / 2, yy - CS / 2, x + CS / 2, yy + CS / 2]); }); });
 
         /* --- muros: se reúnen como una sola figura (unión de rectángulos) y se recortan los vanos de puertas y
            ventanas; así no queda ninguna línea encima de otra (muros vecinos, columnas, puertas y ventanas) --- */
@@ -1244,11 +1380,8 @@
 
         /* cuadro de elementos estructurales (a la derecha de la planta): sección acotada de columna, viga y muros */
         (function () {
-            var S = 5, x0 = W + 1.8, y = DB - 0.4, luces = [];
-            for (var i = 0; i < ex.length - 1; i++) luces.push(ex[i + 1] - ex[i]);
-            for (i = 0; i < ey.length - 1; i++) luces.push(ey[i + 1] - ey[i]);
-            var Lmax = Math.max.apply(null, luces.concat([3]));
-            var hV = Math.max(0.3, Math.ceil(Lmax / 12 / 0.05) * 0.05), bV = Math.max(0.25, Math.ceil(hV / 2 / 0.05) * 0.05);
+            /* secciones y refuerzo del diseño estructural (los mismos de la lámina de detalles) */
+            var S = 5, x0 = W + 1.8, y = DB - 0.4, Lmax = EST.Lmax, hV = EST.h, bV = EST.b;
             txt('DETALLES', x0 + 1.6, y, 0.2, 'ELEMENTOS ESTRUCTURALES', { titulo: true });
             txt('DETALLES', x0 + 1.6, y - 0.3, 0.11, 'Secciones ampliadas ×' + S + ' · cotas en metros');
             function seccion(nombre, nota, b, h, capa, yTop, soloAncho) {
@@ -1267,8 +1400,8 @@
                 return ys0 - 0.75;
             }
             var yy = y - 0.8;
-            yy = seccion('C-1 · COLUMNA', ['Sección ' + f2(0.3) + ' × ' + f2(0.3) + ' m', colRects.length + ' columnas en ejes'], 0.3, 0.3, 'COLUMNAS', yy);
-            yy = seccion('V-1 · VIGA', ['Sección b × h = ' + f2(bV) + ' × ' + f2(hV) + ' m', 'Luz máx. entre ejes ' + f2(Lmax) + ' m (h ≈ L/12)'], bV, hV, 'COLUMNAS', yy);
+            yy = seccion('C-1 · COLUMNA', ['Sección ' + f2(CS) + ' × ' + f2(CS) + ' m · ' + colRects.length + ' columnas', EST.colTxt], CS, CS, 'COLUMNAS', yy);
+            yy = seccion('V-1 · VIGA', ['Sección b × h = ' + f2(bV) + ' × ' + f2(hV) + ' m · luz ' + f2(Lmax) + ' m', EST.vigaTxt], bV, hV, 'COLUMNAS', yy);
             /* muros: se dibuja un tramo en planta; la cota es su espesor */
             yy = seccion('M-1 · MURO EXTERIOR', ['Espesor ' + f2(MURO_EXT) + ' m'], MURO_EXT, 0.36, 'MUROS', yy, true);
             seccion('M-2 · MURO INTERIOR', ['Espesor ' + f2(MURO) + ' m'], MURO, 0.36, 'MUROS', yy, true);
@@ -1785,8 +1918,14 @@
         pl('ACABADOS', [[x0, y0], [x1, y0], [x1, y1], [x0, y1]], true, { col: tono, fill: true, alpha: t === 'patio' ? 0.1 : humedo || madera ? 0.09 : 0.06, noStroke: true, soloVista: true });
     }
     function modelo(Pl, soloPiso) {
-        var ents = [], gap = Pl.W + 5;
+        var ents = [], gap = Pl.W + 12;   /* espacio para el cuadro de elementos a la derecha de cada planta */
         Pl.pisos.forEach(function (pi, i) { if (soloPiso && pi.n !== soloPiso) return; ents = ents.concat(dibujarPiso(Pl, pi, soloPiso ? 0 : i * gap)); });
+        if (!soloPiso) {
+            /* láminas estructurales a continuación de las plantas */
+            var xE = Pl.pisos.length * gap;
+            ents = ents.concat(dibujarEstructural(Pl, xE));
+            ents = ents.concat(dibujarDetalles(Pl, xE + Pl.W + 8));
+        }
         /* los rellenos «solo vista» (tintes de piso, anillo del muro) no van al DXF */
         ents = ents.filter(function (e) { return !e.soloVista; });
         var layers = {}; Object.keys(LAYERS).forEach(function (k) { layers[k] = { name: k, aci: LAYERS[k], off: false }; });
@@ -1800,8 +1939,10 @@
     }
 
     /* =================================================================== 4. SVG propio (vista previa y modo cine) */
-    var COLOR = { EJES: '#ef4444', COLUMNAS: '#22d3ee', MUROS: '#2dd4bf', PUERTAS: '#4ade80', VENTANAS: '#60a5fa', ESCALERA: '#e879f9', MOBILIARIO: '#facc15', TEXTO: '#e2e8f0', COTAS: '#38bdf8', DETALLES: '#f8fafc', MARCO: '#94a3b8' };
-    var COLOR_CLARO = { EJES: '#dc2626', COLUMNAS: '#0e7490', MUROS: '#0f766e', PUERTAS: '#15803d', VENTANAS: '#2563eb', ESCALERA: '#a21caf', MOBILIARIO: '#b45309', TEXTO: '#0f172a', COTAS: '#0369a1', DETALLES: '#0f172a', MARCO: '#64748b' };
+    var COLOR = { EJES: '#ef4444', COLUMNAS: '#22d3ee', MUROS: '#2dd4bf', PUERTAS: '#4ade80', VENTANAS: '#60a5fa', ESCALERA: '#e879f9', MOBILIARIO: '#facc15', TEXTO: '#e2e8f0', COTAS: '#38bdf8', DETALLES: '#f8fafc', MARCO: '#94a3b8',
+        VIGAS: '#f59e0b', CONCRETO: '#cbd5e1', 'ACERO-LONG': '#f87171', ESTRIBOS: '#4ade80', TEXTOS: '#e2e8f0', APOYOS: '#60a5fa', SUELO: '#a16207' };
+    var COLOR_CLARO = { EJES: '#dc2626', COLUMNAS: '#0e7490', MUROS: '#0f766e', PUERTAS: '#15803d', VENTANAS: '#2563eb', ESCALERA: '#a21caf', MOBILIARIO: '#b45309', TEXTO: '#0f172a', COTAS: '#0369a1', DETALLES: '#0f172a', MARCO: '#64748b',
+        VIGAS: '#b45309', CONCRETO: '#334155', 'ACERO-LONG': '#dc2626', ESTRIBOS: '#15803d', TEXTOS: '#0f172a', APOYOS: '#2563eb', SUELO: '#78350f' };
     function svgPiso(ents, claro, conIndices) {
         var bb = CAD.bboxOf(ents), pad = 0.6, w = bb[2] - bb[0] + 2 * pad, h = bb[3] - bb[1] + 2 * pad;
         var col = claro ? COLOR_CLARO : COLOR;
@@ -1943,7 +2084,11 @@
             '<div class="cxpl-prev">' + unicos.map(function (u) {
                 var ents = dibujarPiso(Pl, u.pi, 0);
                 return '<figure>' + svgPiso(ents, true, false) + '<figcaption>' + (u.pisos.length > 1 ? ordinal(u.pisos[0]) + ' a ' + ordinal(u.pisos[u.pisos.length - 1]) : ordinal(u.pisos[0])) + ' PISO</figcaption></figure>';
-            }).join('') + '</div>' +
+            }).join('') +
+            /* láminas estructurales: planta de vigas y columnas + detalles de refuerzo */
+            '<figure>' + svgPiso(dibujarEstructural(Pl, 0), true, false) + '<figcaption>PLANTA ESTRUCTURAL</figcaption></figure>' +
+            '<figure>' + svgPiso(dibujarDetalles(Pl, 0), true, false) + '<figcaption>DETALLES VIGA Y COLUMNA</figcaption></figure>' +
+            '</div>' +
             '<div class="cxpl-cambio"><b>¿Quieres cambiar algo?</b><span>Escríbelo en el chat y se vuelve a dibujar.</span></div>' +
             '<div class="cxpl-acts"><button type="button" class="cxpl-btn ok" data-cxpl="cine">🎬 Ver de nuevo en modo cine</button>' +
             '<button type="button" class="cxpl-btn" data-cxpl="dxf">⬇ DXF</button><button type="button" class="cxpl-btn" data-cxpl="pdf">⬇ PDF</button><button type="button" class="cxpl-btn" data-cxpl="png">⬇ PNG</button></div>' +
@@ -1982,6 +2127,7 @@
         ['Carpintería', /PUERTA|VENTANA/, '#4ade80', 0.3],
         ['Escalera', /ESCALERA/, '#e879f9', 0.3],
         ['Mobiliario', /MOBILIARIO|EQUIPO|MUEBLE/, '#fbbf24', 0.38],
+        ['Vigas', /^VIGAS$/, '#f59e0b', 0.12],
         ['Pisos y acabados', /^ACABADOS/, '#a5b4c8', 0.12],
         ['Armadura', /ARMAD|ACERO|ESTRIB|REFUER|VARILL|REBAR|STEEL/, '#ef4444', 0.18],
         ['Concreto y suelo', /CONTORNO|CONCRET|SUELO|ASFALTO|APOYO|SOMBRA|LOSA|VIGA|ZAPATA|PERFIL|OUTLINE|TERRENO|ESTRUC/, '#a3e635', 0.02],
@@ -2179,6 +2325,13 @@
             grid.appendChild(fig);
             return { fig: fig, svg: fig.querySelector('svg'), etiqueta: ordinal(pi.n) };
         });
+        /* láminas estructurales: los agentes también dibujan la planta de vigas y columnas y los detalles */
+        [['PLANTA ESTRUCTURAL', dibujarEstructural(Pl, 0), '#f59e0b'], ['DETALLES VIGA Y COLUMNA', dibujarDetalles(Pl, 0), '#f87171']].forEach(function (L, k) {
+            var fig = el('figure', 'cxpl-cine-f', '<figcaption style="--c:' + L[2] + '">' + L[0] + '</figcaption>' + svgPiso(L[1], false, true));
+            grid.appendChild(fig);
+            vistas.push({ fig: fig, svg: fig.querySelector('svg'), etiqueta: 'E' + k });
+        });
+        grid.style.setProperty('--n', Math.min(vistas.length, 4));
         var cerrado = false;
         var motor = motorAgentes(ov, vistas, { dur: 15000 + 1500 * Math.min(Pl.n, 4), alTerminar: o.transicion ? function () { setTimeout(cerrar, 1300); } : null });
         zoomCine(ov);
