@@ -1300,11 +1300,17 @@
                 if (e.t === 'circle') e.c = T(e.c); else e.pts = e.pts.map(T);
             });
         }
+        /* puestos del comedor que pidió el usuario («comedor para 8 personas», «comedor de 6 puestos») */
+        var PUESTOS = (function () {
+            var q = cifras(norm(Pl.texto || '')), m = q.match(/comedor[^.,;]{0,40}?\b(\d{1,2})\s*(?:puestos|personas|sillas|asientos)|\b(\d{1,2})\s*(?:puestos|personas|sillas|asientos)[^.,;]{0,25}comedor/);
+            return m ? Math.min(16, +(m[1] || m[2])) : 0;
+        })();
         pi.rooms.forEach(function (r) {
             delete r._ly;
             var a0 = r.x < 0.01 ? extra_ : 0, a1 = r.x + r.w > W - 0.01 ? extra_ : 0, b0 = r.y < 0.01 ? extra_ : 0, b1 = Math.abs(r.y + r.h - DB) < 0.01 ? extra_ : 0;
             if (ABIERTO.test(r.tipo)) { a0 = a1 = b0 = b1 = 0; }
             var ri = {}; for (var k in r) ri[k] = r[k];
+            if (r.tipo === 'comedor' && PUESTOS) ri._puestos = PUESTOS;
             ri.x = r.x + a0; ri.y = r.y + b0; ri.w = r.w - a0 - a1; ri.h = r.h - b0 - b1;
             var g0 = PIEZA, e0 = ents.length;
             mobiliario(ri, pl);
@@ -1664,17 +1670,49 @@
         S.ln(-Wc / 2 + 0.15, q(3.75), Wc / 2 - 0.15, q(3.75), Dl('carro', 0.008));                          /* baúl */
     }
     /* comedor: mesa con sillas en ambos lados (y cabeceras si es larga), puestos servidos y centro de mesa */
-    function comedor(pl, cx, cy, tw, th) {
+    /* mesa de comedor rectangular: L = largo, A = ancho; s1 / s2 puestos en cada costado largo, cab = 0, 1 o 2 cabeceras.
+       vert: el largo de la mesa va en sentido Y. Cada puesto lleva su silla y su plato puesto sobre la mesa. */
+    function comedor(pl, cx, cy, L, A, s1, s2, cab, vert) {
         var S = lapiz(pl, cx, cy, 0);
+        function XY(u, v) { return vert ? [v, u] : [u, v]; }   /* u: a lo largo de la mesa, v: a lo ancho */
+        var tw = vert ? A : L, th = vert ? L : A;
         S.rr(-tw / 2, -th / 2, tw, th, 0.08, F('madera', 0.25)); S.rr(-tw / 2 + 0.05, -th / 2 + 0.05, tw - 0.1, th - 0.1, 0.06, Dl('madera', 0.006));
-        S.elip(0, 0, Math.min(0.2, tw * 0.12), 0.09, F('verde', 0.4));
-        var n = Math.max(1, Math.floor(tw / 0.55));
-        for (var i = 0; i < n; i++) {
-            var u = -tw / 2 + tw * (i + 0.5) / n;
-            SIM.silla(lapiz(pl, cx + u, cy - th / 2 - 0.5, 0)); SIM.silla(lapiz(pl, cx + u, cy + th / 2 + 0.5, 2));
-            S.circ(u, -th / 2 + 0.17, 0.1, Dl('metal')); S.circ(u, th / 2 - 0.17, 0.1, Dl('metal'));
+        var ce = Math.min(0.2, L * 0.12);
+        if (vert) S.elip(0, 0, 0.09, ce, F('verde', 0.4)); else S.elip(0, 0, ce, 0.09, F('verde', 0.4));   /* centro de mesa */
+        function lado(n, sg) {   /* sg = -1: costado de abajo/izquierda, +1: arriba/derecha */
+            for (var i = 0; i < n; i++) {
+                var u = -L / 2 + L * (i + 0.5) / n, p = XY(u, sg * (A / 2 + 0.5)), q = XY(u, sg * (A / 2 - 0.17));
+                SIM.silla(lapiz(pl, cx + p[0], cy + p[1], vert ? (sg < 0 ? 3 : 1) : (sg < 0 ? 0 : 2)));
+                S.circ(q[0], q[1], 0.1, Dl('metal'));
+            }
         }
-        if (tw >= 1.4) { SIM.silla(lapiz(pl, cx - tw / 2 - 0.5, cy, 3)); SIM.silla(lapiz(pl, cx + tw / 2 + 0.5, cy, 1)); }
+        lado(s1, -1); lado(s2, 1);
+        [-1, 1].slice(0, cab).forEach(function (sg) {   /* cabeceras */
+            var p = XY(sg * (L / 2 + 0.5), 0), q = XY(sg * (L / 2 - 0.17), 0);
+            SIM.silla(lapiz(pl, cx + p[0], cy + p[1], vert ? (sg < 0 ? 0 : 2) : (sg < 0 ? 3 : 1)));
+            S.circ(q[0], q[1], 0.1, Dl('metal'));
+        });
+    }
+    /* cuántos puestos y de qué tamaño cabe la mesa en el comedor (o los puestos que pidió el usuario) */
+    function mesaComedor(r) {
+        var vert = r.h > r.w, Lr = Math.max(r.w, r.h) - 0.2, Sr = Math.min(r.w, r.h) - 0.2;
+        var A = Math.max(0.7, Math.min(Sr >= 3.2 ? 1.0 : 0.9, Sr - 2 * 0.72));
+        var p = r._puestos || 0, cab, ns, L;
+        var lMax = function (c) { return Math.min(3.6, Lr - (c ? 2 * 0.72 : 2 * 0.3)); };
+        if (p >= 2) {
+            cab = p >= 6 ? 2 : p % 2 ? 1 : 0;
+            ns = Math.ceil((p - cab) / 2); L = Math.max(1.2, ns * 0.6);
+            if (L > lMax(cab) && cab) { cab = 0; ns = Math.ceil(p / 2); L = Math.max(1.2, ns * 0.6); }
+            if (L > lMax(0)) { ns = Math.max(1, Math.floor(lMax(0) / 0.6)); L = Math.max(1.0, ns * 0.6); }
+            var s2 = Math.min(ns, Math.max(1, p - cab - ns));
+            return { vert: vert, L: L, A: A, s1: ns, s2: s2, cab: cab };
+        }
+        /* sin número pedido: la mesa más grande que quepa, hasta 8 puestos (3 por costado + 2 cabeceras) */
+        L = Math.max(1.0, Math.min(1.8, lMax(1)));
+        cab = L >= 1.2 && lMax(1) >= 1.2 ? 2 : 0;
+        if (!cab) L = Math.max(1.0, Math.min(1.8, lMax(0)));
+        ns = Math.max(1, Math.floor(L / 0.6));
+        return { vert: vert, L: L, A: A, s1: ns, s2: ns, cab: cab };
     }
     function mesaRedonda(pl, cx, cy, R, nS) {
         var S = lapiz(pl, cx, cy, 0); S.circ(0, 0, R, F('madera', 0.25)); S.circ(0, 0, R * 0.25, F('verde', 0.35));
@@ -1688,7 +1726,7 @@
         /* mesas de trabajo con sillas a ambos lados, en retícula, dejando circulación junto a la puerta */
         function mesas(tw, th, gap) {
             for (var my = y + 1.0; my + th + 0.55 < y + h - 0.4; my += th + gap + 0.6)
-                for (var mx = x + 0.6; mx + tw < x + w - 0.5; mx += tw + gap) comedor(pl, mx + tw / 2, my + th / 2, tw, th);
+                for (var mx = x + 0.6; mx + tw < x + w - 0.5; mx += tw + gap) { var nm = Math.max(1, Math.floor(tw / 0.55)); comedor(pl, mx + tw / 2, my + th / 2, tw, th, nm, nm, tw >= 1.4 ? 2 : 0, false); }
         }
         switch (r.tipo) {
             case 'cochera': {
@@ -1816,11 +1854,23 @@
                 SIM.mesaCentro(lapiz(pl, sx, y + 1.35, 0), Math.min(1.1, L * 0.55), 0.55);
                 if (w > 3.6) SIM.sofa(lapiz(pl, sx + L / 2 + 0.75, y + 1.6, 1), 0.95, 0.85, 1);   /* sillón mirando al sofá */
                 SIM.maceta(lapiz(pl, x + 0.45, y + h - 0.45, 0), 0.17);
-                if (w > 4.5 && h > 3.5) comedor(pl, x + w - 1.8, y + h - 1.65, 1.6, 0.9);
+                if (w > 4.5 && h > 3.5) comedor(pl, x + w - 1.8, y + h - 1.65, 1.6, 0.9, 2, 2, 2, false);
                 else if (h > 3.2) SIM.tv(lapiz(pl, sx, y + h - 0.12, 2), Math.min(1.8, L));
                 break;
             }
-            case 'comedor': comedor(pl, cx, cy, Math.min(1.8, w - 1.6), 0.95); SIM.maceta(lapiz(pl, x + w - 0.45, y + h - 0.45, 0), 0.16); r._ly = y + 0.45; break;
+            case 'comedor': {
+                /* mesa del tamaño del comedor, con sus puestos; se aparta del lado de la puerta (su hoja barre ~1 m) */
+                var mc = mesaComedor(r), ext = mc.L / 2 + (mc.cab ? 0.5 : 0) + 0.05, mcx = cx, mcy = cy;
+                if (mc.vert) { var y0c = y + 1.05 + ext, y1c = y + h - 0.12 - ext; mcy = y1c >= y0c ? (y0c + y1c) / 2 : cy; }
+                else {
+                    var x0c = x + 0.12 + ext, x1c = x + w - 0.12 - ext;
+                    if (r._puertaDer) x1c = x + w - 1.05 - ext; else x0c = x + 1.05 + ext;
+                    mcx = x1c >= x0c ? (x0c + x1c) / 2 : cx;
+                }
+                comedor(pl, mcx, mcy, mc.L, mc.A, mc.s1, mc.s2, mc.cab, mc.vert);
+                r._ly = mc.vert ? y + 0.45 : y + 0.35;
+                break;
+            }
             case 'dormp': case 'dorm': {
                 var dbl = r.tipo === 'dormp', bw = dbl ? 1.6 : 1.0, bl = 2.0, bx = cx, by = y + h - 0.15 - bl;
                 if (by - (y + 0.9) > 0.8) SIM.alfombra(G, bx - bw / 2 - 0.2, by - 0.8, bw + 0.4, 0.65);   /* tapete al pie de la cama */
