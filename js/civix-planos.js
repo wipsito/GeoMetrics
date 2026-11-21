@@ -378,7 +378,7 @@
         var a = Math.max(3, (Wb - cw) * 0.52), b = Wb - cw - a;
         /* ancho de crujía a partir de las medidas pedidas: el lado del recinto que va a lo ancho + un muro */
         var anchosPed = [];
-        if (huella) P.pisos.forEach(function (p) { if (p && p.gen) p.gen.forEach(function (e) { if (e.req && e.tipo !== 'banos') anchosPed.push(Math.min(e.req.w, e.req.h) + MURO); }); });
+        if (huella) P.pisos.forEach(function (p) { if (p && p.gen) p.gen.forEach(function (e) { var rq = e.reqStd || e.req; if (rq && e.tipo !== 'banos') anchosPed.push(Math.min(rq.w, rq.h) + MURO); }); });
         if (anchosPed.length) {
             var objetivo = Math.max(2.8, Math.max.apply(null, anchosPed)), cwH = 1.5, mejorM = 1;
             /* cuántas franjas: la menor cantidad que quepa en el fondo del lote */
@@ -393,7 +393,16 @@
             };
             for (var mm = 1; mm <= 4; mm++) { if (mm * (2 * objetivo + cwH) > Wu + 1e-6) break; mejorM = mm; if (estima(mm) <= Lu * 0.98) break; }
             if (mejorM * (2 * objetivo + cwH) <= Wu + 1e-6) { m = mejorM; cw = cwH; a = b = objetivo; Wb = 2 * objetivo + cwH; }
+            else a = b = (Wb - cw) / 2;   /* lote angosto: dos crujías iguales, así los dormitorios estándar quedan todos iguales */
         }
+        /* dormitorios sin medidas del usuario: medida estándar (3.20 × 3.60 libres) o, si el lote no da, el ancho libre
+           de la crujía; la misma para todos */
+        var wStd = Math.min(a, b) - MURO;
+        P.pisos.forEach(function (p) { if (p && p.gen) p.gen.forEach(function (e) {
+            if (!e.reqAuto || !/^dorm/.test(e.tipo)) return;
+            e.reqStd = e.reqStd || { w: e.req.w, h: e.req.h };
+            e.req = { w: Math.min(e.reqStd.w, wStd), h: e.reqStd.h }; e.area = e.req.w * e.req.h;
+        }); });
         var CRU = [], CORR = [], ejesX = [];
         for (var kb = 0; kb < m; kb++) {
             var xb0 = bx0 + kb * Wb;
@@ -1189,14 +1198,14 @@
             if (r.padre) {
                 var pa = pi.rooms.filter(function (q) { return q.nombre === r.padre; })[0];
                 if (pa) {
-                    var bx0 = Math.max(r.x, pa.x), bx1 = Math.min(r.x + r.w, pa.x + pa.w), dwp = Math.min(0.75, bx1 - bx0 - 0.4);
+                    var bx0 = Math.max(r.x, pa.x), bx1 = Math.min(r.x + r.w, pa.x + pa.w), dwp = Math.min(0.7, bx1 - bx0 - 0.4);
                     var encima = Math.abs(pa.y + pa.h - r.y) < 0.02, debajo = Math.abs(r.y + r.h - pa.y) < 0.02;
                     if ((encima || debajo) && dwp >= 0.6) {
-                        var corrDer = r.lado ? r.lado === 'der' : r.x < Pl.a - 0.01, hx = corrDer ? bx1 - 0.2 - dwp : bx0 + 0.2;
+                        var corrDer = r.lado ? r.lado === 'der' : r.x < Pl.a - 0.01, hx = corrDer ? bx1 - 0.15 - dwp : bx0 + 0.15;
                         if (encima) puerta(hx, r.y, dwp, 'up'); else puerta(hx, r.y + r.h, dwp, 'down');
                         barridos.push(encima ? [hx, r.y - 0.6, hx + dwp, r.y] : [hx, r.y + r.h, hx + dwp, r.y + r.h + 0.6]);   /* paso libre frente a la puerta, del lado del espacio */
                         r._puertaDer = corrDer;   /* el lavamanos va al lado contrario de la puerta */
-                        pa._vanoPriv = { x0: hx - 0.1, x1: hx + dwp + 0.1, arriba: encima };   /* ese tramo de muro del espacio queda libre de muebles */
+                        pa._vanoPriv = { x0: hx - 0.05, x1: hx + dwp + 0.05, arriba: encima };   /* ese tramo de muro del espacio queda libre de muebles */
                         return;
                     }
                 }
@@ -1596,11 +1605,19 @@
             var n = doble ? 2 : 1, g = 0.08, pw = (bw - 0.2 - g * (n - 1)) / n;
             for (var i = 0; i < n; i++) { var u = -bw / 2 + 0.1 + i * (pw + g); S.rr(u, 0.17, pw, 0.34, 0.11, F('tela', 0.4)); S.ln(u + 0.1, 0.34, u + pw - 0.1, 0.34, Dl('tela', 0.007)); }
             S.rr(-bw / 2 + 0.07, 0.6, bw - 0.14, bl - 0.71, 0.05, F('cama', 0.3));               /* edredón */
-            S.ln(-bw / 2 + 0.07, 0.8, bw / 2 - 0.07, 0.8, Dl('cama'));                           /* doblez de la sábana */
-            S.ln(-bw / 2 + 0.18, 1.15, bw / 2 - 0.5, 1.15, Dl('cama', 0.006)); S.ln(-bw / 2 + 0.18, 1.5, bw / 2 - 0.65, 1.5, Dl('cama', 0.006));
-            /* esquina doblada: relleno sin borde + solo la diagonal (los otros lados coincidirían con el edredón) */
-            S.poly([[bw / 2 - 0.07, bl - 0.78], [bw / 2 - 0.5, bl - 0.11], [bw / 2 - 0.07, bl - 0.11]], true, { col: 'tela', fill: true, alpha: 0.45, noStroke: true });
-            S.ln(bw / 2 - 0.07, bl - 0.78, bw / 2 - 0.5, bl - 0.11, Dl('tela', 0.01));
+            /* esquina doblada del edredón: proporcional al largo de la cama (si la cama va a escala, no se sale ni cruza nada) */
+            var fy = Math.min(0.67, (bl - 0.71) * 0.55), fx = Math.min(fy * 0.64, bw - 0.3), y0f = bl - 0.11 - fy;
+            /* hasta dónde puede llegar una línea a la altura v sin tocar la diagonal de la esquina */
+            var finX = function (v) { return fy > 0.15 && v > y0f - 0.02 ? bw / 2 - 0.07 - fx * Math.min(1, (v - y0f + 0.02) / fy) - 0.05 : bw / 2 - 0.07; };
+            [[0.8, -bw / 2 + 0.07, 0.07, Dl('cama')], [1.15, -bw / 2 + 0.18, 0.5, Dl('cama', 0.006)], [1.5, -bw / 2 + 0.18, 0.65, Dl('cama', 0.006)]].forEach(function (l) {
+                var x1 = Math.min(bw / 2 - l[2], finX(l[0]));
+                if (l[0] < bl - 0.2 && x1 - l[1] > 0.15) S.ln(l[1], l[0], x1, l[0], l[3]);   /* doblez de la sábana y pliegues */
+            });
+            if (fy > 0.15) {
+                /* relleno sin borde + solo la diagonal (los otros lados coincidirían con el edredón) */
+                S.poly([[bw / 2 - 0.07, y0f], [bw / 2 - 0.07 - fx, bl - 0.11], [bw / 2 - 0.07, bl - 0.11]], true, { col: 'tela', fill: true, alpha: 0.45, noStroke: true });
+                S.ln(bw / 2 - 0.07, y0f, bw / 2 - 0.07 - fx, bl - 0.11, Dl('tela', 0.01));
+            }
         },
         mesaNoche: function (S, s) {
             S.rr(-s / 2, 0, s, s * 0.9, 0.04, F('madera', 0.3));
@@ -1932,22 +1949,39 @@
                 var dbl = r.tipo === 'dormp', top = y + h - 0.15, barrD = (r._barr || []).slice();
                 var vp = r._vanoPriv && r._vanoPriv.arriba ? r._vanoPriv : null;
                 if (vp) barrD.push([vp.x0, top - 0.7, vp.x1, top + 0.2]);
-                /* el clóset va en el muro lateral contrario a la puerta */
+                /* el clóset va en el muro lateral contrario a la puerta; con baño privado, en el muro de la puerta (entre
+                   la puerta del corredor y la del baño), para dejar todo el muro del fondo a la cama */
                 var der = r._puertaDer;
                 if (der == null) der = (r._barr || []).some(function (b) { return (b[0] + b[2]) / 2 > cx; });
+                var cIzq = vp ? !der : der;
                 var choca = function (q) { return q[0] < x + 0.08 || q[2] > x + w - 0.08 || q[1] < y + 0.08 || q[3] > y + h - 0.08 || barrD.some(function (b) { return q[0] < b[2] - 0.01 && q[2] > b[0] + 0.01 && q[1] < b[3] - 0.01 && q[3] > b[1] + 0.01; }); };
                 var cruza = function (p, q) { return p[0] < q[2] - 0.01 && p[2] > q[0] + 0.01 && p[1] < q[3] - 0.01 && p[3] > q[1] + 0.01; };
                 var mejorD = null;
-                [[dbl ? 1.6 : 1.0, 0.45, 0.6], [dbl ? 1.4 : 0.9, 0.42, 0.6], [dbl ? 1.4 : 0.9, 0.4, 0.55], [dbl ? 1.2 : 0.9, 0.38, 0.5], [0.9, 0.35, 0.45]].some(function (cfg) {
-                    var bw = cfg[0], nsz = cfg[1], cd = cfg[2], bl = h >= 2.75 ? 2.0 : 1.9, by = top - bl, nsy = top - nsz * 0.9;
+                /* medidas reales primero; si no alcanzan, todo el juego se dibuja a escala (más pequeño) hasta que quepa completo */
+                var cfgs = [[dbl ? 1.6 : 1.0, 0.45, 0.6, 1], [dbl ? 1.4 : 0.9, 0.42, 0.6, 1], [dbl ? 1.4 : 0.9, 0.4, 0.55, 1]];
+                for (var ke = 0.95; ke >= 0.5; ke -= 0.05) cfgs.push([(dbl ? 1.4 : 0.9) * ke, 0.4 * ke, 0.55 * ke, ke]);
+                cfgs.some(function (cfg) {
+                    var bw = cfg[0], nsz = cfg[1], cd = cfg[2], bl = (h >= 2.75 ? 2.0 : 1.9) * cfg[3], by = top - bl, nsy = top - nsz * 0.9;
                     var tvL = 0, tvD = by - (y + 0.15) >= 0.75 ? 0.4 : 0.1;   /* mueble de TV si hay fondo; si no, TV en el muro */
-                    /* clóset: desde encima del mueble de TV hasta debajo de la mesa de noche de ese lado */
-                    var cy0 = y + 0.15 + tvD + 0.1, cy1 = nsy - 0.08, cl = Math.min(2.0, cy1 - cy0);
-                    if (cl < 0.8) { cy0 = y + 0.15; cl = Math.min(2.0, cy1 - cy0); }
-                    if (cl < 0.8) return false;
-                    var clo = der ? [x + 0.15, cy1 - cl, x + 0.15 + cd, cy1] : [x + w - 0.15 - cd, cy1 - cl, x + w - 0.15, cy1];
-                    for (var sh = 0; choca(clo) && sh < 2; sh += 0.1) { clo[1] -= 0.1; clo[3] -= 0.1; }
-                    if (choca(clo)) return false;
+                    /* clóset: el tramo libre más largo de su muro (sin puertas, bajo la mesa de noche y, si se puede,
+                       por encima del mueble de TV) */
+                    var cxw = cIzq ? [x + 0.15, x + 0.15 + cd] : [x + w - 0.15 - cd, x + w - 0.15], clo = null;
+                    [true, false].some(function (conTV) {
+                        var bloq = barrD.filter(function (b) { return b[0] < cxw[1] - 0.01 && b[2] > cxw[0] + 0.01; }).map(function (b) { return [b[1] - 0.02, b[3] + 0.02]; });
+                        bloq.push([nsy - 0.08, top + 1]);
+                        if (conTV) bloq.push([y - 1, y + 0.15 + tvD + 0.1]);
+                        bloq.sort(function (p, q) { return p[0] - q[0]; });
+                        var c0 = y + 0.15, mejorI = null;
+                        bloq.concat([[top + 2, top + 3]]).forEach(function (bk) {
+                            if (bk[0] > c0 && (!mejorI || bk[0] - c0 > mejorI[1] - mejorI[0])) mejorI = [c0, Math.min(bk[0], top)];
+                            c0 = Math.max(c0, bk[1]);
+                        });
+                        if (!mejorI || mejorI[1] - mejorI[0] < 0.8 * cfg[3]) return false;
+                        var cl = Math.min(2.0, mejorI[1] - mejorI[0]);
+                        clo = [cxw[0], mejorI[1] - cl, cxw[1], mejorI[1]];
+                        return !choca(clo);
+                    });
+                    if (!clo || choca(clo)) return false;
                     var best = null;
                     for (var bx = x + 0.1; bx <= x + w - 0.1 + 1e-6; bx += 0.05) {
                         var cama = [bx - bw / 2 - 0.05, by, bx + bw / 2 + 0.05, top + 0.01];
@@ -1958,7 +1992,7 @@
                     if (best == null) return false;
                     /* televisor en el muro frente a la cama, centrado con ella y fuera del barrido de la puerta */
                     var tvy0 = y + 0.15, tvy1 = tvy0 + tvD, tvX = null;
-                    for (var L_ = Math.min(1.5, w - 0.6); L_ >= 0.8 && tvX == null; L_ -= 0.1)
+                    for (var L_ = Math.min(1.5 * cfg[3], w - 0.6); L_ >= 0.8 * cfg[3] - 1e-6 && tvX == null; L_ -= 0.05)
                         for (var d_ = 0; d_ <= w; d_ += 0.05) {
                             var ok = [best - d_, best + d_].filter(function (tx) { var q = [tx - L_ / 2, tvy0, tx + L_ / 2, tvy1]; return !choca(q) && !cruza(q, clo); });
                             if (ok.length) { tvX = ok[0]; tvL = L_; break; }
@@ -1979,7 +2013,7 @@
                 SIM.mesaNoche(lapiz(pl, D_.bx - D_.bw / 2 - 0.08 - D_.nsz / 2, top, 2), D_.nsz);
                 SIM.mesaNoche(lapiz(pl, D_.bx + D_.bw / 2 + 0.08 + D_.nsz / 2, top, 2), D_.nsz);
                 var cq = D_.clo, clL = cq[3] - cq[1], cdd = cq[2] - cq[0];
-                SIM.closet(der ? lapiz(pl, cq[0], (cq[1] + cq[3]) / 2, 3) : lapiz(pl, cq[2], (cq[1] + cq[3]) / 2, 1), clL, cdd);
+                SIM.closet(cIzq ? lapiz(pl, cq[0], (cq[1] + cq[3]) / 2, 3) : lapiz(pl, cq[2], (cq[1] + cq[3]) / 2, 1), clL, cdd);
                 if (D_.tvD >= 0.4) SIM.tv(lapiz(pl, D_.tvX, y + 0.15, 0), D_.tvL); else SIM.tvPared(lapiz(pl, D_.tvX, y + 0.15, 0), D_.tvL);
                 if (D_.by - D_.tvy1 > 0.5) r._ly = (D_.tvy1 + D_.by) / 2;
                 break;
@@ -2213,7 +2247,7 @@
                     if (e.req) {
                         var a1 = [e.req.w, e.req.h].sort(function (a, b) { return a - b; }), a2 = [lw, lh].sort(function (a, b) { return a - b; });
                         var igual = Math.abs(a1[0] - a2[0]) <= 0.02 && Math.abs(a1[1] - a2[1]) <= 0.02;
-                        it2.push([igual && rs.length >= e.n, (e.n > 1 ? e.n + ' × ' : '') + nom + ' (' + ordinal(fi) + ' piso): ' + (e.reqAuto ? 'mínimo para estacionar ' : 'pediste ') + f2(e.req.w) + ' × ' + f2(e.req.h) + ' → ' + txtM]);
+                        it2.push([igual && rs.length >= e.n, (e.n > 1 ? e.n + ' × ' : '') + nom + ' (' + ordinal(fi) + ' piso): ' + (e.reqAuto ? (typeof e.reqAuto === 'string' ? e.reqAuto : 'mínimo para estacionar ') : 'pediste ') + f2(e.req.w) + ' × ' + f2(e.req.h) + ' → ' + txtM]);
                     } else it2.push([rs.length >= e.n, (e.n > 1 ? e.n + ' × ' : '') + nom + ' (' + ordinal(fi) + ' piso): ' + txtM]);
                 });
                 if (rooms.some(function (r) { return r.tipo === 'escalera'; }) && necesario.indexOf('escalera') < 0) necesario.push('escalera');
@@ -2811,6 +2845,10 @@
             var esp = (Array.isArray(pi.espacios) ? pi.espacios : []).slice(0, 40).map(function (e) {
                 var tipo = TIPOS_IA.indexOf(String(e.tipo || '').toLowerCase()) >= 0 ? String(e.tipo).toLowerCase() : 'gen';
                 if (tipo === 'gen') tipo = tipoPorNombre(e.nombre);
+                /* una habitación o dormitorio siempre se amuebla como dormitorio (con cama), aunque la IA le dé otro tipo */
+                var nn = norm(e.nombre || '');
+                if (/habitacion|dormitorio|alcoba|recamara|suite/.test(nn) && !/bano|hospitaliza|servicio|util/.test(nn) && tipo !== 'dorm' && tipo !== 'dormp') tipo = 'dorm';
+                if (tipo === 'dorm' && /principal|matrimonial|master|suite|padres/.test(nn)) tipo = 'dormp';
                 var r_ = { nombre: String(e.nombre || 'ESPACIO').toUpperCase().slice(0, 30), area: cl(e.area, 2, 20000, 15), tipo: tipo, n: Math.round(cl(e.cantidad, 1, 12, 1)), principal: !!e.principal, fondo: norm(e.ubicacion) === 'fondo', de: e.de ? String(e.de) : '' };
                 /* medidas que TÚ escribiste para este espacio (mandan sobre lo que estime la IA) */
                 /* primero la coincidencia por nombre (más palabras en común gana); los sinónimos solo si no hay ninguna */
@@ -2820,7 +2858,9 @@
                 if (mq) { r_.area = mq.A; if (mq.w) r_.req = { w: mq.w, h: mq.h }; r_.pedida = mq; }
                 else if (+e.ancho > 0 && +e.largo > 0 && numerosEnPedido(q, +e.ancho, +e.largo)) { var w_ = Math.min(+e.ancho, +e.largo), h_ = Math.max(+e.ancho, +e.largo); r_.req = { w: w_, h: h_ }; r_.area = w_ * h_; }   /* solo si esas medidas las escribió el usuario */
                 /* garaje sin medidas: el mínimo para estacionar (3.00 × 5.50 m libres por carro; 5.50 × 5.50 para dos) */
-                if (tipo === 'cochera' && !r_.req) { var dos = /\b(dos|2)\s+(carros|autos|vehiculos|puestos)|doble/.test(q + ' ' + norm(e.nombre)); r_.req = { w: dos ? 5.5 : 3.0, h: 5.5 }; r_.area = r_.req.w * r_.req.h; r_.reqAuto = true; }
+                if (tipo === 'cochera' && !r_.req) { var dos = /\b(dos|2)\s+(carros|autos|vehiculos|puestos)|doble/.test(q + ' ' + norm(e.nombre)); r_.req = { w: dos ? 5.5 : 3.0, h: 5.5 }; r_.area = r_.req.w * r_.req.h; r_.reqAuto = 'mínimo para estacionar '; }
+                /* dormitorios sin medidas: todos con la misma medida estándar, suficiente para cama, mesas de noche, TV y clóset */
+                if ((tipo === 'dorm' || tipo === 'dormp') && !r_.req) { r_.req = { w: 3.2, h: 3.6 }; r_.area = r_.req.w * r_.req.h; r_.reqAuto = 'medida estándar de dormitorio '; }
                 return r_;
             }).filter(function (e) { return !/^(PASILLO|CIRCULACI[OÓ]N|ESCALERAS?|CORREDOR)$/.test(e.nombre); });
             /* baño privado: se asocia al espacio al que pertenece (va pegado a él y se entra desde él, no desde el corredor) */
