@@ -2770,22 +2770,18 @@
             '• <b>Edificios y casas:</b> te propongo la distribución, la vista previa de cada planta y el dibujo en <b>modo cine</b>. Indica pisos, lote (frente × fondo) y qué va en cada piso.<br>' +
             '• <b>Elementos y obras:</b> zapatas, columnas, vigas, losas, muros, escaleras, cerchas, pilotes, perfiles de acero, puentes, pórticos y curvas de nivel, con cálculo, armado, cotas y cantidades.<br>' +
             '<small>Todo se descarga en DXF y PDF.</small></div>' +
-            '<div class="cxpl-ejemplos">' + EJEMPLOS.map(function (t) { return '<button type="button" class="cxpl-ej" data-cxpl-ej>' + esc(t) + '</button>'; }).join('') + '</div>' +
             '<p class="cxpl-nota">En este modo Civix genera planos y diseños. Para dudas de teoría vuelve a «Explicar».</p>');
-        if (c) c.addEventListener('click', function (e) {
-            var b = e.target.closest('[data-cxpl-ej]'); if (!b) return;
-            var i = doc.getElementById('inputAsistente'); if (i) { i.value = b.textContent; i.focus(); try { i.dispatchEvent(new Event('input', { bubbles: true })); } catch (ex) { } }
-        });
+        if (c) c.classList.add('cxpl-bienv');   /* sin prompts predeterminados: el usuario escribe su propio pedido */
     }
     doc.addEventListener('click', function (e) {
         var b = e.target.closest && e.target.closest('#civixModos [data-modo]'); if (!b) return;
         if (b.getAttribute('data-modo') === 'planos' && !sinBienvenida) {
             var ult = chat() && chat().lastElementChild;
-            if (!(ult && ult.querySelector && ult.querySelector('.cxpl-ejemplos'))) setTimeout(bienvenida, 0);
+            if (!(ult && ult.classList && ult.classList.contains('cxpl-bienv'))) setTimeout(bienvenida, 0);
         }
     });
     function guia(texto, motivo) {
-        tarjeta('<div class="civix-md">📐 ' + esc(motivo) + '<br><small>Ejemplo: «' + esc(EJEMPLOS[0]) + '»</small></div>');
+        tarjeta('<div class="civix-md">📐 ' + esc(motivo) + '</div>');
         historial(texto, motivo);
         return true;
     }
