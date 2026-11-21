@@ -1343,6 +1343,8 @@
             if (ABIERTO.test(r.tipo)) { a0 = a1 = b0 = b1 = 0; }
             var ri = {}; for (var k in r) ri[k] = r[k];
             if (r.tipo === 'comedor' && PUESTOS) ri._puestos = PUESTOS;
+            /* barridos de puertas que caen dentro del recinto: los muebles se acomodan para no quedar ahí */
+            ri._barr = barridos.filter(function (b) { return b[0] < r.x + r.w && b[2] > r.x && b[1] < r.y + r.h && b[3] > r.y; });
             ri.x = r.x + a0; ri.y = r.y + b0; ri.w = r.w - a0 - a1; ri.h = r.h - b0 - b1;
             var g0 = PIEZA, e0 = ents.length;
             mobiliario(ri, pl);
@@ -1673,6 +1675,9 @@
             S.rect(-L / 2, 0, L, 0.4, F('madera', 0.2)); S.rr(-L * 0.36, 0.05, L * 0.72, 0.07, 0.02, F('metal', 0.85));
             S.circ(-L / 2 + 0.15, 0.22, 0.07, Dl('metal')); S.circ(L / 2 - 0.15, 0.22, 0.07, Dl('metal'));
         },
+        tvPared: function (S, L) {   /* televisor colgado en el muro (cuando no cabe mueble) */
+            S.rr(-L / 2, 0, L, 0.08, 0.02, F('metal', 0.85)); S.ln(-L * 0.3, 0.04, L * 0.3, 0.04, Dl('vidrio', 0.006));
+        },
         alfombra: function (S, u, v, w, h) { S.rect(u, v, w, h, F('tela', 0.07)); S.rect(u + 0.08, v + 0.08, w - 0.16, h - 0.16, Dl('tela', 0.005)); },
         maceta: function (S, r) { S.circ(0, 0, r, F('madera', 0.3)); for (var k = 0; k < 7; k++) { var a = k * 0.9 + 0.3; S.hoja(r * 1.06 * Math.cos(a), r * 1.06 * Math.sin(a), a, r * 0.6, F('verde', 0.35)); } },   /* hojas que salen del borde (no cruzan la matera) */
         arbol: function (S, R) {
@@ -1726,8 +1731,9 @@
         });
     }
     /* cuántos puestos y de qué tamaño cabe la mesa en el comedor (o los puestos que pidió el usuario) */
-    function mesaComedor(r) {
-        var vert = r.h > r.w, Lr = Math.max(r.w, r.h) - 0.2, Sr = Math.min(r.w, r.h) - 0.2;
+    function mesaComedor(r, vert) {
+        if (vert == null) vert = r.h > r.w;
+        var Lr = (vert ? r.h : r.w) - 0.2, Sr = (vert ? r.w : r.h) - 0.2;
         var A = Math.max(0.7, Math.min(Sr >= 3.2 ? 1.0 : 0.9, Sr - 2 * 0.72));
         var p = r._puestos || 0, cab, ns, L;
         var lMax = function (c) { return Math.min(3.6, Lr - (c ? 2 * 0.72 : 2 * 0.3)); };
@@ -1891,35 +1897,91 @@
                 break;
             }
             case 'comedor': {
-                /* mesa del tamaño del comedor, con sus puestos; se aparta del lado de la puerta (su hoja barre ~1 m) */
-                var mc = mesaComedor(r), ext = mc.L / 2 + (mc.cab ? 0.5 : 0) + 0.05, mcx = cx, mcy = cy;
-                if (mc.vert) { var y0c = y + 1.05 + ext, y1c = y + h - 0.12 - ext; mcy = y1c >= y0c ? (y0c + y1c) / 2 : cy; }
-                else {
-                    var x0c = x + 0.12 + ext, x1c = x + w - 0.12 - ext;
-                    if (r._puertaDer) x1c = x + w - 1.05 - ext; else x0c = x + 1.05 + ext;
-                    mcx = x1c >= x0c ? (x0c + x1c) / 2 : cx;
-                }
-                comedor(pl, mcx, mcy, mc.L, mc.A, mc.s1, mc.s2, mc.cab, mc.vert);
-                r._ly = mc.vert ? y + 0.45 : y + 0.35;
+                /* mesa del tamaño del comedor con TODOS sus puestos: se prueba en los dos sentidos y en cada posición del
+                   recinto, y se elige la que no choca con el barrido de ninguna puerta (así ninguna silla se pierde);
+                   solo si no hay forma, se usa una mesa con menos puestos */
+                var barr = r._barr || [], pref = h > w, mejorC = null;
+                var libreC = function (px, py, hx, hy) { return !barr.some(function (b) { return px - hx < b[2] - 0.02 && px + hx > b[0] + 0.02 && py - hy < b[3] - 0.02 && py + hy > b[1] + 0.02; }); };
+                [pref, !pref].forEach(function (vo) {
+                    var m0 = mesaComedor(r, vo), vars = [m0];
+                    if (m0.cab) vars.push({ vert: vo, L: m0.L, A: m0.A, s1: m0.s1, s2: m0.s2, cab: 0 });
+                    for (var s = m0.s1 - 1; s >= 1; s--) vars.push({ vert: vo, L: Math.max(1.0, s * 0.6), A: m0.A, s1: s, s2: Math.min(s, m0.s2), cab: m0.cab && s >= 2 ? 2 : 0 }, { vert: vo, L: Math.max(1.0, s * 0.6), A: m0.A, s1: s, s2: Math.min(s, m0.s2), cab: 0 });
+                    vars.forEach(function (m) {
+                        var ex = m.L / 2 + (m.cab ? 0.5 : 0), ey = m.A / 2 + 0.5, hx = vo ? ey : ex, hy = vo ? ex : ey;
+                        var puestos = m.s1 + m.s2 + m.cab;
+                        for (var px = x + 0.1 + hx; px <= x + w - 0.1 - hx + 1e-6; px += 0.05)
+                            for (var py = y + 0.1 + hy; py <= y + h - 0.1 - hy + 1e-6; py += 0.05) {
+                                if (!libreC(px, py, hx, hy)) continue;
+                                var sc = puestos * 100 - Math.hypot(px - cx, py - cy) + (vo === pref ? 0.5 : 0);
+                                if (!mejorC || sc > mejorC.sc) mejorC = { sc: sc, m: m, px: px, py: py, hy: hy };
+                            }
+                    });
+                });
+                if (!mejorC) { var mf = mesaComedor(r); mejorC = { m: mf, px: cx, py: cy, hy: (mf.vert ? mf.L / 2 + (mf.cab ? 0.5 : 0) : mf.A / 2 + 0.5) }; }
+                var mc = mejorC.m;
+                comedor(pl, mejorC.px, mejorC.py, mc.L, mc.A, mc.s1, mc.s2, mc.cab, mc.vert);
+                /* rótulo en la franja libre más amplia (arriba o abajo del juego de comedor) */
+                var bajo = mejorC.py - mejorC.hy - y, alto = y + h - (mejorC.py + mejorC.hy);
+                r._ly = bajo >= alto ? y + Math.max(0.3, bajo / 2) : y + h - Math.max(0.3, alto / 2);
                 break;
             }
             case 'dormp': case 'dorm': {
-                var dbl = r.tipo === 'dormp', bw = dbl ? 1.6 : 1.0, bl = 2.0, bx = cx, by = y + h - 0.15 - bl;
-                /* con baño privado en el muro de la cabecera: la cama y sus mesas de noche se corren al tramo libre del muro */
-                var s0 = x + 0.1, s1 = x + w - 0.1, vp = r._vanoPriv && r._vanoPriv.arriba ? r._vanoPriv : null;
-                if (vp) { if (vp.x0 - s0 >= s1 - vp.x1) s1 = vp.x0; else s0 = vp.x1; if (s1 - s0 < bw + 0.1 && !dbl) bw = Math.max(0.9, s1 - s0 - 0.1); bx = (s0 + s1) / 2; }
-                if (by - (y + 0.9) > 0.8) SIM.alfombra(G, bx - bw / 2 - 0.2, by - 0.8, bw + 0.4, 0.65);   /* tapete al pie de la cama */
-                SIM.cama(lapiz(pl, bx, y + h - 0.15, 2), bw, bl, dbl);
-                var nsz = 0.45;
-                if (bx - bw / 2 - nsz - 0.1 > s0 - 1e-6) SIM.mesaNoche(lapiz(pl, bx - bw / 2 - 0.08 - nsz / 2, y + h - 0.15, 2), nsz);
-                if (bx + bw / 2 + nsz + 0.1 < s1 + 1e-6) SIM.mesaNoche(lapiz(pl, bx + bw / 2 + 0.08 + nsz / 2, y + h - 0.15, 2), nsz);
-                var cl = Math.min(1.8, w * 0.45);
-                /* clóset y cómoda en el lado contrario a la puerta (la hoja barre ~0.9 m junto a su muro) */
+                /* todo dormitorio lleva: cama con cabecera contra el muro del fondo, dos mesas de noche, televisor frente a
+                   la cama y clóset en el muro lateral sin puerta. Las piezas se acomodan para no quedar en el barrido de
+                   ninguna puerta ni frente al vano de un baño privado; si el cuarto es angosto se reducen (no se quitan). */
+                var dbl = r.tipo === 'dormp', top = y + h - 0.15, barrD = (r._barr || []).slice();
+                var vp = r._vanoPriv && r._vanoPriv.arriba ? r._vanoPriv : null;
+                if (vp) barrD.push([vp.x0, top - 0.7, vp.x1, top + 0.2]);
+                /* el clóset va en el muro lateral contrario a la puerta */
                 var der = r._puertaDer;
-                SIM.closet(lapiz(pl, der ? x + 0.15 + cl / 2 : x + w - 0.15 - cl / 2, y + 0.15, 0), cl, 0.6);
-                var libre = by - (y + 0.9) - 0.15;
-                if (dbl && libre >= 0.9) { var cm = Math.min(1.2, libre), cmy = y + 0.9 + libre / 2; SIM.estanteria(der ? lapiz(pl, x + 0.15, cmy, 3) : lapiz(pl, x + w - 0.15, cmy, 1), cm, 0.45); }
-                if (by - (y + 0.8) > 0.7) r._ly = (y + 0.8 + by) / 2;
+                if (der == null) der = (r._barr || []).some(function (b) { return (b[0] + b[2]) / 2 > cx; });
+                var choca = function (q) { return q[0] < x + 0.08 || q[2] > x + w - 0.08 || q[1] < y + 0.08 || q[3] > y + h - 0.08 || barrD.some(function (b) { return q[0] < b[2] - 0.01 && q[2] > b[0] + 0.01 && q[1] < b[3] - 0.01 && q[3] > b[1] + 0.01; }); };
+                var cruza = function (p, q) { return p[0] < q[2] - 0.01 && p[2] > q[0] + 0.01 && p[1] < q[3] - 0.01 && p[3] > q[1] + 0.01; };
+                var mejorD = null;
+                [[dbl ? 1.6 : 1.0, 0.45, 0.6], [dbl ? 1.4 : 0.9, 0.42, 0.6], [dbl ? 1.4 : 0.9, 0.4, 0.55], [dbl ? 1.2 : 0.9, 0.38, 0.5], [0.9, 0.35, 0.45]].some(function (cfg) {
+                    var bw = cfg[0], nsz = cfg[1], cd = cfg[2], bl = h >= 2.75 ? 2.0 : 1.9, by = top - bl, nsy = top - nsz * 0.9;
+                    var tvL = 0, tvD = by - (y + 0.15) >= 0.75 ? 0.4 : 0.1;   /* mueble de TV si hay fondo; si no, TV en el muro */
+                    /* clóset: desde encima del mueble de TV hasta debajo de la mesa de noche de ese lado */
+                    var cy0 = y + 0.15 + tvD + 0.1, cy1 = nsy - 0.08, cl = Math.min(2.0, cy1 - cy0);
+                    if (cl < 0.8) { cy0 = y + 0.15; cl = Math.min(2.0, cy1 - cy0); }
+                    if (cl < 0.8) return false;
+                    var clo = der ? [x + 0.15, cy1 - cl, x + 0.15 + cd, cy1] : [x + w - 0.15 - cd, cy1 - cl, x + w - 0.15, cy1];
+                    for (var sh = 0; choca(clo) && sh < 2; sh += 0.1) { clo[1] -= 0.1; clo[3] -= 0.1; }
+                    if (choca(clo)) return false;
+                    var best = null;
+                    for (var bx = x + 0.1; bx <= x + w - 0.1 + 1e-6; bx += 0.05) {
+                        var cama = [bx - bw / 2 - 0.05, by, bx + bw / 2 + 0.05, top + 0.01];
+                        var n1 = [bx - bw / 2 - 0.08 - nsz, nsy, bx - bw / 2 - 0.08, top], n2 = [bx + bw / 2 + 0.08, nsy, bx + bw / 2 + 0.08 + nsz, top];
+                        if ([cama, n1, n2].some(choca) || [cama, n1, n2].some(function (q) { return cruza(q, clo); })) continue;
+                        if (!best || Math.abs(bx - cx) < Math.abs(best - cx)) best = bx;
+                    }
+                    if (best == null) return false;
+                    /* televisor en el muro frente a la cama, centrado con ella y fuera del barrido de la puerta */
+                    var tvy0 = y + 0.15, tvy1 = tvy0 + tvD, tvX = null;
+                    for (var L_ = Math.min(1.5, w - 0.6); L_ >= 0.8 && tvX == null; L_ -= 0.1)
+                        for (var d_ = 0; d_ <= w; d_ += 0.05) {
+                            var ok = [best - d_, best + d_].filter(function (tx) { var q = [tx - L_ / 2, tvy0, tx + L_ / 2, tvy1]; return !choca(q) && !cruza(q, clo); });
+                            if (ok.length) { tvX = ok[0]; tvL = L_; break; }
+                        }
+                    if (tvX == null) return false;
+                    mejorD = { bw: bw, nsz: nsz, bl: bl, by: by, bx: best, clo: clo, tvX: tvX, tvL: tvL, tvD: tvD, tvy1: tvy1 };
+                    return true;
+                });
+                if (!mejorD) {   /* cuarto muy pequeño: lo esencial, centrado */
+                    var bwF = dbl ? 1.2 : 0.9;
+                    SIM.cama(lapiz(pl, cx, top, 2), bwF, Math.min(2.0, h - 0.4), dbl);
+                    SIM.mesaNoche(lapiz(pl, cx - bwF / 2 - 0.08 - 0.175, top, 2), 0.35); SIM.mesaNoche(lapiz(pl, cx + bwF / 2 + 0.08 + 0.175, top, 2), 0.35);
+                    break;
+                }
+                var D_ = mejorD;
+                if (D_.by - (D_.tvy1 + 0.1) >= 0.75) SIM.alfombra(G, D_.bx - D_.bw / 2 - 0.2, D_.by - 0.7, D_.bw + 0.4, 0.6);   /* tapete al pie de la cama */
+                SIM.cama(lapiz(pl, D_.bx, top, 2), D_.bw, D_.bl, dbl);
+                SIM.mesaNoche(lapiz(pl, D_.bx - D_.bw / 2 - 0.08 - D_.nsz / 2, top, 2), D_.nsz);
+                SIM.mesaNoche(lapiz(pl, D_.bx + D_.bw / 2 + 0.08 + D_.nsz / 2, top, 2), D_.nsz);
+                var cq = D_.clo, clL = cq[3] - cq[1], cdd = cq[2] - cq[0];
+                SIM.closet(der ? lapiz(pl, cq[0], (cq[1] + cq[3]) / 2, 3) : lapiz(pl, cq[2], (cq[1] + cq[3]) / 2, 1), clL, cdd);
+                if (D_.tvD >= 0.4) SIM.tv(lapiz(pl, D_.tvX, y + 0.15, 0), D_.tvL); else SIM.tvPared(lapiz(pl, D_.tvX, y + 0.15, 0), D_.tvL);
+                if (D_.by - D_.tvy1 > 0.5) r._ly = (D_.tvy1 + D_.by) / 2;
                 break;
             }
             case 'bano': {
