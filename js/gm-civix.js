@@ -115,6 +115,15 @@
         /* chat */
         R + ' .civix-chat{flex:1 1 auto;min-height:0;overflow-y:auto;padding:26px 32px!important;background:none!important}',
         R + ' .civix-chat .mensaje{max-width:min(960px,86%)}',
+        /* conversación centrada: una columna de lectura de hasta 1040 px en el centro del chat; las respuestas de
+           Civix ocupan la columna completa (no se encogen al contenido) y los mensajes del usuario van a su derecha */
+        R + ' .civix-chat{gap:26px!important}',
+        R + ' .civix-chat > .mensaje-bot{align-self:center!important;width:min(1040px,100%)!important;max-width:min(1040px,100%)!important;margin-left:0!important;margin-right:0!important;box-sizing:border-box}',
+        R + ' .civix-chat > .mensaje-usuario{align-self:flex-end!important;max-width:min(720px,80%)!important;margin-left:0!important;margin-right:max(0px,calc((100% - 1040px) / 2))!important}',
+        R + ' .civix-chat > .mensaje-bot > *:not(.gcx-who){box-sizing:border-box;width:100%}',
+        R + ' .gcx-start{justify-content:flex-start;width:min(1040px,100%);align-self:center;box-sizing:border-box}',
+        R + ' .civix-chat .cxpl-prev{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))!important;gap:16px!important}',
+        R + ' .civix-chat .cxpl-prev .cxpl-svg{max-height:460px!important}',
         R + ' .civix-chat .mensaje-bot{position:relative;padding-left:62px!important;background:none!important;border:0!important;box-shadow:none!important}',
         R + ' .civix-chat .mensaje-bot:before{content:"";position:absolute;left:0;top:0;width:46px;height:46px;border-radius:50%;background:var(--gcx-av) center/cover #0b1a26;box-shadow:0 0 0 2px rgba(34,211,238,.6)}',
         R + ' .civix-chat .mensaje-bot > *:not(.gcx-who){background:linear-gradient(160deg,rgba(14,40,58,.55),rgba(6,14,26,.9))!important;border:1px solid rgba(34,211,238,.28)!important;border-radius:0!important;padding:18px 24px!important;margin:0!important;color:#e6edf6!important;font-size:16px!important;line-height:1.6!important}',
