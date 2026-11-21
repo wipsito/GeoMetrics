@@ -59,6 +59,18 @@
 .cxpl-cine-f { overflow: hidden; touch-action: none; cursor: zoom-in; }
 .cxpl-cine-f.cxpl-zoom { cursor: grab; }
 .cxpl-cine-f.cxpl-arrastrando { cursor: grabbing; }
+/* selección de vista: en la cuadrícula cada vista se puede pulsar; la elegida se centra y ocupa toda el área */
+.cxpl-cine-g.seleccionable:not(.enfocado) > .cxpl-cine-f { cursor: pointer; transition: border-color .15s, transform .15s; }
+.cxpl-cine-g.seleccionable:not(.enfocado) > .cxpl-cine-f:hover { border-color: #22d3ee; transform: translateY(-2px); }
+.cxpl-cine-g.enfocado { grid-template-columns: minmax(0, 1fr) !important; overflow: hidden; }
+.cxpl-cine-g.enfocado > .cxpl-cine-f:not(.foco) { display: none; }
+.cxpl-cine-g.enfocado > .cxpl-cine-f.foco { height: 100%; cursor: zoom-in; animation: cxpl-foco .25s ease-out; }
+.cxpl-cine-g.enfocado > .cxpl-cine-f.foco.cxpl-zoom { cursor: grab; }
+.cxpl-cine-g.enfocado > .cxpl-cine-f.foco.cxpl-arrastrando { cursor: grabbing; }
+.cxpl-cine-g.enfocado > .cxpl-cine-f.foco .cxpl-svg { max-height: none; height: 100%; }
+@keyframes cxpl-foco { from { opacity: .4; transform: scale(.97); } to { opacity: 1; transform: none; } }
+.cxpl-cine-acts [data-c="todas"] { border-color: #22d3ee !important; color: #a5f3fc !important; }
+@media (prefers-reduced-motion: reduce) { .cxpl-cine-g.enfocado > .cxpl-cine-f.foco { animation: none; } .cxpl-cine-g.seleccionable > .cxpl-cine-f { transition: none; } }
 .cxpl-zoom-ayuda { display: block; margin-top: 6px; font: 500 11px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif !important; letter-spacing: 0 !important; color: #94a3b8 !important; }
 /* modo cine como transición: entra con fundido y al terminar se desvanece hacia el apartado del resultado */
 .cxpl-cine { animation: cxpl-entra .35s ease-out both; }
