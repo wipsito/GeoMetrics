@@ -432,8 +432,13 @@
             }
             p.gen.forEach(function (e) {
                 if (e.tipo === 'banos') return;
-                for (var k = 1; k <= e.n; k++) items.push({ nombre: e.n > 1 ? e.nombre + ' ' + k : e.nombre, area: e.area, tipo: e.tipo, req: e.req });
+                for (var k = 1; k <= e.n; k++) items.push({ nombre: e.n > 1 ? e.nombre + ' ' + k : e.nombre, area: e.area, tipo: e.tipo, req: e.req, privDe: e.privDe, k: k });
             });
+            /* baños privados: cada uno se empareja con su espacio (habitación 1 ↔ baño 1…) y se ubica pegado a él */
+            var nDe = {}; p.gen.forEach(function (e) { nDe[e.nombre] = e.n; });
+            items.forEach(function (e) { if (e.privDe && nDe[e.privDe] != null) { var np = nDe[e.privDe]; e.padre = np > 1 ? e.privDe + ' ' + ((e.k - 1) % np + 1) : e.privDe; } });
+            var privs = items.filter(function (e) { return e.padre && items.some(function (x) { return x.nombre === e.padre && !/^(cochera|recepcion|terraza)$/.test(x.tipo); }); });
+            items = items.filter(function (e) { return privs.indexOf(e) < 0; });
             /* espacio con medidas pedidas: medida LIBRE (de cara a cara de muro) exacta, si cabe en la crujía.
                w y h son medidas libres; el recinto se dibuja con el espesor de muro adicional */
             function medidaEn(e, crW) {
@@ -463,6 +468,13 @@
                 if (md2) { e.fijo = true; e.hLibre = md2.h; e.h = md2.h + MURO; e.wReq = md2.w; if (!md2.ok) warns.push(e.nombre.charAt(0) + e.nombre.slice(1).toLowerCase() + ': con ' + f2(e.req.w) + ' × ' + f2(e.req.h) + ' m no cabe en el ancho disponible (' + f2(CRU[mejor].w) + ' m); conservé el área pedida.'); }
                 else e.h = Math.max(2.6, e.area / CRU[mejor].w);
                 listas[mejor].push(e); sums[mejor] += e.h;
+                /* su baño privado va enseguida, en la misma crujía (comparten muro y se entra desde el espacio) */
+                privs.forEach(function (bq) {
+                    if (bq.padre !== e.nombre) return;
+                    var mdb = medidaEn(bq, CRU[mejor].w);
+                    if (mdb) { bq.fijo = true; bq.hLibre = mdb.h; bq.h = mdb.h + MURO; bq.wReq = mdb.w; } else bq.h = Math.max(2.0, bq.area / CRU[mejor].w);
+                    listas[mejor].push(bq); sums[mejor] += bq.h;
+                });
             });
             var eBan = p.gen.filter(function (e) { return e.tipo === 'banos'; })[0];
             cols[f] = { listas: listas, sums: sums, banos: hayBanos(p), banosNombre: eBan ? eBan.nombre : 'BAÑOS' };
@@ -520,7 +532,10 @@
         function llenar(lista, x, w, y0, H, R, lado) {
             var n0 = R.length;
             llenar0(lista, x, w, y0, H, R, lado);
-            for (var i = n0; i < R.length; i++) R[i].lado = lado;
+            for (var i = n0; i < R.length; i++) {
+                R[i].lado = lado;
+                for (var j = 0; j < lista.length; j++) if (lista[j].padre && lista[j].nombre === R[i].nombre) R[i].padre = lista[j].padre;
+            }
         }
         function llenar0(lista, x, w, y0, H, R, lado) {
             if (!lista.length) { if (H > 0.5) R.push(P.ia ? vacio(x, y0, w, H) : rm('ÁREA LIBRE', x, y0, w, H, 'libre')); return; }
@@ -1169,6 +1184,23 @@
             var dw = r.tipo === 'bano' ? 0.75 : 0.9;
             /* separación de la bisagra al muro de abajo: si es la fachada (muro más grueso), la hoja arranca después de él */
             var yP = r.y < 0.01 ? MURO_EXT + 0.1 : 0.2;
+            /* baño privado: su única puerta está en el muro que comparte con su espacio (en la esquina del lado del
+               corredor) y abre hacia el baño; no tiene puerta al corredor */
+            if (r.padre) {
+                var pa = pi.rooms.filter(function (q) { return q.nombre === r.padre; })[0];
+                if (pa) {
+                    var bx0 = Math.max(r.x, pa.x), bx1 = Math.min(r.x + r.w, pa.x + pa.w), dwp = Math.min(0.75, bx1 - bx0 - 0.4);
+                    var encima = Math.abs(pa.y + pa.h - r.y) < 0.02, debajo = Math.abs(r.y + r.h - pa.y) < 0.02;
+                    if ((encima || debajo) && dwp >= 0.6) {
+                        var corrDer = r.lado ? r.lado === 'der' : r.x < Pl.a - 0.01, hx = corrDer ? bx1 - 0.2 - dwp : bx0 + 0.2;
+                        if (encima) puerta(hx, r.y, dwp, 'up'); else puerta(hx, r.y + r.h, dwp, 'down');
+                        barridos.push(encima ? [hx, r.y - 0.6, hx + dwp, r.y] : [hx, r.y + r.h, hx + dwp, r.y + r.h + 0.6]);   /* paso libre frente a la puerta, del lado del espacio */
+                        r._puertaDer = corrDer;   /* el lavamanos va al lado contrario de la puerta */
+                        pa._vanoPriv = { x0: hx - 0.1, x1: hx + dwp + 0.1, arriba: encima };   /* ese tramo de muro del espacio queda libre de muebles */
+                        return;
+                    }
+                }
+            }
             /* planta abierta: el vestíbulo tiene acceso doble por el frente; la franja del frente abre hacia la nave */
             if (r.banda) {
                 if (r.tipo === 'escalera') return;
@@ -1873,11 +1905,14 @@
             }
             case 'dormp': case 'dorm': {
                 var dbl = r.tipo === 'dormp', bw = dbl ? 1.6 : 1.0, bl = 2.0, bx = cx, by = y + h - 0.15 - bl;
+                /* con baño privado en el muro de la cabecera: la cama y sus mesas de noche se corren al tramo libre del muro */
+                var s0 = x + 0.1, s1 = x + w - 0.1, vp = r._vanoPriv && r._vanoPriv.arriba ? r._vanoPriv : null;
+                if (vp) { if (vp.x0 - s0 >= s1 - vp.x1) s1 = vp.x0; else s0 = vp.x1; if (s1 - s0 < bw + 0.1 && !dbl) bw = Math.max(0.9, s1 - s0 - 0.1); bx = (s0 + s1) / 2; }
                 if (by - (y + 0.9) > 0.8) SIM.alfombra(G, bx - bw / 2 - 0.2, by - 0.8, bw + 0.4, 0.65);   /* tapete al pie de la cama */
                 SIM.cama(lapiz(pl, bx, y + h - 0.15, 2), bw, bl, dbl);
                 var nsz = 0.45;
-                if (bx - bw / 2 - nsz - 0.1 > x + 0.1) SIM.mesaNoche(lapiz(pl, bx - bw / 2 - 0.08 - nsz / 2, y + h - 0.15, 2), nsz);
-                if (bx + bw / 2 + nsz + 0.1 < x + w - 0.1) SIM.mesaNoche(lapiz(pl, bx + bw / 2 + 0.08 + nsz / 2, y + h - 0.15, 2), nsz);
+                if (bx - bw / 2 - nsz - 0.1 > s0 - 1e-6) SIM.mesaNoche(lapiz(pl, bx - bw / 2 - 0.08 - nsz / 2, y + h - 0.15, 2), nsz);
+                if (bx + bw / 2 + nsz + 0.1 < s1 + 1e-6) SIM.mesaNoche(lapiz(pl, bx + bw / 2 + 0.08 + nsz / 2, y + h - 0.15, 2), nsz);
                 var cl = Math.min(1.8, w * 0.45);
                 /* clóset y cómoda en el lado contrario a la puerta (la hoja barre ~0.9 m junto a su muro) */
                 var der = r._puertaDer;
@@ -2604,6 +2639,7 @@
         '- "esquema":"abierto" si el piso es un gran espacio (nave, bodega, cancha, templo, salón, hangar) con espacios menores al frente; marca ese gran espacio con "principal":true y a los espacios que van detrás de él (presbiterio, escenario, muelle de carga posterior…) ponles "ubicacion":"fondo". "corredor" si son recintos a lado y lado de un pasillo.',
         '- "tipo" es el mobiliario a dibujar, uno de: ' + TIPOS_IA.join(', ') + '. Usa auditorio para naves de templo, teatros y salones con sillas; bodega para bodegas y naves industriales; cancha para coliseos y canchas; dorm para habitaciones de hotel u hospital; oficina para consultorios y oficinas.',
         '- Un objeto por cada piso pedido. Áreas en m² coherentes con el lote. No incluyas pasillos ni escaleras (se agregan solos). Usa "banos" para baterías sanitarias públicas.',
+        '- Baño privado de un espacio (p. ej. «habitación principal con baño privado», «consultorio con baño»): crea un espacio aparte con "tipo":"bano" y "de":"<nombre exacto del espacio al que pertenece>". Si varios espacios iguales llevan baño (p. ej. «3 habitaciones con baño»), pon el baño con la misma cantidad y su "de".',
         '',
         'ESTRUCTURA u obra (puente, torre, tanque, muro, cubierta, cercha, silo, presa, alcantarilla, valla, muelle, escalera, elemento estructural…):',
         '{"clase":"estructura","titulo":"…","descripcion":"…","vistas":[{"nombre":"ELEVACIÓN","entidades":[…]}],"cantidades":[{"item":"…","valor":"…"}],"notas":["…"],"supuestos":["…"]}',
@@ -2713,7 +2749,7 @@
             var esp = (Array.isArray(pi.espacios) ? pi.espacios : []).slice(0, 40).map(function (e) {
                 var tipo = TIPOS_IA.indexOf(String(e.tipo || '').toLowerCase()) >= 0 ? String(e.tipo).toLowerCase() : 'gen';
                 if (tipo === 'gen') tipo = tipoPorNombre(e.nombre);
-                var r_ = { nombre: String(e.nombre || 'ESPACIO').toUpperCase().slice(0, 30), area: cl(e.area, 2, 20000, 15), tipo: tipo, n: Math.round(cl(e.cantidad, 1, 12, 1)), principal: !!e.principal, fondo: norm(e.ubicacion) === 'fondo' };
+                var r_ = { nombre: String(e.nombre || 'ESPACIO').toUpperCase().slice(0, 30), area: cl(e.area, 2, 20000, 15), tipo: tipo, n: Math.round(cl(e.cantidad, 1, 12, 1)), principal: !!e.principal, fondo: norm(e.ubicacion) === 'fondo', de: e.de ? String(e.de) : '' };
                 /* medidas que TÚ escribiste para este espacio (mandan sobre lo que estime la IA) */
                 /* primero la coincidencia por nombre (más palabras en común gana); los sinónimos solo si no hay ninguna */
                 var rn = raices(r_.nombre), mejorM = null, mejorS = 0;
@@ -2725,6 +2761,21 @@
                 if (tipo === 'cochera' && !r_.req) { var dos = /\b(dos|2)\s+(carros|autos|vehiculos|puestos)|doble/.test(q + ' ' + norm(e.nombre)); r_.req = { w: dos ? 5.5 : 3.0, h: 5.5 }; r_.area = r_.req.w * r_.req.h; r_.reqAuto = true; }
                 return r_;
             }).filter(function (e) { return !/^(PASILLO|CIRCULACI[OÓ]N|ESCALERAS?|CORREDOR)$/.test(e.nombre); });
+            /* baño privado: se asocia al espacio al que pertenece (va pegado a él y se entra desde él, no desde el corredor) */
+            var noBanos = esp.filter(function (x) { return x.tipo !== 'bano' && x.tipo !== 'banos'; });
+            function masParecido(rs) { var m = null, s = 0; noBanos.forEach(function (x) { var rx = raices(x.nombre), k = rs.filter(function (w) { return rx.indexOf(w) >= 0; }).length; if (k > s) { s = k; m = x; } }); return m; }
+            esp.forEach(function (b) {
+                if (b.tipo !== 'bano') return;
+                var priv = /PRIVAD|PROPIO|INTERN|INCORPORAD|INTEGRAD|SUITE/.test(b.nombre) || !!b.de, cand = null;
+                if (b.de) cand = masParecido(raices(b.de));
+                if (!cand) cand = masParecido(raices(b.nombre.replace(/BA[ÑN]OS?|PRIVADOS?|PROPIOS?|INTERNOS?|INCORPORADOS?|INTEGRADOS?|SUITE/g, ' ')));
+                if (!cand && priv) {
+                    var mq = q.match(/([a-z ]{3,40}?)\s+con\s+(?:su\s+)?bano/);
+                    if (mq) cand = masParecido(raices(mq[1]));
+                    if (!cand) cand = noBanos.filter(function (x) { return x.tipo === 'dormp'; })[0] || noBanos.filter(function (x) { return x.tipo === 'dorm'; })[0] || null;
+                }
+                if (cand) b.privDe = cand.nombre;
+            });
             pisos[ip + 1] = { gen: esp, escalera: n > 1, esquema: pi.esquema === 'abierto' ? 'abierto' : 'corredor', apto: false, cochera: 0, local: false };
         });
         /* si el usuario dio las medidas del lote, se usan las suyas y se descartan supuestos de la IA sobre el lote */
