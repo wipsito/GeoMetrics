@@ -1503,7 +1503,7 @@
         ln('COTAS', -2.55, 0, -2.55, D); ln('COTAS', -2.65, -0.1, -2.45, 0.1); ln('COTAS', -2.65, D - 0.1, -2.45, D + 0.1);
         txt('COTAS', -2.85, D / 2, 0.2, f2(D) + ' m', { rot: Math.PI / 2 });
         txt('TEXTO', W / 2, -3.5, 0.38, 'PLANTA ' + (NOMBRE_PISO[pi.n] || pi.n + '.º') + ' PISO', { titulo: true });
-        txt('TEXTO', W / 2, -3.95, 0.17, 'NPT ' + (pi.n === 1 ? '±0.00' : '+' + f2((pi.n - 1) * (Pl.generico ? 3.2 : 2.7))) + ' · ESC. ' + (Pl.escala || '1:75') + ' · ANTEPROYECTO');
+        txt('TEXTO', W / 2, -3.95, 0.17, 'NPT ' + (pi.n === 1 ? '±0.00' : '+' + f2((pi.n - 1) * (Pl.generico ? 3.2 : 2.7))) + ' · ESC. ' + (Pl.escala || '1:75'));
         return limpiarSolapes(ents, 0.004);   /* ninguna línea encima de otra */
     }
     /* ------------------------------------------------------------------ MOBILIARIO DETALLADO
@@ -2176,14 +2176,14 @@
             (Pl.warns.length ? Pl.warns.map(function (w) { return '<p class="cxp-warn">⚠ ' + esc(w) + '</p>'; }).join('') : '') +
             '<p class="cxpl-q">¿Apruebas la distribución? También puedes pedir cambios en el chat: <i>' + (P.ia ? '«agrega una sala de juntas», «cambia: el salón principal de 300 m²», «que tenga 3 pisos»' : '«sin estudio», «agrega un baño», «4 dormitorios», «cochera simple»') + '</i>.</p>' +
             '<div class="cxpl-acts"><button type="button" class="cxpl-btn ok" data-cxpl="aprobar">Sí, aprobado ✓</button><button type="button" class="cxpl-btn" data-cxpl="cambiar">Quiero cambiar algo</button></div>' +
-            '<p class="cxpl-nota">Anteproyecto orientativo generado ' + (P.ia ? 'a partir de tu pedido' : 'por reglas de distribución') + '. No reemplaza el diseño arquitectónico y estructural firmado por un profesional ni la revisión de la norma local (POT, NSR-10).</p>');
+            '<p class="cxpl-nota">Diseño generado ' + (P.ia ? 'a partir de tu pedido' : 'por reglas de distribución') + '. No reemplaza el diseño arquitectónico y estructural firmado por un profesional ni la revisión de la norma local (POT, NSR-10).</p>');
         if (!c) return false;
         c.addEventListener('click', function (e) {
             var b = e.target.closest('[data-cxpl]'); if (!b) return;
             if (b.getAttribute('data-cxpl') === 'aprobar') { c.querySelectorAll('[data-cxpl]').forEach(function (x) { x.disabled = true; }); aprobar(); }
             else { var i = doc.getElementById('inputAsistente'); if (i) { i.value = 'Cambia: '; i.focus(); } }
         });
-        historial(texto, 'Propuse una distribución arquitectónica (anteproyecto) para un lote de ' + f2(P.W) + ' × ' + f2(P.L) + ' m con ' + P.n + ' pisos: ' + filas.map(function (r) { return r.nombre + ' ' + f2(r.w) + '×' + f2(r.h) + ' (' + r.txt + ')'; }).join('; ') + '.');
+        historial(texto, 'Propuse una distribución arquitectónica para un lote de ' + f2(P.W) + ' × ' + f2(P.L) + ' m con ' + P.n + ' pisos: ' + filas.map(function (r) { return r.nombre + ' ' + f2(r.w) + '×' + f2(r.h) + ' (' + r.txt + ')'; }).join('; ') + '.');
         return true;
     }
     function aprobar() {
@@ -2211,7 +2211,7 @@
         /* al aprobar, el diseño se dibuja de una vez en modo cine; al terminar aparece la vista previa */
         if (c) { c.classList.add('cxpl-oculto'); setTimeout(function () { cine(Pl, { transicion: true, volverA: c }); }, 250); }
     }
-    function nombreArchivo() { var P = actual.P; return 'Civix_anteproyecto_' + P.n + 'pisos_' + f2(P.W).replace('.', '_') + 'x' + f2(P.L).replace('.', '_'); }
+    function nombreArchivo() { var P = actual.P; return 'Civix_planos_' + P.n + 'pisos_' + f2(P.W).replace('.', '_') + 'x' + f2(P.L).replace('.', '_'); }
     function accion(a, btn) {
         if (!actual) return;
         try {
@@ -2255,6 +2255,17 @@
         for (var i = 0; i < ROLES.length; i++) if (ROLES[i][1].test(L)) return ROLES[i];
         return ['Detalles', null, '#a78bfa', 0.15];
     }
+    /* solo 4 agentes dibujan: cada uno se encarga de varias capas, en este orden (primero lo que va debajo) */
+    var AGENTES = [
+        { nombre: 'Topografía y ejes', color: '#f97316', inicio: 0, capas: ['Cuadrícula y ejes', 'Topógrafo · puntos', 'Triangulación', 'Curvas de nivel', 'Agua'] },
+        { nombre: 'Estructura', color: '#22d3ee', inicio: 0.02, capas: ['Columnas', 'Concreto y suelo', 'Vigas', 'Madera y mampostería', 'Armadura', 'Cables y tirantes'] },
+        { nombre: 'Arquitectura', color: '#2dd4bf', inicio: 0.06, capas: ['Muros', 'Pisos y acabados', 'Escalera', 'Carpintería', 'Mobiliario'] },
+        { nombre: 'Cotas y rotulación', color: '#38bdf8', inicio: 0.2, capas: ['Marco y rótulo', 'Detalles', 'Cotas', 'Rotulación'] }
+    ];
+    function agenteDe(rol) {
+        for (var i = 0; i < AGENTES.length; i++) { var j = AGENTES[i].capas.indexOf(rol[0]); if (j >= 0) return { i: i, orden: j }; }
+        return { i: 3, orden: 1 };
+    }
     /* geometría de un nodo SVG en unidades del dibujo, para que el cursor recorra el trazo */
     function geometria(n) {
         var tag = n.tagName.toLowerCase(), g = { tipo: 'fade', pts: null, len: 0 };
@@ -2287,26 +2298,31 @@
         op = op || {};
         var etq = ov.querySelector('.cxpl-etapa'), barra = ov.querySelector('.cxpl-cine-bar i'), leyenda = ov.querySelector('.cxpl-agentes');
         var reducido = global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var resumen = {}, agentes = [];
+        var resumen = {}, agentes = [], porAg = AGENTES.map(function () { return []; }), sec = 0;
+        /* cada trazo se asigna a uno de los 4 agentes; un mismo agente recorre todas las vistas (plantas y detalles) */
         vistas.forEach(function (v, iv) {
             v.idx = iv;
-            var span = Math.max(v.svg.viewBox.baseVal.width, v.svg.viewBox.baseVal.height) || 1, porRol = {};
+            var span = Math.max(v.svg.viewBox.baseVal.width, v.svg.viewBox.baseVal.height) || 1;
             [].slice.call(v.svg.querySelectorAll('.cxpl-e')).forEach(function (n) {
-                var rol = rolDe(n.getAttribute('data-l')), k = rol[0];
-                if (!porRol[k]) { porRol[k] = { rol: rol, nodos: [] }; }
-                var g = geometria(n);
+                var ag = agenteDe(rolDe(n.getAttribute('data-l'))), g = geometria(n);
                 g.peso = g.tipo === 'linea' ? 0.25 + Math.min(3, g.len / span * 7) : (n.tagName.toLowerCase() === 'text' ? 0.3 : 0.07);
-                porRol[k].nodos.push({ n: n, g: g });
+                porAg[ag.i].push({ n: n, g: g, v: v, orden: ag.orden, k: sec++ });
             });
-            Object.keys(porRol).forEach(function (k) {
-                var a = porRol[k], acc = [0];
-                a.nodos.forEach(function (x, i) { acc.push(acc[i] + x.g.peso); });
-                var cur = el('span', 'cxpl-cur', '<i></i><b>' + esc(k) + '</b>');
-                cur.style.setProperty('--c', a.rol[2]); v.fig.appendChild(cur);
-                agentes.push({ nombre: k, color: a.rol[2], inicio: a.rol[3], nodos: a.nodos, acc: acc, total: acc[acc.length - 1], i: 0, cur: cur, v: v });
-                if (!resumen[k]) resumen[k] = { color: a.rol[2], hechos: 0, total: 0 };
-                resumen[k].total += acc[acc.length - 1];
+        });
+        porAg.forEach(function (nodos, ia) {
+            if (!nodos.length) return;
+            var A = AGENTES[ia], acc = [0];
+            /* por vista y, dentro de cada vista, primero las capas de abajo (muros antes que muebles) */
+            nodos.sort(function (a, b) { return a.v.idx - b.v.idx || a.orden - b.orden || a.k - b.k; });
+            nodos.forEach(function (x, i) { acc.push(acc[i] + x.g.peso); });
+            var curs = {};
+            nodos.forEach(function (x) {
+                if (curs[x.v.idx]) return;
+                var cur = el('span', 'cxpl-cur', '<i></i><b>' + esc(A.nombre) + '</b>');
+                cur.style.setProperty('--c', A.color); x.v.fig.appendChild(cur); curs[x.v.idx] = cur;
             });
+            agentes.push({ nombre: A.nombre, color: A.color, inicio: A.inicio, nodos: nodos, acc: acc, total: acc[acc.length - 1], i: 0, curs: curs });
+            resumen[A.nombre] = { color: A.color, hechos: 0, total: acc[acc.length - 1] };
         });
         /* cada agente termina según su carga: los de poco trabajo (marco, cotas) acaban antes y no se arrastran */
         var maxT = agentes.reduce(function (m, a) { return Math.max(m, a.total); }, 0) || 1;
@@ -2315,6 +2331,8 @@
         var nombres = Object.keys(resumen);
         if (leyenda) leyenda.innerHTML = nombres.map(function (k) { return '<span style="--c:' + resumen[k].color + '"><i></i>' + esc(k) + ' <b data-ag="' + esc(k) + '">0%</b></span>'; }).join('');
         var DUR = op.dur || 16000, vel = 1, t0 = 0, raf = 0, tmr = 0, ultimaLeyenda = 0;
+        /* el cursor del agente solo se ve en la vista donde está trazando */
+        function ocultar(a, salvo) { for (var k in a.curs) if (a.curs[k] !== salvo) a.curs[k].style.opacity = 0; }
         function poner(x, p) {
             var s = x.n.style;
             if (x.g.tipo === 'linea') { s.strokeDashoffset = String(1 - p); if (x.g.fill) s.fillOpacity = String(x.g.fill * p); }
@@ -2322,7 +2340,7 @@
         }
         function preparar() {
             agentes.forEach(function (a) {
-                a.i = 0; a.cur.style.opacity = 0;
+                a.i = 0; ocultar(a);
                 a.nodos.forEach(function (x) {
                     var s = x.n.style;
                     if (x.g.tipo === 'linea') { s.opacity = '1'; s.strokeDasharray = '1'; s.strokeDashoffset = '1'; if (x.g.fill) s.fillOpacity = '0'; }
@@ -2331,7 +2349,7 @@
             });
         }
         function acabar() {
-            agentes.forEach(function (a) { a.nodos.forEach(function (x) { poner(x, 1); if (x.g.tipo === 'linea') x.n.style.strokeDasharray = ''; }); a.cur.style.opacity = 0; a.i = a.nodos.length; });
+            agentes.forEach(function (a) { a.nodos.forEach(function (x) { poner(x, 1); if (x.g.tipo === 'linea') x.n.style.strokeDasharray = ''; }); ocultar(a); a.i = a.nodos.length; });
             if (leyenda) leyenda.querySelectorAll('[data-ag]').forEach(function (b) { b.textContent = '✓'; });
             etq.textContent = 'Plano terminado'; barra.style.width = '100%';
             if (op.alTerminar) op.alTerminar();
@@ -2350,11 +2368,12 @@
                     var p = Math.max(0, Math.min(1, (W - a.acc[a.i]) / (x.g.peso || 1)));
                     poner(x, p); activos++;
                     try {
-                        var v = a.v, M = ctm[v.idx] || (ctm[v.idx] ={ m: v.svg.getScreenCTM(), r: v.fig.getBoundingClientRect() });
+                        var v = x.v, cur = a.curs[v.idx], M = ctm[v.idx] || (ctm[v.idx] = { m: v.svg.getScreenCTM(), r: v.fig.getBoundingClientRect() });
                         var pt = v.svg.createSVGPoint(), q = puntoEn(x.g, p); pt.x = q[0]; pt.y = q[1]; pt = pt.matrixTransform(M.m);
-                        a.cur.style.transform = 'translate(' + (pt.x - M.r.left).toFixed(1) + 'px,' + (pt.y - M.r.top).toFixed(1) + 'px)'; a.cur.style.opacity = 1;
+                        ocultar(a, cur);
+                        cur.style.transform = 'translate(' + (pt.x - M.r.left).toFixed(1) + 'px,' + (pt.y - M.r.top).toFixed(1) + 'px)'; cur.style.opacity = 1;
                     } catch (e) { }
-                } else a.cur.style.opacity = 0;
+                } else ocultar(a);
             });
             var ahora = performance.now();
             if (leyenda && ahora - ultimaLeyenda > 180) {
@@ -2806,7 +2825,7 @@
             ((spec.notas && spec.notas.length) ? '<div class="cxpl-cumple"><b>Notas</b><ul>' + lista(spec.notas) + '</ul></div>' : '') +
             ((spec.supuestos && spec.supuestos.length) ? '<p class="cxpl-sup">ℹ️ Supuestos: ' + esc((spec.supuestos || []).slice(0, 6).join(' · ')) + '</p>' : '') +
             '<p class="cxpl-q">Puedes pedir cambios en el chat: <i>«hazlo de 3 luces», «cambia la altura a 12 m», «agrega la vista en planta»</i>.</p>' +
-            '<p class="cxpl-nota">Esquema de anteproyecto generado a partir de tu pedido. No reemplaza el diseño y cálculo firmados por un profesional ni la revisión de la norma (NSR-10).</p>');
+            '<p class="cxpl-nota">Esquema generado a partir de tu pedido. No reemplaza el diseño y cálculo firmados por un profesional ni la revisión de la norma (NSR-10).</p>');
         if (!c) return false;
         global.__cxCineAuto = { hasta: Date.now() + 5000 };   /* el plano se presenta con el modo cine */
         CAD.viewer(c.querySelector('.cxpl-ia-box'), model, { name: nombre, titulo: nombre });

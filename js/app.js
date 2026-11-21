@@ -1892,6 +1892,12 @@ function civixInstruccionModo(modo) {
     if (modo === 'quiz') {
         return 'MODO PREPARAR QUIZ: propone preguntas de práctica. Puedes numerar solo las preguntas. Incluye respuestas al final, aparte.';
     }
+    if (modo === 'planos') {
+        /* Solo llega aquí lo que no resuelven los generadores locales (arquitectura y elementos estructurales) */
+        return 'MODO PLANOS: el usuario pide un diseño o plano de ingeniería civil. Entrégalo como plano CAD: un bloque ```dxf (R12, unidades en metros) '
+            + 'con capas EJES/CONTORNO/ARMADURA/COTAS/TEXTO/MARCO, cotas con todas las dimensiones, textos de identificación, cajetín y marco. '
+            + 'Antes del bloque, explica en pocas líneas los criterios y supuestos de diseño y aclara que el diseño debe revisarlo un profesional según la NSR-10. Nunca uses la palabra «anteproyecto».';
+    }
     return 'MODO EXPLICAR: responde de forma NATURAL y conversacional, como un tutor cercano. '
         + 'NO uses la plantilla fija "1) Identificación del tema / 2) Fundamento teórico / 3) Fórmulas / 4) Ejemplo / 5) Ejercicio / Resumen / Fuentes" '
         + 'salvo que el usuario pida explícitamente una clase estructurada o un tema de estudio paso a paso. '
