@@ -442,8 +442,9 @@
                 if (crW >= q.w + MURO - 1e-6) return { w: q.w, h: q.h, ok: true };
                 return { w: crW - MURO, h: q.w * q.h / (crW - MURO), ok: false };
             }
-            var rec = items.filter(function (e) { return e.tipo === 'recepcion'; }), ter = items.filter(function (e) { return e.tipo === 'terraza'; });
-            items = items.filter(function (e) { return e.tipo !== 'recepcion' && e.tipo !== 'terraza'; }).sort(function (x, y) { return y.area - x.area; });
+            /* el garaje va primero, sobre la fachada (entra por su portón); luego la recepción */
+            var rec = items.filter(function (e) { return e.tipo === 'cochera'; }).concat(items.filter(function (e) { return e.tipo === 'recepcion'; })), ter = items.filter(function (e) { return e.tipo === 'terraza'; });
+            items = items.filter(function (e) { return e.tipo !== 'recepcion' && e.tipo !== 'terraza' && e.tipo !== 'cochera'; }).sort(function (x, y) { return y.area - x.area; });
             /* cada espacio va a la crujía que quede menos profunda (la recepción, al frente de la primera) */
             var fijoP = (conEsc ? ESC_H : 0) + (hayBanos(p) ? BAN_H : 0);   /* punto fijo de este piso */
             var listas = CRU.map(function () { return []; }), sums = CRU.map(function (c_, i) { return i === 1 ? fijoP : 0; });
@@ -1179,7 +1180,8 @@
             if (r.nave) return;
             if (r.fondo) { var dwf = Math.min(1.2, r.w - 0.4); if (dwf > 0.5) puerta(r.x + (r.w - dwf) / 2, r.y + 0.12, dwf, 'up'); return; }
             /* edificaciones diseñadas por programa (corredor central): todo recinto abre hacia el corredor */
-            if (Pl.generico && r.tipo !== 'pasillo' && !ABIERTO.test(r.tipo) && !/^(escalera|ascensor|libre)$/.test(r.tipo)) {
+            /* un garaje en la fachada entra por su portón: sin puerta batiente hacia el corredor (chocaría con el carro) */
+            if (Pl.generico && r.tipo !== 'pasillo' && !ABIERTO.test(r.tipo) && !/^(escalera|ascensor|libre)$/.test(r.tipo) && !(r.tipo === 'cochera' && (r.y < 0.01 || r.frente))) {
                 var izG = r.lado ? r.lado === 'der' : r.x < Pl.a - 0.01; r._puertaDer = izG;   /* puerta en el muro que da al corredor */
                 if (r.tipo === 'banos') dw = 0.9; else if (r.h > 6) dw = 1.0;
                 if (izG) puerta(r.x + r.w - 0.12, r.y + yP, dw, 'left'); else puerta(r.x + 0.12, r.y + yP + dw, dw, 'right');
@@ -1193,7 +1195,7 @@
             }
             switch (r.tipo) {
                 case 'cochera': /* portón: vano en la fachada y tres hojas dentro del vano */
-                    if (r.y < 0.01) {
+                    if (r.y < 0.01 || r.frente) {
                         vanos.push([r.x + 0.4, -0.05, r.x + r.w - 0.4, MURO_EXT + 0.05]);
                         for (var g = 0; g < 3; g++) ln('PUERTAS', r.x + 0.4 + g * (r.w - 0.8) / 3 + 0.04, 0.12, r.x + 0.4 + (g + 1) * (r.w - 0.8) / 3 - 0.04, 0.12);
                         txt('TEXTO', r.x + r.w / 2, -0.19, 0.11, 'PORTÓN');
@@ -1253,14 +1255,60 @@
         /* el mobiliario se ubica en el espacio libre interior: junto a la fachada el muro es más grueso (MURO_EXT),
            así que ningún mueble queda dentro del muro ni cruzado por su línea */
         var extra_ = MURO_EXT - MURO / 2, limites = {};
+        /* ¿la geometría real de un mueble toca un rectángulo (barrido de puerta, columna)? — no su caja envolvente:
+           un mesón en L no «choca» por el hueco interior de la L */
+        function segToca(a, b, o) {
+            var t0 = 0, t1 = 1, dx = b[0] - a[0], dy = b[1] - a[1], p = [-dx, dx, -dy, dy], q = [a[0] - o[0], o[2] - a[0], a[1] - o[1], o[3] - a[1]];
+            for (var i = 0; i < 4; i++) { if (Math.abs(p[i]) < 1e-12) { if (q[i] < 0) return false; } else { var r = q[i] / p[i]; if (p[i] < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; } } }
+            return true;
+        }
+        function dentroPoly(px, py, pts) { var c = false; for (var i = 0, j = pts.length - 1; i < pts.length; j = i++) { var xi = pts[i][0], yi = pts[i][1], xj = pts[j][0], yj = pts[j][1]; if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) c = !c; } return c; }
+        function tocaRect(e, o0, fx, fy, cx2, cy2) {
+            var o = [o0[0] + 0.02, o0[1] + 0.02, o0[2] - 0.02, o0[3] - 0.02];   /* margen: rozar no cuenta */
+            function T(q) { return [(fx ? cx2 - q[0] : q[0]) - ox, fy ? cy2 - q[1] : q[1]]; }
+            if (e.t === 'circle') { var c = T(e.c), nx = Math.max(o[0], Math.min(c[0], o[2])), ny = Math.max(o[1], Math.min(c[1], o[3])); return Math.hypot(c[0] - nx, c[1] - ny) < e.r; }
+            var pts = e.pts.map(T), n = pts.length;
+            for (var i = 0; i < n - (e.closed ? 0 : 1); i++) if (segToca(pts[i], pts[(i + 1) % n], o)) return true;
+            return !!(e.closed && dentroPoly((o[0] + o[2]) / 2, (o[1] + o[3]) / 2, pts));
+        }
+        /* Si el amueblado de un recinto choca con el barrido de una puerta o con una columna, se prueba el mismo
+           amueblado reflejado (izquierda↔derecha, arriba↔abajo o ambos) y se queda la versión con menos choques.
+           Así el mesón de la cocina, el carro del garaje o la cama no desaparecen por culpa de la puerta. */
+        function acomodarAPuertas(nuevos, ri) {
+            var muebles = nuevos.filter(function (e) { return e.layer === 'MOBILIARIO'; }); if (!muebles.length) return;
+            var obst = barridos.concat(colRects).filter(function (o) { return Math.min(o[2], ri.x + ri.w) > Math.max(o[0], ri.x) && Math.min(o[3], ri.y + ri.h) > Math.max(o[1], ri.y); });
+            if (!obst.length) return;
+            var cx2 = 2 * (ox + ri.x + ri.w / 2), cy2 = 2 * (ri.y + ri.h / 2);
+            function choques(fx, fy) {
+                var cajas = {}, malos = {};
+                muebles.forEach(function (e) {
+                    var b = cajas[e._g] || (cajas[e._g] = [Infinity, Infinity, -Infinity, -Infinity]);
+                    var pts = e.t === 'circle' ? [[e.c[0] - e.r, e.c[1] - e.r], [e.c[0] + e.r, e.c[1] + e.r]] : e.pts;
+                    pts.forEach(function (q) { var X = (fx ? cx2 - q[0] : q[0]) - ox, Y = fy ? cy2 - q[1] : q[1]; b[0] = Math.min(b[0], X); b[1] = Math.min(b[1], Y); b[2] = Math.max(b[2], X); b[3] = Math.max(b[3], Y); });
+                    if (!malos[e._g] && obst.some(function (o) { return tocaRect(e, o, fx, fy, cx2, cy2); })) malos[e._g] = true;
+                });
+                var n = 0, area = 0;
+                Object.keys(malos).forEach(function (g) { var b = cajas[g]; n++; area += (b[2] - b[0]) * (b[3] - b[1]); });
+                return n * 1000 + area;   /* primero, menos piezas en choque; luego, que las que choquen sean pequeñas */
+            }
+            var mejor = [false, false], val = choques(false, false), v0 = val;
+            if (!val) return;
+            [[true, false], [false, true], [true, true]].forEach(function (v) { var c = choques(v[0], v[1]); if (c < val - 1e-9) { val = c; mejor = v; } });
+            if (!mejor[0] && !mejor[1]) return;
+            muebles.forEach(function (e) {
+                function T(q) { return [mejor[0] ? cx2 - q[0] : q[0], mejor[1] ? cy2 - q[1] : q[1], q[2] || 0]; }
+                if (e.t === 'circle') e.c = T(e.c); else e.pts = e.pts.map(T);
+            });
+        }
         pi.rooms.forEach(function (r) {
             delete r._ly;
             var a0 = r.x < 0.01 ? extra_ : 0, a1 = r.x + r.w > W - 0.01 ? extra_ : 0, b0 = r.y < 0.01 ? extra_ : 0, b1 = Math.abs(r.y + r.h - DB) < 0.01 ? extra_ : 0;
             if (ABIERTO.test(r.tipo)) { a0 = a1 = b0 = b1 = 0; }
             var ri = {}; for (var k in r) ri[k] = r[k];
             ri.x = r.x + a0; ri.y = r.y + b0; ri.w = r.w - a0 - a1; ri.h = r.h - b0 - b1;
-            var g0 = PIEZA;
+            var g0 = PIEZA, e0 = ents.length;
             mobiliario(ri, pl);
+            acomodarAPuertas(ents.slice(e0), ri);
             /* cada pieza recuerda el espacio libre de su recinto (para no cruzar muros ni ventanas) */
             for (var gq = g0 + 1; gq <= PIEZA; gq++) limites[gq] = ABIERTO.test(r.tipo) ? [r.x - 0.01, r.y - 0.01, r.x + r.w + 0.01, r.y + r.h + 0.01] : [ri.x + MURO / 2 - 0.01, ri.y + MURO / 2 - 0.01, ri.x + ri.w - MURO / 2 + 0.01, ri.y + ri.h - MURO / 2 + 0.01];
             if (ri._ly != null) r._ly = ri._ly;
@@ -1296,7 +1344,8 @@
                 }
                 return false;
             }
-            var fuera = {}, obst = barridos.concat(colRects), quitar = {};
+            var fuera = {}, obst = barridos.concat(colRects), quitar = {}, porG = {};
+            ents.forEach(function (e) { if (e.layer === 'MOBILIARIO' && e._g != null) (porG[e._g] = porG[e._g] || []).push(e); });
             for (var i = 0; i < ids.length; i++) for (var j = i + 1; j < ids.length; j++) {
                 var bi = cajas[ids[i]], bj = cajas[ids[j]];
                 if (!corta(bi, bj, 0.001)) continue;
@@ -1307,7 +1356,9 @@
             }
             ids.forEach(function (g) {
                 var lim = limites[g], fueraDeSala = lim && !dentro(cajas[g], lim);   /* se sale de su recinto: tocaría un muro o una ventana */
-                if (fueraDeSala || obst.some(function (o) { return corta(cajas[g], o, 0.02); })) fuera[raiz(g)] = true;
+                /* choque con puerta o columna medido con la geometría real de la pieza (no su caja envolvente) */
+                var choca = obst.some(function (o) { return corta(cajas[g], o, 0.02) && (porG[g] || []).some(function (e) { return tocaRect(e, o, false, false, 0, 0); }); });
+                if (fueraDeSala || choca) fuera[raiz(g)] = true;
             });
             /* lo que choca con una puerta, columna o muro sale con su conjunto; en un cruce entre dos muebles
                sale solo la pieza más pequeña */
@@ -1530,8 +1581,11 @@
         },
         mesaCentro: function (S, w, h) {
             S.rr(-w / 2, 0, w, h, 0.1, F('vidrio', 0.15)); S.rr(-w / 2 + 0.06, 0.06, w - 0.12, h - 0.12, 0.07, Dl('vidrio', 0.006));
-            for (var k = 0; k < 5; k++) { var ak = k * 1.26 + 0.4; S.hoja(w * 0.25 + 0.056 * Math.cos(ak), h / 2 + 0.056 * Math.sin(ak), ak, 0.11, F('verde', 0.45)); }   /* hojas desde el borde de la matera */
-            S.circ(w * 0.25, h / 2, 0.05, F('madera', 0.8));
+            /* la matera y sus hojas quedan dentro del vidrio interior (sin cruzar su borde) */
+            var mx = w * 0.25, lh = Math.min(0.11, Math.min(w / 2 - 0.09 - mx, h / 2 - 0.09) - 0.056);
+            if (lh < 0.04) { mx = 0; lh = Math.max(0.03, Math.min(0.11, Math.min(w / 2, h / 2) - 0.09 - 0.056)); }
+            for (var k = 0; k < 5; k++) { var ak = k * 1.26 + 0.4; S.hoja(mx + 0.056 * Math.cos(ak), h / 2 + 0.056 * Math.sin(ak), ak, lh, F('verde', 0.45)); }   /* hojas desde el borde de la matera */
+            S.circ(mx, h / 2, 0.05, F('madera', 0.8));
         },
         silla: function (S) { S.rr(-0.21, 0.1, 0.42, 0.37, 0.07, F('tela', 0.3)); S.rr(-0.22, 0, 0.44, 0.07, 0.03, F('madera', 0.75)); },
         sillaOficina: function (S) {
@@ -1582,7 +1636,7 @@
             S.circ(-L / 2 + 0.15, 0.22, 0.07, Dl('metal')); S.circ(L / 2 - 0.15, 0.22, 0.07, Dl('metal'));
         },
         alfombra: function (S, u, v, w, h) { S.rect(u, v, w, h, F('tela', 0.07)); S.rect(u + 0.08, v + 0.08, w - 0.16, h - 0.16, Dl('tela', 0.005)); },
-        maceta: function (S, r) { S.circ(0, 0, r, F('madera', 0.3)); for (var k = 0; k < 7; k++) { var a = k * 0.9 + 0.3; S.hoja(r * 1.06 * Math.cos(a), r * 1.06 * Math.sin(a), a, r * 1.1, F('verde', 0.35)); } },   /* hojas que salen del borde (no cruzan la matera) */
+        maceta: function (S, r) { S.circ(0, 0, r, F('madera', 0.3)); for (var k = 0; k < 7; k++) { var a = k * 0.9 + 0.3; S.hoja(r * 1.06 * Math.cos(a), r * 1.06 * Math.sin(a), a, r * 0.6, F('verde', 0.35)); } },   /* hojas que salen del borde (no cruzan la matera) */
         arbol: function (S, R) {
             var p = [], q = [], i, a;
             for (i = 0; i < 40; i++) { a = 2 * Math.PI * i / 40; p.push([R * (1 + 0.07 * Math.sin(9 * a)) * Math.cos(a), R * (1 + 0.07 * Math.sin(9 * a)) * Math.sin(a)]); q.push([0.6 * R * (1 + 0.09 * Math.sin(7 * a + 1)) * Math.cos(a), 0.6 * R * (1 + 0.09 * Math.sin(7 * a + 1)) * Math.sin(a)]); }
@@ -1640,6 +1694,13 @@
             case 'cochera': {
                 /* carros estacionados de frente (el capó mira al fondo); atrás queda espacio para el rótulo y una repisa */
                 var n = r.extra === 2 && w >= 5 ? 2 : 1, Lc = Math.min(4.4, h - 0.8), y0c = y + 0.2;
+                /* garaje más ancho que profundo: el carro se estaciona a lo ancho (a tamaño real, no encogido) */
+                if (Lc < 3.8 && w - 0.8 > Lc + 0.3 && h >= 2.4) {
+                    var Lh = Math.min(4.4, w - 0.8), nH = h >= 5 && r.extra === 2 ? 2 : 1;
+                    for (i = 0; i < nH; i++) carro(pl, x + 0.4 + Lh, nH === 2 ? y + h * (i + 0.5) / 2 : cy, Math.min(1.8, h - 0.6), Lh, 1);
+                    r._ly = y + h - 0.3;
+                    break;
+                }
                 for (i = 0; i < n; i++) carro(pl, n === 2 ? x + w * (i + 0.5) / 2 : cx, y0c + Lc, 1.8, Lc, 2);
                 if (h - Lc > 1.6) SIM.estanteria(lapiz(pl, cx, y + h - 0.1, 2), Math.min(2.4, w - 1.2), 0.4);   /* repisa de herramientas al fondo */
                 r._ly = y + h - 0.42;
@@ -2005,7 +2066,7 @@
                     if (e.req) {
                         var a1 = [e.req.w, e.req.h].sort(function (a, b) { return a - b; }), a2 = [lw, lh].sort(function (a, b) { return a - b; });
                         var igual = Math.abs(a1[0] - a2[0]) <= 0.02 && Math.abs(a1[1] - a2[1]) <= 0.02;
-                        it2.push([igual && rs.length >= e.n, (e.n > 1 ? e.n + ' × ' : '') + nom + ' (' + ordinal(fi) + ' piso): pediste ' + f2(e.req.w) + ' × ' + f2(e.req.h) + ' → ' + txtM]);
+                        it2.push([igual && rs.length >= e.n, (e.n > 1 ? e.n + ' × ' : '') + nom + ' (' + ordinal(fi) + ' piso): ' + (e.reqAuto ? 'mínimo para estacionar ' : 'pediste ') + f2(e.req.w) + ' × ' + f2(e.req.h) + ' → ' + txtM]);
                     } else it2.push([rs.length >= e.n, (e.n > 1 ? e.n + ' × ' : '') + nom + ' (' + ordinal(fi) + ' piso): ' + txtM]);
                 });
                 if (rooms.some(function (r) { return r.tipo === 'escalera'; }) && necesario.indexOf('escalera') < 0) necesario.push('escalera');
@@ -2591,6 +2652,8 @@
                 var mq = mejorM || medPedidas.filter(function (x) { return pedidoNombra(x.t, r_.nombre); })[0];
                 if (mq) { r_.area = mq.A; if (mq.w) r_.req = { w: mq.w, h: mq.h }; r_.pedida = mq; }
                 else if (+e.ancho > 0 && +e.largo > 0 && numerosEnPedido(q, +e.ancho, +e.largo)) { var w_ = Math.min(+e.ancho, +e.largo), h_ = Math.max(+e.ancho, +e.largo); r_.req = { w: w_, h: h_ }; r_.area = w_ * h_; }   /* solo si esas medidas las escribió el usuario */
+                /* garaje sin medidas: el mínimo para estacionar (3.00 × 5.50 m libres por carro; 5.50 × 5.50 para dos) */
+                if (tipo === 'cochera' && !r_.req) { var dos = /\b(dos|2)\s+(carros|autos|vehiculos|puestos)|doble/.test(q + ' ' + norm(e.nombre)); r_.req = { w: dos ? 5.5 : 3.0, h: 5.5 }; r_.area = r_.req.w * r_.req.h; r_.reqAuto = true; }
                 return r_;
             }).filter(function (e) { return !/^(PASILLO|CIRCULACI[OÓ]N|ESCALERAS?|CORREDOR)$/.test(e.nombre); });
             pisos[ip + 1] = { gen: esp, escalera: n > 1, esquema: pi.esquema === 'abierto' ? 'abierto' : 'corredor', apto: false, cochera: 0, local: false };
