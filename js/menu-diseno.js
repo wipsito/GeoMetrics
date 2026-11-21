@@ -306,6 +306,7 @@
                 '<rect x="62" y="64" width="8" height="22" rx="3" fill="#f472b6"/><rect x="166" y="64" width="8" height="22" rx="3" fill="#f472b6"/>'
         };
     })();
+    window.GM_ARTE = ARTE;   /* las cabeceras de cada asignatura usan la misma ilustración de su tarjeta */
     /* título en mayúsculas con la última palabra (o el número romano) resaltada */
     function tituloRes(t) {
         var w = String(t || '').trim().split(/\s+/); if (w.length < 2) return esc(t);

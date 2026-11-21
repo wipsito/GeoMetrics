@@ -121,7 +121,7 @@
         R + ' .glx-disc{position:absolute;left:50%;top:50%;width:64%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 50% 40%,#1b2f4d,#0a1424 70%);box-shadow:0 0 0 3px rgba(34,211,238,.85),0 0 0 9px rgba(34,211,238,.10),0 0 60px rgba(34,211,238,.45),inset 0 0 40px rgba(0,0,0,.6);overflow:hidden}',
         R + ' .glx-disc img{position:absolute!important;left:50%!important;top:50%!important;width:112%!important;height:112%!important;max-width:none!important;transform:translate(-50%,-50%)!important;margin:0!important;filter:drop-shadow(0 6px 20px rgba(0,0,0,.4))!important;animation:none!important;object-fit:contain}',
         R + ' .glx-mod{position:absolute;padding:12px 18px 14px;background:rgba(6,11,20,.9);border:1px solid var(--c);clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);animation:glxFloat 6s ease-in-out infinite}',
-        R + ' .glx-mod small{display:block;font:500 12px/1 ' + MONO + ';letter-spacing:.2em;color:#9fb0c6}' + R + ' .glx-mod b{display:block;margin-top:8px;font:700 18px/1 ' + MONO + ';color:#fff;letter-spacing:.04em}',
+        R + ' .glx-mod small{display:block;font:500 12px/1 ' + MONO + ';letter-spacing:.2em;color:#9fb0c6}' + R + ' .glx-mod b{display:block;margin-top:8px;font:700 18px/1.2 ' + MONO + ';color:#fff;letter-spacing:.04em}',
         R + ' .glx-mod.m1{--c:rgba(34,211,238,.5);left:6%;top:24%}' + R + ' .glx-mod.m2{--c:rgba(245,158,11,.55);right:4%;top:30%;animation-delay:-1.5s}' + R + ' .glx-mod.m3{--c:rgba(167,139,250,.6);left:8%;bottom:22%;animation-delay:-3s}' + R + ' .glx-mod.m4{--c:rgba(244,114,182,.6);right:6%;bottom:14%;animation-delay:-4.5s}',
         '@keyframes glxFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}',
         R + ' .glx-footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:26px 0 28px;border-top:1px solid var(--ln);font:500 12.5px/1.4 ' + MONO + ';letter-spacing:.24em;color:#64748b}',
@@ -308,7 +308,7 @@
                 '<g class="glx-spin2"><path d="M 60 120 A 182 182 0 0 1 120 46" fill="none" stroke="rgba(167,139,250,.7)" stroke-width="2" stroke-linecap="round"/></g>' +
                 '<path d="M200 2v10M200 388v10M2 200h10M388 200h10M58 58l7 7M342 342l-7-7M342 58l-7 7M58 342l7-7" stroke="rgba(34,211,238,.5)" stroke-width="1.5"/>' +
                 '</svg><div class="glx-disc"></div></div>' +
-                '<div class="glx-mod m1"><small>MÓDULO</small><b>Suelos</b></div><div class="glx-mod m2"><small>MÓDULO</small><b>Materiales</b></div><div class="glx-mod m3"><small>MÓDULO</small><b>Estructuras</b></div><div class="glx-mod m4"><small>ASISTENTE</small><b>Civix IA</b></div>' +
+                '<div class="glx-mod m1"><small>MÓDULO</small><b>Suelos</b></div><div class="glx-mod m2"><small>MÓDULO</small><b>Resistencia<br>de materiales</b></div><div class="glx-mod m3"><small>MÓDULO</small><b>Estructuras</b></div><div class="glx-mod m4"><small>ASISTENTE</small><b>Civix IA</b></div>' +
                 '<div class="glx-vf"><span>TEORÍA · ENSAYOS · SIMULADORES</span><b>SISTEMA EN LÍNEA</b></div>');
             if (img) hl.querySelector('.glx-disc').appendChild(img);
         }

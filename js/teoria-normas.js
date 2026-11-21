@@ -504,18 +504,50 @@
         var ini = nombre.split(/\s+/).slice(0, 2).map(function (p) { return p.charAt(0); }).join('').toUpperCase();
         var rol = String(u.rol || '').toLowerCase();
         var rolTxt = rol === 'docente' ? 'Docente' : rol === 'admin' || rol === 'administrador' ? 'Administrador' : rol === 'estudiante' ? 'Estudiante' : (rol || 'Usuario');
-        return { nombre: corto, ini: ini || '?', rol: rolTxt };
+        var adm = false; try { adm = typeof global.aulaEsAdminEmail === 'function' && !!global.aulaEsAdminEmail(u.email); } catch (e2) {}
+        if (adm && rol !== 'docente') rolTxt = 'Administrador';
+        return { nombre: corto, ini: ini || '?', rol: rolTxt, u: u };
     }
 
+    /* usuario en la barra: mismo estilo que en el Centro de aprendizaje (rol, nombre y foto) y el mismo menú
+       desplegable (Editar perfil, Mi aula, Administrador, Cerrar sesión): se usa el menú original con sus eventos */
     function paintUser(top) {
-        var box = top.querySelector('.tnx-user');
-        if (!box) return;
-        var u = userInfo();
-        box.hidden = !u;
-        if (!u) return;
-        box.querySelector('.tnx-av').textContent = u.ini;
-        box.querySelector('b').textContent = u.nombre;
-        box.querySelector('small').textContent = u.rol;
+        var wrap = top.querySelector('.tnx-user-wrap');
+        if (!wrap) return;
+        var info = userInfo();
+        wrap.hidden = !info;
+        if (!info) return;
+        var av = wrap.querySelector('.tnx-av');
+        if (typeof global.aulaSetAvatarEl === 'function') global.aulaSetAvatarEl(av, info.u, info.ini);
+        else av.textContent = info.ini;
+        var foto = '';
+        try { foto = (typeof global.aulaFotoUsuario === 'function' ? global.aulaFotoUsuario(info.u) : '') || info.u.foto || info.u.photoURL || ''; } catch (e) {}
+        if (foto) { av.classList.add('con-foto'); av.style.backgroundImage = 'url("' + String(foto).replace(/"/g, '%22') + '")'; av.textContent = ''; }
+        wrap.querySelector('b').textContent = info.nombre;
+        wrap.querySelector('small').textContent = info.rol;
+    }
+    var menuVigilado = false;
+    function abrirMenuUsuario(wrap, btn) {
+        var D = doc.getElementById('menuUserDropdown'), casa = doc.getElementById('menuUserMenu');
+        if (!D || !casa) return;
+        if (!menuVigilado) {   /* al cerrarse, el menú vuelve a su lugar en el Centro de aprendizaje */
+            menuVigilado = true;
+            new MutationObserver(function () {
+                if (D.hidden && D.parentNode !== casa) { casa.appendChild(D); doc.querySelectorAll('.tnx-user[aria-expanded="true"]').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); }); }
+            }).observe(D, { attributes: true, attributeFilter: ['hidden'] });
+        }
+        if (!D.hidden && D.parentNode === wrap) { D.hidden = true; return; }
+        wrap.appendChild(D); D.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    }
+    /* imagen de la asignatura: la misma ilustración de su tarjeta en el Centro de aprendizaje */
+    var ARTE_DE = { pantallaSuelos: ['suelos', '#22d3ee'], pantallaSuelos2: ['cimentacion', '#22d3ee'], pantallaResistencia: ['viga', '#f59e0b'], pantallaDisenoMezclas: ['mezcla', '#f59e0b'], pantallaEstructuras: ['portico', '#a78bfa'] };
+    function pintarArte(scr) {
+        var box = scr.querySelector('.tnx-course-ic'), A = global.GM_ARTE, d = ARTE_DE[scr.id];
+        if (!box || box.__arte || !A || !d || !A[d[0]]) return;
+        box.__arte = true;
+        box.classList.add('con-arte'); box.style.setProperty('--c', d[1]);
+        /* ids propios (no los del menú, que puede estar oculto) */
+        box.innerHTML = '<svg viewBox="0 0 220 150" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' + A[d[0]].replace(/gmx(Calor|TopMS)/g, 'gmx$1Tx') + '</svg>';
     }
 
     var TAB_IC = { teoria: 'book', ensayos: 'lab', simuladores: 'spark', chat: 'chat' };
@@ -545,7 +577,7 @@
                 '<input type="search" placeholder="buscar tema, ensayo o norma…" aria-label="Buscar en la teoría de ' + esc(subject) + '" autocomplete="off">' +
                 '<div class="tnx-results" role="listbox" hidden></div>' +
             '</div>' +
-            '<div class="tnx-user" hidden><span class="tnx-av"></span><span><b></b><small></small></span></div>' +
+            '<div class="tnx-user-wrap" hidden><button type="button" class="tnx-user" aria-haspopup="true" aria-expanded="false" title="Mi cuenta"><span class="tnx-who"><small></small><b></b></span><span class="tnx-av"></span></button></div>' +
             '<button type="button" class="tnx-back">' + ic('back') + '<span>Volver al menú</span></button>';
 
         var course = doc.createElement('div');
@@ -584,10 +616,13 @@
             else if (typeof global.mostrarPantalla === 'function') global.mostrarPantalla('menu');
         });
 
+        var uw = top.querySelector('.tnx-user-wrap'), ub = uw && uw.querySelector('.tnx-user');
+        if (ub) ub.addEventListener('click', function (e) { e.stopPropagation(); abrirMenuUsuario(uw, ub); });
         paintUser(top);
+        pintarArte(scr);
         global.addEventListener('geometrics-auth-changed', function () { paintUser(top); });
         if ('MutationObserver' in global) {
-            new MutationObserver(function () { if (scr.style.display !== 'none') paintUser(top); })
+            new MutationObserver(function () { if (scr.style.display !== 'none') { paintUser(top); pintarArte(scr); } })
                 .observe(scr, { attributes: true, attributeFilter: ['style', 'class'] });
         }
         bindSearch(top, mod);
