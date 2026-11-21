@@ -302,9 +302,8 @@
                 return s + '<polyline points="44,96 78,74 112,84 146,56 180,36" fill="none" stroke="#f59e0b" stroke-width="2"/>' + [[44, 96], [78, 74], [112, 84], [146, 56], [180, 36]].map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r="3.4" fill="#f59e0b"/>'; }).join('');
             })(),
             robot: '<rect x="70" y="40" width="96" height="74" rx="16" fill="rgba(80,7,36,.55)" stroke="#f472b6" stroke-width="1.6"/><path d="M118 40V22" stroke="#f472b6" stroke-width="1.6"/><circle cx="118" cy="18" r="5" fill="#f472b6"/>' +
-                '<circle cx="98" cy="72" r="8" fill="#22d3ee"/><circle cx="138" cy="72" r="8" fill="#22d3ee"/><path d="M102 96h32" stroke="#f9a8d4" stroke-width="2.4" stroke-linecap="round"/>' +
-                '<rect x="62" y="64" width="8" height="22" rx="3" fill="#f472b6"/><rect x="166" y="64" width="8" height="22" rx="3" fill="#f472b6"/>' +
-                '<path d="M176 28h34v20h-18l-8 8v-8h-8z" fill="rgba(34,211,238,.15)" stroke="#22d3ee" stroke-width="1.2"/>'
+                '<circle cx="98" cy="72" r="8" fill="#22d3ee"/><circle cx="138" cy="72" r="8" fill="#22d3ee"/><rect class="gmx-boca" x="103" y="93" width="30" height="6" rx="3" fill="#f9a8d4"/>' +
+                '<rect x="62" y="64" width="8" height="22" rx="3" fill="#f472b6"/><rect x="166" y="64" width="8" height="22" rx="3" fill="#f472b6"/>'
         };
     })();
     /* título en mayúsculas con la última palabra (o el número romano) resaltada */
@@ -455,6 +454,12 @@
         R + ' .gmx-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}',
         R + ' .gmx-tags span{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid color-mix(in srgb,var(--c) 45%,#334155);border-radius:7px;background:rgba(5,10,20,.8);font-size:12.5px;line-height:1;color:#dbe4f0;white-space:nowrap}',
         R + ' .gmx-tags svg{width:14px;height:14px;color:var(--c);flex:0 0 auto}',
+        /* Civix: el robot dice «¿En qué te ayudo hoy?» en un globo de diálogo que apunta hacia él */
+        R + ' .menu-card .gmx-prompt.gmx-globo{position:relative;align-self:flex-end;margin:12px 4% 22px auto;padding:12px 18px;border:1.5px solid var(--pk);border-radius:16px;background:#2a0b20;color:#fdf2f8;font-weight:600;box-shadow:0 0 16px rgba(244,114,182,.3)}',
+        R + ' .menu-card .gmx-prompt.gmx-globo:before{content:"";position:absolute;top:-8px;right:20%;width:13px;height:13px;background:#2a0b20;border-left:1.5px solid var(--pk);border-top:1.5px solid var(--pk);transform:rotate(45deg)}',
+        R + ' .gmx-boca{transform-box:fill-box;transform-origin:center}',
+        '@media (prefers-reduced-motion:no-preference){' + R + ' .gmx-boca{animation:gmxHabla 1.1s ease-in-out infinite}}',
+        '@keyframes gmxHabla{0%,100%{transform:scaleY(1)}25%{transform:scaleY(2.2)}50%{transform:scaleY(.7)}75%{transform:scaleY(1.8)}}',
         R + ' .gmx-pie{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;padding:14px 0 20px}',
         R + ' .gmx-pie .gmx-tags{margin-top:0;flex:1 1 auto;min-width:0}',
         R + ' .gmx-cta{justify-content:flex-end!important;border-top:0!important;padding:0!important;margin:0!important;flex:0 0 auto}',
@@ -462,7 +467,9 @@
         R + ' .gmx-go i{font-style:normal;color:var(--c);font-size:18px;transition:transform .25s}',
         R + ' .menu-card:hover .gmx-go{background:color-mix(in srgb,var(--c) 18%,rgba(5,12,24,.85))}' + R + ' .menu-card:hover .gmx-go i{transform:translateX(4px)}',
         /* pantalla completa (todo en una vista): tarjetas compactas con la misma composición */
-        '@media (min-width:1240px) and (min-height:640px){' + R + ' .menu-grid .menu-card{display:flex!important;flex-direction:column;height:clamp(140px,20vh,236px);padding:1.4vh 20px 0!important}' + R + ' .gmx-pie{padding:.5vh 0 1.1vh}' + R + ' .menu-grid .menu-card.c-ia .gmx-tags{display:none}' + R + ' .gmx-ct{display:flex}' + R + ' .gmx-ico{width:clamp(28px,3.9vh,42px)!important;height:clamp(28px,3.9vh,42px)!important}' + R + ' .menu-grid .menu-card .gmx-num{font-size:clamp(20px,3.2vh,34px)!important}' + R + ' .gmx-eye2{display:none}' + R + ' .menu-card h3.gmx-t{margin:.8vh 0 0!important;font-size:clamp(15px,2.15vh,23px)!important}' + R + ' .menu-card p.gmx-d{margin:.6vh 0 0!important;font-size:clamp(11.5px,1.3vh,13px)!important;line-height:1.35!important}' + R + ' .gmx-tags{margin-top:1vh;gap:5px}' + R + ' .gmx-pie .gmx-tags{margin-top:0}' + R + ' .gmx-tags span{padding:.55vh 7px;gap:5px;font-size:clamp(10px,1.15vh,11.5px)}' + R + ' .gmx-tags svg{width:12px;height:12px}' + R + ' .gmx-go{padding:.85vh 14px;font-size:clamp(11.5px,1.45vh,14px)}' + R + ' .gmx-prompt{margin:0 0 1.4vh}}',
+        '@media (min-width:1240px) and (min-height:640px){' + R + ' .menu-grid .menu-card{display:flex!important;flex-direction:column;height:clamp(140px,20vh,236px);padding:1.4vh 20px 0!important}' + R + ' .gmx-pie{padding:.5vh 0 1.1vh}' + R + ' .menu-grid .menu-card.c-ia .gmx-tags{display:none}' + R + ' .gmx-ct{display:flex}' + R + ' .gmx-ico{width:clamp(28px,3.9vh,42px)!important;height:clamp(28px,3.9vh,42px)!important}' + R + ' .menu-grid .menu-card .gmx-num{font-size:clamp(20px,3.2vh,34px)!important}' + R + ' .gmx-eye2{display:none}' + R + ' .menu-card h3.gmx-t{margin:.8vh 0 0!important;font-size:clamp(15px,2.15vh,23px)!important}' + R + ' .menu-card p.gmx-d{margin:.6vh 0 0!important;font-size:clamp(11.5px,1.3vh,13px)!important;line-height:1.35!important;display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;overflow:hidden!important}' + R + ' .menu-card .gmx-prompt.gmx-globo{margin:.6vh 4% 1.2vh auto;padding:.9vh 14px;font-size:clamp(11px,1.4vh,14px)}' + R + ' .gmx-tags{margin-top:1vh;gap:5px}' + R + ' .gmx-pie .gmx-tags{margin-top:0}' + R + ' .gmx-tags span{padding:.55vh 7px;gap:5px;font-size:clamp(10px,1.15vh,11.5px)}' + R + ' .gmx-tags svg{width:12px;height:12px}' + R + ' .gmx-go{padding:.85vh 14px;font-size:clamp(11.5px,1.45vh,14px)}' + R + ' .gmx-prompt{margin:0 0 1.4vh}}',
+        /* pantallas medianas (tarjetas angostas): etiquetas solo con su icono, para que quepan con el botón en una fila */
+        '@media (min-width:1240px) and (max-width:1599px) and (min-height:640px){' + R + ' .gmx-tags span{font-size:0!important;padding:.6vh 7px!important;gap:0}' + R + ' .gmx-tags svg{width:14px!important;height:14px!important}' + R + ' .menu-card h3.gmx-t{font-size:clamp(14px,2.05vh,20px)!important;max-width:64%!important}' + R + ' .menu-card p.gmx-d{max-width:62%!important}' + R + ' .gmx-go{padding:.8vh 12px;gap:8px}}',
         '@media (max-width:640px){' + R + ' .menu-card h3.gmx-t{font-size:22px!important;max-width:70%}' + R + ' .menu-card p.gmx-d{max-width:68%}' + R + ' .menu-grid .menu-card > .gmx-art{width:46%;opacity:.8}' + R + ' .gmx-pie{flex-wrap:wrap}' + R + ' .gmx-pie .gmx-tags{flex-basis:100%}' + R + ' .gmx-cta{margin-left:auto!important}}'
     ].join('\n');
     doc.head.appendChild(css);
@@ -623,14 +630,14 @@
         var titulo = h3 ? h3.textContent.trim() : '', desc = p ? p.textContent.trim() : '';
         btn.classList.add('c-' + c.cat);
         btn.setAttribute('data-gmx-model', c.m);
-        var tags = (TAGS[key] || []).map(function (t) { return '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (TAG_IC[t[0]] || '') + '</svg>' + esc(t[1]) + '</span>'; }).join('');
+        var tags = (TAGS[key] || []).map(function (t) { return '<span title="' + esc(t[1]) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (TAG_IC[t[0]] || '') + '</svg>' + esc(t[1]) + '</span>'; }).join('');
         var cta = c.cta ? 'Ingresar' : '';   /* botón igual en todas las tarjetas, como en el diseño de referencia */
         btn.innerHTML = '<span class="gmx-bg" aria-hidden="true"></span>' +
             (ARTE[c.m] ? '<span class="gmx-art" aria-hidden="true"><svg viewBox="0 0 220 150" preserveAspectRatio="xMaxYMid meet">' + ARTE[c.m] + '</svg></span>' : '') +
             '<div class="gmx-ct"><span class="gmx-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + c.ico + '</svg></span><span class="gmx-num" aria-hidden="true">' + c.n + '</span></div>' +
             '<div class="gmx-eye2">' + esc(c.eye) + '</div><h3 class="gmx-t">' + tituloRes(titulo) + '</h3><p class="gmx-d">' + esc(desc) + '</p>' +
             '<div class="gmx-sp"></div>' +
-            (key === 'civix' ? (tags ? '<div class="gmx-tags">' + tags + '</div>' : '') + '<div class="gmx-prompt"><b>civix&gt;</b>¿En qué te ayudo hoy?<i></i></div>'
+            (key === 'civix' ? (tags ? '<div class="gmx-tags">' + tags + '</div>' : '') + '<div class="gmx-prompt gmx-globo">¿En qué te ayudo hoy?<i></i></div>'   /* lo dice el robot: globo de diálogo */
                 : '<div class="gmx-pie">' + (tags ? '<div class="gmx-tags">' + tags + '</div>' : '') + '<div class="gmx-cta"><span class="gmx-go">' + esc(cta) + ' <i>→</i></span></div></div>');
         btn.addEventListener('mouseenter', function () { marcar(btn); hover(c.m); });
         btn.addEventListener('focus', function () { marcar(btn); hover(c.m); });
