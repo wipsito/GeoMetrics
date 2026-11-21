@@ -1019,7 +1019,8 @@
         return limpiarSolapes(ents, 0.004);
     }
     /* lámina: DETALLES — elevación y sección de la viga V-1 y de la columna C-1 con su refuerzo (de Civix CAD) */
-    function dibujarDetalles(Pl, ox) {
+    /* cual: 'viga' | 'columna' | (sin valor) ambos */
+    function dibujarDetalles(Pl, ox, cual) {
         var E = estructura(Pl), ents = [], x = ox, k = 0.001;
         function pasar(model, titulo) {
             if (!model) return;
@@ -1042,8 +1043,8 @@
             ents.push({ t: 'text', p: [x + (bb[2] - bb[0]) * k / 2, -1.2, 0], h: 0.3, s: [titulo], rot: 0, ha: 1, va: 2, layer: 'TEXTO', titulo: true });
             x += (bb[2] - bb[0]) * k + 2.5;
         }
-        pasar(E.viga && E.viga.ok ? E.viga.model : null, 'DETALLE VIGA V-1');
-        pasar(E.columna && E.columna.ok ? E.columna.model : null, 'DETALLE COLUMNA C-1');
+        if (cual !== 'columna') pasar(E.viga && E.viga.ok ? E.viga.model : null, 'DETALLE VIGA V-1');
+        if (cual !== 'viga') pasar(E.columna && E.columna.ok ? E.columna.model : null, 'DETALLE COLUMNA C-1');
         if (!ents.length) ents.push({ t: 'text', p: [ox, 0, 0], h: 0.3, s: ['Diseño estructural no disponible'], rot: 0, ha: 0, va: 2, layer: 'TEXTO' });
         return limpiarSolapes(ents, 0.002);
     }
@@ -2087,7 +2088,8 @@
             }).join('') +
             /* láminas estructurales: planta de vigas y columnas + detalles de refuerzo */
             '<figure>' + svgPiso(dibujarEstructural(Pl, 0), true, false) + '<figcaption>PLANTA ESTRUCTURAL</figcaption></figure>' +
-            '<figure>' + svgPiso(dibujarDetalles(Pl, 0), true, false) + '<figcaption>DETALLES VIGA Y COLUMNA</figcaption></figure>' +
+            '<figure>' + svgPiso(dibujarDetalles(Pl, 0, 'viga'), true, false) + '<figcaption>DETALLE VIGA V-1</figcaption></figure>' +
+            '<figure>' + svgPiso(dibujarDetalles(Pl, 0, 'columna'), true, false) + '<figcaption>DETALLE COLUMNA C-1</figcaption></figure>' +
             '</div>' +
             '<div class="cxpl-cambio"><b>¿Quieres cambiar algo?</b><span>Escríbelo en el chat y se vuelve a dibujar.</span></div>' +
             '<div class="cxpl-acts"><button type="button" class="cxpl-btn ok" data-cxpl="cine">🎬 Ver de nuevo en modo cine</button>' +
@@ -2270,14 +2272,41 @@
        doble clic = volver a la vista completa. Se hace con el viewBox del SVG (el trazo sigue siendo vectorial
        y los cursores de los agentes siguen ubicándose bien porque leen la matriz de pantalla en cada cuadro). */
     function zoomCine(ov) {
-        var top = ov.querySelector('.cxpl-cine-top > div');
-        if (top && !ov.querySelector('.cxpl-zoom-ayuda')) top.insertAdjacentHTML('beforeend', '<small class="cxpl-zoom-ayuda">🖱 Rueda: zoom · arrastrar: mover · doble clic: vista completa</small>');
-        [].forEach.call(ov.querySelectorAll('.cxpl-cine-f'), function (fig) {
+        var top = ov.querySelector('.cxpl-cine-top > div'), grid = ov.querySelector('.cxpl-cine-g'), figs = ov.querySelectorAll('.cxpl-cine-f'), multi = figs.length > 1;
+        /* con varias vistas (plantas, planta estructural, detalles): clic en una para centrarla y ampliarla;
+           el zoom y el desplazamiento funcionan sobre la vista centrada */
+        if (top && !ov.querySelector('.cxpl-zoom-ayuda')) top.insertAdjacentHTML('beforeend', '<small class="cxpl-zoom-ayuda">' + (multi ? '🖱 Clic en una vista para centrarla · rueda: zoom · arrastrar: mover · doble clic: vista completa' : '🖱 Rueda: zoom · arrastrar: mover · doble clic: vista completa') + '</small>');
+        var btnTodas = null;
+        if (multi) {
+            var acts = ov.querySelector('.cxpl-cine-acts');
+            if (acts) { acts.insertAdjacentHTML('afterbegin', '<button type="button" data-c="todas" hidden title="Volver a ver todas las vistas">⤺ Todas las vistas</button>'); btnTodas = acts.querySelector('[data-c="todas"]'); }
+            grid.classList.add('seleccionable');
+        }
+        function enfocar(fig) {
+            grid.classList.add('enfocado'); fig.classList.add('foco');
+            if (btnTodas) btnTodas.hidden = false;
+            try { grid.scrollTop = 0; } catch (eS) { }
+        }
+        function desenfocar() {
+            [].forEach.call(figs, function (f) { if (f._reset) f._reset(); f.classList.remove('foco'); });
+            grid.classList.remove('enfocado');
+            if (btnTodas) btnTodas.hidden = true;
+        }
+        ov._desenfocar = desenfocar;
+        ov._enfocado = function () { return grid.classList.contains('enfocado'); };
+        [].forEach.call(figs, function (fig) {
             var svg = fig.querySelector('svg'); if (!svg) return;
-            var vb0 = svg.viewBox.baseVal, ORIG = [vb0.x, vb0.y, vb0.width, vb0.height], arr = null;
+            var vb0 = svg.viewBox.baseVal, ORIG = [vb0.x, vb0.y, vb0.width, vb0.height], arr = null, movido = false, p0 = null;
             function poner(x, y, w, h) { svg.setAttribute('viewBox', x + ' ' + y + ' ' + w + ' ' + h); fig.classList.toggle('cxpl-zoom', w < ORIG[2] * 0.999); }
+            fig._reset = function () { poner(ORIG[0], ORIG[1], ORIG[2], ORIG[3]); };
             function aSvg(cx, cy) { var m = svg.getScreenCTM(); if (!m) return null; var p = svg.createSVGPoint(); p.x = cx; p.y = cy; return p.matrixTransform(m.inverse()); }
+            fig.addEventListener('pointerdown', function (e) { p0 = [e.clientX, e.clientY]; movido = false; });
+            fig.addEventListener('click', function (e) {
+                if (!multi || grid.classList.contains('enfocado') || movido) return;
+                enfocar(fig);
+            });
             fig.addEventListener('wheel', function (e) {
+                if (multi && !fig.classList.contains('foco')) return;   /* en la cuadrícula la rueda desplaza; el zoom es para la vista centrada */
                 e.preventDefault();
                 var vb = svg.viewBox.baseVal, p = aSvg(e.clientX, e.clientY); if (!p) return;
                 var f = Math.pow(1.0015, e.deltaY);   /* suave con ratón y con panel táctil */
@@ -2293,6 +2322,7 @@
                 fig.classList.add('cxpl-arrastrando');
             });
             fig.addEventListener('pointermove', function (e) {
+                if (p0 && Math.hypot(e.clientX - p0[0], e.clientY - p0[1]) > 5) movido = true;
                 if (!arr) return;
                 var m = svg.getScreenCTM(); if (!m) return;
                 var vb = svg.viewBox.baseVal;
@@ -2300,7 +2330,7 @@
             });
             function soltar() { arr = null; fig.classList.remove('cxpl-arrastrando'); }
             fig.addEventListener('pointerup', soltar); fig.addEventListener('pointercancel', soltar);
-            fig.addEventListener('dblclick', function () { poner(ORIG[0], ORIG[1], ORIG[2], ORIG[3]); });
+            fig.addEventListener('dblclick', function () { if (!multi || fig.classList.contains('foco')) poner(ORIG[0], ORIG[1], ORIG[2], ORIG[3]); });
         });
     }
     var CURSOR = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#a855f7', '#06b6d4', '#ec4899', '#84cc16'];
@@ -2313,8 +2343,8 @@
         ov.innerHTML = '<div class="cxpl-cine-top"><div><small>CIVIX · PLANOS</small><b>' + (actual && actual.P && actual.P.titulo ? esc(actual.P.titulo) + ' · ' : (actual && actual.P && actual.P.esCasa ? 'Casa ' : 'Edificio ')) + Pl.n + ' piso' + (Pl.n > 1 ? 's' : '') + ' · lote ' + f2(Pl.W) + ' × ' + f2(Pl.L) + ' m</b></div>' +
             '<span class="cxpl-etapa">Preparando…</span><div class="cxpl-cine-acts">' +
             '<button type="button" data-c="vel" title="Velocidad">1×</button>' +
-            (o.transicion ? '<button type="button" data-c="x" title="Ir directo a la vista previa">⏭ Saltar</button>'
-                : '<button type="button" data-c="rep" title="Repetir">↺ Repetir</button><button type="button" data-c="dxf">⬇ DXF</button><button type="button" data-c="pdf">⬇ PDF</button><button type="button" data-c="x" aria-label="Cerrar">✕</button>') +
+            (o.autoCierre ? '<button type="button" data-c="x" title="Ir directo a la vista previa">⏭ Saltar</button>'
+                : '<button type="button" data-c="rep" title="Repetir">↺ Repetir</button><button type="button" data-c="dxf">⬇ DXF</button><button type="button" data-c="pdf">⬇ PDF</button><button type="button" data-c="x" aria-label="Cerrar" title="' + (o.transicion ? 'Cerrar y ver la vista previa' : 'Cerrar') + '">✕</button>') +
             '</div></div>' +
             '<div class="cxpl-cine-bar"><i></i></div><div class="cxpl-agentes" aria-live="off"></div><div class="cxpl-cine-g" style="--n:' + Math.min(Pl.n, 4) + '"></div>';
         doc.body.appendChild(ov);
@@ -2326,14 +2356,18 @@
             return { fig: fig, svg: fig.querySelector('svg'), etiqueta: ordinal(pi.n) };
         });
         /* láminas estructurales: los agentes también dibujan la planta de vigas y columnas y los detalles */
-        [['PLANTA ESTRUCTURAL', dibujarEstructural(Pl, 0), '#f59e0b'], ['DETALLES VIGA Y COLUMNA', dibujarDetalles(Pl, 0), '#f87171']].forEach(function (L, k) {
+        [['PLANTA ESTRUCTURAL', dibujarEstructural(Pl, 0), '#f59e0b'], ['DETALLE VIGA V-1', dibujarDetalles(Pl, 0, 'viga'), '#f87171'], ['DETALLE COLUMNA C-1', dibujarDetalles(Pl, 0, 'columna'), '#a78bfa']].forEach(function (L, k) {
             var fig = el('figure', 'cxpl-cine-f', '<figcaption style="--c:' + L[2] + '">' + L[0] + '</figcaption>' + svgPiso(L[1], false, true));
             grid.appendChild(fig);
             vistas.push({ fig: fig, svg: fig.querySelector('svg'), etiqueta: 'E' + k });
         });
         grid.style.setProperty('--n', Math.min(vistas.length, 4));
         var cerrado = false;
-        var motor = motorAgentes(ov, vistas, { dur: 15000 + 1500 * Math.min(Pl.n, 4), alTerminar: o.transicion ? function () { setTimeout(cerrar, 1300); } : null });
+        /* al terminar, el plano se queda en pantalla (solo se cierra con ✕ o Escape) y se invita a explorar cada vista */
+        var motor = motorAgentes(ov, vistas, {
+            dur: 15000 + 1500 * Math.min(Pl.n, 4),
+            alTerminar: o.autoCierre ? function () { setTimeout(cerrar, 1300); } : function () { var et = ov.querySelector('.cxpl-etapa'); if (et) et.textContent = 'Plano terminado · clic en una vista'; }
+        });
         zoomCine(ov);
         function cerrar() {
             if (cerrado) return; cerrado = true;
@@ -2349,12 +2383,14 @@
             }
             setTimeout(function () { ov.remove(); }, 520);
         }
-        function tecla(e) { if (e.key === 'Escape') cerrar(); }
+        /* Escape: primero vuelve a todas las vistas; si ya están todas, cierra */
+        function tecla(e) { if (e.key !== 'Escape') return; if (ov._enfocado && ov._enfocado()) ov._desenfocar(); else cerrar(); }
         doc.addEventListener('keydown', tecla);
         ov.addEventListener('click', function (e) {
             var b = e.target.closest('[data-c]'); if (!b) return;
             var c = b.getAttribute('data-c');
             if (c === 'x') cerrar();
+            else if (c === 'todas') { if (ov._desenfocar) ov._desenfocar(); }
             else if (c === 'rep') motor.iniciar();
             else if (c === 'vel') b.textContent = motor.velocidad() + '×';
             else accion(c, b);
