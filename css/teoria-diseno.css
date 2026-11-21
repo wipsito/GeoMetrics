@@ -130,32 +130,65 @@
 }
 .tnx-res-empty { padding: 14px 12px; color: var(--x-soft); font-size: 13px; }
 
+/* usuario: igual que en el Centro de aprendizaje (rol y nombre a la izquierda, foto con anillo a la derecha) */
+.tnx-user-wrap { position: relative; }
+.tnx-user-wrap[hidden] { display: none; }
 .tnx-user {
-    display: flex; align-items: center; gap: 11px;
-    padding: 6px 16px 6px 7px;
-    border: 1px solid var(--x-line);
-    background: rgba(6, 12, 24, .5);
+    display: flex; align-items: center; gap: 12px;
+    padding: 4px !important;
+    border: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    color: #fff;
+    cursor: pointer;
+    width: auto !important; min-height: 0 !important;
 }
-.tnx-user[hidden] { display: none; }
+.tnx-who { text-align: right; line-height: 1.25; }
 .tnx-av {
+    flex: none;
     display: grid; place-items: center;
-    width: 36px; height: 36px;
-    border-radius: 50%;
+    width: 46px; height: 46px;
+    border-radius: 50% !important;
+    border: 2px solid #22d3ee !important;
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, .15), 0 0 18px rgba(34, 211, 238, .35) !important;
     background: radial-gradient(circle at 30% 30%, #2DD4BF, #1E3A8A);
+    background-size: cover !important; background-position: center !important;
     color: #fff;
     font-family: var(--x-tit);
-    font-size: 13px; font-weight: 700;
+    font-size: 16px; font-weight: 700;
+    transition: transform .2s;
 }
-.tnx-user b { display: block; color: #fff; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.tnx-user:hover .tnx-av, .tnx-user[aria-expanded="true"] .tnx-av { transform: scale(1.06); }
+.tnx-user b { display: block; color: #fff; font-size: 15px; font-weight: 600; white-space: nowrap; }
 .tnx-user small {
     display: block;
-    margin-top: 2px;
     color: var(--x-mute);
     font-family: var(--x-mono);
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: .2em;
     text-transform: uppercase;
 }
+/* el menú desplegable original, abierto desde la barra de la asignatura */
+.tnx-user-wrap > #menuUserDropdown { position: absolute !important; right: 0; left: auto; top: calc(100% + 10px); z-index: 1000; }
+/* imagen de la asignatura: la ilustración de su tarjeta del Centro de aprendizaje, con el mismo marco */
+.tnx-course-ic.con-arte {
+    position: relative;
+    width: 168px; height: 112px;
+    padding: 8px;
+    box-sizing: border-box;
+    border: 0;
+    background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 22%, transparent) 26%, color-mix(in srgb, var(--c) 10%, transparent) 50%, color-mix(in srgb, var(--c) 22%, transparent) 74%, var(--c));
+    clip-path: polygon(0 12px, 12px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 14px 100%, 0 calc(100% - 14px));
+}
+.tnx-course-ic.con-arte::before {
+    content: ""; position: absolute; inset: 1.5px;
+    clip-path: polygon(0 11px, 11px 0, calc(100% - 13px) 0, 100% 13px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 13px 100%, 0 calc(100% - 13px));
+    background: radial-gradient(110% 90% at 60% 45%, color-mix(in srgb, var(--c) 14%, transparent), transparent 65%),
+        linear-gradient(rgba(148, 163, 184, .06) 1px, transparent 1px) 0 0 / 16px 16px,
+        linear-gradient(90deg, rgba(148, 163, 184, .06) 1px, transparent 1px) 0 0 / 16px 16px,
+        linear-gradient(160deg, #0e1829, #070c17 70%);
+}
+.tnx-course-ic.con-arte svg { position: relative; width: 100%; height: 100%; filter: drop-shadow(0 0 8px color-mix(in srgb, var(--c) 40%, transparent)); }
 .tnx-back {
     display: inline-flex; align-items: center; gap: 10px;
     height: 46px;
@@ -651,7 +684,7 @@
     .tnx { grid-template-columns: 250px minmax(0, 1fr); gap: 26px; }
     .tnx-route { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .tnx-top { grid-template-columns: auto minmax(180px, 1fr) auto; }
-    .tnx-user { display: none !important; }
+    .tnx-user-wrap { display: none !important; }
 }
 @media (max-width: 1100px) {
     .tnx-course { grid-template-columns: auto minmax(0, 1fr); }
@@ -707,6 +740,7 @@
     .tnx-back span { display: none; }
     .tnx-course { gap: 14px; margin-bottom: 18px; }
     .tnx-course-ic { width: 54px; height: 54px; }
+    .tnx-course-ic.con-arte { width: 96px; height: 64px; padding: 4px; }
     .tnx-course-ic .tnx-ic { width: 26px; height: 26px; }
     .tnx-eye { font-size: 10.5px; letter-spacing: .2em; }
     .tnx-course h2 { font-size: 28px !important; }
