@@ -131,7 +131,7 @@
         if (back) top.querySelector('.inm-back').addEventListener('click', function () { salir(); back.click(); });
         else top.querySelector('.inm-back').hidden = true;
         top.querySelector('.inm-rst').addEventListener('click', function () { var hb3 = q('.lab3d-views [data-view="home"]'); if (hb3) hb3.click(); });
-        var b2d = shell && shell.querySelector('.simhub-mode [data-mode="2d"]');
+        var b2d = shell && shell.querySelector('.simhub-mode [data-mode="2d"], .simhub-mode [data-dm-mode="2d"]');
         if (b2d) top.querySelector('.inm-2d').addEventListener('click', function () { salir(); b2d.click(); }); else top.querySelector('.inm-2d').hidden = true;
         top.querySelector('.inm-full').addEventListener('click', function () {
             var fe = doc.fullscreenElement || doc.webkitFullscreenElement;

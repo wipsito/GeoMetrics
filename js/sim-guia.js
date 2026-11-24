@@ -139,7 +139,8 @@
         });
         return best;
     }
-    var DM_TITULOS = [[/revenimiento|asentamiento/i, 'dm_rev'], [/compresi/i, 'dm_comp'], [/aci/i, 'dm_aci'], [/combinaci/i, 'dm_agg']];
+    var DM_TITULOS = [[/granulometr/i, 'dm_gran'], [/peso unitario y vac/i, 'dm_punit'], [/humedad del agregado/i, 'dm_hum'], [/concreto fresco|olla de aire/i, 'dm_fresco'],
+        [/revenimiento|asentamiento/i, 'dm_rev'], [/compresi/i, 'dm_comp'], [/aci/i, 'dm_aci'], [/combinaci/i, 'dm_agg']];
 
     function escanear() {
         /* 1 · simuladores 2D de Suelos I, Suelos II y Resistencia (sim-hub) */

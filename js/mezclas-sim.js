@@ -456,20 +456,309 @@
         onDone: function (P) { var s = $('agF'); if (s) { s.value = Math.round(P.mo.best * 100); var o = $('agFV'); if (o) o.textContent = s.value + ' %'; } }
     };
 
+    /* ---------- parámetros compartidos con el laboratorio 3D (mismo ensayo, mismos datos) ---------- */
+    function a3d(k, o) {
+        var L3 = root.GeoLab3D; if (!L3) return;
+        L3.pro = L3.pro || {}; L3.pro.over = L3.pro.over || {}; L3.pro.over[k] = o;
+    }
+    function fase(p, a, b) { return clamp((p - a) / (b - a), 0, 1); }
+    function balanza(ctx, x, y, w, lectura, unidad, col) {
+        ctx.fillStyle = '#2a3b52'; rr(ctx, x, y, w, 34, 6); ctx.fill();
+        ctx.fillStyle = '#0b1220'; rr(ctx, x + 10, y + 8, w - 20, 18, 3); ctx.fill();
+        text(ctx, lectura + ' ' + unidad, x + w - 16, y + 22, { bold: true, size: 13, align: 'right', color: col || '#7dd3fc' });
+        ctx.fillStyle = '#4b5d75'; ctx.fillRect(x + w * 0.2, y - 6, w * 0.6, 6);
+    }
+
+    /* =========================================================
+       SIMULADOR 5 — GRANULOMETRÍA DE AGREGADOS (NTC 77 · ASTM C136)
+    ========================================================= */
+    var GR_T = [{ n: 'N.º 4', mm: 4.75 }, { n: 'N.º 8', mm: 2.36 }, { n: 'N.º 16', mm: 1.18 }, { n: 'N.º 30', mm: 0.6 }, { n: 'N.º 50', mm: 0.3 }, { n: 'N.º 100', mm: 0.15 }];
+    var GR_DOTS = (function () { var r = seeded(57), a = []; for (var i = 0; i < 260; i++) a.push([r(), r(), r()]); return a; })();
+    function granModel(P) {
+        var a = ARENAS[P.arena].p, pas = [a[5], a[6], a[7], a[8], a[9], a[10]], prev = 100, ret = [], acc = 0, i;
+        for (i = 0; i < 6; i++) { ret.push((prev - pas[i]) / 100 * P.tot); prev = pas[i]; acc += 100 - pas[i]; }
+        ret.push(pas[5] / 100 * P.tot);
+        return { pas: pas, ret: ret, mf: acc / 100 };
+    }
+    var GRAN = {
+        id: 'gran', icon: '📊', titulo: 'Granulometría de agregados', norma: 'NTC 77 · ASTM C136', rs: 0.92, rg: 0.8, dur: 9000, idle: 0,
+        desc: 'Tamiza una arena por la serie N.º 4 a N.º 100, pesa lo retenido en cada tamiz y obtén la curva y el módulo de finura.',
+        graphTitle: '% que pasa vs. abertura del tamiz',
+        learn: '<p>Se pesa la muestra seca (M₀), se tamiza unos 10 min y se pesa lo retenido en cada tamiz. <b>% retenido acumulado</b> = suma de lo retenido hasta ese tamiz; <b>% que pasa</b> = 100 − retenido acumulado. El <b>módulo de finura</b> es MF = Σ % retenidos acumulados (N.º 4, 8, 16, 30, 50 y 100) / 100.</p><p>Para concreto, la arena debe quedar dentro de los límites de ASTM C33 (zona verde) y con MF entre 2.3 y 3.1. La suma de retenidos no debe diferir más de 0.3 % de M₀.</p>',
+        controls: function () {
+            return rng('grTot', 'Masa seca de la muestra (M₀)', 200, 1000, 10, 500, 'g') +
+                U.select('grAr', 'Tipo de arena', Object.keys(ARENAS).map(function (k) { return [k, ARENAS[k].n]; }), 'media');
+        },
+        read: function () {
+            var P = { tot: rv('grTot'), arena: $('grAr').value }, Mo = granModel(P);
+            P.pas = Mo.pas; P.ret = Mo.ret; P.mf = Mo.mf; a3d('dm_gran', { tot: P.tot, arena: P.arena });
+            return P;
+        },
+        draw: function (ctx, W, H, p, P) {
+            bgStage(ctx, W, H);
+            var vert = fase(p, 0, 0.12), vib = fase(p, 0.12, 0.62), pesa = fase(p, 0.62, 0.95);
+            var cx = W * 0.36, tw = W * 0.42, th = Math.min(42, H * 0.095), y0 = H * 0.14, sh = vib > 0 && vib < 1 ? Math.sin(p * 900) * 3 : 0;
+            var nombres = GR_T.map(function (t) { return t.n; }).concat(['Fondo']), mx = Math.max.apply(null, P.ret);
+            for (var i = 0; i < 7; i++) {
+                var y = y0 + i * (th + 6), x = cx - tw / 2 + sh;
+                ctx.fillStyle = '#25364d'; rr(ctx, x, y, tw, th, 5); ctx.fill(); ctx.strokeStyle = '#7d8da1'; ctx.stroke();
+                if (i < 6) { ctx.strokeStyle = 'rgba(200,210,225,0.35)'; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(x + 6, y + th - 5); ctx.lineTo(x + tw - 6, y + th - 5); ctx.stroke(); ctx.setLineDash([]); }
+                /* material que queda en cada tamiz: crece con la vibración */
+                var q = i === 0 ? (vib > 0 ? 1 : 0) : vib, cuanto = P.ret[i] / mx;
+                var hh = (th - 10) * Math.max(0.08, cuanto) * eOut(q);
+                if (vib <= 0 && i === 0) hh = (th - 10) * vert;           /* antes de vibrar todo está arriba */
+                ctx.fillStyle = i < 3 ? '#a08a5c' : (i < 5 ? '#c4ad7a' : '#d9c99f'); ctx.fillRect(x + 8, y + th - 6 - hh, tw - 16, hh);
+                text(ctx, nombres[i], x - 10, y + th / 2 + 4, { size: 11, align: 'right', color: 'rgba(255,255,255,0.75)' });
+                if (pesa > i / 7) text(ctx, fmt(P.ret[i], 1) + ' g', x + tw + 12, y + th / 2 + 4, { bold: true, size: 12, color: '#fbbf24' });
+            }
+            /* partículas cayendo durante la vibración */
+            if (vib > 0 && vib < 1) GR_DOTS.forEach(function (d) {
+                var yy = y0 + ((d[1] + p * 6) % 1) * 7 * (th + 6), xx = cx - tw / 2 + 12 + d[0] * (tw - 24);
+                ctx.fillStyle = d[2] > 0.5 ? '#c4ad7a' : '#8b7a58'; ctx.beginPath(); ctx.arc(xx, yy, 1 + d[2], 0, 6.283); ctx.fill();
+            });
+            /* balanza que pesa cada tamiz al final */
+            var ip = Math.min(6, Math.floor(pesa * 7));
+            balanza(ctx, W * 0.74, H * 0.82, W * 0.22, pesa > 0 ? fmt(P.ret[ip] * eOut((pesa * 7) % 1 || 1), 1) : fmt(P.tot * vert, 0), 'g');
+            var cap = p < 0.12 ? '1 · Se pesa la muestra seca (M₀) y se vierte en el tamiz superior' : (p < 0.62 ? '2 · Tamizado por vibración (≈ 10 min)' : (p < 0.95 ? '3 · Se pesa lo retenido en cada tamiz' : '4 · % que pasa y módulo de finura'));
+            text(ctx, cap, 12, 22, { bold: true, size: 13 });
+        },
+        graph: function (ctx, W, H, p, P) {
+            ctx.clearRect(0, 0, W, H); ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, W, H);
+            var mm = [9.5, 4.75, 2.36, 1.18, 0.6, 0.3, 0.15], pas = [100].concat(P.pas), L = 46, Rr = 14, T = 14, B = 38, w = W - L - Rr, h = H - T - B;
+            var l0 = Math.log10(0.1), l1 = Math.log10(12);
+            function X(v) { return L + (Math.log10(v) - l0) / (l1 - l0) * w; } function Y(v) { return T + h - v / 100 * h; }
+            var LIM = C.LIMITES_C33_FINO || [];
+            if (LIM.length) { ctx.fillStyle = 'rgba(52,211,153,0.12)'; ctx.beginPath(); LIM.forEach(function (l, i) { ctx[i ? 'lineTo' : 'moveTo'](X(l[0]), Y(l[2])); }); for (var k = LIM.length - 1; k >= 0; k--) ctx.lineTo(X(LIM[k][0]), Y(LIM[k][1])); ctx.closePath(); ctx.fill(); }
+            mm.forEach(function (m) { ctx.strokeStyle = COL.grid; ctx.beginPath(); ctx.moveTo(X(m), T); ctx.lineTo(X(m), T + h); ctx.stroke(); text(ctx, String(m), X(m), T + h + 15, { size: 10, align: 'center' }); });
+            for (var v = 0; v <= 100; v += 20) { ctx.strokeStyle = COL.grid; ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(L + w, Y(v)); ctx.stroke(); text(ctx, String(v), L - 6, Y(v) + 4, { size: 11, align: 'right' }); }
+            ctx.strokeStyle = COL.axis; ctx.strokeRect(L, T, w, h);
+            text(ctx, 'Abertura (mm, escala log)', L + w / 2, H - 5, { size: 11, align: 'center' });
+            ctx.save(); ctx.translate(11, T + h / 2); ctx.rotate(-Math.PI / 2); text(ctx, '% que pasa', 0, 0, { size: 11, align: 'center' }); ctx.restore();
+            var shown = p < 0.62 ? 0 : (p >= 0.95 ? 7 : Math.min(7, Math.floor(fase(p, 0.62, 0.95) * 7) + 1));
+            var A = { X: X, Y: Y }, pts = mm.map(function (m, i) { return [m, pas[i]]; });
+            curve(ctx, A, pts, 'rgba(251,191,36,0.3)', 1.5, [5, 5]);
+            if (shown > 1) { curve(ctx, A, pts.slice(0, shown), COL.acc, 3); pts.slice(0, shown).forEach(function (q) { dot(ctx, X(q[0]), Y(q[1]), 4, COL.acc, true); }); }
+            text(ctx, 'Zona verde: límites ASTM C33', L + 8, T + 16, { size: 10, color: '#6ee7b7' });
+        },
+        chips: function (p, P) {
+            var acc = 0; P.ret.forEach(function (m) { acc += m; });
+            var fin = p >= 0.95, mf = P.mf, clase = mf < 2.3 ? 'Arena fina' : (mf > 3.1 ? 'Arena gruesa' : 'Apta para concreto');
+            var ph = p <= 0 ? 'Listo' : (p < 0.12 ? 'Pesando y vertiendo' : (p < 0.62 ? 'Tamizando' : (p < 0.95 ? 'Pesando retenidos' : 'Finalizado')));
+            return [{ l: 'Módulo de finura', v: fin ? fmt(mf, 2) : '—', big: true, tone: fin ? (mf >= 2.3 && mf <= 3.1 ? 'ok' : 'warn') : '' }, { l: 'Masa inicial M₀', v: fmt(P.tot, 0) + ' g' },
+                { l: 'Suma de retenidos', v: p >= 0.62 ? fmt(acc, 1) + ' g' : '—' }, { l: '% pasa N.º 100', v: fin ? fmt(P.pas[5], 1) + ' %' : '—' },
+                { l: 'Clasificación', v: fin ? clase : '—', tone: fin ? (clase === 'Apta para concreto' ? 'ok' : 'warn') : '' }, { l: 'Estado', v: ph }];
+        }
+    };
+
+    /* =========================================================
+       SIMULADOR 6 — PESO UNITARIO Y VACÍOS (NTC 92 · ASTM C29)
+    ========================================================= */
+    var PU_DOTS = (function () { var r = seeded(81), a = []; for (var i = 0; i < 220; i++) a.push([r(), r(), r()]); return a; })();
+    var PUNIT = {
+        id: 'punit', icon: '⚖️', titulo: 'Peso unitario y vacíos', norma: 'NTC 92 · ASTM C29', rs: 0.92, rg: 0.8, dur: 9000, idle: 0,
+        desc: 'Llena el recipiente en 3 capas con 25 golpes de varilla, enrasa, pesa y calcula el peso unitario compactado y los vacíos.',
+        graphTitle: 'Vacíos vs. peso unitario',
+        learn: '<p><b>PUC = (G − T) / V</b>: masa del recipiente lleno (G) menos la tara (T), entre el volumen calibrado del recipiente (V). Los <b>vacíos</b> son el espacio entre partículas: % vacíos = [1 − PUC / (Gs·ρw)] × 100, con ρw = 1000 kg/m³.</p><p>El PUC del agregado grueso entra al diseño ACI (grava = b/b₀ × PUC). Un agregado bien gradado tiene menos vacíos y necesita menos pasta.</p>',
+        controls: function () {
+            return rng('puPuc', 'PUC del agregado', 1000, 2200, 10, 1600, 'kg/m³') + rng('puGs', 'Gravedad específica (Gs)', 2.2, 3.2, 0.01, 2.7, '') +
+                U.select('puV', 'Volumen del recipiente', [[2.832, '2.8 L (⅒ pie³)'], [9.435, '9.4 L (⅓ pie³)'], [14.158, '14.2 L (½ pie³)'], [28.317, '28.3 L (1 pie³)']], 14.158) +
+                rng('puT', 'Tara del recipiente (T)', 0.5, 15, 0.05, 4.8, 'kg');
+        },
+        read: function () {
+            var P = { puc: rv('puPuc'), gs: rv('puGs'), Vl: parseFloat($('puV').value), T: rv('puT') };
+            P.V = P.Vl / 1000; P.neto = P.puc * P.V; P.G = P.T + P.neto; P.vac = (1 - P.puc / (P.gs * 1000)) * 100;
+            a3d('dm_punit', { puc: P.puc, gs: P.gs, Vl: P.Vl, T: P.T });
+            return P;
+        },
+        draw: function (ctx, W, H, p, P) {
+            bgStage(ctx, W, H);
+            var tara = fase(p, 0, 0.08), llen = fase(p, 0.08, 0.62), enr = fase(p, 0.62, 0.72), pes = fase(p, 0.72, 0.88);
+            var cx = W * 0.38, cw = W * 0.34, ch = H * 0.5, gy = H * 0.8, top = gy - ch;
+            ctx.fillStyle = '#1b2b40'; ctx.fillRect(0, gy, W, H - gy);
+            /* agregado dentro del recipiente (capas) */
+            var nivel = Math.min(1, llen * 1.06), hh = ch * nivel;
+            ctx.save(); ctx.beginPath(); ctx.rect(cx - cw / 2 + 4, gy - hh, cw - 8, hh); ctx.clip();
+            ctx.fillStyle = '#6e7c8c'; ctx.fillRect(cx - cw / 2, gy - hh, cw, hh);
+            PU_DOTS.forEach(function (d) { var x = cx - cw / 2 + 6 + d[0] * (cw - 12), y = gy - d[1] * ch; ctx.fillStyle = d[2] > 0.5 ? '#a3aebb' : '#56636f'; ctx.beginPath(); ctx.arc(x, y, 2.5 + d[2] * 3.5, 0, 6.283); ctx.fill(); });
+            ctx.restore();
+            for (var k = 1; k <= 2; k++) if (nivel > k / 3) { ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(cx - cw / 2 + 4, gy - ch * k / 3); ctx.lineTo(cx + cw / 2 - 4, gy - ch * k / 3); ctx.stroke(); ctx.setLineDash([]); }
+            if (llen >= 1 && enr < 1) { /* colmo antes de enrasar */ ctx.fillStyle = '#6e7c8c'; ctx.beginPath(); ctx.ellipse(cx, top, cw / 2 - 6, 10 * (1 - enr), 0, Math.PI, 0); ctx.fill(); }
+            /* recipiente */
+            ctx.strokeStyle = '#c9d4df'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - cw / 2, top); ctx.lineTo(cx - cw / 2, gy); ctx.lineTo(cx + cw / 2, gy); ctx.lineTo(cx + cw / 2, top); ctx.stroke(); ctx.lineWidth = 1;
+            /* varilla compactando */
+            if (llen > 0 && llen < 1) { var golpe = Math.sin(p * 260) * 0.5 + 0.5, ry = gy - hh - 10 - 40 * golpe; ctx.strokeStyle = '#e8edf2'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx + cw * 0.1, ry); ctx.lineTo(cx + cw * 0.1, ry - 110); ctx.stroke(); ctx.lineWidth = 1; }
+            /* regla enrasando */
+            if (enr > 0 && enr < 1) { var rx = cx - cw / 2 - 20 + (cw + 40) * enr; ctx.fillStyle = '#e8edf2'; rr(ctx, rx - 60, top - 6, 120, 6, 3); ctx.fill(); }
+            /* balanza */
+            var lect = pes > 0 ? P.T + P.neto * eOut(pes) : P.T * tara;
+            balanza(ctx, W * 0.7, H * 0.76, W * 0.26, fmt(lect, 2), 'kg', pes > 0 ? '#fbbf24' : '#7dd3fc');
+            text(ctx, pes > 0 ? 'G (recipiente lleno)' : 'T (tara)', W * 0.83, H * 0.76 - 14, { size: 11, align: 'center', color: 'rgba(255,255,255,0.7)' });
+            var cap = p < 0.08 ? '1 · Se pesa el recipiente vacío (tara T)' : (p < 0.62 ? '2 · Llenado en 3 capas — 25 golpes de varilla por capa' : (p < 0.72 ? '3 · Se enrasa la superficie con la regla' : (p < 0.88 ? '4 · Se pesa el recipiente lleno (G)' : '5 · PUC = (G − T)/V y % de vacíos')));
+            text(ctx, cap, 12, 22, { bold: true, size: 13 });
+        },
+        graph: function (ctx, W, H, p, P) {
+            var A = axes(ctx, W, H, { x: [1000, 2200, 200, 'PUC (kg/m³)'], y: [0, 70, 10, 'Vacíos (%)'], bands: [{ from: 30, to: 45, c: 'rgba(52,211,153,0.08)', l: 'típico 30–45 %' }] });
+            var pts = []; for (var u = 1000; u <= 2200; u += 25) pts.push([u, clamp((1 - u / (P.gs * 1000)) * 100, 0, 70)]);
+            curve(ctx, A, pts, COL.acc, 2.5);
+            if (p >= 0.88) { dot(ctx, A.X(P.puc), A.Y(clamp(P.vac, 0, 70)), 6, COL.rojo, true); text(ctx, fmt(P.vac, 1) + ' % vacíos', A.X(P.puc) + 9, A.Y(clamp(P.vac, 0, 70)) - 8, { size: 11, bold: true, color: '#ffb3ae' }); }
+            text(ctx, 'Gs = ' + fmt(P.gs, 2), A.L + 8, A.T + 16, { size: 10 });
+        },
+        chips: function (p, P) {
+            var fin = p >= 0.88, ph = p <= 0 ? 'Listo' : (p < 0.08 ? 'Tara' : (p < 0.62 ? 'Llenando y compactando' : (p < 0.72 ? 'Enrasando' : (p < 0.88 ? 'Pesando' : 'Finalizado'))));
+            return [{ l: 'PUC', v: fin ? fmt(P.puc, 0) + ' kg/m³' : '—', big: true }, { l: 'Tara T', v: fmt(P.T, 2) + ' kg' }, { l: 'Masa neta G − T', v: p >= 0.72 ? fmt(P.neto, 2) + ' kg' : '—' },
+                { l: 'Volumen V', v: fmt(P.Vl, 2) + ' L' }, { l: 'Vacíos', v: fin ? fmt(P.vac, 1) + ' %' : '—', tone: fin ? (P.vac >= 30 && P.vac <= 45 ? 'ok' : 'warn') : '' }, { l: 'Estado', v: ph }];
+        }
+    };
+
+    /* =========================================================
+       SIMULADOR 7 — HUMEDAD DEL AGREGADO (NTC 1776 · ASTM C566)
+    ========================================================= */
+    var HU_DOTS = (function () { var r = seeded(13), a = []; for (var i = 0; i < 120; i++) a.push([r(), r(), r()]); return a; })();
+    function humMasa(P, t) { return P.ms + (P.mh - P.ms) * Math.exp(-t / 6); }   /* tendencia del secado, τ = 6 h */
+    var HUM = {
+        id: 'hum', icon: '💧', titulo: 'Humedad del agregado', norma: 'NTC 1776 · ASTM C566', rs: 0.92, rg: 0.8, dur: 9000, idle: 0,
+        desc: 'Pesa el agregado húmedo, sécalo en el horno a 110 °C hasta masa constante y obtén la humedad y la humedad libre.',
+        graphTitle: 'Masa durante el secado',
+        learn: '<p><b>w = (Mh − Ms) / Ms × 100</b>, con Mh la masa húmeda y Ms la masa seca a masa constante (110 ± 5 °C). La <b>humedad libre</b> = w − absorción: es el agua que el agregado trae «de más» respecto al estado saturado superficialmente seco (SSS).</p><p>Si la humedad libre es positiva, esa agua se <b>resta</b> del agua de mezclado; si es negativa, el agregado absorberá agua de la mezcla y hay que <b>agregarla</b>. La curva de secado es una tendencia cualitativa.</p>',
+        controls: function () {
+            return rng('huMh', 'Masa húmeda (Mh)', 100, 5000, 10, 1000, 'g') + rng('huW', 'Humedad real del agregado', 0, 15, 0.1, 3.8, '%') + rng('huAb', 'Absorción del agregado', 0, 8, 0.1, 1.5, '%');
+        },
+        read: function () {
+            var P = { mh: rv('huMh'), w: rv('huW'), ab: rv('huAb') };
+            P.ms = P.mh / (1 + P.w / 100); P.libre = P.w - P.ab; P.agua = P.mh - P.ms;
+            a3d('dm_hum', { mh: P.mh, w: P.w, ab: P.ab });
+            return P;
+        },
+        draw: function (ctx, W, H, p, P) {
+            bgStage(ctx, W, H);
+            var p1 = fase(p, 0, 0.15), horno = fase(p, 0.15, 0.7), p3 = fase(p, 0.7, 0.88), hrs = 24 * horno;
+            var gy = H * 0.84; ctx.fillStyle = '#1b2b40'; ctx.fillRect(0, gy, W, H - gy);
+            /* horno */
+            var ox = W * 0.08, ow = W * 0.42, oh = H * 0.5, oy = gy - oh;
+            ctx.fillStyle = '#cfd6de'; rr(ctx, ox, oy, ow, oh, 8); ctx.fill();
+            var calor = horno > 0 && horno < 1 ? 1 : 0;
+            ctx.fillStyle = calor ? '#7a3412' : '#26303d'; rr(ctx, ox + 14, oy + 34, ow - 28, oh - 48, 5); ctx.fill();
+            ctx.fillStyle = '#0b1220'; rr(ctx, ox + 14, oy + 8, 74, 20, 3); ctx.fill();
+            text(ctx, (calor ? fmt(lerp(25, 110, Math.min(1, horno * 6)), 0) : '25') + ' °C', ox + 82, oy + 23, { bold: true, size: 12, align: 'right', color: calor ? '#fb923c' : '#7dd3fc' });
+            text(ctx, 'HORNO', ox + ow - 18, oy + 23, { size: 11, align: 'right', color: '#334155', bold: true });
+            if (calor) for (var k = 0; k < 3; k++) { ctx.strokeStyle = 'rgba(251,146,60,0.55)'; ctx.lineWidth = 2; ctx.beginPath(); var bx = ox + ow * (0.3 + 0.2 * k); for (var t = 0; t <= 1; t += 0.1) ctx.lineTo(bx + Math.sin(t * 12 + p * 80 + k) * 4, oy + 40 + t * 26); ctx.stroke(); ctx.lineWidth = 1; }
+            /* bandeja con el agregado: dentro del horno mientras seca, sobre la balanza al pesar */
+            var enHorno = horno > 0 && horno < 1, tx = enHorno ? ox + ow / 2 : W * 0.76, ty = enHorno ? gy - 32 : H * 0.62, tw2 = W * 0.2;
+            var seco = enHorno ? horno : (p >= 0.7 ? 1 : 0);
+            ctx.fillStyle = '#9aa7b6'; rr(ctx, tx - tw2 / 2, ty, tw2, 12, 3); ctx.fill();
+            HU_DOTS.forEach(function (d) { var x = tx - tw2 / 2 + 6 + d[0] * (tw2 - 12), y = ty - 2 - d[1] * 14; ctx.fillStyle = mezclaColor(seco, d[2]); ctx.beginPath(); ctx.arc(x, y, 1.6 + d[2] * 1.6, 0, 6.283); ctx.fill(); });
+            /* balanza */
+            var lect = p < 0.15 ? P.mh * eOut(p1) : (p < 0.7 ? humMasa(P, hrs) : P.ms);
+            balanza(ctx, W * 0.64, H * 0.66, W * 0.25, fmt(lect, 1), 'g', p >= 0.7 ? '#fbbf24' : '#7dd3fc');
+            if (enHorno) text(ctx, 'Tiempo en el horno: ' + fmt(hrs, 1) + ' h', W * 0.76, H * 0.6, { size: 12, align: 'center', color: '#fdba74', bold: true });
+            var cap = p < 0.15 ? '1 · Se pesa la muestra húmeda (Mh)' : (p < 0.7 ? '2 · Secado en el horno a 110 ± 5 °C hasta masa constante' : (p < 0.88 ? '3 · Se deja enfriar y se pesa en seco (Ms)' : '4 · Humedad w y humedad libre'));
+            text(ctx, cap, 12, 22, { bold: true, size: 13 });
+        },
+        graph: function (ctx, W, H, p, P) {
+            var lo = Math.floor(P.ms * 0.98), hi = Math.ceil(P.mh * 1.01), st = Math.max(1, Math.round((hi - lo) / 5));
+            var A = axes(ctx, W, H, { x: [0, 24, 4, 'Tiempo en el horno (h)'], y: [lo, lo + st * 5, st, 'Masa (g)'] });
+            var pts = []; for (var t = 0; t <= 24; t += 0.5) pts.push([t, humMasa(P, t)]);
+            curve(ctx, A, pts, COL.acc, 2.5);
+            ctx.setLineDash([5, 4]); ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.moveTo(A.X(0), A.Y(P.ms)); ctx.lineTo(A.X(24), A.Y(P.ms)); ctx.stroke(); ctx.setLineDash([]);
+            text(ctx, 'Ms = ' + fmt(P.ms, 1) + ' g (masa constante)', A.X(1), A.Y(P.ms) - 8, { size: 10.5, color: '#fda4af', bold: true });
+            var hrs = p < 0.15 ? 0 : 24 * fase(p, 0.15, 0.7); if (p > 0) dot(ctx, A.X(hrs), A.Y(humMasa(P, hrs)), 6, COL.rojo, true);
+        },
+        chips: function (p, P) {
+            var fin = p >= 0.88, ph = p <= 0 ? 'Listo' : (p < 0.15 ? 'Pesando húmeda' : (p < 0.7 ? 'Secando' : (p < 0.88 ? 'Pesando seca' : 'Finalizado')));
+            var corr = P.libre * 10;   /* kg de agua por cada 1000 kg de agregado */
+            return [{ l: 'Humedad w', v: fin ? fmt(P.w, 2) + ' %' : '—', big: true }, { l: 'Masa húmeda Mh', v: fmt(P.mh, 1) + ' g' }, { l: 'Masa seca Ms', v: p >= 0.7 ? fmt(P.ms, 1) + ' g' : '—' },
+                { l: 'Humedad libre', v: fin ? fmt(P.libre, 2) + ' %' : '—', tone: fin ? (P.libre >= 0 ? 'ok' : 'warn') : '' },
+                { l: 'Corrección de agua', v: fin ? (corr >= 0 ? 'Restar ' : 'Agregar ') + fmt(Math.abs(corr), 1) + ' kg' : '—', s: fin ? 'por cada 1000 kg de agregado' : '' }, { l: 'Estado', v: ph }];
+        }
+    };
+    function mezclaColor(seco, r) { var h = [92, 74, 52], s = [196, 176, 138], c = h.map(function (v, i) { return Math.round(lerp(v, s[i], seco) * (0.85 + r * 0.3)); }); return 'rgb(' + c.join(',') + ')'; }
+
+    /* =========================================================
+       SIMULADOR 8 — CONCRETO FRESCO: PESO UNITARIO Y AIRE (NTC 1926 · ASTM C138 / C231)
+    ========================================================= */
+    var FR_DOTS = (function () { var r = seeded(29), a = []; for (var i = 0; i < 180; i++) a.push([r(), r(), r()]); return a; })();
+    var FRESCO = {
+        id: 'fresco', icon: '🧪', titulo: 'Concreto fresco · olla de aire', norma: 'NTC 1926 · ASTM C138 / C231', rs: 0.92, rg: 0.8, dur: 10000, idle: 0,
+        desc: 'Compacta el concreto en la olla, pésalo, séllala, inyecta agua, presuriza y lee el contenido de aire y el rendimiento de la tanda.',
+        graphTitle: 'Peso unitario vs. contenido de aire',
+        learn: '<p><b>Peso unitario γ = Mc / V</b> (ASTM C138): masa del concreto compactado en la olla de volumen conocido (7 L). El <b>aire</b> se lee en el manómetro de la olla tipo B (ASTM C231): al presurizar, el aire de la mezcla se comprime y la aguja marca su porcentaje.</p><p><b>Rendimiento Y = ΣM / γ</b>: volumen que produce la tanda de diseño (debe ser ≈ 1 m³). Cada 1 % de aire reduce la resistencia ≈ 5 %. Aquí γ = γt (1 − A); la lectura del manómetro se muestra directamente.</p>',
+        controls: function () {
+            return rng('frAir', 'Contenido de aire (A)', 0.5, 8, 0.1, 2, '%') + rng('frG0', 'γ teórico sin aire', 2200, 2650, 10, 2480, 'kg/m³') +
+                rng('frTanda', 'Masa de la tanda de diseño (ΣM)', 2200, 2550, 5, 2380, 'kg/m³') + rng('frT', 'Tara de la olla', 1, 10, 0.05, 5.1, 'kg');
+        },
+        read: function () {
+            var P = { air: rv('frAir'), gamma0: rv('frG0'), tanda: rv('frTanda'), T: rv('frT') };
+            P.gamma = P.gamma0 * (1 - P.air / 100); P.neto = P.gamma * 0.007; P.rend = P.tanda / P.gamma;
+            a3d('dm_fresco', { air: P.air, gamma0: P.gamma0, tanda: P.tanda, T: P.T });
+            return P;
+        },
+        draw: function (ctx, W, H, p, P) {
+            bgStage(ctx, W, H);
+            var llen = fase(p, 0, 0.3), pes = fase(p, 0.3, 0.42), tapa = fase(p, 0.42, 0.6), bomba = fase(p, 0.6, 0.75), lee = fase(p, 0.75, 0.95);
+            var gy = H * 0.84, cx = W * 0.34, cw = W * 0.3, ch = H * 0.34; ctx.fillStyle = '#1b2b40'; ctx.fillRect(0, gy, W, H - gy);
+            var top = gy - ch;
+            /* concreto */
+            var hh = ch * Math.min(1, llen * 1.05);
+            ctx.save(); ctx.beginPath(); ctx.rect(cx - cw / 2 + 4, gy - hh, cw - 8, hh); ctx.clip(); ctx.fillStyle = '#8b7a58'; ctx.fillRect(cx - cw / 2, gy - hh, cw, hh);
+            FR_DOTS.forEach(function (d) { ctx.fillStyle = d[2] > 0.5 ? '#5e5036' : '#b9a67b'; ctx.beginPath(); ctx.arc(cx - cw / 2 + 6 + d[0] * (cw - 12), gy - d[1] * ch, 1 + d[2] * 2, 0, 6.283); ctx.fill(); });
+            /* burbujas de aire que se comprimen al presurizar */
+            var nb = Math.round(P.air * 6), rb = 4 * (1 - 0.55 * bomba) * (1 - lee * 0.2);
+            for (var b = 0; b < nb; b++) { var d0 = FR_DOTS[b]; ctx.strokeStyle = 'rgba(224,242,254,0.75)'; ctx.beginPath(); ctx.arc(cx - cw / 2 + 10 + d0[1] * (cw - 20), gy - 8 - d0[0] * (hh - 16), Math.max(1.2, rb), 0, 6.283); ctx.stroke(); }
+            ctx.restore();
+            ctx.strokeStyle = '#c9d4df'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx - cw / 2, top); ctx.lineTo(cx - cw / 2, gy); ctx.lineTo(cx + cw / 2, gy); ctx.lineTo(cx + cw / 2, top); ctx.stroke(); ctx.lineWidth = 1;
+            /* varilla o mazo durante el llenado */
+            if (llen > 0 && llen < 1) { var g = Math.sin(p * 400) * 0.5 + 0.5, ry = gy - hh - 10 - 36 * g; ctx.strokeStyle = '#e8edf2'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx, ry); ctx.lineTo(cx, ry - 100); ctx.stroke(); ctx.lineWidth = 1; }
+            /* tapa con manómetro */
+            if (tapa > 0) {
+                var ty = top - 18 - 60 * (1 - eOut(tapa));
+                ctx.fillStyle = '#9aa7b6'; rr(ctx, cx - cw / 2 - 10, ty, cw + 20, 18, 4); ctx.fill();
+                if (tapa > 0.5) { ctx.fillStyle = 'rgba(56,189,248,0.55)'; var ag = (tapa - 0.5) * 2; ctx.fillRect(cx + cw / 2 + 10, ty + 4, 20 * ag, 5); }   /* agua saliendo por la llave */
+                var gx = cx, gyy = ty - 46, R2 = 38;
+                ctx.fillStyle = '#e2e8f0'; ctx.beginPath(); ctx.arc(gx, gyy, R2, 0, 6.283); ctx.fill(); ctx.strokeStyle = '#475569'; ctx.lineWidth = 3; ctx.stroke(); ctx.lineWidth = 1;
+                for (var t = 0; t <= 10; t++) { var ang = Math.PI * (0.75 + 1.5 * t / 10); ctx.strokeStyle = '#334155'; ctx.beginPath(); ctx.moveTo(gx + Math.cos(ang) * (R2 - 4), gyy + Math.sin(ang) * (R2 - 4)); ctx.lineTo(gx + Math.cos(ang) * (R2 - 10), gyy + Math.sin(ang) * (R2 - 10)); ctx.stroke(); if (t % 2 === 0) text(ctx, String(t), gx + Math.cos(ang) * (R2 - 18), gyy + Math.sin(ang) * (R2 - 18) + 4, { size: 9, align: 'center', color: '#0f172a' }); }
+                var val = bomba > 0 && lee <= 0 ? 10 * eOut(bomba) : (lee > 0 ? lerp(10, P.air, eOut(lee)) : 0);
+                var an = Math.PI * (0.75 + 1.5 * clamp(val, 0, 10) / 10); ctx.strokeStyle = '#dc2626'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(gx, gyy); ctx.lineTo(gx + Math.cos(an) * (R2 - 12), gyy + Math.sin(an) * (R2 - 12)); ctx.stroke(); ctx.lineWidth = 1;
+                text(ctx, '% aire', gx, gyy + 22, { size: 9, align: 'center', color: '#0f172a' });
+            }
+            /* balanza */
+            balanza(ctx, W * 0.68, H * 0.74, W * 0.26, fmt(pes > 0 ? P.T + P.neto * eOut(pes) : P.T, 2), 'kg', pes > 0 ? '#fbbf24' : '#7dd3fc');
+            var cap = p < 0.3 ? '1 · Llenado en 3 capas: 25 golpes de varilla y golpes laterales con el mazo' : (p < 0.42 ? '2 · Se enrasa y se pesa: peso unitario γ = Mc/V' : (p < 0.6 ? '3 · Se cierra la tapa y se inyecta agua por las llaves' : (p < 0.75 ? '4 · Se bombea hasta la presión inicial' : (p < 0.95 ? '5 · Se abre la válvula y se lee el aire' : '6 · Peso unitario, aire y rendimiento'))));
+            text(ctx, cap, 12, 22, { bold: true, size: 13 });
+        },
+        graph: function (ctx, W, H, p, P) {
+            var y0 = Math.floor(P.gamma0 * 0.9 / 50) * 50, y1 = Math.ceil(P.gamma0 / 50) * 50;
+            var A = axes(ctx, W, H, { x: [0, 8, 1, 'Aire (%)'], y: [y0, y1, Math.max(25, Math.round((y1 - y0) / 5 / 5) * 5), 'γ (kg/m³)'] });
+            var pts = []; for (var a = 0; a <= 8; a += 0.25) pts.push([a, P.gamma0 * (1 - a / 100)]);
+            curve(ctx, A, pts, COL.acc, 2.5);
+            if (p >= 0.42) { dot(ctx, A.X(P.air), A.Y(P.gamma), 6, COL.rojo, true); text(ctx, 'γ = ' + fmt(P.gamma, 0), A.X(P.air) + 9, A.Y(P.gamma) - 8, { size: 11, bold: true, color: '#ffb3ae' }); }
+        },
+        chips: function (p, P) {
+            var ph = p <= 0 ? 'Listo' : (p < 0.3 ? 'Llenando' : (p < 0.42 ? 'Pesando' : (p < 0.6 ? 'Sellando la olla' : (p < 0.75 ? 'Presurizando' : (p < 0.95 ? 'Leyendo aire' : 'Finalizado')))));
+            var okR = Math.abs(P.rend - 1) <= 0.02;
+            return [{ l: 'Contenido de aire', v: p >= 0.95 ? fmt(P.air, 1) + ' %' : '—', big: true, tone: p >= 0.95 ? (P.air <= 6 ? 'ok' : 'warn') : '' }, { l: 'Masa del concreto Mc', v: p >= 0.42 ? fmt(P.neto, 2) + ' kg' : '—' },
+                { l: 'Peso unitario γ', v: p >= 0.42 ? fmt(P.gamma, 0) + ' kg/m³' : '—' }, { l: 'Rendimiento Y', v: p >= 0.95 ? fmt(P.rend, 3) + ' m³' : '—', tone: p >= 0.95 ? (okR ? 'ok' : 'warn') : '', s: p >= 0.95 ? (okR ? 'la tanda rinde lo previsto' : (P.rend < 1 ? 'rinde menos de 1 m³' : 'rinde más de 1 m³')) : '' },
+                { l: 'Volumen de la olla', v: '7.00 L' }, { l: 'Estado', v: ph }];
+        }
+    };
+
     /* =========================================================
        Ejecutor común
     ========================================================= */
-    var SIMS = { rev: REV, comp: COMP, aci211: ACI_SIM, agg: AGG };
-    var ORDEN = ['rev', 'comp', 'aci211', 'agg'];
+    var SIMS = { rev: REV, comp: COMP, aci211: ACI_SIM, agg: AGG, gran: GRAN, punit: PUNIT, hum: HUM, fresco: FRESCO };
+    var ORDEN = ['rev', 'comp', 'aci211', 'agg', 'gran', 'punit', 'hum', 'fresco'];
     var TONE = {
         rev: { a: '#38BDF8', rgb: '56,189,248' },
         comp: { a: '#A78BFA', rgb: '167,139,250' },
         aci211: { a: '#34D399', rgb: '52,211,153' },
-        agg: { a: '#FBBF24', rgb: '251,191,36' }
+        agg: { a: '#FBBF24', rgb: '251,191,36' },
+        gran: { a: '#F59E0B', rgb: '245,158,11' },
+        punit: { a: '#38BDF8', rgb: '56,189,248' },
+        hum: { a: '#FB7185', rgb: '251,113,133' },
+        fresco: { a: '#F472B6', rgb: '244,114,182' }
     };
     /* ---- Laboratorio 3D (js/lab3d-dm.js y lab3d-dm2.js) ---- */
-    var TO3D = { rev: 'dm_rev', comp: 'dm_comp', aci211: 'dm_aci', agg: 'dm_agg' };
-    var FROM3D = { dm_rev: 'rev', dm_comp: 'comp', dm_aci: 'aci211', dm_agg: 'agg' };
+    var TO3D = { rev: 'dm_rev', comp: 'dm_comp', aci211: 'dm_aci', agg: 'dm_agg', gran: 'dm_gran', punit: 'dm_punit', hum: 'dm_hum', fresco: 'dm_fresco' };
+    var FROM3D = { dm_rev: 'rev', dm_comp: 'comp', dm_aci: 'aci211', dm_agg: 'agg', dm_gran: 'gran', dm_punit: 'punit', dm_hum: 'hum', dm_fresco: 'fresco' };
     var META3D = {
         dm_rev: { icon: '🥣', titulo: 'Revenimiento · cono de Abrams', norma: 'NTC 396 · ASTM C143', desc: 'Llena el cono en 3 capas, levántalo y mira cómo se asienta el concreto con una regla de medición.', a: '#38BDF8', rgb: '56,189,248' },
         dm_comp: { icon: '🏛️', titulo: 'Compresión de cilindros', norma: 'NTC 673 · ASTM C39', desc: 'Prensa con manómetro y consola: carga, falla, grietas y desprendimiento del cilindro.', a: '#A78BFA', rgb: '167,139,250' },
@@ -480,16 +769,16 @@
         dm_hum: { icon: '💧', titulo: 'Humedad del agregado · horno', norma: 'NTC 1776 · ASTM C566', desc: 'Pesa la muestra húmeda, sécala a 110 °C, pésala en seco y obtén w y la humedad libre.', a: '#FB7185', rgb: '251,113,133' },
         dm_fresco: { icon: '🧪', titulo: 'Concreto fresco · olla de aire', norma: 'NTC 1926 · ASTM C138 / C231', desc: 'Compacta el concreto, pésalo, sella la olla, inyecta agua, bombea y lee el contenido de aire.', a: '#F472B6', rgb: '244,114,182' }
     };
-    var ORDEN3D_LAB = ['dm_gran', 'dm_punit', 'dm_hum', 'dm_fresco'];
+    var ORDEN3D_LAB = [];   /* los 8 ensayos ya tienen 2D y 3D */
     var R = { sim: null, raf: 0, p: 0, running: false, last: 0, P: null };
     R.sim3d = null;
 
     function simHome() {
         return '<div class="simhub">' +
             '<header class="simhub-hero"><div class="simhub-hero-text"><em class="simhub-eyebrow">Laboratorio virtual · Diseño de Mezclas</em>' +
-            '<h3>Cuatro simuladores para ver la mezcla antes de vaciarla</h3>' +
+            '<h3>Ocho simuladores para ver la mezcla antes de vaciarla</h3>' +
             '<p>Mueve el agua, la relación a/c, el TMN o la combinación de agregados y observa la respuesta en <b>2D</b>, en las curvas en vivo y en el <b>laboratorio 3D</b>. Parámetros a la izquierda, animación al centro y gráfica a la derecha.</p></div>' +
-            '<ul class="simhub-hero-stats"><li><strong>4</strong><em>Simuladores 2D</em></li><li><strong>8</strong><em>Máquinas 3D</em></li><li><strong>4</strong><em>Curvas</em></li></ul></header>' +
+            '<ul class="simhub-hero-stats"><li><strong>8</strong><em>Simuladores 2D</em></li><li><strong>8</strong><em>Máquinas 3D</em></li><li><strong>8</strong><em>Curvas</em></li></ul></header>' +
             '<div class="simhub-grid">' + ORDEN.map(function (id, i) {
                 var s = SIMS[id], t = TONE[id] || TONE.rev;
                 return '<article class="simcard est-dm-simcard has3d" style="--a:' + t.a + ';--rgb:' + t.rgb + '"><div class="simcard-glow"></div>' +
@@ -499,7 +788,7 @@
                     '<div class="simcard-btns"><button type="button" class="simcard-btn is-2d" data-sim="' + id + '"><b>2D</b><span>Simulador 2D</span><i>Curvas en vivo</i></button>' +
                     '<button type="button" class="simcard-btn is-3d" data-sim3d="' + TO3D[id] + '"><b>3D</b><span>Simulador 3D</span><i>Máquina completa</i></button></div></article>';
             }).join('') + '</div>' +
-            '<h4 class="simhub-sub">Laboratorio 3D · ensayos con la máquina completa</h4>' +
+            (ORDEN3D_LAB.length ? '<h4 class="simhub-sub">Laboratorio 3D · ensayos con la máquina completa</h4>' : '') +
             '<div class="simhub-grid">' + ORDEN3D_LAB.map(function (k, i) {
                 var s3 = META3D[k];
                 return '<article class="simcard est-dm-simcard has3d" style="--a:' + s3.a + ';--rgb:' + s3.rgb + '"><div class="simcard-glow"></div>' +
