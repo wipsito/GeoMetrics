@@ -69,23 +69,46 @@
         var foto = typeof aulaFotoUsuario === 'function' ? aulaFotoUsuario(u) : (u.foto || '');
         var bioVisible = u.mostrarBio !== false;
         var posgrado = u.posgrado || u.especializacion || '';
-        var falta = !u.titulo && !u.departamento && !u.bio;
+        var programa = String(u.programa || u.departamento || '').trim();
+        if (/^(departamento de )?ingenier[ií]a civil$/i.test(programa)) programa = 'Programa de Ingeniería Civil';
+        var falta = !u.titulo && !programa && !u.bio;
         var h = FONDO +
             '<div class="gdp-in">' +
                 '<div class="gdp-foto">' + (foto ? '<img src="' + esc(foto) + '" alt="Foto de ' + esc(nombre) + '">' : '<span>' + esc(iniciales(nombre)) + '</span>') + '</div>' +
                 '<div class="gdp-txt">' +
                     '<small class="gdp-eye">Docente · Ingeniería Civil</small>' +
                     '<h2><span class="gdp-nom">' + esc(nombre) + '</span>' + (global.GMV ? GMV.slot(u.email, 'm') : '') + '</h2>' +
-                    '<div class="gdp-lis">' + linea(IC.cap, u.titulo) + linea(IC.med, posgrado) + linea(IC.dep, u.departamento) + linea(IC.mail, u.email) + '</div>' +
+                    '<div class="gdp-lis">' + linea(IC.cap, u.titulo) + linea(IC.med, posgrado) + linea(IC.dep, programa) + linea(IC.mail, u.email) + '</div>' +
                     (bioVisible && u.bio ? '<p class="gdp-bio">' + esc(u.bio) + '</p>' : '') +
-                    (falta ? '<p class="gdp-falta">Completa tu título, departamento y biografía para presentar tu perfil profesional a tus estudiantes.</p>' : '') +
+                    (falta ? '<p class="gdp-falta">Completa tu título profesional, programa y biografía para presentar tu perfil profesional a tus estudiantes.</p>' : '') +
                 '</div>' +
                 '<button type="button" class="gdp-edit" data-gdp-edit>' + IC.pen + 'Editar perfil</button>' +
             '</div>';
         if (card.__h !== h) { card.__h = h; card.innerHTML = h; }
     }
 
+    /* ---- Selector «Título profesional» del perfil: elige de la lista o escribe otro ----
+       El valor que se guarda sigue siendo el campo #perfilTitulo (aula.js lo lee al guardar). */
+    function tituloUI() {
+        var sel = $('perfilTituloSel'), inp = $('perfilTitulo');
+        if (!sel || !inp) return;
+        var v = String(inp.value || '').trim();
+        var opc = [].slice.call(sel.options).map(function (o) { return o.value; });
+        if (!v) { sel.value = ''; inp.style.display = 'none'; }
+        else if (opc.indexOf(v) > 0 && v !== '__otro') { sel.value = v; inp.style.display = 'none'; }
+        else { sel.value = '__otro'; inp.style.display = ''; }
+        inp.hidden = false;
+        if (!sel.__gdp) {
+            sel.__gdp = 1;
+            sel.addEventListener('change', function () {
+                if (sel.value === '__otro') { inp.style.display = ''; if (opc.indexOf(inp.value) > 0) inp.value = ''; inp.focus(); }
+                else { inp.value = sel.value; inp.style.display = 'none'; }
+            });
+        }
+    }
+
     function iniciar() {
+        global.addEventListener('geometrics-perfil-abierto', tituloUI);
         var M = $('pantallaDocente');
         if (M && global.MutationObserver) new MutationObserver(function () { if (M.style.display !== 'none') pintar(); })
             .observe(M, { attributes: true, attributeFilter: ['style', 'class'] });

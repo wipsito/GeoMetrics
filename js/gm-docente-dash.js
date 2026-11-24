@@ -288,7 +288,7 @@
         var u = D.u, foto = typeof aulaFotoUsuario === 'function' ? aulaFotoUsuario(u) : u.foto;
         var ver = global.GMV && GMV.isVerified(u.email);
         var items = [
-            ['Foto de perfil', !!foto], ['Título profesional', !!u.titulo], ['Departamento', !!u.departamento],
+            ['Foto de perfil', !!foto], ['Título profesional', !!u.titulo], ['Programa académico', !!(u.programa || u.departamento)],
             ['Biografía', !!u.bio], ['Horario de atención', !!u.horarioAtencion], ['Asignaturas registradas', D.mats.length > 0],
             ['GeoMetrics Verified', !!ver]
         ];

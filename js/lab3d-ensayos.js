@@ -1460,6 +1460,11 @@
             if (inst.playing) {
                 inst.p += dt * inst.speed / meta.duration;
                 if (inst.p >= 1) { inst.p = 1; inst.playing = false; updatePlayBtn(); }
+                /* tope opcional (lo pone el tutor): el ensayo espera hasta que se termine de explicar la etapa */
+                else if (inst.tope != null && inst.p >= inst.tope) {
+                    inst.p = inst.tope; inst.playing = false; updatePlayBtn();
+                    if (inst.onTope) try { inst.onTope(); } catch (e) { }
+                }
                 apply();
             }
             var c = inst.cam, g = inst.goal, k = inst.dragging ? 0.4 : 0.12;

@@ -719,6 +719,20 @@ function aulaActualizarIdentidadLogin() {
     var nombre = (existing && existing.nombre) ? existing.nombre : (aulaNombreDesdeEmail(email) || email);
     nom.textContent = nombre;
     av.textContent = aulaIniciales(nombre);
+    /* foto de perfil cargada por el usuario (la misma del menú y del aula); si no tiene, se ven sus iniciales */
+    var foto = existing ? String(existing.foto || existing.photo || existing.photoURL || existing.avatarUrl || '') : '';
+    if (foto) {
+        av.textContent = '';
+        av.classList.add('con-foto');
+        av.style.setProperty('background-image', 'url("' + foto.replace(/"/g, '%22') + '")', 'important');
+        av.style.setProperty('background-size', 'cover', 'important');
+        av.style.setProperty('background-position', 'center', 'important');
+    } else {
+        av.classList.remove('con-foto');
+        av.style.removeProperty('background-image');
+        av.style.removeProperty('background-size');
+        av.style.removeProperty('background-position');
+    }
 
     if (!aulaEmailInstitucional(email)) {
         rol.textContent = 'El correo debe ser @' + aulaDominio();
@@ -1233,6 +1247,7 @@ function aulaInitLogin() {
     if (loginEmail) {
         loginEmail.addEventListener('input', aulaActualizarIdentidadLogin);
         loginEmail.addEventListener('blur', aulaActualizarIdentidadLogin);
+        loginEmail.addEventListener('change', aulaActualizarIdentidadLogin);   /* autocompletado del navegador */
     }
 
     var regEmail = document.getElementById('regEmail');
@@ -4138,7 +4153,12 @@ function aulaAbrirPerfil() {
     setV('perfilMateriaFavorita', user.materiaFavorita || '');
     setV('perfilHorarioEstudio', user.horarioEstudio || '');
     setV('perfilTitulo', user.titulo || '');
-    setV('perfilDepartamento', user.departamento || 'Ingeniería Civil');
+    setV('perfilPosgrado', user.posgrado || '');
+    /* «Departamento» pasó a ser «Programa académico»; los valores antiguos se muestran como programa */
+    var prog = String(user.programa || user.departamento || '').trim();
+    if (!prog || /^(departamento de )?ingenier[ií]a civil$/i.test(prog)) prog = 'Programa de Ingeniería Civil';
+    setV('perfilDepartamento', prog);
+    try { window.dispatchEvent(new CustomEvent('geometrics-perfil-abierto')); } catch (eEv) {}
     setV('perfilHorarioAtencion', user.horarioAtencion || '');
     setV('perfilOficina', user.oficina || '');
     setV('perfilEstadoAula', user.estadoAula || 'disponible');
@@ -4412,8 +4432,10 @@ function aulaGuardarPerfil() {
     users[idx].temaPerfil = ((document.getElementById('perfilTema') || {}).value || 'auto');
     users[idx].ultimoAcceso = new Date().toISOString();
     if (user.rol === 'docente') {
-        users[idx].titulo = ((document.getElementById('perfilTitulo') || {}).value || '').trim();
-        users[idx].departamento = ((document.getElementById('perfilDepartamento') || {}).value || '').trim();
+        users[idx].titulo = ((document.getElementById('perfilTitulo') || {}).value || '').trim().slice(0, 80);
+        users[idx].posgrado = ((document.getElementById('perfilPosgrado') || {}).value || '').trim().slice(0, 100);
+        users[idx].programa = ((document.getElementById('perfilDepartamento') || {}).value || '').trim().slice(0, 100);
+        users[idx].departamento = users[idx].programa; /* compatibilidad con vistas anteriores */
         users[idx].horarioAtencion = ((document.getElementById('perfilHorarioAtencion') || {}).value || '').trim();
         users[idx].oficina = ((document.getElementById('perfilOficina') || {}).value || '').trim();
         users[idx].firma = ((document.getElementById('perfilFirma') || {}).value || '').trim();
@@ -4461,6 +4483,8 @@ function aulaGuardarPerfil() {
     session.grupo = updated.grupo || session.grupo;
     session.semestre = updated.semestre;
     session.titulo = updated.titulo;
+    session.posgrado = updated.posgrado;
+    session.programa = updated.programa;
     session.departamento = updated.departamento;
     session.estadoAula = updated.estadoAula;
     session.avatarColor = updated.avatarColor;
