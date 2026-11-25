@@ -13,7 +13,7 @@
  * · Civix (Worker de Cloudflare) y los datos en vivo de Firebase NUNCA se guardan: solo funcionan con internet.
  * La versión la cambia herramientas/actualizar-app.bat.
  */
-var VERSION = 'geometrics-20261125-1253';
+var VERSION = 'geometrics-20261125-1836';
 var MEDIOS = 'gm-medios';                                   /* imágenes, audios, PDF: se conserva entre versiones */
 var FIRMAS = 'firmas.json';                                 /* dentro de MEDIOS: firma de cada archivo guardado */
 var BASICO = ['./', 'index.html', 'manifest.webmanifest', 'precache.json', 'js/vendor/three.min.js'];
