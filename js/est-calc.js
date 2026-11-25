@@ -252,7 +252,7 @@
             mm.name = names[i];
         });
 
-        function solve(loadNode, loadY) {
+        function solve(loadNode, loadY, loadX) {
             var m = members.length, r = 3, j = nodes.length;
             var Aeq = [], rhs = [];
             for (var ni = 0; ni < j; ni++) {
@@ -266,7 +266,7 @@
                 if (ni === 0) { rowX[m] = 1; rowY[m + 1] = 1; }
                 if (ni === 4) { rowY[m + 2] = 1; }
                 var fx = 0, fy = 0;
-                if (ni === loadNode) fy += loadY;
+                if (ni === loadNode) { fy += loadY; fx += loadX || 0; }
                 Aeq.push(rowX); rhs.push(-fx);
                 Aeq.push(rowY); rhs.push(-fy);
             }
@@ -296,6 +296,16 @@
                 force: f, state: Math.abs(f) < 1e-7 ? 'cero' : (f > 0 ? 'traccion' : 'compresion')
             };
         });
+        /* desplazamiento de cada nudo por trabajo virtual (carga unitaria horizontal y vertical en el nudo), en m;
+           dy positivo hacia arriba */
+        var disp = nodes.map(function (nd, j) {
+            function por(ux, uy) {
+                var v = solve(j, uy, ux), s = 0;
+                members.forEach(function (mm, i) { s += real.forces[i] * v.forces[i] * mm.L / EA; });
+                return s;
+            }
+            return { dx: por(1, 0), dy: por(0, 1) };
+        });
         var maxT = 0, maxC = 0;
         forces.forEach(function (f) {
             if (f.force > maxT) maxT = f.force;
@@ -307,7 +317,7 @@
             L: L, h: h, P: P, E: E, A: A, EA: EA,
             nodes: nodes, members: forces,
             reactions: { Rx0: real.Rx0, Ry0: real.Ry0, Ry4: real.Ry4 },
-            loadNode: loadNode, loadName: nodes[loadNode].n,
+            loadNode: loadNode, loadName: nodes[loadNode].n, disp: disp,
             maxT: maxT, maxC: maxC, maxAbs: maxAbs,
             delta: delta * 1000, // mm
             deltaM: delta

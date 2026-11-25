@@ -265,6 +265,8 @@
         et.position.set(0, 1.62, 0); g.add(et);
         return g;
     }
+    /* amplificación de la deformada, la misma que usa la vista 2D (fija por modelo) */
+    function amplif(id) { try { return S.ampDe ? S.ampDe(id) : 50; } catch (e) { return 50; } }
     function dims(P) { return { w: clamp(num(P.b) / 1000, 0.14, 0.62), d: clamp(num(P.h) / 1000, 0.2, 0.9) }; }
     function escalaFlechas(g, k) { if (g) (g.userData.flechas || []).forEach(function (f) { f.scale.y = Math.max(0.001, k); }); }
 
@@ -276,8 +278,9 @@
         var root = new T.Group();
         var L = tramos ? num(P.L1) + num(P.L2) : num(P.L), D = dims(P), baseY = 0.66, y = baseY + D.d / 2, top = y + D.d / 2;
         var x0 = -L / 2;
-        var maxD = maxAbs(r.ds || [1]), amp = clamp(L * 0.045, 0.2, 0.55);
-        function fn(x) { return interp(r.xs, r.ds, x - x0) / maxD * amp; }
+        /* deformada REAL × amplificación fija del modelo (S.ampDe): crece con la carga aplicada y con la flexibilidad */
+        var K = amplif(tramos ? 'continuas' : 'viga'), cap = L * 0.22, amp = Math.min(cap, (r.dmax || 0) / 1000 * K) || 0.001;
+        function fn(x) { return clamp(interp(r.xs, r.ds, x - x0) * K, -cap, cap); }
         var viga = vigaFlexible(root, L, D, P.mat, y);
         var zF = D.w / 2 + 0.05;
         var elast = lineaElastica(root, L, fn, y, zF);
@@ -350,7 +353,7 @@
             reacs.children.forEach(function (c) { c.scale.setScalar(0.4 + 0.6 * s.reac); });
             dV.visible = eV.visible = mV.visible = s.V > 0.01; dV.scale.y = s.V;
             dM.visible = eM.visible = mM.visible = s.M > 0.01; dM.scale.y = s.M;
-            viga.doblar(fn, s.d); elast(s.d); dMax.visible = s.d > 0.95;
+            viga.doblar(fn, s.load); elast(s.load); dMax.visible = s.load > 0.95 && s.d > 0.5;
             if (mb) { mb.visible = s.MB > 0.01; mb.scale.setScalar(Math.max(0.001, s.MB)); }
         }
         set(CERO);
@@ -370,8 +373,8 @@
     function modeloVoladizo(P, r, ac) {
         var root = new T.Group();
         var L = num(P.L), D = dims(P), baseY = 0.9, y = baseY + D.d / 2, top = y + D.d / 2, x0 = -L / 2;
-        var maxD = maxAbs(r.ds), amp = clamp(L * 0.08, 0.2, 0.55);
-        function fn(x) { return interp(r.xs, r.ds, x - x0) / maxD * amp; }
+        var K = amplif('voladizo'), cap = L * 0.25, amp = Math.min(cap, (r.dmax || 0) / 1000 * K) || 0.001;
+        function fn(x) { return clamp(interp(r.xs, r.ds, x - x0) * K, -cap, cap); }
         var viga = vigaFlexible(root, L, D, P.mat, y);
         var zF = D.w / 2 + 0.05;
         var elast = lineaElastica(root, L, fn, y, zF);
@@ -398,7 +401,7 @@
             reacs.visible = s.reac > 0.01; reacs.children.forEach(function (c) { c.scale.setScalar(0.4 + 0.6 * s.reac); });
             dV.visible = mV.visible = s.V > 0.01; dV.scale.y = s.V;
             dM.visible = mM.visible = s.M > 0.01; dM.scale.y = s.M;
-            viga.doblar(fn, s.d); elast(s.d); dMax.visible = s.d > 0.95;
+            viga.doblar(fn, s.load); elast(s.load); dMax.visible = s.load > 0.95 && s.d > 0.5;
         }
         set(CERO);
         return {
@@ -418,34 +421,54 @@
         var root = new T.Group();
         var L = num(P.L), h = num(P.h), baseY = 0.72, zH = 0.75, n = r.nodes, mx = Math.max(1e-9, r.maxAbs);
         var ox = -L / 2;
-        function V3(nd, z) { return new T.Vector3(nd.x + ox, nd.y + baseY, z); }
-        var barras = [];
+        /* deformación: desplazamiento real de cada nudo × amplificación fija × carga aplicada */
+        var K = amplif('cercha'), tope = h * 0.45, kAct = 0;
+        var disp = n.map(function (nd, i) { return r.disp ? r.disp[i] : { dx: 0, dy: 0 }; });
+        function pos(i, z, k) {
+            var d = disp[i];
+            return new T.Vector3(n[i].x + ox + clamp(d.dx * K, -tope, tope) * k, n[i].y + baseY + clamp(d.dy * K, -tope, tope) * k, z);
+        }
+        /* barra de largo 1 que se estira y orienta entre dos puntos */
+        var EJE = new T.Vector3(1, 0, 0), tmp = new T.Vector3();
+        function colocar(o, A, B) {
+            tmp.subVectors(B, A); var len = tmp.length(); if (len < 1e-6) return;
+            o.position.copy(A).add(B).multiplyScalar(0.5);
+            o.quaternion.setFromUnitVectors(EJE, tmp.divideScalar(len));
+            o.scale.x = len;
+        }
+        var unidad = new T.BoxGeometry(1, 1, 1), unidadR = new T.BoxGeometry(1, 1, 1);
+        var barras = [], riostras = [], nudos = [];
         var neutro = new T.Color(0x9AA8BA);
         r.members.forEach(function (m) {
-            var a = n[m.a], b = n[m.b];
             var mat = std({ color: 0x9AA8BA, metalness: 0.62, roughness: 0.34 });
             var objetivo = colorFuerza(m.force, mx), g0 = 0.07, g1 = 0.05 + 0.08 * clamp(Math.abs(m.force) / mx, 0, 1);
             [-zH, zH].forEach(function (z) {
-                var o = barra(root, V3(a, z), V3(b, z), g0, mat, g0);
-                if (o) barras.push({ o: o, mat: mat, col: objetivo, g0: g0, g1: g1 });
+                var o = new T.Mesh(unidad, mat); o.castShadow = true; o.receiveShadow = true; root.add(o);
+                barras.push({ o: o, a: m.a, b: m.b, z: z, mat: mat, col: objetivo, g0: g0, g1: g1 });
             });
         });
         /* placas de nudo, pasadores y riostras entre planos */
         var oscuro = std(STEEL_DARK), acero = std(STEEL);
-        n.forEach(function (nd) {
-            [-zH, zH].forEach(function (z) { caja(root, 0.2, 0.2, 0.025, nd.x + ox, nd.y + baseY, z + (z > 0 ? 0.045 : -0.045), oscuro); });
-            cil(root, 0.03, 0.03, zH * 2 + 0.2, nd.x + ox, nd.y + baseY, 0, acero, 'z', 10);
+        n.forEach(function (nd, i) {
+            var g = new T.Group(); root.add(g);
+            [-zH, zH].forEach(function (z) { caja(g, 0.2, 0.2, 0.025, 0, 0, z + (z > 0 ? 0.045 : -0.045), oscuro); });
+            cil(g, 0.03, 0.03, zH * 2 + 0.2, 0, 0, 0, acero, 'z', 10);
+            nudos.push({ g: g, i: i });
         });
         var rio = std({ color: 0x7C8DA3, metalness: 0.55, roughness: 0.45 });
         [[5, 6], [6, 7], [0, 1], [3, 4]].forEach(function (pr) {
-            barra(root, V3(n[pr[0]], -zH), V3(n[pr[1]], zH), 0.028, rio);
-            barra(root, V3(n[pr[0]], zH), V3(n[pr[1]], -zH), 0.028, rio);
+            [[-zH, zH], [zH, -zH]].forEach(function (zz) {
+                var o = new T.Mesh(unidadR, rio); o.castShadow = true; root.add(o);
+                o.scale.set(1, 0.028, 0.028);
+                riostras.push({ o: o, a: pr[0], b: pr[1], za: zz[0], zb: zz[1] });
+            });
         });
-        /* apoyos en los dos planos */
-        [-zH, zH].forEach(function (z) { pasador(root, ox, z, baseY, false, ac); pasador(root, L / 2, z, baseY, true, ac); });
-        /* carga */
-        var ld = n[r.loadNode], lx = ld.x + ox, ly = ld.y + baseY;
-        var carga = new T.Group(); carga.position.set(lx, ly + (ld.y > 0 ? 0.1 : -0.02), 0); root.add(carga);
+        /* apoyos en los dos planos (el rodillo acompaña el corrimiento horizontal de B4) */
+        var rodillos = new T.Group(); root.add(rodillos);
+        [-zH, zH].forEach(function (z) { pasador(root, ox, z, baseY, false, ac); pasador(rodillos, L / 2, z, baseY, true, ac); });
+        /* carga: sigue al nudo cargado */
+        var ld = n[r.loadNode];
+        var carga = new T.Group(); root.add(carga);
         var cf = new T.Group(); carga.add(cf);
         if (ld.y > 0) flecha(cf, new T.Vector3(0, 1.25, 0), new T.Vector3(0, 0.02, 0), C_P, 0.028);
         else flecha(cf, new T.Vector3(0, 0.02, 0), new T.Vector3(0, -1.0, 0), C_P, 0.028);
@@ -456,37 +479,50 @@
         reaccion(reacs, L / 2, baseY, r.reactions.Ry4, 'R_B4', zH + 0.55);
         /* fuerzas en las barras (plano delantero) */
         var fuerzas = new T.Group(); root.add(fuerzas);
-        r.members.forEach(function (m) {
-            var a = n[m.a], b = n[m.b];
+        var etF = r.members.map(function (m) {
             var c = Math.abs(m.force) < 1e-6 ? '#94A3B8' : (m.force > 0 ? '#F87171' : '#60A5FA');
-            var et = etiqueta((m.force > 0 ? '+' : '') + fmt(m.force, 1), c, 0.56);
-            et.position.set((a.x + b.x) / 2 + ox, (a.y + b.y) / 2 + baseY + 0.12, zH + 0.2); fuerzas.add(et);
+            var et = etiqueta((m.force > 0 ? '+' : '') + fmt(m.force, 1), c, 0.56); fuerzas.add(et);
+            return { et: et, a: m.a, b: m.b };
         });
-        /* flecha medida en el nudo cargado */
-        var dv = clamp(Math.abs(r.delta) / 1000 * 40, 0.08, 0.4);
-        var def = new T.Group(); def.position.set(lx, ly, zH + 0.25); root.add(def);
-        def.add(new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(0, 0, 0), new T.Vector3(0, -dv, 0)]), new T.LineBasicMaterial({ color: C_DEF })));
-        var dot = new T.Mesh(new T.SphereGeometry(0.06, 14, 12), new T.MeshBasicMaterial({ color: C_DEF })); dot.position.y = -dv; def.add(dot);
-        var ed = etiqueta('Δ = ' + fmt(r.delta, 2) + ' mm', '#F472B6', 0.74); ed.position.set(0.7, -dv - 0.1, 0); def.add(ed);
+        /* posición sin carga, en líneas punteadas, para comparar la deformación */
+        var orig = new T.Group(); root.add(orig);
+        r.members.forEach(function (m) {
+            var l = new T.Line(new T.BufferGeometry().setFromPoints([pos(m.a, zH + 0.02, 0), pos(m.b, zH + 0.02, 0)]),
+                new T.LineDashedMaterial({ color: 0xE2E8F0, transparent: true, opacity: 0.45, dashSize: 0.1, gapSize: 0.08 }));
+            l.computeLineDistances(); orig.add(l);
+        });
+        var ed = etiqueta('Δ ' + r.loadName + ' = ' + fmt(r.delta, 2) + ' mm (deformada ×' + K + ')', '#F472B6', 0.74); root.add(ed);
         var nod = new T.Group(); root.add(nod);
-        n.forEach(function (nd) { var e = etiqueta(nd.n, '#A7B4C8', 0.5); e.position.set(nd.x + ox, nd.y + baseY + (nd.y > 0 ? 0.3 : -0.28), -zH - 0.25); nod.add(e); });
+        var etN = n.map(function (nd) { var e = etiqueta(nd.n, '#A7B4C8', 0.5); nod.add(e); return e; });
         var dim = etiqueta('L = ' + fmt(L, 1) + ' m · h = ' + fmt(h, 1) + ' m', '#94A3B8', 0.74); dim.position.set(0, 0.16, zH + 1.35); root.add(dim);
+        function deformar(k) {
+            if (Math.abs(k - kAct) < 1e-4 && k !== 0) return; kAct = k;
+            barras.forEach(function (b) { colocar(b.o, pos(b.a, b.z, k), pos(b.b, b.z, k)); });
+            riostras.forEach(function (b) { colocar(b.o, pos(b.a, b.za, k), pos(b.b, b.zb, k)); });
+            nudos.forEach(function (q) { q.g.position.copy(pos(q.i, 0, k)); });
+            etF.forEach(function (q) { var A = pos(q.a, zH + 0.2, k), B = pos(q.b, zH + 0.2, k); q.et.position.copy(A).add(B).multiplyScalar(0.5); q.et.position.y += 0.12; });
+            etN.forEach(function (e, i) { e.position.copy(pos(i, -zH - 0.25, k)); e.position.y += n[i].y > 0 ? 0.3 : -0.28; });
+            var pc = pos(r.loadNode, 0, k); carga.position.set(pc.x, pc.y + (ld.y > 0 ? 0.1 : -0.02), 0);
+            var pd = pos(r.loadNode, zH + 0.25, k); ed.position.set(pd.x + 0.9, pd.y - 0.35, pd.z);
+            rodillos.position.x = clamp(disp[4].dx * K, -tope, tope) * k;
+        }
         function set(s) {
             carga.visible = s.load > 0.001; cf.scale.y = Math.max(0.001, s.load);
+            deformar(s.load);
+            orig.visible = s.load > 0.01;
             reacs.visible = s.reac > 0.01; reacs.children.forEach(function (c) { c.scale.setScalar(0.4 + 0.6 * s.reac); });
             fuerzas.visible = s.eq > 0.5;
             barras.forEach(function (b) {
                 b.mat.color.copy(neutro).lerp(b.col, s.col || 0);
-                var g = (b.g0 + (b.g1 - b.g0) * (s.col || 0)) / b.g0; b.o.scale.set(1, g, g);
+                var g = b.g0 + (b.g1 - b.g0) * (s.col || 0); b.o.scale.y = g; b.o.scale.z = g;
             });
-            def.visible = s.d > 0.01; def.scale.y = Math.max(0.001, s.d);
-            ed.visible = s.d > 0.95;
+            ed.visible = s.d > 0.5;
         }
         set(CERO);
         return {
             root: root, set: set, size: L + 1.4, alto: baseY + h + 1.8,
             pins: [[0, baseY + h + 0.1, zH], [-L * 0.32, baseY, zH], [n[1].x + ox, baseY + h * 0.5, zH], [n[5].x + ox + L * 0.12, baseY + h * 0.5, zH],
-                [ox, baseY * 0.5, -zH], [L / 2, baseY * 0.5, zH], [lx, ly + 1.2, 0], [0, baseY + h * 0.5, 0]]
+                [ox, baseY * 0.5, -zH], [L / 2, baseY * 0.5, zH], [ld.x + ox, ld.y + baseY + 1.2, 0], [0, baseY + h * 0.5, 0]]
         };
     }
 
@@ -497,14 +533,37 @@
         var cw = clamp(num(P.hc) / 1000, 0.2, 0.62), vd = 0.36, y0 = art ? 0.62 : 0.14;
         var marco = new T.Group(); marco.position.y = y0; root.add(marco);
         var mCol = std(MAT[P.mat] || MAT.concreto), mVig = std({ color: 0xA7B4C8, metalness: 0.15, roughness: 0.72 });
+        /* deriva REAL × amplificación fija × carga aplicada: la cubierta se corre D y las columnas se curvan
+           (doble curvatura con base empotrada; giro rígido con base articulada, porque la viga se supone rígida) */
+        var K = amplif('portico'), Dmax = clamp(r.sway / 1000 * K, 0, h * 0.3);
+        function forma(t) { return art ? t : 3 * t * t - 2 * t * t * t; }
+        var columnas = [], cubierta = new T.Group(); marco.add(cubierta);
         zs.forEach(function (z) {
-            caja(marco, cw, h, 0.32, -b / 2, h / 2, z, mCol);
-            caja(marco, cw, h, 0.32, b / 2, h / 2, z, mCol);
-            caja(marco, b + cw, vd, 0.3, 0, h, z, mVig);
+            [-b / 2, b / 2].forEach(function (x) {
+                var geo = new T.BoxGeometry(cw, h, 0.32, 1, 24, 1);
+                var o = new T.Mesh(geo, mCol); o.position.set(x, h / 2, z); o.castShadow = true; o.receiveShadow = true; marco.add(o);
+                columnas.push({ geo: geo, base: Float32Array.from(geo.attributes.position.array) });
+            });
+            caja(cubierta, b + cw, vd, 0.3, 0, h, z, mVig);
         });
         var losa = new T.MeshStandardMaterial({ color: 0x9AA6B2, metalness: 0.08, roughness: 0.88, transparent: true, opacity: 0.7 });
-        caja(marco, b + 0.5, 0.08, 2.6, 0, h + vd / 2 + 0.1, 0, losa);
-        for (var i = -2; i <= 2; i++) caja(marco, 0.07, 0.13, 2.6, i * b / 5, h + vd / 2 + 0.01, 0, std(STEEL_DARK));
+        caja(cubierta, b + 0.5, 0.08, 2.6, 0, h + vd / 2 + 0.1, 0, losa);
+        for (var i = -2; i <= 2; i++) caja(cubierta, 0.07, 0.13, 2.6, i * b / 5, h + vd / 2 + 0.01, 0, std(STEEL_DARK));
+        /* posición sin carga, punteada */
+        var orig = new T.Group(); orig.position.z = 1.24; marco.add(orig);
+        var lo = new T.Line(new T.BufferGeometry().setFromPoints([new T.Vector3(-b / 2, 0, 0), new T.Vector3(-b / 2, h, 0), new T.Vector3(b / 2, h, 0), new T.Vector3(b / 2, 0, 0)]),
+            new T.LineDashedMaterial({ color: 0xE2E8F0, transparent: true, opacity: 0.5, dashSize: 0.12, gapSize: 0.09 }));
+        lo.computeLineDistances(); orig.add(lo);
+        var dUlt = -1;
+        function deformar(D) {
+            if (Math.abs(D - dUlt) < 1e-5) return; dUlt = D;
+            columnas.forEach(function (c) {
+                var a = c.geo.attributes.position.array;
+                for (var k = 0; k < a.length; k += 3) a[k] = c.base[k] + D * forma((c.base[k + 1] + h / 2) / h);
+                c.geo.attributes.position.needsUpdate = true; c.geo.computeVertexNormals(); c.geo.computeBoundingSphere();
+            });
+            cubierta.position.x = D;
+        }
         /* bases: placa empotrada o pasador */
         zs.forEach(function (z) {
             [-b / 2, b / 2].forEach(function (x) {
@@ -525,7 +584,7 @@
         var inf = new T.Group(); marco.add(inf);
         var mInf = new T.MeshBasicMaterial({ color: 0xE2E8F0 });
         var ptsInf = art ? [[0, h, 1.2]] : [[-b / 2, h / 2, 1.2], [b / 2, h / 2, 1.2], [0, h, 1.2]];
-        ptsInf.forEach(function (q) { var s = new T.Mesh(new T.TorusGeometry(0.12, 0.025, 8, 24), mInf); s.position.set(q[0], q[1], q[2]); inf.add(s); });
+        var anillosInf = ptsInf.map(function (q) { var s = new T.Mesh(new T.TorusGeometry(0.12, 0.025, 8, 24), mInf); s.position.set(q[0], q[1], q[2]); s.userData.x0 = q[0]; s.userData.t = q[1] / h; inf.add(s); return s; });
         var eI = etiqueta(art ? 'M = 0 en las bases y a media luz' : 'M = 0 a media altura y a media luz', '#E2E8F0', 0.6); eI.position.set(0, h * 0.5, 1.35); inf.add(eI);
         /* reacciones en las bases: cortante W/2 y axial ±N por vuelco */
         var reacs = new T.Group(); root.add(reacs);
@@ -558,22 +617,23 @@
         });
         var eMc = etiqueta('M col = ' + fmt(r.Mcol, 1) + ' kN·m', '#F472B6', 0.66); eMc.position.set(b / 2 + 0.9, h - 0.2, 1.42); mom.add(eMc);
         /* deriva */
-        var dx = clamp(r.sway / 1000 * 60, 0.12, 0.55);
         var der = new T.Group(); der.position.set(b / 2 + cw / 2 + 0.06, y0 + h + 0.55, 1.05); root.add(der);
-        flecha(der, new T.Vector3(0, 0, 0), new T.Vector3(dx + 0.2, 0, 0), C_DEF, 0.022);
-        var ed = etiqueta('Δ = ' + fmt(r.sway, 2) + ' mm', '#F472B6', 0.78); ed.position.set(dx * 0.5 + 0.1, 0.34, 0); der.add(ed);
+        var derF = new T.Group(); der.add(derF);
+        flecha(derF, new T.Vector3(0, 0, 0), new T.Vector3(1, 0, 0), C_DEF, 0.022);
+        var ed = etiqueta('Δ = ' + fmt(r.sway, 2) + ' mm (deformada ×' + K + ')', '#F472B6', 0.78); ed.position.set(0.6, 0.34, 0); der.add(ed);
         var dim = etiqueta('b = ' + fmt(b, 2) + ' m · h = ' + fmt(h, 2) + ' m', '#94A3B8', 0.74); dim.position.set(0, 0.16, 2.2); root.add(dim);
-        var corte = new T.Matrix4();
         function set(s) {
             carga.visible = s.load > 0.001; cf.scale.set(Math.max(0.001, s.load), 1, 1);
             inf.visible = s.inf > 0.5;
             reacs.visible = s.reac > 0.01; reacs.children.forEach(function (c) { c.scale.setScalar(0.4 + 0.6 * s.reac); });
             mom.visible = s.M > 0.01; mom.children.forEach(function (g) { if (g.type === 'Group') g.scale.x = Math.max(0.001, s.M); });
-            var k = (dx * (s.d || 0)) / Math.max(0.5, h);
-            corte.set(1, k, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
-            corte.setPosition(0, y0, 0);
-            marco.matrixAutoUpdate = false; marco.matrix.copy(corte); marco.matrixWorldNeedsUpdate = true;
-            der.visible = s.d > 0.01; der.scale.x = Math.max(0.001, s.d); ed.visible = s.d > 0.95;
+            var D = Dmax * s.load;
+            deformar(D);
+            orig.visible = s.load > 0.01;
+            carga.position.x = -b / 2 - cw / 2 + D;
+            anillosInf.forEach(function (a) { a.position.x = a.userData.x0 + (a.userData.t >= 0.99 ? D : D * forma(a.userData.t)); });
+            der.visible = s.load > 0.01; der.position.x = b / 2 + cw / 2 + 0.06 + D; derF.scale.x = Math.max(0.05, D);
+            ed.visible = s.d > 0.5;
         }
         set(CERO);
         return {

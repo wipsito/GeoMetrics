@@ -498,6 +498,35 @@
             '<small>' + min + ' – ' + max + ' ' + unit.trim() + '</small></label>';
     }
     function loadFactor(p) { return 0.22 + 0.78 * (p == null ? 1 : p); }
+    /* amplificación de la deformada: FIJA para cada modelo (sale de sus valores típicos), así lo dibujado es
+       proporcional a la carga aplicada y a la flexibilidad real: más carga o menos rigidez = más deformación */
+    var AMP = {};
+    function ampDe(id) {
+        if (AMP[id]) return AMP[id];
+        var s = SIMS[id], P = s.defaults, r = s.compute(P), d, L;
+        if (id === 'cercha') { d = r.delta; L = P.L; }
+        else if (id === 'portico') { d = r.sway; L = P.h * 1.6; }
+        else if (id === 'continuas') { d = r.dmax; L = P.L1 + P.L2; }
+        else { d = r.dmax; L = P.L; }
+        var k = 0.12 * L / Math.max(d / 1000, 1e-9), e = Math.pow(10, Math.floor(Math.log10(k))), m = k / e;
+        return (AMP[id] = Math.round((m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * e));
+    }
+    S.ampDe = ampDe;
+    /* dibuja la viga deformada (y su posición sin carga punteada); devuelve dY(x) en px para apoyar cargas y apoyos */
+    function vigaDeformada(ctx, id, xs, ds, X, y0, pxm, p, tope) {
+        var k = ampDe(id) * clamp(p, 0, 1) * pxm;
+        function dY(x) {
+            var i = 0; while (i < xs.length - 2 && xs[i + 1] < x) i++;
+            var t = (x - xs[i]) / ((xs[i + 1] - xs[i]) || 1), d = ds[i] + (ds[i + 1] - ds[i]) * clamp(t, 0, 1);
+            return clamp(d * k, -tope, tope);
+        }
+        ln(ctx, X(xs[0]), y0, X(xs[xs.length - 1]), y0, 'rgba(147,197,253,.3)', 1.5, [6, 5]);
+        ctx.save(); ctx.strokeStyle = COL.beam; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath();
+        for (var j = 0; j < xs.length; j += 2) { var yy = y0 + clamp(ds[j] * k, -tope, tope); j ? ctx.lineTo(X(xs[j]), yy) : ctx.moveTo(X(xs[j]), yy); }
+        var u = xs.length - 1; ctx.lineTo(X(xs[u]), y0 + clamp(ds[u] * k, -tope, tope));
+        ctx.stroke(); ctx.restore();
+        return dY;
+    }
     function dmaxOf(arr) { var m = 0; arr.forEach(function (v) { m = Math.max(m, Math.abs(v)); }); return m || 1; }
 
     /* ---------------- materiales y chequeos de servicio ---------------- */
@@ -746,8 +775,9 @@
             bg(ctx, W, H);
             var x0 = 48, x1 = W - 18, beamY = H * 0.30;
             function X(x) { return x0 + (x / P.L) * (x1 - x0); }
-            ln(ctx, x0, beamY, x1, beamY, COL.beam, 8);
-            drawSup(ctx, P.sl, x0, beamY, 'left'); drawSup(ctx, P.sr, x1, beamY, 'right');
+            /* la viga se dibuja deformada: descenso real × amplificación × carga aplicada */
+            var dY = vigaDeformada(ctx, 'viga', r.xs, r.ds, X, beamY, (x1 - x0) / P.L, p, H * 0.2);
+            drawSup(ctx, P.sl, x0, beamY + dY(0), 'left'); drawSup(ctx, P.sr, x1, beamY + dY(P.L), 'right');
             tx(ctx, 'A', x0, beamY + 38, { align: 'center', size: 10, color: '#A7B4C8' });
             tx(ctx, 'B', x1, beamY + 38, { align: 'center', size: 10, color: '#A7B4C8' });
             dimH(ctx, x0, x1, beamY - 58, 'L = ' + fmt(P.L, 2) + ' m', P.aF > 0.35 && P.aF < 0.65 ? 0.12 : 0.5);
@@ -755,25 +785,15 @@
             if (P.w > 0) {
                 var top = beamY - 10 - 24 * f;
                 ln(ctx, x0, top, x1, top, COL.load, 1.8);
-                for (var i = 0; i <= 12; i++) { var xu = x0 + (x1 - x0) * i / 12; arrow(ctx, xu, top, xu, beamY - 4, 'rgba(251,191,36,.72)', 1.2); }
+                for (var i = 0; i <= 12; i++) { var xm = P.L * i / 12, xu = X(xm); arrow(ctx, xu, top, xu, beamY - 4 + dY(xm), 'rgba(251,191,36,.72)', 1.2); }
                 tag(ctx, 'w = ' + fmt(P.w, 1) + ' kN/m', x0 + 4, top - 12, COL.load);
             }
             if (P.P > 0) {
                 var xp = X(P.L * P.aF), len = 26 + 34 * f;
-                arrow(ctx, xp, beamY - 12 - len, xp, beamY - 4, '#F87171', 2.4);
+                arrow(ctx, xp, beamY - 12 - len, xp, beamY - 4 + dY(P.L * P.aF), '#F87171', 2.4);
                 tag(ctx, 'P = ' + fmt(P.P, 1) + ' kN', Math.min(xp + 8, W - 118), beamY - 16 - len, '#F87171');
             }
-            // deformada
-            var db = beamY + 26 + H * 0.10 * p, dd = dmaxOf(r.ds);
-            ln(ctx, x0, beamY + 20, x1, beamY + 20, 'rgba(244,114,182,.22)', 1, [3, 4]);
-            ctx.save(); ctx.strokeStyle = COL.pink; ctx.lineWidth = 2;
-            ctx.beginPath();
-            for (var j = 0; j < r.xs.length; j += 2) {
-                var xx = X(r.xs[j]), yy = beamY + 24 + (Math.abs(r.ds[j]) / dd) * H * 0.085 * p;
-                j ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy);
-            }
-            ctx.stroke(); ctx.restore();
-            tx(ctx, 'δmax = ' + fmt(r.dmax, 2) + ' mm', x1 - 130, beamY + 24 + H * 0.10, { size: 10, color: COL.pink });
+            tx(ctx, 'δmax = ' + fmt(r.dmax * p, 2) + ' mm · deformada ×' + ampDe('viga'), x1 - 4, beamY + 24 + Math.max(0, dY(r.xd)), { align: 'right', size: 10, color: COL.pink });
             // momento
             var mb = H * 0.80, amp = H * 0.17, mmax = Math.max(1e-9, r.Mabs);
             ln(ctx, x0, mb, x1, mb, 'rgba(167,180,200,.35)', 1);
@@ -872,31 +892,22 @@
             bg(ctx, W, H);
             var x0 = 58, x1 = W - 20, beamY = H * 0.28, f = loadFactor(p);
             function X(x) { return x0 + (x / P.L) * (x1 - x0); }
-            ln(ctx, x0, beamY, x1, beamY, COL.beam, 8);
+            var dY = vigaDeformada(ctx, 'voladizo', r.xs, r.ds, X, beamY, (x1 - x0) / P.L, p, H * 0.22);
             fixed(ctx, x0, beamY - 26, beamY + 26, 'left');
             tx(ctx, 'empotramiento', x0 + 8, beamY + 42, { size: 10, color: '#A7B4C8' });
             dimH(ctx, x0, x1, beamY - 54, 'L = ' + fmt(P.L, 2) + ' m');
             if (P.w > 0) {
                 var top = beamY - 8 - 22 * f;
                 ln(ctx, x0, top, x1, top, COL.load, 1.8);
-                for (var i = 0; i <= 10; i++) { var xu = x0 + (x1 - x0) * i / 10; arrow(ctx, xu, top, xu, beamY - 4, 'rgba(251,191,36,.72)', 1.2); }
+                for (var i = 0; i <= 10; i++) { var xm = P.L * i / 10, xu = X(xm); arrow(ctx, xu, top, xu, beamY - 4 + dY(xm), 'rgba(251,191,36,.72)', 1.2); }
                 tag(ctx, 'w = ' + fmt(P.w, 1) + ' kN/m', x0 + 6, top - 12, COL.load);
             }
             if (P.P > 0) {
                 var len = 28 + 32 * f;
-                arrow(ctx, x1, beamY - 12 - len, x1, beamY - 4, '#F87171', 2.4);
+                arrow(ctx, x1, beamY - 12 - len + dY(P.L), x1, beamY - 4 + dY(P.L), '#F87171', 2.4);
                 tag(ctx, 'P = ' + fmt(P.P, 1) + ' kN', x1 - 112, beamY - 16 - len, '#F87171');
             }
-            // elástica
-            var dd = dmaxOf(r.ds);
-            ln(ctx, x0, beamY + 18, x1, beamY + 18, 'rgba(244,114,182,.2)', 1, [3, 4]);
-            ctx.save(); ctx.strokeStyle = COL.pink; ctx.lineWidth = 2; ctx.beginPath();
-            for (var j = 0; j < r.xs.length; j += 2) {
-                var xx = X(r.xs[j]), yy = beamY + 22 + (Math.abs(r.ds[j]) / dd) * H * 0.10 * p;
-                j ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy);
-            }
-            ctx.stroke(); ctx.restore();
-            tx(ctx, 'δpunta = ' + fmt(r.dmax, 2) + ' mm', x1 - 132, beamY + 24 + H * 0.10, { size: 10, color: COL.pink });
+            tx(ctx, 'δpunta = ' + fmt(r.dmax * p, 2) + ' mm · deformada ×' + ampDe('voladizo'), x1 - 4, beamY + 22 + dY(P.L), { align: 'right', size: 10, color: COL.pink });
             // momento negativo
             var mb = H * 0.60, amp = H * 0.20, mmax = Math.max(1e-9, r.Mabs);
             ln(ctx, x0, mb, x1, mb, 'rgba(167,180,200,.35)', 1);
@@ -996,25 +1007,36 @@
             var ox = (W - P.L * sc) / 2, oy = H - padB;
             function X(x) { return ox + x * sc; }
             function Y(y) { return oy - y * sc; }
+            /* posición deformada de cada nudo: desplazamiento real × amplificación × carga aplicada */
+            var kd = ampDe('cercha') * clamp(p, 0, 1), tope = P.h * 0.45;
+            var nd = r.nodes.map(function (n, i) {
+                var d = r.disp ? r.disp[i] : { dx: 0, dy: 0 };
+                return { x: n.x + clamp(d.dx * kd, -tope, tope), y: n.y + clamp(d.dy * kd, -tope, tope) };
+            });
+            r.members.forEach(function (m) {          /* posición sin carga, punteada */
+                var a = r.nodes[m.a], b = r.nodes[m.b];
+                ln(ctx, X(a.x), Y(a.y), X(b.x), Y(b.y), 'rgba(148,163,184,.3)', 1, [4, 4]);
+            });
             r.members.forEach(function (m) {
-                var a = r.nodes[m.a], b = r.nodes[m.b], f = m.force / r.maxAbs;
+                var a = nd[m.a], b = nd[m.b], f = m.force / r.maxAbs;
                 var c = Math.abs(f) < 1e-6 ? '#64748B' : (f > 0 ? '#F87171' : '#60A5FA');
                 ln(ctx, X(a.x), Y(a.y), X(b.x), Y(b.y), c, 1.8 + 3.4 * Math.abs(f));
             });
-            r.nodes.forEach(function (n) {
+            nd.forEach(function (n) {
                 ctx.save(); ctx.fillStyle = '#0B1220'; ctx.strokeStyle = '#E2E8F0'; ctx.lineWidth = 1.6;
                 ctx.beginPath(); ctx.arc(X(n.x), Y(n.y), 3.5, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.restore();
             });
-            pin(ctx, X(0), Y(0) + 2); roller(ctx, X(P.L), Y(0) + 2);
+            pin(ctx, X(0), Y(0) + 2); roller(ctx, X(nd[4].x), Y(0) + 2);
             var f2 = loadFactor(p);
-            var ldn = r.nodes[r.loadNode];
-            if (ldn.y > 0) {
+            var ldn = nd[r.loadNode];
+            if (r.nodes[r.loadNode].y > 0) {
                 arrow(ctx, X(ldn.x), Y(ldn.y) - 12 - 34 * f2, X(ldn.x), Y(ldn.y) - 8, COL.load, 2.6);
                 tag(ctx, 'P = ' + fmt(P.P, 1) + ' kN', X(ldn.x) + 8, Y(ldn.y) - 16 - 34 * f2, COL.load);
             } else {
-                arrow(ctx, X(ldn.x), Y(0) + 6, X(ldn.x), Y(0) + 8 + 18 * f2, COL.load, 2.6);
-                tag(ctx, 'P = ' + fmt(P.P, 1) + ' kN', X(ldn.x) + 8, Y(0) + 12, COL.load);
+                arrow(ctx, X(ldn.x), Y(ldn.y) + 6, X(ldn.x), Y(ldn.y) + 8 + 18 * f2, COL.load, 2.6);
+                tag(ctx, 'P = ' + fmt(P.P, 1) + ' kN', X(ldn.x) + 8, Y(ldn.y) + 12, COL.load);
             }
+            tx(ctx, 'Δ = ' + fmt(r.delta * p, 2) + ' mm · deformada ×' + ampDe('cercha'), W - 12, 18, { align: 'right', size: 10, color: COL.pink });
             dimH(ctx, X(0), X(P.L), H - 12, 'L = ' + fmt(P.L, 1) + ' m');
             tag(ctx, 'tracción ' + fmt(r.maxT, 1) + ' kN', 14, H - 22, '#F87171');
             tag(ctx, 'compresión ' + fmt(r.maxC, 1) + ' kN', 152, H - 22, '#60A5FA');
@@ -1097,8 +1119,16 @@
         draw2d: function (ctx, W, H, r, P, p) {
             bg(ctx, W, H);
             var lx = W * 0.30, rx = W * 0.70, top = H * 0.27, base = H * 0.76;
-            ctx.save(); ctx.strokeStyle = COL.beam; ctx.lineWidth = 8; ctx.lineCap = 'round';
+            /* pórtico deformado: la cubierta se desplaza Δ y las columnas se curvan (doble curvatura con base empotrada) */
+            var dx = clamp(r.sway / 1000 * ampDe('portico') * clamp(p, 0, 1) * (base - top) / P.h, 0, W * 0.16);
+            function forma(t) { return r.base === 'pinned' ? t : 3 * t * t - 2 * t * t * t; }
+            ctx.save(); ctx.strokeStyle = 'rgba(147,197,253,.3)'; ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]);
             ctx.beginPath(); ctx.moveTo(lx, base); ctx.lineTo(lx, top); ctx.lineTo(rx, top); ctx.lineTo(rx, base); ctx.stroke(); ctx.restore();
+            ctx.save(); ctx.strokeStyle = COL.beam; ctx.lineWidth = 8; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath();
+            for (var c = 0; c <= 20; c++) { var t = c / 20; ctx[c ? 'lineTo' : 'moveTo'](lx + dx * forma(t), base - (base - top) * t); }
+            ctx.lineTo(rx + dx, top);
+            for (var c2 = 20; c2 >= 0; c2--) { var t2 = c2 / 20; ctx.lineTo(rx + dx * forma(t2), base - (base - top) * t2); }
+            ctx.stroke(); ctx.restore();
             if (r.base === 'pinned') { pin(ctx, lx, base + 2); pin(ctx, rx, base + 2); } else { fixed(ctx, lx, base - 2, base + 2, 'left'); fixed(ctx, rx, base - 2, base + 2, 'right'); }
             var f = loadFactor(p);
             arrow(ctx, lx - 50 - 40 * f, top - 10, lx - 10, top - 10, COL.load, 3);
@@ -1112,9 +1142,8 @@
             ln(ctx, xm - 12, top, xm + 12, top, 'rgba(148,163,184,.7)', 1, [3, 3]);
             tag(ctx, 'Mcol = ' + fmt(r.Mcol, 1) + ' kN·m', lx - 66, top + 28, COL.pink);
             tag(ctx, 'Mviga = ' + fmt(r.Mbeam, 1) + ' kN·m', rx - 50, top + 28, COL.pink);
-            var sw = Math.min(48, r.sway * 2.2 * p);
-            arrow(ctx, rx + 18, top + 46, rx + 18 + sw, top + 46, COL.ok, 2);
-            tx(ctx, 'Δ = ' + fmt(r.sway, 2) + ' mm', rx + 18, top + 62, { size: 10, color: COL.ok });
+            if (dx > 2) arrow(ctx, rx + 18, top - 14, rx + 18 + dx, top - 14, COL.ok, 2);
+            tx(ctx, 'Δ = ' + fmt(r.sway * p, 2) + ' mm · deformada ×' + ampDe('portico'), rx + 18, top + 62, { size: 10, color: COL.ok });
             dimH(ctx, lx, rx, base + 34, 'b = ' + fmt(P.b, 2) + ' m');
             tx(ctx, 'Vista 2D · cortantes, momentos y deriva', W - 12, H - 8, { align: 'right', size: 10, color: COL.dim });
         },
@@ -1193,8 +1222,9 @@
             var x0 = 48, x1 = W - 22, LT = r.L1 + r.L2, beamY = H * 0.27, f = loadFactor(p);
             function X(x) { return x0 + x / LT * (x1 - x0); }
             var xb = X(r.L1);
-            ln(ctx, x0, beamY, x1, beamY, COL.beam, 8);
+            var dY = vigaDeformada(ctx, 'continuas', r.xs, r.ds, X, beamY, (x1 - x0) / LT, p, H * 0.16);
             pin(ctx, x0, beamY + 2); pin(ctx, xb, beamY + 2); roller(ctx, x1, beamY + 2);
+            tx(ctx, 'δmax = ' + fmt(r.dmax * p, 2) + ' mm · deformada ×' + ampDe('continuas'), x1 - 4, beamY + 52, { align: 'right', size: 10, color: COL.pink });
             tx(ctx, 'A', x0, beamY + 38, { align: 'center', size: 10, color: '#A7B4C8' });
             tx(ctx, 'B', xb, beamY + 38, { align: 'center', size: 10, color: '#A7B4C8' });
             tx(ctx, 'C', x1, beamY + 38, { align: 'center', size: 10, color: '#A7B4C8' });
@@ -1204,7 +1234,7 @@
                 if (!(w > 0)) return;
                 var top = beamY - 8 - 20 * f;
                 ln(ctx, a, top, b, top, COL.load, 1.8);
-                for (var i = 0; i <= 8; i++) { var xu = a + (b - a) * i / 8; arrow(ctx, xu, top, xu, beamY - 4, 'rgba(251,191,36,.72)', 1.2); }
+                for (var i = 0; i <= 8; i++) { var xu = a + (b - a) * i / 8; arrow(ctx, xu, top, xu, beamY - 4 + dY((xu - x0) / (x1 - x0) * LT), 'rgba(251,191,36,.72)', 1.2); }
                 tag(ctx, fmt(w, 1) + ' kN/m', a + 6, top - 12, COL.load);
             }
             udl(x0, xb, r.w1); udl(xb, x1, r.w2);
