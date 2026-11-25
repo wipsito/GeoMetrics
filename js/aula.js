@@ -1073,15 +1073,74 @@ function aulaTrasAutenticar(email, errEl) {
     });
 }
 
-/** Inicia sesión con Firebase y, si el correo está verificado, entra. */
+/* ---------- Inicio de sesión sin internet ----------
+ * Tras entrar con internet se guarda en ESTE equipo una huella de la contraseña (PBKDF2-SHA256 con sal; la contraseña
+ * nunca se guarda). Sin conexión, la misma cuenta puede volver a entrar si la contraseña coincide con esa huella.
+ * Vale 30 días desde el último inicio con internet. Nada de esto se sube a la nube. */
+var AULA_OFFLINE_KEY = 'gm_acceso_sin_conexion';
+var AULA_OFFLINE_DIAS = 30;
+function aulaOfflineMapa() { try { return JSON.parse(localStorage.getItem(AULA_OFFLINE_KEY) || '{}') || {}; } catch (e) { return {}; } }
+function aulaOfflineHuella(pass, sal) {
+    if (!(window.crypto && crypto.subtle && window.TextEncoder)) return Promise.reject(new Error('sin-crypto'));
+    var enc = new TextEncoder();
+    return crypto.subtle.importKey('raw', enc.encode(String(pass)), 'PBKDF2', false, ['deriveBits']).then(function (k) {
+        return crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode(sal), iterations: 150000 }, k, 256);
+    }).then(function (b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); });
+}
+function aulaOfflineRecordar(email, pass) {
+    try {
+        var sal = Array.prototype.map.call(crypto.getRandomValues(new Uint8Array(16)), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+        aulaOfflineHuella(pass, sal).then(function (h) {
+            var m = aulaOfflineMapa();
+            m[aulaNormalizarEmail(email)] = { sal: sal, huella: h, fecha: Date.now() };
+            localStorage.setItem(AULA_OFFLINE_KEY, JSON.stringify(m));
+        }).catch(function () {});
+    } catch (e) {}
+}
+function aulaOfflineOlvidar(email) {
+    try { var m = aulaOfflineMapa(); delete m[aulaNormalizarEmail(email)]; localStorage.setItem(AULA_OFFLINE_KEY, JSON.stringify(m)); } catch (e) {}
+}
+/** Resuelve con el usuario si pudo entrar sin conexión; con null si no hay acceso guardado; rechaza si la contraseña no coincide. */
+function aulaEntrarSinConexion(email, pass) {
+    email = aulaNormalizarEmail(email);
+    var reg = aulaOfflineMapa()[email];
+    if (!reg || Date.now() - reg.fecha > AULA_OFFLINE_DIAS * 864e5) return Promise.resolve(null);
+    var user = aulaLoad(AULA_KEYS.users, []).find(function (u) { return aulaNormalizarEmail(u && u.email) === email; });
+    if (!user) return Promise.resolve(null);
+    return aulaOfflineHuella(pass, reg.sal).then(function (h) {
+        if (h !== reg.huella) { var e = new Error('clave'); e.gmClave = true; throw e; }
+        user = aulaUsuarioCompleto(Object.assign({}, user)) || user;
+        delete user.password;
+        if (aulaEsDocenteEmail(email)) user.rol = 'docente';
+        aulaSetSession(user);
+        aulaEnterApp(user);
+        return user;
+    });
+}
+function aulaSinRed(ex) {
+    return navigator.onLine === false || /network-request-failed|internal-error|unavailable/.test((ex && ex.code) || '');
+}
+
+/** Inicia sesión con Firebase y, si el correo está verificado, entra. Sin internet usa el acceso guardado en el equipo. */
 function aulaEntrarConAuth(email, pass, errEl, form) {
     aulaBotonesAuth(form, true);
-    return GeoAuth.signIn(email, pass).then(function (u) {
+    var intento = navigator.onLine === false ? Promise.reject({ code: 'auth/network-request-failed' }) : GeoAuth.signIn(email, pass);
+    return intento.then(function (u) {
         if (!u || !u.emailVerified) { aulaAvisoVerificacion(errEl, email); return null; }
-        return aulaTrasAutenticar(email, errEl);
+        return aulaTrasAutenticar(email, errEl).then(function (user) { if (user) aulaOfflineRecordar(email, pass); return user; });
     }).catch(function (ex) {
         var code = ex && ex.code || '';
+        if (aulaSinRed(ex)) {
+            return aulaEntrarSinConexion(email, pass).then(function (user) {
+                if (!user) errEl.textContent = 'Sin conexión: esta cuenta aún no ha iniciado sesión con internet en este equipo (o pasaron más de ' + AULA_OFFLINE_DIAS + ' días). Conéctate una vez y después podrás entrar sin internet.';
+                return user;
+            }, function () {
+                errEl.textContent = 'Sin conexión: la contraseña no coincide con la que usaste la última vez en este equipo.';
+                return null;
+            });
+        }
         if (/invalid-credential|wrong-password|user-not-found|invalid-login/.test(code)) {
+            aulaOfflineOlvidar(email);
             errEl.innerHTML = 'Correo o contraseña incorrectos. ¿Tu cuenta es anterior a la actualización de seguridad? ' +
                 '<button type="button" class="btn-link-recupero" data-gm-activar>Actívala con este correo y esta contraseña</button>';
             var b = errEl.querySelector('[data-gm-activar]');
