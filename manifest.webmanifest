@@ -1,0 +1,21 @@
+{
+  "name": "GeoMetrics · Laboratorio Virtual de Ingeniería Civil",
+  "short_name": "GeoMetrics",
+  "description": "Laboratorio virtual de Ingeniería Civil: teoría, ensayos, simuladores 2D y 3D, aula virtual y el asistente Civix.",
+  "lang": "es",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050b18",
+  "theme_color": "#0b1220",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "docs/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "docs/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "docs/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "docs/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

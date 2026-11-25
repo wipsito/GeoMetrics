@@ -7,7 +7,14 @@
     <!-- Icono de la pestaña del navegador -->
     <link rel="icon" type="image/png" href="docs/GeoMetrics.png">
     <link rel="shortcut icon" type="image/png" href="docs/GeoMetrics.png">
-    <link rel="apple-touch-icon" href="docs/GeoMetrics.png">
+    <link rel="apple-touch-icon" href="docs/icons/apple-180.png">
+    <!-- Aplicación instalable (PWA): portátil y Android -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#0b1220">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="GeoMetrics">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/mezclas.css">
     <link rel="stylesheet" href="css/teoria-normas.css">
@@ -43,6 +50,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script src="js/config.js"></script>
+    <script src="js/pwa.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
