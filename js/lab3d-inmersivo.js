@@ -62,7 +62,12 @@
         dm_gran: ['Muestra', 'Tamizado', 'Retenidos', 'Módulo finura'],
         dm_punit: ['Tara', 'Llenado', 'Enrasado', 'Pesaje', 'Cálculo'],
         dm_hum: ['Masa húmeda', 'Secado', 'Masa seca', 'Cálculo'],
-        dm_fresco: ['Llenado', 'Peso unitario', 'Tapa', 'Aire', 'Resultados']
+        dm_fresco: ['Llenado', 'Peso unitario', 'Tapa', 'Aire', 'Resultados'],
+        est_viga: ['Apoyos', 'Cargas', 'Reacciones', 'Cortante', 'Momento', 'Deformada'],
+        est_voladizo: ['Empotramiento', 'Cargas', 'Reacciones', 'Cortante', 'Momento', 'Elástica'],
+        est_cercha: ['Geometría', 'Carga', 'Reacciones', 'Equilibrio', 'T y C', 'Flecha'],
+        est_portico: ['Modelo', 'Carga lateral', 'Portal', 'Cortante', 'Momentos', 'Deriva'],
+        est_continuas: ['Apoyos', 'Cargas', 'M_B', 'Reacciones', 'Diagramas']
     };
 
     /* equipo resaltado en cada etapa (índices de meta.parts) cuando la máquina no lo define */
@@ -131,7 +136,7 @@
         if (back) top.querySelector('.inm-back').addEventListener('click', function () { salir(); back.click(); });
         else top.querySelector('.inm-back').hidden = true;
         top.querySelector('.inm-rst').addEventListener('click', function () { var hb3 = q('.lab3d-views [data-view="home"]'); if (hb3) hb3.click(); });
-        var b2d = shell && shell.querySelector('.simhub-mode [data-mode="2d"], .simhub-mode [data-dm-mode="2d"]');
+        var b2d = shell && shell.querySelector('.simhub-mode [data-mode="2d"], .simhub-mode [data-dm-mode="2d"], .simhub-mode [data-esim-mode="2d"]');
         if (b2d) top.querySelector('.inm-2d').addEventListener('click', function () { salir(); b2d.click(); }); else top.querySelector('.inm-2d').hidden = true;
         top.querySelector('.inm-full').addEventListener('click', function () {
             var fe = doc.fullscreenElement || doc.webkitFullscreenElement;
@@ -707,7 +712,7 @@
                 'linear-gradient(var(--inm-cy),var(--inm-cy)) top right/34px 2px,linear-gradient(var(--inm-cy),var(--inm-cy)) top right/2px 34px,' +
                 'linear-gradient(var(--inm-cy),var(--inm-cy)) bottom left/34px 2px,linear-gradient(var(--inm-cy),var(--inm-cy)) bottom left/2px 34px,' +
                 'linear-gradient(var(--inm-cy),var(--inm-cy)) bottom right/34px 2px,linear-gradient(var(--inm-cy),var(--inm-cy)) bottom right/2px 34px;background-repeat:no-repeat;opacity:.55}',
-            '.lab3d-inm .lab3d-stage::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;border:0;width:auto;height:auto;background:repeating-linear-gradient(0deg,rgba(148,197,253,.035) 0 1px,transparent 1px 4px)}',
+            '.lab3d-inm .lab3d-stage::after{content:"";position:absolute;inset:0;left:0;bottom:0;transform:none;padding:0;border-radius:0;z-index:1;pointer-events:none;border:0;width:auto;height:auto;-webkit-backdrop-filter:none;backdrop-filter:none;background:repeating-linear-gradient(0deg,rgba(148,197,253,.035) 0 1px,transparent 1px 4px)}',
 
             /* vidrio */
             '.inm-top>div,.inm-panel,.inm-rail,.inm-res,.lab3d-inm .lab3d-views,.lab3d-inm .lab3d-controls,.lab3d-inm .tt-tutor,.inm-bar,.inm-cube{' + VID + '}',

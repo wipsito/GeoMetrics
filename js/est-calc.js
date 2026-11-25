@@ -241,9 +241,9 @@
             [0, 1], [1, 2], [2, 3], [3, 4],       // cordón inferior
             [5, 6], [6, 7],                        // cordón superior
             [1, 5], [2, 6], [3, 7],                // montantes
-            [0, 5], [5, 2], [6, 3], [7, 4]         // diagonales
+            [0, 5], [5, 2], [7, 2], [7, 4]         // diagonales: en la Pratt bajan hacia el centro (simétrica)
         ];
-        var names = ['B0-B1', 'B1-B2', 'B2-B3', 'B3-B4', 'T1-T2', 'T2-T3', 'B1-T1', 'B2-T2', 'B3-T3', 'B0-T1', 'T1-B2', 'T2-B3', 'T3-B4'];
+        var names = ['B0-B1', 'B1-B2', 'B2-B3', 'B3-B4', 'T1-T2', 'T2-T3', 'B1-T1', 'B2-T2', 'B3-T3', 'B0-T1', 'T1-B2', 'T3-B2', 'T3-B4'];
         members.forEach(function (mm, i) {
             var a = nodes[mm[0]], b = nodes[mm[1]];
             mm.L = Math.hypot(b.x - a.x, b.y - a.y);
@@ -328,11 +328,14 @@
         var Vcol = W / 2;
         var Mcol = base === 'pinned' ? Vcol * h : Vcol * h / 2;   // articulada: M = V·h en la cabeza y 0 en la base
         var Mbeam = Mcol;
-        var N = W * h / (2 * b);           // fuerza axial en vigas por vuelco
+        var Mbase = base === 'pinned' ? 0 : Vcol * h / 2, Mtop = base === 'pinned' ? Vcol * h : Vcol * h / 2;
+        /* axial en las columnas por vuelco: W·h menos los momentos de base, repartido en el brazo b */
+        var N = (W * h - 2 * Mbase) / b;
+        var Nviga = W / 2;                 // la viga lleva a la columna lejana la mitad de la carga lateral
         var sway = base === 'pinned' ? (W * Math.pow(h, 3)) / (6 * EI) * 1000 : (W * Math.pow(h, 3)) / (24 * EI) * 1000; // mm
         return {
             base: base, W: W, h: h, b: b, E: E, bc: bc, hc: hc, Ic: Ic, EI: EI,
-            Vcol: Vcol, Mcol: Mcol, Mbeam: Mbeam, N: N, sway: sway,
+            Vcol: Vcol, Mcol: Mcol, Mbeam: Mbeam, Mbase: Mbase, Mtop: Mtop, N: N, Nviga: Nviga, sway: sway,
             reactionX: W / 2, reactionY: N,
             note: base === 'pinned' ? 'Bases articuladas: sin momento en la base, M = V·h en la cabeza de la columna y deriva 4 veces mayor que con bases empotradas (viga rígida).' : 'Hipótesis del portal: punto de inflexión a media altura de columnas y a media luz de la viga.'
         };
@@ -424,10 +427,20 @@
         var Mpos = 0, Mneg = 0;
         ms.forEach(function (m) { if (m > Mpos) Mpos = m; if (m < Mneg) Mneg = m; });
         var I = rectI(b, h), EI = E * 1e6 * I;
+        /* elástica exacta (positiva hacia abajo): cada luz es simplemente apoyada con su carga w y el momento M_B en el extremo */
+        function d1(x) { return (w1 * x * (Math.pow(L1, 3) - 2 * L1 * x * x + Math.pow(x, 3)) / 24 + MB * x * (L1 * L1 - x * x) / (6 * L1)) / EI; }
+        function d2(x) { var u = L2 - x; return (w2 * x * (Math.pow(L2, 3) - 2 * L2 * x * x + Math.pow(x, 3)) / 24 + MB * u * (L2 * L2 - u * u) / (6 * L2)) / EI; }
+        var ds = [], dmax = 0, xd = 0;
+        xs.forEach(function (x) {
+            var d = x <= L1 ? d1(x) : d2(x - L1);
+            ds.push(d);
+            if (Math.abs(d) > Math.abs(dmax)) { dmax = d; xd = x; }
+        });
         return {
             L1: L1, L2: L2, w1: w1, w2: w2, E: E, b: b, h: h, I: I, EI: EI,
             MB: MB, RA: RA, RB1: RB1, RB2: RB2, RB: RB1 + RB2, RC: RC,
             Mpos: Mpos, Mneg: Mneg, Mabs: Math.max(Math.abs(Mpos), Math.abs(Mneg)),
+            dmax: Math.abs(dmax) * 1000, xd: xd, ds: ds,
             xs: xs, ms: ms, vs: vs, M1: M1, M2: M2
         };
     }
@@ -505,7 +518,8 @@
         // fuerzas internas por elemento
         els.forEach(function (e) {
             var u = e.dof.map(function (d) { return U[d]; }), f = [0, 0, 0, 0], r2, c2;
-            for (r2 = 0; r2 < 4; r2++) { for (c2 = 0; c2 < 4; c2++) f[r2] += e.k * e.ke[r2][c2] * u[c2]; f[r2] -= e.fe[r2]; }
+            /* fuerzas de extremo = k·u + fuerzas de empotramiento perfecto de la carga w */
+            for (r2 = 0; r2 < 4; r2++) { for (c2 = 0; c2 < 4; c2++) f[r2] += e.k * e.ke[r2][c2] * u[c2]; f[r2] += e.fe[r2]; }
             e.V0 = f[0]; e.M0 = -f[1]; e.u = u;
         });
         var starts = xn.slice(0, nn - 1);

@@ -737,18 +737,18 @@
             var lim = p.h * 1000 / 250;
             return [
                 { l: 'Cortante por columna', v: fmt(r.Vcol, 1) + ' kN', big: true, s: 'W/2' },
-                { l: 'Momento en columna', v: fmt(r.Mcol, 1) + ' kN·m', tone: 'warn', s: 'a media altura' },
+                { l: 'Momento en columna', v: fmt(r.Mcol, 1) + ' kN·m', tone: 'warn', s: r.base === 'pinned' ? 'en la cabeza (base articulada)' : 'en la base y en la cabeza' },
                 { l: 'Momento en viga', v: fmt(r.Mbeam, 1) + ' kN·m', s: 'igual al de columna' },
                 { l: 'Deriva lateral estimada', v: fmt(r.sway, 2) + ' mm', tone: r.sway > lim ? 'warn' : 'ok', s: 'límite referencial h/250 = ' + fmt(lim, 1) + ' mm' },
-                { l: 'Axial en viga', v: fmt(r.N, 1) + ' kN', s: 'por equilibrio de vuelco' },
+                { l: 'Axial en columnas', v: '± ' + fmt(r.N, 1) + ' kN', s: 'por equilibrio de vuelco' },
                 { l: 'Reacción horizontal', v: fmt(r.reactionX, 1) + ' kN', s: 'en cada base' }
             ];
         },
         table: function (r) {
             return '<div class="dm-tablewrap"><table class="dm-table"><thead><tr><th>Elemento</th><th>Fuerza</th><th>Momento</th></tr></thead><tbody>' +
-                '<tr><td>Columna izquierda</td><td>V = ' + fmt(r.Vcol, 2) + ' kN</td><td>M = ' + fmt(r.Mcol, 2) + ' kN·m</td></tr>' +
-                '<tr><td>Columna derecha</td><td>V = ' + fmt(r.Vcol, 2) + ' kN</td><td>M = ' + fmt(r.Mcol, 2) + ' kN·m</td></tr>' +
-                '<tr><td>Viga superior</td><td>N ≈ ' + fmt(r.N, 2) + ' kN</td><td>M = ' + fmt(r.Mbeam, 2) + ' kN·m</td></tr>' +
+                '<tr><td>Columna izquierda</td><td>V = ' + fmt(r.Vcol, 2) + ' kN · N = +' + fmt(r.N, 2) + ' kN (tracción)</td><td>M = ' + fmt(r.Mcol, 2) + ' kN·m</td></tr>' +
+                '<tr><td>Columna derecha</td><td>V = ' + fmt(r.Vcol, 2) + ' kN · N = −' + fmt(r.N, 2) + ' kN (compresión)</td><td>M = ' + fmt(r.Mcol, 2) + ' kN·m</td></tr>' +
+                '<tr><td>Viga superior</td><td>N ≈ ' + fmt(r.Nviga, 2) + ' kN</td><td>M = ' + fmt(r.Mbeam, 2) + ' kN·m</td></tr>' +
                 '</tbody></table></div>';
         },
         notas: function (r) {

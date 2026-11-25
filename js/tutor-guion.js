@@ -277,5 +277,72 @@ window.GeoTutorGuion = {
         ['Bombea hasta la presión inicial, abre la válvula y lee el porcentaje de aire.',
          'Ojo: resta el factor de corrección del agregado.'],
         ['Para terminar, reporta el peso unitario, el aire y el rendimiento de la tanda.']
+    ],
+
+    /* ======================= ESTRUCTURAS I ======================= */
+    /* (sin audios grabados todavía: el tutor usa la voz del navegador) */
+
+    est_viga: [
+        ['Mira primero los apoyos, porque ellos deciden todo. Un pasador no deja que la viga se desplace, pero sí que gire; un rodillo solo impide que baje.',
+         'Si cambias un extremo a empotrado, la viga ya no puede girar ahí y se vuelve hiperestática. Pruébalo en Parámetros.'],
+        ['Ahora aplicamos las cargas: la distribuida w sobre toda la luz y la puntual P en la posición que elegiste.',
+         'Fíjate que las cargas crecen poco a poco; como el material es elástico, todos los resultados crecen en la misma proporción.'],
+        ['Con las cargas puestas aparecen las reacciones. Sumando momentos en A y fuerzas verticales salen R_A y R_B.',
+         'Ojo: si un extremo está empotrado, además de la fuerza aparece un momento de reacción.'],
+        ['Este es el diagrama de cortante, en azul. Baja de forma lineal por la carga w y da un salto justo debajo de P.',
+         'Donde el cortante cruza por cero, el momento llega a su máximo.'],
+        ['Ahora el diagrama de momento, en verde. Lo positivo cuelga hacia abajo: ahí la fibra inferior está a tracción.',
+         'El momento máximo es el que se usa para calcular el esfuerzo de flexión y dimensionar la sección.'],
+        ['Por último, la viga se deforma. La elástica está amplificada para que la veas, pero la flecha real está en los resultados.',
+         'Compárala con L sobre 360: si se pasa, toca aumentar la altura h, que es la que más rigidez aporta.']
+    ],
+
+    est_voladizo: [
+        ['Este voladizo está empotrado en el muro y libre en la punta, como un balcón o un alero.',
+         'El empotramiento impide que la viga baje y que gire en el muro.'],
+        ['Aplicamos la carga en la punta y la carga repartida a lo largo de la viga.'],
+        ['En el empotramiento aparecen dos reacciones: una fuerza vertical igual a toda la carga y un momento que evita el giro.',
+         'Ojo: ese momento de empotramiento es el más grande de toda la viga.'],
+        ['El cortante es máximo junto al muro y va bajando hacia la punta.'],
+        ['El momento es negativo en todo el voladizo: aquí la fibra que trabaja a tracción es la de arriba.',
+         'Por eso en un voladizo de concreto el acero principal va en la parte superior.'],
+        ['Mira cómo se dobla: la flecha máxima está en la punta.',
+         'Si duplicas la longitud, la flecha por la carga puntual se multiplica por ocho. La longitud manda.']
+    ],
+
+    est_cercha: [
+        ['Esta es una cercha Pratt de cuatro paneles, con dos planos unidos por riostras.',
+         'Todas las barras se unen en nudos articulados, así que solo trabajan a fuerza axial.'],
+        ['Ponemos la carga P en el nudo que elegiste.'],
+        ['Primero las reacciones en los apoyos. Con la carga en el centro, cada apoyo toma la mitad.'],
+        ['Ahora resolvemos el equilibrio de cada nudo: suma de fuerzas horizontales y verticales igual a cero.',
+         'Sobre cada barra aparece su fuerza en kilonewtons.'],
+        ['Las barras rojas trabajan a tracción y las azules a compresión; las más gruesas son las más cargadas.',
+         'En la Pratt las diagonales bajan hacia el centro y quedan a tracción, mientras el cordón superior se comprime.',
+         'Ojo: las barras a compresión también hay que revisarlas por pandeo.'],
+        ['Por último, la flecha del nudo cargado, calculada por trabajo virtual.',
+         'Si aumentas el área de las barras, la flecha baja en la misma proporción.']
+    ],
+
+    est_portico: [
+        ['Este es un pórtico de un vano y un piso. Las columnas pueden estar empotradas o articuladas en la base.'],
+        ['Aplicamos la carga lateral W a la altura de la cubierta, como si fuera viento o sismo.'],
+        ['El método del portal supone puntos de inflexión, donde el momento es cero, a media altura de las columnas y a media luz de la viga.',
+         'Con base articulada, el momento es cero justo en la base.'],
+        ['Cada columna toma la mitad del cortante. En las bases aparecen esas reacciones horizontales.',
+         'El vuelco hace que una columna quede a tracción y la otra a compresión.'],
+        ['Estos son los momentos en las columnas: máximos en los extremos y cero en el punto de inflexión.'],
+        ['Por último, la deriva: cuánto se desplaza la cubierta. Se compara con la altura sobre 250.',
+         'La deriva crece con el cubo de la altura, así que un pórtico más alto necesita columnas mucho más rígidas.']
+    ],
+
+    est_continuas: [
+        ['Esta viga continua tiene dos luces y tres apoyos. Al ser continua sobre B, es hiperestática de grado uno.'],
+        ['Aplicamos una carga distribuida en cada tramo.'],
+        ['La incógnita clave es el momento en el apoyo central. Sale de la ecuación de los tres momentos, porque el giro en B es el mismo para los dos tramos.',
+         'Ese momento es negativo: sobre el apoyo, la viga trabaja a tracción arriba.'],
+        ['Conocido el momento en B, cada tramo es isostático y salen las tres reacciones.'],
+        ['Mira los diagramas: el momento negativo en B reduce los momentos positivos de las luces.',
+         'Por eso una viga continua es más eficiente que dos vigas simplemente apoyadas.']
     ]
 };

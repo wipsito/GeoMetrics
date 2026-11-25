@@ -214,6 +214,34 @@
         var host = $('est-simuladores'); if (!host) return;
         stop(); ST.stepK = -1; disposeLab3d();
         if (!ST.id) { host.innerHTML = home(); return; }
+        /* 3D inmersivo: el mismo laboratorio de los demás ensayos (tutor, paneles, resultados) — js/lab3d-estructuras.js */
+        var L3 = root.GeoLab3D, tipo3d = 'est_' + ST.id;
+        if (ST.mode === '3d' && L3 && L3.meta && L3.meta[tipo3d]) {
+            var sI = SIMS[ST.id];
+            ST.P = ST.P || Object.assign({}, sI.defaults);
+            L3.pro = L3.pro || {}; L3.pro.over = L3.pro.over || {};
+            L3.pro.over[tipo3d] = Object.assign({}, ST.P);
+            S.alCambiar3d = function (id, P) { if (ST.id === id) ST.P = Object.assign({}, P); };
+            host.innerHTML = detail3d(ST.id);
+            $('esimBack').addEventListener('click', function () { ST.id = null; ST.P = null; ST.cur = null; ST.p = 0; ST.stepK = -1; render(); scrollTop(); });
+            host.querySelectorAll('[data-esim-mode]').forEach(function (b) {
+                b.addEventListener('click', function () { setMode(b.getAttribute('data-esim-mode')); });
+            });
+            var idAbierto = ST.id;
+            lab3d = L3.mount($('esimLab3dHost'), tipo3d);
+            /* botón «Guardar en Mis resultados» junto a los del panel de parámetros */
+            (function boton(n) {
+                if (!lab3d || ST.id !== idAbierto) return;
+                var cajas = document.querySelectorAll('.lab3d[data-tipo="' + tipo3d + '"] .p3-pbtns');
+                var bx = cajas[cajas.length - 1];
+                if (!bx) { if (n < 120) setTimeout(function () { boton(n + 1); }, 150); return; }
+                if (bx.querySelector('.est-save3d')) return;
+                var b = document.createElement('button'); b.type = 'button'; b.className = 'est-save3d'; b.textContent = '💾 Guardar en Mis resultados';
+                b.addEventListener('click', function () { saveRun(Object.assign({}, ST.P), idAbierto); b.textContent = '✓ Guardado'; setTimeout(function () { b.textContent = '💾 Guardar en Mis resultados'; }, 1800); });
+                bx.appendChild(b);
+            })(0);
+            return;
+        }
         if (ST.mode === '3d' && root.EstruLab3D) {
             var s3 = SIMS[ST.id];
             ST.P = ST.P || Object.assign({}, s3.defaults);
@@ -369,6 +397,11 @@
         try { r = s.compute(P); } catch (e) { alert(e.userMessage || e.message); return; }
         if (typeof root.guardarResultado !== 'function') { alert('El historial no está disponible.'); return; }
         var tl = s.tiles(r, P), entradas = readInputs();
+        if (!entradas.length) {          /* desde el visor 3D: los datos salen de los parámetros */
+            var LBL = { sl: 'Apoyo A', sr: 'Apoyo B', mat: 'Material', L: 'Luz L (m)', P: 'Carga P (kN)', aF: 'Posición de P (a/L)', w: 'Carga w (kN/m)', b: 'Base b (mm)', h: id === 'cercha' || id === 'portico' ? 'Altura h (m)' : 'Altura h (mm)',
+                node: 'Nudo cargado', A: 'Área de barra (mm²)', W: 'Carga lateral W (kN)', hc: 'Peralte columna hc (mm)', base: 'Base del pórtico', L1: 'Luz L₁ (m)', L2: 'Luz L₂ (m)', w1: 'Carga w₁ (kN/m)', w2: 'Carga w₂ (kN/m)' };
+            Object.keys(s.defaults).forEach(function (k) { if (P[k] != null) entradas.push({ label: LBL[k] || k, valor: String(P[k]) }); });
+        }
         var resumen = tl.slice(0, 3).map(function (t) { return plain(t.l) + ' = ' + plain(t.v); }).join(' · ');
         var rep = {
             titulo: 'Estructuras I — Simulador: ' + s.title, norma: s.norma, resumen: resumen, entradas: entradas,
@@ -1035,7 +1068,7 @@
             { t: 'Carga lateral', d: 'La fuerza horizontal W (viento o sismo) actúa a nivel de la viga y sube de 0 al 100 %.' },
             { t: 'Hipótesis del portal', d: 'Puntos de inflexión a media altura de columnas y a media luz de la viga.' },
             { t: 'Cortante por columna', d: 'Cada columna toma V = W/2 (columnas iguales).' },
-            { t: 'Momentos y axial', d: 'M_col = V·h/2 en la base y en la cabeza; N en la viga por vuelco = W·h/(2b).' },
+            { t: 'Momentos y axial', d: 'Con base empotrada, M_col = V·h/2 en la base y en la cabeza; el vuelco produce en las columnas un axial N = W·h/(2b), tracción en una y compresión en la otra.' },
             { t: 'Deriva lateral', d: 'Δ ≈ W·h³/(24·E·I_col); se compara con h/250 y se revisa el esfuerzo.' }
         ],
         chartRatio: 0.5,
@@ -1050,9 +1083,9 @@
         tiles: function (r, P) {
             return [
                 { l: 'Cortante por columna', v: fmt(r.Vcol, 1) + ' kN', s: 'W/2' },
-                { l: 'Momento en columna', v: fmt(r.Mcol, 1) + ' kN·m', s: 'a media altura' },
+                { l: 'Momento en columna', v: fmt(r.Mcol, 1) + ' kN·m', s: r.base === 'pinned' ? 'en la cabeza (base articulada: M = 0 abajo)' : 'en la base y en la cabeza; nulo a media altura' },
                 { l: 'Deriva estimada', v: fmt(r.sway, 2) + ' mm', s: 'h/250 = ' + fmt(P.h * 1000 / 250, 1) + ' mm' },
-                { l: 'Axial en viga', v: fmt(r.N, 1) + ' kN', s: 'por vuelco' }
+                { l: 'Axial en columnas', v: '± ' + fmt(r.N, 1) + ' kN', s: 'por vuelco: tracción a barlovento, compresión a sotavento' }
             ].concat(checkTiles(r.sway, P.h * 1000 / 250, 'h/250', r.Mcol * 1e6 / (300 * P.hc * P.hc / 6), matOf(P).adm));
         },
         note: function (r, P) {
@@ -1146,8 +1179,8 @@
                 { l: 'Momento en el apoyo B', v: fmt(r.MB, 1) + ' kN·m', s: 'negativo (hogging)' },
                 { l: 'Reacciones A / B / C', v: fmt(r.RA, 1) + ' / ' + fmt(r.RB, 1) + ' / ' + fmt(r.RC, 1) + ' kN', s: 'suma = carga total' },
                 { l: 'Momento positivo máx.', v: fmt(r.Mpos, 1) + ' kN·m', s: 'en las luces' },
-                { l: 'Resistencia σ / σadm', v: pct(u), tone: ratioTone(u), s: fmt(sig, 1) + ' MPa de ' + fmt(adm, 0) + ' MPa (referencia)' }
-            ];
+                { l: 'Flecha máxima', v: fmt(r.dmax, 2) + ' mm', s: 'x = ' + fmt(r.xd, 2) + ' m' }
+            ].concat(checkTiles(r.dmax, Math.max(P.L1, P.L2) * 1000 / 360, 'L/360', sig, adm));
         },
         note: function (r, P) {
             return '<b>Lectura:</b> si las dos luces son iguales y cargan igual, M_B = −wL²/8. Al cargar más un tramo, M_B crece y el otro tramo se descarga: ese es el efecto de continuidad. No incluye asentamientos de apoyo.';

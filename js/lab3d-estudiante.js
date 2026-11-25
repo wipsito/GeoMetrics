@@ -50,7 +50,12 @@
         dm_gran: 'Sirve para calcular el módulo de finura y saber si el agregado sirve para concreto.',
         dm_punit: 'Sirve para conocer los vacíos del agregado, un dato del diseño de mezclas.',
         dm_hum: 'Sirve para corregir el agua de la mezcla según la humedad de los agregados.',
-        dm_fresco: 'Sirve para comprobar el rendimiento y el aire del concreto antes de vaciarlo.'
+        dm_fresco: 'Sirve para comprobar el rendimiento y el aire del concreto antes de vaciarlo.',
+        est_viga: 'Sirve para ver cómo cambian reacciones, momento y flecha según el tipo de apoyo de cada extremo.',
+        est_voladizo: 'Sirve para entender por qué los balcones y aleros tienen el momento máximo en el empotramiento.',
+        est_cercha: 'Sirve para ver qué barras de una cercha trabajan a tracción y cuáles a compresión.',
+        est_portico: 'Sirve para repartir una carga de viento o sismo entre las columnas y estimar la deriva.',
+        est_continuas: 'Sirve para ver cómo la continuidad sobre el apoyo central reduce los momentos de las luces.'
     };
     var TUTOR = null;
     try { TUTOR = localStorage.getItem('tt-tutor'); } catch (e) { }
@@ -133,6 +138,7 @@
     /* símbolos y abreviaturas leídos como lo diría una persona */
     function paraVoz(t) {
         return String(t)
+            .replace(/([A-Za-z])_([A-Za-z0-9]+)/g, '$1 $2')          /* R_A → «R A», M_B → «M B» */
             .replace(/\by\/o\b/g, 'o')
             .replace(/\s*\/\s*min\b/g, ' por minuto').replace(/\s*\/\s*s\b/g, ' por segundo').replace(/\s*\/\s*h\b/g, ' por hora').replace(/\s*\/\s*cm\b/g, ' por centímetro').replace(/\s*\/\s*m\b/g, ' por metro').replace(/N\.?\s*[º°]\s*/g, 'número ')
             .replace(/\b(\d)\.?\s*[ªº]/g, function (_, n) { return ['', 'primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta', 'séptima', 'octava', 'novena'][+n] || n; })
@@ -445,7 +451,7 @@
         /* presentación ESCRITA y en silencio: «Hola, soy Elisa…», el ensayo, su norma y para qué sirve */
         function textoPresentacion() {
             var t = TUTORES[TUTOR] || null, norma = (L3.meta[tipo] && L3.meta[tipo].norma) || '';
-            return (t ? '¡Hola! Soy ' + t.nombre + '. ' : '¡Hola! ') + 'Este es el ensayo de ' + nombreEnsayo.charAt(0).toLowerCase() + nombreEnsayo.slice(1) +
+            return (t ? '¡Hola! Soy ' + t.nombre + '. ' : '¡Hola! ') + (/^est_/.test(tipo) ? 'Este es el modelo de ' : 'Este es el ensayo de ') + nombreEnsayo.charAt(0).toLowerCase() + nombreEnsayo.slice(1) +
                 (norma ? ' (' + norma + ')' : '') + '. ' + (PARA[tipo] || '') + ' Pulsa «Iniciar ensayo» y te lo explico paso a paso.';
         }
         var GGm = global.GeoGuia && global.GeoGuia.data && (global.GeoGuia.data[tipo] || global.GeoGuia.data[{ dm_rev: 'rev', dm_comp: 'comp', dm_aci: 'aci', dm_agg: 'agg' }[tipo]]);
