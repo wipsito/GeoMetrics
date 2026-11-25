@@ -79,7 +79,7 @@
         'auth/weak-password': 'La contraseña es muy débil: usa al menos 6 caracteres.',
         'auth/invalid-email': 'El correo no es válido.',
         'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.',
-        'auth/network-request-failed': 'Sin conexión. Revisa tu internet e inténtalo de nuevo.',
+        'auth/network-request-failed': 'Sin conexión: para iniciar sesión necesitas internet. Si ya habías iniciado sesión en este equipo, la app abre sola sin conexión; conéctate para entrar con otra cuenta.',
         'auth/configuration-not-found': 'Firebase Authentication no está activado en este proyecto. Un administrador debe habilitar «Correo electrónico/contraseña» en la consola de Firebase (Authentication → Sign-in method).',
         'auth/operation-not-allowed':'El inicio de sesión con correo no está habilitado en Firebase (Authentication → Sign-in method).',
         'auth/unauthorized-domain': 'Este sitio no está autorizado en Firebase (Authentication → Settings → Authorized domains).',
