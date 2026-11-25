@@ -13,7 +13,8 @@
     if (!L3 || !L3.mount || L3.__tutor) return;
     L3.__tutor = true;
     var doc = document;
-    var VOZ = { on: false }, silenciadoAMano = false;   /* voz desactivada por defecto (se activa con el botón 🔈 y se recuerda) */
+    var VOZ = { on: false, vol: 0.9 }, silenciadoAMano = false;
+    try { var vg = parseFloat(localStorage.getItem('tt-vol')); if (isFinite(vg)) VOZ.vol = Math.max(0, Math.min(1, vg)); } catch (e) { }   /* volumen elegido por el estudiante */   /* voz desactivada por defecto (se activa con el botón 🔈 y se recuerda) */
     try { VOZ.on = localStorage.getItem('tt-voz-on') === '1'; } catch (e) { }
 
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -227,7 +228,7 @@
         var box = doc.createElement('div'); box.className = 'tt-tutor';
         box.innerHTML = '<div class="tt-cara">' + caraSvg(TUTOR || 'mujer') + '</div>' +
             '<div class="tt-globo" aria-live="polite"><div class="tt-cab"><b class="tt-quien"></b>' +
-              '<button type="button" class="tt-voz" title="Activar o silenciar la voz">🔈</button><button type="button" class="tt-cfg" title="Cambiar de tutor">⇄</button><button type="button" class="tt-min" title="Minimizar">–</button></div>' +
+              '<button type="button" class="tt-voz" title="Activar o silenciar la voz">🔈</button><input type="range" class="tt-vol" min="0" max="100" step="5" aria-label="Volumen de la voz del tutor" title="Volumen de la voz"><button type="button" class="tt-cfg" title="Cambiar de tutor">⇄</button><button type="button" class="tt-min" title="Minimizar">–</button></div>' +
               '<div class="tt-elegir" hidden><p>¿Con quién quieres aprender?</p><div class="tt-opc">' +
                 '<button type="button" data-t="mujer">' + caraSvg('mujer') + '<span>Elisa</span><small>Tutora</small></button>' +
                 '<button type="button" data-t="hombre">' + caraSvg('hombre') + '<span>Rafael</span><small>Tutor</small></button></div></div>' +
@@ -238,9 +239,20 @@
         stage.appendChild(box);
         var cara = box.querySelector('.tt-cara'), globo = box.querySelector('.tt-globo');
         var btnVoz = box.querySelector('.tt-voz');
-        function pintarVoz() { btnVoz.textContent = VOZ.on ? '🔊' : '🔈'; btnVoz.setAttribute('aria-pressed', String(VOZ.on)); }
+        function pintarVoz() { btnVoz.textContent = !VOZ.on ? '🔈' : (VOZ.vol <= 0 ? '🔇' : (VOZ.vol < 0.5 ? '🔉' : '🔊')); btnVoz.setAttribute('aria-pressed', String(VOZ.on)); }
         pintarVoz();
         btnVoz.addEventListener('click', function () { VOZ.on = !VOZ.on; silenciadoAMano = !VOZ.on; pintarVoz(); try { localStorage.setItem('tt-voz-on', VOZ.on ? '1' : '0'); } catch (e) { } if (!VOZ.on) callar(); else hablar(); });
+        /* volumen de la voz: se aplica al instante al audio que suena y se recuerda para la próxima vez */
+        var volEl = box.querySelector('.tt-vol');
+        function pintarVol() { volEl.value = Math.round(VOZ.vol * 100); volEl.title = 'Volumen de la voz: ' + Math.round(VOZ.vol * 100) + ' %'; btnVoz.textContent = !VOZ.on ? '🔈' : (VOZ.vol <= 0 ? '🔇' : (VOZ.vol < 0.5 ? '🔉' : '🔊')); }
+        pintarVol();
+        volEl.addEventListener('input', function () {
+            VOZ.vol = Math.max(0, Math.min(1, parseInt(volEl.value, 10) / 100));
+            try { localStorage.setItem('tt-vol', String(VOZ.vol)); } catch (e) { }
+            if (sonando) sonando.volume = VOZ.vol;
+            pintarVol();
+        });
+        btnVoz.addEventListener('click', pintarVol);
         box.querySelector('.tt-min').addEventListener('click', function () { box.classList.toggle('tt-cerrado'); });
         cara.addEventListener('click', function () { box.classList.toggle('tt-cerrado'); });
 
@@ -268,6 +280,7 @@
             if (FALTA[src]) { decir(txt); return; }
             var a = PRECARGA[src] || new Audio(src), yo = fi, fz = fase; delete PRECARGA[src]; sonando = a;
             try { a.currentTime = 0; } catch (e) { }
+            a.volume = VOZ.vol;
             var miTurno = turno;
             a.onplay = function () { cara.classList.add('habla'); if (miTurno === turno) { vozFallo = false; if (!prog.t0) prog.t0 = performance.now(); } };
             a.onpause = function () { cara.classList.remove('habla'); if (sonando === a) sonando = null; };
@@ -295,7 +308,7 @@
                 if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'es-ES';
                 /* las voces neuronales ya suenan naturales a velocidad normal; las clásicas se bajan un poco */
                 var natural = v && /natural|online|neural|google/i.test(v.name);
-                u.rate = natural ? 1 : 0.92; u.pitch = natural ? 1 : 1.08;
+                u.rate = natural ? 1 : 0.92; u.pitch = natural ? 1 : 1.08; u.volume = VOZ.vol;
                 var miTurno = turno, dicho = paraVoz(txt).length, t0 = performance.now();
                 u.onstart = function () {
                     cara.classList.add('habla');
@@ -544,6 +557,7 @@
             '.tt-globo{position:relative;pointer-events:auto;flex:1 1 auto;min-width:0;max-height:calc(var(--lab-h,520px) * .42);overflow:auto;padding:9px 12px 10px;border-radius:14px;background:rgba(9,15,27,.92);border:1px solid var(--lab-accent,#22d3ee);color:#dbe4f0;font-size:12.5px;line-height:1.45;box-shadow:0 10px 28px rgba(0,0,0,.45)}',
             '.tt-globo:before{content:"";position:absolute;left:-7px;bottom:26px;width:12px;height:12px;background:rgba(9,15,27,.92);border-left:1px solid var(--lab-accent,#22d3ee);border-bottom:1px solid var(--lab-accent,#22d3ee);transform:rotate(45deg)}',
             '.tt-cab{display:flex;align-items:center;gap:6px;margin-bottom:4px}.tt-cab b{flex:1;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--lab-accent,#22d3ee)}',
+            '.tt-vol{width:74px;height:4px;margin:0 4px;accent-color:var(--lab-accent,#22d3ee);cursor:pointer;vertical-align:middle}.tt-vol[hidden]{display:none}',
             '.tt-cab button{width:26px;height:24px;min-height:0;padding:0;border-radius:7px;border:1px solid #2b3a50;background:#0f1828;color:#dbe4f0;font-size:13px;line-height:1;cursor:pointer}',
             '.tt-n{display:block;font-style:normal;font-size:11px;color:#9fb0c6}.tt-t{display:block;font-size:14px;color:#fff;margin:1px 0 4px}',
             '.tt-x{margin:0 0 6px;min-height:1.4em}.tt-pasos{margin:0 0 4px;padding-left:18px}.tt-pasos li{margin:0 0 3px}.tt-pasos li::marker{color:var(--lab-accent,#22d3ee);font-weight:700}',
