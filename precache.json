@@ -1,5 +1,5 @@
 {
-    "generado":  "2026-11-25 12:47",
+    "generado":  "2026-11-25 12:53",
     "archivos":  [
                      "audio/tutor/hombre/clasificacion/e1-1.mp3",
                      "audio/tutor/hombre/clasificacion/e2-1.mp3",
@@ -1007,7 +1007,7 @@
                    "GeoMetrics_Modal_Equipo.png":  "1038104-20261103205837",
                    "index.html":  "187850-20261125162557",
                    "js/app.js":  "500648-20261125162529",
-                   "js/aula.js":  "364934-20261124204914",
+                   "js/aula.js":  "368789-20261125175226",
                    "js/aula-virtual.js":  "80137-20261118233950",
                    "js/carga.js":  "4990-20261104160140",
                    "js/chart-theme.js":  "2686-20261104160140",
@@ -1044,7 +1044,7 @@
                    "js/gm-admin-usuarios.js":  "18691-20261118223219",
                    "js/gm-aula.js":  "50681-20261118143710",
                    "js/gm-aula-tablero.js":  "5733-20261104160140",
-                   "js/gm-auth.js":  "7917-20261125164347",
+                   "js/gm-auth.js":  "7868-20261125175226",
                    "js/gm-civix.js":  "54725-20261121023644",
                    "js/gm-curvas.js":  "5237-20261110183858",
                    "js/gm-dialogs.js":  "51081-20261104160140",
