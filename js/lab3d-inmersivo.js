@@ -408,6 +408,9 @@
                 });
                 if (agua != null && seco) return { k: 'w', v: (agua / seco * 100).toFixed(1), u: 'w %' };
             }
+            /* ensayos cuyo resultado principal es una lectura concreta */
+            var clave = { dm_rev: /asentamiento/i }[tipo];
+            if (clave) for (var j = 0; j < rs.length; j++) if (clave.test(rs[j].k) && num(rs[j].v) != null) return rs[j];
             for (var i = rs.length - 1; i >= 0; i--) if (num(rs[i].v) != null && !/^(t|T|tiempo)$/.test(rs[i].k)) return rs[i];
             return rs[rs.length - 1] || null;
         }
@@ -770,9 +773,9 @@
             '.inm-rhead{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:#c7d6ee}',
             '.inm-live{font-style:normal;font:800 11px/1 ' + M + ';letter-spacing:.06em;padding:6px 10px;border-radius:999px;color:var(--inm-mu);border:1px solid rgba(143,160,190,.35)}',
             '.inm-live.is-run{color:var(--inm-ve);border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.1)}.inm-live.is-run::before{content:"● "}.inm-live.is-fin{color:#93c5fd;border-color:rgba(147,197,253,.45)}',
-            '.inm-rbody{display:flex;align-items:center;gap:16px;padding:14px 0 12px}.inm-res .inm-ring{width:96px;height:96px}.inm-res .inm-ring b{font-size:20px}',
-            '.inm-rlist{flex:1;min-width:0;display:grid;gap:10px;margin:0}.inm-rlist div{display:flex;justify-content:space-between;align-items:baseline;gap:10px}',
-            '.inm-rlist dt{font:500 11.5px/1.2 ' + M + ';color:var(--inm-mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.inm-rlist dd{margin:0;font:700 16px/1.1 ' + M + ';color:#fff;white-space:nowrap}.inm-rlist small{font-size:11px;color:var(--inm-mu)}',
+            '.inm-rbody{display:flex;align-items:center;gap:14px;padding:14px 0 12px;min-width:0}.inm-res .inm-ring{width:96px;height:96px}.inm-res .inm-ring b{font-size:20px}',
+            '.inm-rlist{flex:1;min-width:0;display:grid;gap:9px;margin:0}.inm-rlist div{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0}',
+            '.inm-rlist dt{font:500 11px/1.2 ' + M + ';color:var(--inm-mu);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.inm-rlist dd{margin:0;max-width:100%;font:700 15px/1.2 ' + M + ';color:#fff;white-space:normal;overflow-wrap:anywhere}.inm-rlist small{font-size:11px;color:var(--inm-mu)}',
             '.inm-rfoot{margin:0;padding-top:12px;border-top:1px solid rgba(125,211,252,.1);font-size:12.5px;color:var(--inm-mu)}.inm-rfoot b{color:var(--inm-cy)}',
 
             /* controles del ensayo */
