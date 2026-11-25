@@ -1,5 +1,5 @@
 {
-    "generado":  "2026-11-25 18:36",
+    "generado":  "2026-11-25 18:54",
     "archivos":  [
                      "audio/tutor/hombre/clasificacion/e1-1.mp3",
                      "audio/tutor/hombre/clasificacion/e2-1.mp3",
@@ -1036,8 +1036,8 @@
                    "js/ensayos-diseno.js":  "100637-20261104160140",
                    "js/equipo-creador.js":  "39078-20261118145238",
                    "js/est.js":  "95878-20261125181020",
-                   "js/est-calc.js":  "28988-20261125181000",
-                   "js/est-sim.js":  "89436-20261125181657",
+                   "js/est-calc.js":  "29523-20261125234918",
+                   "js/est-sim.js":  "92540-20261125235252",
                    "js/foros-avisos.js":  "74716-20261118223219",
                    "js/geo-intro.js":  "28868-20261104160347",
                    "js/geo-loader.js":  "23399-20261104224802",
@@ -1072,7 +1072,7 @@
                    "js/lab3d-dm-pro.js":  "53336-20261104160140",
                    "js/lab3d-ensayos.js":  "93864-20261124015913",
                    "js/lab3d-est.js":  "70632-20261104160140",
-                   "js/lab3d-estructuras.js":  "57272-20261125182232",
+                   "js/lab3d-estructuras.js":  "61547-20261125235207",
                    "js/lab3d-estudiante.js":  "45567-20261125181746",
                    "js/lab3d-inmersivo.js":  "76916-20261125182130",
                    "js/lab3d-ms1.js":  "29223-20261104160140",
