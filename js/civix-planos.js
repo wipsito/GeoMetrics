@@ -1164,10 +1164,10 @@
                 for (var t = -0.5; t <= 0.5; t += 0.25) { var px = hor ? cx + t * ww : ex_ + c[1] * 0.05, py = hor ? ey_ + c[2] * 0.05 : cy + t * ww; if (dentroEdif(px, py)) return; }
                 var a0 = -MURO / 2, a1 = Ex;   /* la banda de fachada va de la cara interior (−0.075) a la exterior (+0.175) */
                 if (hor) {
-                    var s = c[2]; vanos.push([cx - ww / 2, Math.min(ey_ + s * a0, ey_ + s * a1) - 0.05, cx + ww / 2, Math.max(ey_ + s * a0, ey_ + s * a1) + 0.05]);
+                    var s = c[2]; vanos.push([cx - ww / 2, Math.min(ey_ + s * a0, ey_ + s * a1) - 0.05, cx + ww / 2, Math.max(ey_ + s * a0, ey_ + s * a1) + 0.05, 'v']);
                     [0.25, 0.5, 0.75].forEach(function (f) { var yy = ey_ + s * (a0 + (a1 - a0) * f); ln('VENTANAS', cx - ww / 2, yy, cx + ww / 2, yy); });
                 } else {
-                    var s2 = c[1]; vanos.push([Math.min(ex_ + s2 * a0, ex_ + s2 * a1) - 0.05, cy - ww / 2, Math.max(ex_ + s2 * a0, ex_ + s2 * a1) + 0.05, cy + ww / 2]);
+                    var s2 = c[1]; vanos.push([Math.min(ex_ + s2 * a0, ex_ + s2 * a1) - 0.05, cy - ww / 2, Math.max(ex_ + s2 * a0, ex_ + s2 * a1) + 0.05, cy + ww / 2, 'v']);
                     [0.25, 0.5, 0.75].forEach(function (f) { var xx = ex_ + s2 * (a0 + (a1 - a0) * f); ln('VENTANAS', xx, cy - ww / 2, xx, cy + ww / 2); });
                 }
             });
@@ -1175,8 +1175,8 @@
         else pi.rooms.forEach(function (r) {
             if (ABIERTO.test(r.tipo) || r.tipo === 'escalera' || r.tipo === 'ingreso' || r.acceso) return;
             var ww = Math.min(1.6, r.w * 0.5);
-            if (r.y < 0.01 && !(pi.n === 1 && (r.tipo === 'cochera' || r.tipo === 'local'))) { var cx = r.x + r.w / 2; vanos.push([cx - ww / 2, -0.05, cx + ww / 2, MURO_EXT + 0.05]); [0.06, 0.125, 0.19].forEach(function (o) { ln('VENTANAS', cx - ww / 2, o, cx + ww / 2, o); }); }
-            if (Math.abs(r.y + r.h - DB) < 0.01) { var cx2 = r.x + r.w / 2; vanos.push([cx2 - ww / 2, DB - MURO_EXT - 0.05, cx2 + ww / 2, DB + 0.05]); [DB - 0.06, DB - 0.125, DB - 0.19].forEach(function (o) { ln('VENTANAS', cx2 - ww / 2, o, cx2 + ww / 2, o); }); }
+            if (r.y < 0.01 && !(pi.n === 1 && (r.tipo === 'cochera' || r.tipo === 'local'))) { var cx = r.x + r.w / 2; vanos.push([cx - ww / 2, -0.05, cx + ww / 2, MURO_EXT + 0.05, 'v']); [0.06, 0.125, 0.19].forEach(function (o) { ln('VENTANAS', cx - ww / 2, o, cx + ww / 2, o); }); }
+            if (Math.abs(r.y + r.h - DB) < 0.01) { var cx2 = r.x + r.w / 2; vanos.push([cx2 - ww / 2, DB - MURO_EXT - 0.05, cx2 + ww / 2, DB + 0.05, 'v']); [DB - 0.06, DB - 0.125, DB - 0.19].forEach(function (o) { ln('VENTANAS', cx2 - ww / 2, o, cx2 + ww / 2, o); }); }
         });
 
         /* --- puertas (hoja + arco de giro); cada una abre su vano en el muro --- */
@@ -1184,10 +1184,10 @@
         function puerta(x, y, ancho, dir) { /* dir: 'up','down','left','right' = hacia dónde abre; bisagra en (x,y) */
             var e_ = 0.34;
             barridos.push(dir === 'up' || dir === 'right' ? [x, y, x + ancho, y + ancho] : dir === 'down' ? [x, y - ancho, x + ancho, y] : [x - ancho, y, x, y + ancho]);
-            if (dir === 'up') { ln('PUERTAS', x, y, x, y + ancho); arco('PUERTAS', x, y, ancho, 0, Math.PI / 2); vanos.push([x, y - e_, x + ancho, y + e_ * 0.5]); }
-            else if (dir === 'down') { ln('PUERTAS', x, y, x, y - ancho); arco('PUERTAS', x, y, ancho, -Math.PI / 2, 0); vanos.push([x, y - e_ * 0.5, x + ancho, y + e_]); }
-            else if (dir === 'right') { ln('PUERTAS', x, y, x + ancho, y); arco('PUERTAS', x, y, ancho, 0, Math.PI / 2); vanos.push([x - e_, y, x + e_ * 0.5, y + ancho]); }
-            else { ln('PUERTAS', x, y, x - ancho, y); arco('PUERTAS', x, y, ancho, Math.PI / 2, Math.PI); vanos.push([x - e_ * 0.5, y, x + e_, y + ancho]); }
+            if (dir === 'up') { ln('PUERTAS', x, y, x, y + ancho); arco('PUERTAS', x, y, ancho, 0, Math.PI / 2); vanos.push([x, y - e_, x + ancho, y + e_ * 0.5, 'p']); }
+            else if (dir === 'down') { ln('PUERTAS', x, y, x, y - ancho); arco('PUERTAS', x, y, ancho, -Math.PI / 2, 0); vanos.push([x, y - e_ * 0.5, x + ancho, y + e_, 'p']); }
+            else if (dir === 'right') { ln('PUERTAS', x, y, x + ancho, y); arco('PUERTAS', x, y, ancho, 0, Math.PI / 2); vanos.push([x - e_, y, x + e_ * 0.5, y + ancho, 'p']); }
+            else { ln('PUERTAS', x, y, x - ancho, y); arco('PUERTAS', x, y, ancho, Math.PI / 2, Math.PI); vanos.push([x - e_ * 0.5, y, x + e_, y + ancho, 'p']); }
         }
         pi.rooms.forEach(function (r) {
             var dw = r.tipo === 'bano' ? 0.75 : 0.9;
@@ -1237,13 +1237,13 @@
             switch (r.tipo) {
                 case 'cochera': /* portón: vano en la fachada y tres hojas dentro del vano */
                     if (r.y < 0.01 || r.frente) {
-                        vanos.push([r.x + 0.4, -0.05, r.x + r.w - 0.4, MURO_EXT + 0.05]);
+                        vanos.push([r.x + 0.4, -0.05, r.x + r.w - 0.4, MURO_EXT + 0.05, 'g']);
                         for (var g = 0; g < 3; g++) ln('PUERTAS', r.x + 0.4 + g * (r.w - 0.8) / 3 + 0.04, 0.12, r.x + 0.4 + (g + 1) * (r.w - 0.8) / 3 - 0.04, 0.12);
                         txt('TEXTO', r.x + r.w / 2, -0.19, 0.11, 'PORTÓN');
                     }
                     break;
                 case 'ingreso': if (r.y < 0.01) puerta(r.x + 0.5, 0.12, 1.0, 'up'); break;
-                case 'local': if (r.y < 0.01) { vanos.push([r.x + 0.6, -0.05, r.x + r.w - 0.6, MURO_EXT + 0.05]); ln('PUERTAS', r.x + 0.6, 0.1, r.x + r.w - 0.6, 0.1); } break;
+                case 'local': if (r.y < 0.01) { vanos.push([r.x + 0.6, -0.05, r.x + r.w - 0.6, MURO_EXT + 0.05, 'g']); ln('PUERTAS', r.x + 0.6, 0.1, r.x + r.w - 0.6, 0.1); } break;
                 case 'sala': if (r.y < 0.01) puerta(r.x + r.w - 0.12, r.y + r.h - 1.05, 0.9, 'left'); else puerta(r.x + r.w - 0.12, r.y + yP, 0.9, 'left'); break;
                 case 'estudio': puerta(r.x + 0.12, r.y + r.h - 1.05, 0.85, 'right'); break;
                 case 'cocina': puerta(r.x + r.w - 1.15, r.y + r.h - 0.12, 0.9, 'down'); break;
@@ -1267,6 +1267,7 @@
 
         /* --- muros construidos: relleno (solo vista) + contorno único, con columnas y vanos --- */
         var U = unirRects(murosR.map(function (m) { return [Math.max(0, m[0]), Math.max(0, m[1]), Math.min(W, m[2]), Math.min(DB, m[3])]; }).filter(function (m) { return m[2] - m[0] > 1e-3 && m[3] - m[1] > 1e-3; }), vanos);
+        pi._g3 = { muros0: murosR.map(function (m) { return [Math.max(0, m[0]), Math.max(0, m[1]), Math.min(W, m[2]), Math.min(DB, m[3])]; }), filas: U.filas.map(function (q) { return q.slice(0, 4); }), vanos: vanos.map(function (v) { return v.slice(); }), cols: colRects.map(function (c) { return c.slice(0, 4); }) };   /* geometría para el visor 3D (civix-3d.js) */
         U.filas.forEach(function (q) { pl('MUROS', [[q[0], q[1]], [q[2], q[1]], [q[2], q[3]], [q[0], q[3]]], true, { fill: true, alpha: 0.55, noStroke: true, soloVista: true }); });
         U.lineas.forEach(function (s) { pl('MUROS', s, false, { sw: 0.03 }); });
         colRects.forEach(function (c) { pl('COLUMNAS', [[c[0], c[1]], [c[2], c[1]], [c[2], c[3]], [c[0], c[3]]], true, { fill: true, alpha: 0.85, noStroke: true, soloVista: true }); });
@@ -2334,7 +2335,7 @@
             '<figure>' + svgPiso(dibujarDetalles(Pl, 0, 'columna'), true, false) + '<figcaption>DETALLE COLUMNA C-1</figcaption></figure>' +
             '</div>' +
             '<div class="cxpl-cambio"><b>¿Quieres cambiar algo?</b><span>Escríbelo en el chat y se vuelve a dibujar.</span></div>' +
-            '<div class="cxpl-acts"><button type="button" class="cxpl-btn ok" data-cxpl="cine">🎬 Ver de nuevo en modo cine</button>' +
+            '<div class="cxpl-acts"><button type="button" class="cxpl-btn ok" data-cxpl="cine">🎬 Ver de nuevo en modo cine</button><button type="button" class="cxpl-btn ok" data-cxpl="3d">🏗️ Render 3D</button>' +
             '<button type="button" class="cxpl-btn" data-cxpl="dxf">⬇ DXF</button><button type="button" class="cxpl-btn" data-cxpl="pdf">⬇ PDF</button><button type="button" class="cxpl-btn" data-cxpl="png">⬇ PNG</button></div>' +
             '<p class="cxpl-nota">También puedes escribir «dibújalo».</p>');
         if (c) c.addEventListener('click', function (e) { var b = e.target.closest('[data-cxpl]'); if (b) accion(b.getAttribute('data-cxpl'), b); });
@@ -2347,6 +2348,7 @@
         if (!actual) return;
         try {
             if (a === 'cine') return cine(actual.Pl);
+            if (a === '3d') { if (global.Civix3D) global.Civix3D.abrir(actual.Pl); else if (btn) btn.textContent = '⚠ Falta js/civix-3d.js'; return; }
             var m = modelo(actual.Pl);
             if (a === 'dxf') CAD.download(nombreArchivo() + '.dxf', new Blob([CAD.writeDXF(m)], { type: 'application/dxf' }));
             else if ((a === 'pdf' || a === 'png') && CAD.exportRaster) CAD.exportRaster(m, a, nombreArchivo());
@@ -3331,5 +3333,7 @@
         else if (sec && sec.getAttribute('data-s') === 'ia' && (b.classList.contains('cxp-card') || b.classList.contains('cxp-chip') || /enviar a civix/.test(t))) marcarCine(180);
     }, true);
 
-    CAD.planosArq = { leer: leer, plan: plan, modelo: modelo, tabla: tabla, cine: function () { return actual && cine(actual.Pl); }, actual: function () { return actual; } };
+    CAD.planosArq = { leer: leer, plan: plan, modelo: modelo, tabla: tabla, cine: function () { return actual && cine(actual.Pl); }, actual: function () { return actual; },
+        /* geometría por piso para el visor 3D: ejecuta el dibujo (sin salida) y devuelve lo que dejó en cada piso */
+        geom3d: function (Pl) { modelo(Pl); return Pl.pisos.map(function (pi) { return { n: pi.n, rooms: pi.rooms, g: pi._g3 || null }; }); } };
 })(typeof window !== 'undefined' ? window : globalThis);

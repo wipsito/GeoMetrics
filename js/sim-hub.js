@@ -371,6 +371,8 @@ function glyphOf(k) { var d = G.defs[k]; return GLYPH[k] || (d && d.glyph) || ''
             });
         });
         this.recalc();
+        /* modo «Carga manual» (sim-carga.js): el estudiante aplica la carga, como en el laboratorio */
+        if (global.GeoSimCarga) { try { global.GeoSimCarga.attach(this, host, def); } catch (eCg) { try { console.warn('Carga manual', eCg); } catch (e2) { } } }
     }
     function paintRange(inp) {
         var pct = (inp.value - inp.min) / (inp.max - inp.min) * 100;
