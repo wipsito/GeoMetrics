@@ -42,6 +42,32 @@
     var PISO_DEF = [.82, .80, .76];
 
     /* ================================================================== 1. GEOMETRÍA (cajas) */
+
+    function ensureStyles() {
+        if (doc.getElementById('cx3d-css')) return;
+        var s = doc.createElement('style'); s.id = 'cx3d-css';
+        s.textContent = [
+            '.cx3d{position:fixed;inset:0;z-index:12000;display:flex;flex-direction:column;background:#0a0f18;color:#e8eef7;font-family:Inter,system-ui,sans-serif}',
+            '.cx3d-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:linear-gradient(180deg,#121a28,#0d1420);border-bottom:1px solid rgba(56,189,248,.25);flex-shrink:0}',
+            '.cx3d-top small{display:block;font-size:10px;letter-spacing:.18em;color:#67e8f9;font-weight:600}',
+            '.cx3d-top b{font-size:14px;font-weight:650;color:#f1f5f9}',
+            '.cx3d-acts{display:flex;gap:8px;flex-wrap:wrap}',
+            '.cx3d-acts button,.cx3d-bar button{appearance:none;border:1px solid rgba(148,163,184,.35);background:rgba(15,23,42,.75);color:#e2e8f0;border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:600;cursor:pointer}',
+            '.cx3d-acts button:hover,.cx3d-bar button:hover{border-color:#38bdf8;color:#fff}',
+            '.cx3d-acts button[data-a=x]{background:rgba(248,113,113,.15);border-color:rgba(248,113,113,.45)}',
+            '.cx3d-cv{flex:1 1 auto;width:100%;min-height:0;display:block;outline:none;cursor:grab;background:#0b1220}',
+            '.cx3d-cv:active{cursor:grabbing}',
+            '.cx3d-bar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:10px 14px;background:rgba(10,15,24,.92);border-top:1px solid rgba(56,189,248,.2);flex-shrink:0}',
+            '.cx3d-grp{display:flex;align-items:center;gap:6px;flex-wrap:wrap}',
+            '.cx3d-grp>span{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-right:2px}',
+            '.cx3d-bar button.on{background:linear-gradient(135deg,#0e7490,#0284c7);border-color:#22d3ee;color:#fff}',
+            '.cx3d-bar select{background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:8px;padding:6px 8px;font-size:12px}',
+            '.cx3d-nota{padding:8px 14px 12px;font-size:11.5px;color:#94a3b8;background:#0a0f18;border-top:1px solid #1e293b;flex-shrink:0}',
+            '@media (max-width:720px){.cx3d-top{flex-direction:column;align-items:flex-start}.cx3d-bar{gap:8px}.cx3d-nota{font-size:11px}}'
+        ].join('');
+        doc.head.appendChild(s);
+    }
+
     function build(Pl) {
         var G = CAD.planosArq.geom3d(Pl), N = Pl.pisos.length;
         var opq = [], gls = [];
@@ -57,7 +83,17 @@
         if (!Dmax) Dmax = Pl.L;
 
         G.forEach(function (pi) {
-            var n = pi.n, zf = (n - 1) * H, g = pi.g; if (!g) return;
+            var n = pi.n, zf = (n - 1) * H, g = pi.g;
+            /* Fallback arquitectónico: si no hay geometría de muros, extruir contornos de ambientes */
+            if (!g) {
+                var murosF = [], vanosF = [], colsF = [];
+                pi.rooms.forEach(function (r) {
+                    if (EXT.test(r.tipo)) return;
+                    var x0 = r.x, y0 = r.y, x1 = r.x + r.w, y1 = r.y + r.h, e = 0.15;
+                    murosF.push([x0, y0, x1, y0 + e], [x0, y1 - e, x1, y1], [x0, y0, x0 + e, y1], [x1 - e, y0, x1, y1]);
+                });
+                g = { muros0: murosF.slice(), filas: murosF, vanos: vanosF, cols: colsF };
+            }
             /* --- losa + acabado de piso por ambiente --- */
             pi.rooms.forEach(function (r) {
                 var x1 = r.x + r.w, y1 = r.y + r.h;
@@ -71,6 +107,9 @@
             });
             /* --- muros --- */
             g.filas.forEach(function (q) { B(opq, q[0], q[1], zf, q[2], q[3], zf + WH, MAT.muro, n, 0); });
+            /* zócalo (planta baja) y cornisa entre pisos — lectura de fachada */
+            if (n === 1) g.filas.forEach(function (q) { B(opq, q[0] - 0.02, q[1] - 0.02, -0.05, q[2] + 0.02, q[3] + 0.02, 0.28, MAT.conc, n, 0); });
+            g.filas.forEach(function (q) { B(opq, q[0] - 0.015, q[1] - 0.015, zf + WH - 0.08, q[2] + 0.015, q[3] + 0.015, zf + WH + 0.04, MAT.conc, n, 0); });
             /* --- vanos: dintel y antepecho dentro del grosor real del muro; vidrio, marco, hoja --- */
             g.vanos.forEach(function (v) {
                 var tipo = v[4], pcs = [];
@@ -118,19 +157,37 @@
             for (var j = 0; j < nS; j++) bx(U0 + Lf - (j + 1) * tr, V1 - hw, U0 + Lf - j * tr, V1, zf, zf + (nS + j + 1) * ri);
         }
 
-        /* --- cubierta (se muestra solo con el edificio completo) --- */
+        /* --- cubierta --- */
         var top = G[G.length - 1], zt = N * H, fr = N + 1;
+        var bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
         if (top) top.rooms.forEach(function (r) {
             if (EXT.test(r.tipo)) return;
-            B(opq, r.x - 0.2, r.y - 0.2, zt - SL, r.x + r.w + 0.2, r.y + r.h + 0.2, zt + 0.02, MAT.techo, fr, 0);
+            bx0 = Math.min(bx0, r.x); bx1 = Math.max(bx1, r.x + r.w); by0 = Math.min(by0, r.y); by1 = Math.max(by1, r.y + r.h);
         });
-        /* --- pretil de la cubierta: sigue las caras exteriores de los muros del último piso --- */
-        if (top && top.g) {
-            var bx0 = 1e9, bx1 = -1e9, by0 = 1e9, by1 = -1e9;
-            top.rooms.forEach(function (r) { if (EXT.test(r.tipo)) return; bx0 = Math.min(bx0, r.x); bx1 = Math.max(bx1, r.x + r.w); by0 = Math.min(by0, r.y); by1 = Math.max(by1, r.y + r.h); });
-            top.g.filas.forEach(function (q) {   /* solo las franjas que están enteras dentro del borde del edificio */
-                if (q[2] < bx0 + 0.3 || q[0] > bx1 - 0.3 || q[3] < by0 + 0.3 || q[1] > by1 - 0.3) B(opq, q[0], q[1], zt + 0.02, q[2], q[3], zt + 0.55, MAT.muro, fr, 0);
-            });
+        if (bx1 > bx0) {
+            var casa = !!(Pl.esCasa || N <= 2), oh = casa ? 0.35 : 0.15;
+            /* losa de cubierta con alero */
+            B(opq, bx0 - oh, by0 - oh, zt - SL, bx1 + oh, by1 + oh, zt + 0.04, MAT.techo, fr, 0);
+            if (casa) {
+                /* pendiente suave a dos aguas (escalonada) hacia el eje longitudinal */
+                var midY = (by0 + by1) / 2, steps = 4, rise = 0.55;
+                for (var si = 0; si < steps; si++) {
+                    var t0 = si / steps, t1 = (si + 1) / steps;
+                    var yA = by0 - oh + (midY - (by0 - oh)) * t0, yB = by0 - oh + (midY - (by0 - oh)) * t1;
+                    var yC = by1 + oh - (by1 + oh - midY) * t0, yD = by1 + oh - (by1 + oh - midY) * t1;
+                    var zh = zt + 0.04 + rise * t1;
+                    B(opq, bx0 - oh, yA, zt + 0.04, bx1 + oh, yB, zh, MAT.techo, fr, 0);
+                    B(opq, bx0 - oh, yD, zt + 0.04, bx1 + oh, yC, zh, MAT.techo, fr, 0);
+                }
+                /* cumbrera */
+                B(opq, bx0 - oh * 0.5, midY - 0.08, zt + 0.04 + rise, bx1 + oh * 0.5, midY + 0.08, zt + 0.08 + rise, MAT.marco, fr, 0);
+            } else if (top.g) {
+                /* edificio: pretil de fachada */
+                top.g.filas.forEach(function (q) {
+                    if (q[2] < bx0 + 0.3 || q[0] > bx1 - 0.3 || q[3] < by0 + 0.3 || q[1] > by1 - 0.3)
+                        B(opq, q[0], q[1], zt + 0.02, q[2], q[3], zt + 0.55, MAT.muro, fr, 0);
+                });
+            }
         }
 
         /* --- suelo, acera, calle --- */
@@ -220,6 +277,7 @@
         if (activo) cerrar();
         var data;
         try { data = build(Pl); } catch (e) { console.warn('Civix 3D', e); return alerta('No pude levantar el plano en 3D: ' + (e.message || e)); }
+        if (!data || !data.opq || !data.opq.length) return alerta('El plano no tiene geometría suficiente para el 3D. Genera primero la distribución (aprobar / modo cine) y vuelve a intentar.');
         var ov = doc.createElement('div'); ov.className = 'cx3d'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Render 3D del anteproyecto');
         var vbtn = Object.keys(VISTAS).map(function (k) { return '<button type="button" data-v="' + k + '"' + (k === 'perspectiva' ? ' class="on"' : '') + '>' + VISTAS[k].n + '</button>'; }).join('');
         var pisosOpt = '<option value="' + (data.N + 1) + '">Edificio completo</option>'; for (var i = data.N; i >= 1; i--) pisosOpt += '<option value="' + i + '">Corte hasta el piso ' + i + '</option>';
@@ -230,7 +288,7 @@
             '<div class="cx3d-grp"><span>Hora</span><button type="button" data-h="dia" class="on">☀ Día</button><button type="button" data-h="tarde">🌇 Atardecer</button><button type="button" data-h="noche">🌙 Noche</button></div>' +
             '<div class="cx3d-grp"><span>Pisos</span><select data-s="pisos">' + pisosOpt + '</select></div>' +
             '<div class="cx3d-grp"><button type="button" data-t="explotar">Explotar</button><button type="button" data-t="entorno" class="on">Entorno</button><button type="button" data-t="girar">Girar</button></div></div>' +
-            '<div class="cx3d-nota">Maqueta 3D esquemática del anteproyecto: arrastra para girar · rueda para acercar · Mayús + arrastre para mover. No reemplaza el diseño de un profesional.</div>';
+            '<div class="cx3d-nota">Anteproyecto 3D a partir de tus planos: arrastra para orbitar · rueda para zoom · Mayús+arrastre para desplazar · vistas y hora del día en la barra. Es orientativo; no sustituye el diseño profesional ni el cálculo estructural.</div>';
         doc.body.appendChild(ov);
         var cv = ov.querySelector('canvas');
         var gl = cv.getContext('webgl2', { antialias: true, alpha: false, preserveDrawingBuffer: false });
